@@ -1,20 +1,23 @@
-// 파일명: main.js | @version 1.0.2
+// 파일명: main.js | @version 1.1.0
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.0.2 구글 "로그인할 수 없음" 대응 — Sec-CH-UA 헤더·navigator.userAgentData 에서도 Electron 표시 제거 / v1.0.1 전체 앱은 크롬(없으면 엣지)으로 열기 · 로그인 창 UA 정리 · 로그인되면 창 자동 닫기
+// 수정요약: v1.1.0 ★로그인을 진짜 크롬에서 하고 결과만 넘겨받는 방식으로 (구글이 앱 안 브라우저 로그인을 막음)
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
 //   내놓는 window.__widgetData() 를 불러 결과만 받아온다. 화면을 긁는 게 아니라
 //   앱이 화면을 그릴 때 쓰는 것과 똑같은 계산 결과라서, 앱 화면이 바뀌어도 안 깨진다.
-//   로그인(구글)도 그 창에서 한 번만 하면 세션이 저장된다.
+//   로그인은 진짜 크롬에서 하고 그 결과(구글 ID 토큰)만 127.0.0.1 로 넘겨받는다 — startLogin() 참고.
 
-const { app, BrowserWindow, Tray, Menu, ipcMain, shell, Notification, screen, session } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, shell, Notification, screen } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
+const http = require('http');
+const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 
 const APP_URL = 'https://jindo-dashboard.web.app/';
+const APP_ORIGIN = 'https://jindo-dashboard.web.app';
 const PARTITION = 'persist:jindo';
 const POLL_INTERVAL_MS = 60 * 1000;          // 1분마다 값 갱신
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -38,34 +41,6 @@ function debugLog(msg) {
         else debugLogTrimming = false;
       });
     });
-  });
-}
-
-// 구글은 "앱 안에 끼워 넣은 브라우저"로 들어오는 로그인을 막는다. 판단 근거가 세 군데라
-// 세 군데를 다 정리해야 통과한다.
-//   1) User-Agent 문자열      — 여기
-//   2) Sec-CH-UA 계열 헤더     — installUaCleanup()
-//   3) navigator.userAgentData — login-preload.js
-app.userAgentFallback = String(app.userAgentFallback || '')
-  .replace(/ JindoWidget\/[^ ]+/g, '')
-  .replace(/ Electron\/[^ ]+/g, '');
-
-// 클라이언트 힌트 헤더에서 Electron 브랜드를 지운다.
-// (`"Chromium";v="134", "Not:A-Brand";v="24", "Electron";v="35"` 같은 형식)
-function installUaCleanup(ses) {
-  ses.webRequest.onBeforeSendHeaders((details, done) => {
-    const h = details.requestHeaders;
-    Object.keys(h).forEach((k) => {
-      if (!/^sec-ch-ua/i.test(k) || typeof h[k] !== 'string') return;
-      if (!/electron/i.test(h[k])) return;
-      h[k] = h[k]
-        .replace(/"Electron";\s*v="[^"]*"/gi, '')
-        .replace(/,\s*,/g, ',')
-        .replace(/^\s*,\s*/, '')
-        .replace(/\s*,\s*$/, '')
-        .trim();
-    });
-    done({ requestHeaders: h });
   });
 }
 
@@ -99,7 +74,7 @@ function openInBrowser(url) {
 
 let widgetWin = null;      // 화면에 보이는 카드
 let workerWin = null;      // 값을 가져오는 숨은 창
-let loginWin = null;
+let handoffServer = null;   // 크롬에서 로그인 결과를 받는 잠깐짜리 서버
 let tray = null;
 let pollTimer = null;
 let lastData = null;
@@ -263,55 +238,99 @@ function updateTrayTooltip() {
   tray.setToolTip(`오늘 수업 ${ls.length}개\n` + lines.join('\n'));
 }
 
-/* ===================== 로그인 창 ===================== */
-function openLoginWindow() {
-  if (loginWin && !loginWin.isDestroyed()) { loginWin.show(); loginWin.focus(); return; }
-  const loginPreload = path.join(__dirname, 'login-preload.js');
-  loginWin = new BrowserWindow({
-    width: 1100, height: 820, title: '수업진도 로그인',
-    webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, preload: loginPreload }
-  });
-  // 구글 로그인은 팝업 창으로 열린다 — 같은 세션(partition)을 쓰는 진짜 창으로 열어줘야 한다.
-  // 실제 구글 로그인 화면이 뜨는 곳이 여기라, preload 도 반드시 같이 붙여야 한다.
-  loginWin.webContents.setWindowOpenHandler(() => ({
-    action: 'allow',
-    overrideBrowserWindowOptions: {
-      width: 520, height: 650, autoHideMenuBar: true,
-      webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, preload: loginPreload }
+/* ===================== 로그인 (크롬으로) =====================
+   위젯 안 창에서 구글 로그인을 하면 구글이 "브라우저 또는 앱이 안전하지 않을 수 있습니다"
+   라며 막는다. 그래서 로그인만 진짜 크롬에서 하고, 거기서 받은 구글 ID 토큰을 넘겨받아
+   위젯 쪽에서 로그인을 완성한다.
+
+     1) 위젯이 127.0.0.1 에 잠깐 서버를 연다 (포트는 그때그때, 확인값 nonce 를 하나 만든다)
+     2) 크롬으로 앱을 연다 — .../?widget=<포트>&nonce=<확인값>
+     3) 사용자가 크롬에서 평소처럼 구글 로그인
+     4) 앱이 그 포트로 ID 토큰을 보낸다 (확인값이 맞아야 받아준다)
+     5) 위젯이 숨은 창의 __widgetSignIn(토큰) 을 불러 로그인을 마친다
+
+   토큰은 바깥으로 안 나가고 내 컴퓨터 안(127.0.0.1)에서만 오간다. */
+function stopHandoffServer() {
+  if (!handoffServer) return;
+  try { handoffServer.close(); } catch (e) { /* 무시 */ }
+  handoffServer = null;
+}
+
+function startLogin() {
+  stopHandoffServer();
+  const nonce = crypto.randomBytes(16).toString('hex');
+  const cors = {
+    'Access-Control-Allow-Origin': APP_ORIGIN,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+  };
+
+  handoffServer = http.createServer((req, res) => {
+    if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }
+    if (req.method !== 'POST' || !String(req.url).startsWith('/handoff')) {
+      res.writeHead(404, cors); res.end('no'); return;
     }
-  }));
-  loginWin.loadURL(APP_URL);
-
-  // 구글이 또 막을 경우를 대비해, 실제로 어떤 브라우저 표시를 보내고 있는지 로그에 남긴다
-  loginWin.webContents.once('did-finish-load', async () => {
-    try {
-      const info = await loginWin.webContents.executeJavaScript(
-        'JSON.stringify({ ua: navigator.userAgent, brands: (navigator.userAgentData||{}).brands })', true);
-      debugLog(`로그인 창 브라우저 표시: ${info}`);
-    } catch (e) { /* 무시 */ }
+    let body = '';
+    req.on('data', (c) => {
+      body += c;
+      if (body.length > 32 * 1024) req.destroy();   // 토큰은 훨씬 짧다 — 그 이상이면 끊는다
+    });
+    req.on('end', () => {
+      let j = null;
+      try { j = JSON.parse(body); } catch (e) { /* 아래에서 걸러진다 */ }
+      if (!j || j.nonce !== nonce || !j.idToken) {
+        debugLog('로그인 넘겨받기 거부 — 확인값이 맞지 않습니다');
+        res.writeHead(400, cors); res.end('bad');
+        return;
+      }
+      res.writeHead(200, Object.assign({ 'Content-Type': 'text/plain' }, cors));
+      res.end('ok');
+      debugLog('크롬에서 로그인 정보를 넘겨받았습니다');
+      stopHandoffServer();
+      finishLogin(j.idToken);
+    });
   });
 
-  // 로그인이 끝나면 알아서 창을 닫아 준다 — 사용자가 "이제 닫아도 되나" 고민할 필요가 없게.
-  const watch = setInterval(async () => {
-    if (!loginWin || loginWin.isDestroyed()) { clearInterval(watch); return; }
-    try {
-      const ok = await loginWin.webContents.executeJavaScript(
-        'window.__widgetData ? !!window.__widgetData().ready : false', true);
-      if (!ok) return;
-      clearInterval(watch);
-      debugLog('로그인 완료 감지 — 로그인 창을 닫는다');
-      loginWin.close();
-      notify('수업진도 위젯', '로그인됐어요. 이제 위젯에 오늘 수업이 표시됩니다.');
-    } catch (e) { /* 페이지 이동 중이면 실패할 수 있다 — 다음 번에 다시 본다 */ }
-  }, 2000);
-
-  loginWin.on('closed', () => {
-    clearInterval(watch);
-    loginWin = null;
-    // 로그인하고 닫았을 수 있으니 숨은 창을 새로 띄워 세션을 다시 읽는다
-    if (workerWin && !workerWin.isDestroyed()) workerWin.webContents.reloadIgnoringCache();
-    setTimeout(pollOnce, 3000);
+  handoffServer.on('error', (e) => {
+    debugLog(`로그인 서버를 못 열었습니다: ${e.message}`);
+    notify('수업진도 위젯', '로그인 창을 여는 데 실패했어요. 잠시 뒤 다시 시도해 주세요.');
+    stopHandoffServer();
   });
+
+  handoffServer.listen(0, '127.0.0.1', () => {
+    const port = handoffServer.address().port;
+    debugLog(`로그인 대기 시작 (127.0.0.1:${port}) — 크롬을 엽니다`);
+    openInBrowser(`${APP_URL}?widget=${port}&nonce=${nonce}`);
+  });
+
+  // 5분 안에 안 끝나면 서버를 닫는다 (열어둔 채로 두지 않는다)
+  setTimeout(() => {
+    if (!handoffServer) return;
+    debugLog('로그인 대기 시간 초과 — 서버를 닫습니다');
+    stopHandoffServer();
+  }, 5 * 60 * 1000);
+}
+
+async function finishLogin(idToken, retried) {
+  const win = getWorkerWindow();
+  try {
+    const ok = await win.webContents.executeJavaScript(
+      `window.__widgetSignIn ? window.__widgetSignIn(${JSON.stringify(idToken)}) : null`, true);
+    if (ok === null) {
+      // 앱이 아직 옛 버전(캐시)이면 이 함수가 없다 — 한 번만 새로 불러오고 다시 시도
+      if (retried) { debugLog('앱에 __widgetSignIn 이 없습니다'); return; }
+      debugLog('__widgetSignIn 없음 — 앱을 새로 불러오고 다시 시도');
+      win.webContents.reloadIgnoringCache();
+      win.webContents.once('did-finish-load', () => setTimeout(() => finishLogin(idToken, true), 2500));
+      return;
+    }
+    debugLog('로그인 완료');
+    notify('수업진도 위젯', '로그인됐어요. 이제 위젯에 오늘 수업이 표시됩니다.');
+    setTimeout(pollOnce, 2500);
+  } catch (e) {
+    debugLog(`로그인 마무리 실패: ${e && e.message ? e.message : e}`);
+    notify('수업진도 위젯', '로그인을 마무리하지 못했어요. 트레이 메뉴에서 다시 시도해 주세요.');
+  }
 }
 
 /* ===================== 위젯 창 ===================== */
@@ -441,7 +460,7 @@ function createTray() {
         }
       },
       { label: '수업진도 앱 열기 (크롬)', click: () => openInBrowser(APP_URL) },
-      { label: '로그인 창 열기', click: () => openLoginWindow() },
+      { label: '크롬으로 로그인', click: () => startLogin() },
       {
         label: 'Windows 시작 시 자동 실행', type: 'checkbox',
         checked: app.getLoginItemSettings().openAtLogin,
@@ -466,7 +485,7 @@ function createTray() {
 
 /* ===================== IPC ===================== */
 ipcMain.on('refresh-now', () => pollOnce());
-ipcMain.on('open-login', () => openLoginWindow());
+ipcMain.on('open-login', () => startLogin());
 ipcMain.on('open-app', () => openInBrowser(APP_URL));
 ipcMain.on('set-view', (_e, view) => {
   if (!['today', 'week', 'progress'].includes(view)) return;
@@ -496,7 +515,6 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     debugLog('=== 시작 ===');
-    installUaCleanup(session.fromPartition(PARTITION));
     createWidgetWindow();
     createTray();
     getWorkerWindow();
