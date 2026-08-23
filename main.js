@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.2.0
+// 파일명: main.js | @version 1.3.0
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.2.0 크롬이 127.0.0.1 로 가는 fetch 를 막아서, 폼 전송으로도 받도록 (+ping 진단·버튼 여러번 눌러도 안전)
+// 수정요약: v1.3.0 주간 시간표 — 위젯 안 압축 격자 + «크게 보기» 창(앱 표를 거의 그대로)
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -74,6 +74,7 @@ function openInBrowser(url) {
 
 let widgetWin = null;      // 화면에 보이는 카드
 let workerWin = null;      // 값을 가져오는 숨은 창
+let timetableWin = null;   // 주간 시간표 «크게 보기» 창
 let handoffServer = null;   // 크롬에서 로그인 결과를 받는 잠깐짜리 서버
 let handoffNonce = null;    // 그때그때 만드는 일회용 확인값
 let tray = null;
@@ -220,13 +221,14 @@ async function pollOnce() {
 }
 
 function sendToWidget() {
-  if (!widgetWin || widgetWin.isDestroyed()) return;
-  widgetWin.webContents.send('jindo-data', {
+  const payload = {
     data: lastData,
     view: getView(),
     scale: SIZES[getScale()],
     version: app.getVersion()
-  });
+  };
+  if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
+  if (timetableWin && !timetableWin.isDestroyed()) timetableWin.webContents.send('jindo-data', payload);
   updateTrayTooltip();
 }
 
@@ -385,9 +387,23 @@ async function finishLogin(idToken, retried) {
 }
 
 /* ===================== 위젯 창 ===================== */
-function widgetSize() {
+// 이번주 격자는 요일 다섯 칸이 들어가야 해서 카드가 넓어야 한다. 다른 화면은 좁게.
+function baseWidthFor(view) { return view === 'week' ? 560 : 360; }
+function widgetSize(view) {
   const k = SIZES[getScale()];
-  return { width: Math.round(360 * k), height: Math.round(300 * k) };
+  return { width: Math.round(baseWidthFor(view || getView()) * k), height: Math.round(300 * k) };
+}
+function applyWidgetWidth(view) {
+  if (!widgetWin || widgetWin.isDestroyed()) return;
+  const want = Math.round(baseWidthFor(view) * SIZES[getScale()]);
+  const b = widgetWin.getBounds();
+  if (b.width === want) return;
+  // 오른쪽 끝이 화면 밖으로 밀려나지 않게 필요하면 왼쪽으로 당긴다
+  const a = screen.getPrimaryDisplay().workArea;
+  let x = b.x;
+  if (x + want > a.x + a.width) x = Math.max(a.x, a.x + a.width - want - 8);
+  widgetWin.setBounds({ x, y: b.y, width: want, height: b.height });
+  saveState({ x });
 }
 // 모니터를 뽑았거나 해상도가 바뀌어 저장된 위치가 화면 밖이면 주 모니터로 데려온다
 function safePosition(state, size) {
@@ -444,7 +460,7 @@ function createWidgetWindow() {
 function applyScale(key) {
   saveState({ size: key });
   if (widgetWin && !widgetWin.isDestroyed()) {
-    const s = widgetSize();
+    const s = widgetSize(getView());
     const [x, y] = widgetWin.getPosition();
     widgetWin.setBounds({ x, y, width: s.width, height: s.height });
   }
@@ -457,6 +473,33 @@ function applyOpacity(v) {
 function applyAlwaysOnTop(on) {
   saveState({ alwaysOnTop: on });
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.setAlwaysOnTop(on, on ? 'screen-saver' : 'normal');
+}
+
+/* ===================== 주간 시간표 «크게 보기» ===================== */
+// 위젯 카드는 좁아서 앱의 표를 그대로 담을 수 없다. 그래서 폭 제약이 없는 창을 따로 띄운다.
+function openTimetableWindow() {
+  if (timetableWin && !timetableWin.isDestroyed()) {
+    timetableWin.show(); timetableWin.focus();
+    return;
+  }
+  const a = screen.getPrimaryDisplay().workArea;
+  timetableWin = new BrowserWindow({
+    width: Math.min(1240, a.width - 60),
+    height: Math.min(880, a.height - 60),
+    title: '주간 시간표',
+    backgroundColor: '#F7F7FF',
+    autoHideMenuBar: true,
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+  timetableWin.loadFile('timetable.html');
+  timetableWin.on('closed', () => { timetableWin = null; });
+  timetableWin.webContents.once('did-finish-load', () => sendToWidget());
+  debugLog('주간 시간표 창을 열었습니다');
 }
 
 /* ===================== 트레이 ===================== */
@@ -494,6 +537,7 @@ function createTray() {
       { label: '위젯 투명도', submenu: opacityMenu },
       { label: '위젯 크기', submenu: sizeMenu },
       { type: 'separator' },
+      { label: '🗓️ 주간 시간표 크게 보기', click: () => openTimetableWindow() },
       { label: '지금 새로고침', click: () => pollOnce() },
       {
         // 다른 모니터를 뽑았거나 위젯을 어디 뒀는지 못 찾을 때 쓰는 탈출구
@@ -537,10 +581,12 @@ function createTray() {
 /* ===================== IPC ===================== */
 ipcMain.on('refresh-now', () => pollOnce());
 ipcMain.on('open-login', () => startLogin());
+ipcMain.on('open-timetable', () => openTimetableWindow());
 ipcMain.on('open-app', () => openInBrowser(APP_URL));
 ipcMain.on('set-view', (_e, view) => {
   if (!['today', 'week', 'progress'].includes(view)) return;
   saveState({ view });
+  applyWidgetWidth(view);
 });
 // 내용 높이에 맞춰 카드 높이를 조절한다 (가로는 고정)
 ipcMain.on('content-height', (_e, h) => {

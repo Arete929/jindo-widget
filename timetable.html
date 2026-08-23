@@ -1,0 +1,207 @@
+<!-- 파일명: timetable.html | @version 1.3.0 -->
+<!-- 주간 시간표 «크게 보기» 창 — 앱의 표를 최대한 그대로 옮겼다. 색·구조 모두 앱과 같은 값. -->
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>주간 시간표</title>
+<style>
+  :root {
+    --ink:#1a1636; --sub:#6b6a86; --canvas:#F7F7FF; --card:#fff;
+    --border:#e6e4f2; --energy1:#27187E; --energy2:#4433B0;
+    --c-수업:#dbe8ff; --ct-수업:#1e50b5;
+    --c-수행평가:#ffe1cc; --ct-수행평가:#b45815;
+    --c-시험:#ffd8d2; --ct-시험:#b23223;
+    --c-행사:#e6ddff; --ct-행사:#5b3fc4;
+    --c-동아리:#e6d7c2; --ct-동아리:#6b4a24;
+    --c-자율:#e2f5e6; --ct-자율:#1f8a43;
+    --c-진로:#fff6cc; --ct-진로:#93760a;
+    --c-봉사:#dff7f2; --ct-봉사:#0f8b74;
+    --c-범교과:#eee3ff; --ct-범교과:#6b3fc9;
+    --c-스포츠:#d6f2f7; --ct-스포츠:#0e7f9e;
+    --c-활동:#e9f0d0; --ct-활동:#6b8c1f;
+    --c-휴업:#eceef2; --ct-휴업:#6b7280;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--canvas); color: var(--ink);
+    font-family: "Pretendard", "Segoe UI", "Malgun Gothic", sans-serif;
+    padding: 14px; font-size: 13px;
+  }
+  .head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .head h1 { font-size: 17px; font-weight: 800; letter-spacing: -.3px; }
+  .head .range { color: var(--sub); font-size: 12.5px; font-weight: 600; }
+  .head .spacer { flex: 1; }
+  .head button {
+    border: 1px solid var(--border); background: #fff; color: var(--ink);
+    border-radius: 8px; padding: 5px 11px; cursor: pointer;
+    font-size: 12px; font-weight: 700; font-family: inherit;
+  }
+  .head button:hover { background: #f2f0ff; }
+
+  table { border-collapse: separate; border-spacing: 0; width: 100%; background: var(--card);
+          border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(30,20,80,.07); }
+  th, td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
+           padding: 6px 7px; vertical-align: top; }
+  th:last-child, td:last-child { border-right: 0; }
+  tr:last-child td { border-bottom: 0; }
+
+  thead th { background: #f3f1ff; text-align: center; font-weight: 800; padding: 8px 6px; }
+  th.per { width: 88px; }
+  thead .dnote { display: block; font-size: 11px; font-weight: 700; color: var(--ct-진로); margin-bottom: 3px; min-height: 14px; }
+  thead .dname { font-size: 14px; }
+  thead .dt { display: block; font-size: 11.5px; font-weight: 600; color: var(--sub); margin-top: 1px; }
+  thead .holbadge { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px;
+                    background: #ffd2cd; color: #b23223; font-size: 10.5px; font-weight: 800; }
+
+  td.per { background: #faf9ff; text-align: center; font-weight: 800; white-space: nowrap; }
+  td.per small { display: block; font-size: 10.5px; font-weight: 600; color: var(--sub); margin-top: 2px; }
+
+  td.cell { height: 62px; }
+  td.hol { background: repeating-linear-gradient(45deg, #fff5f4, #fff5f4 6px, #ffe6e3 6px, #ffe6e3 12px);
+           text-align: center; color: #b23223; font-weight: 700; }
+  td.today-col { border-left: 2px solid var(--energy1); border-right: 2px solid var(--energy1); }
+  thead th.today-col { border-left: 2px solid var(--energy1); border-right: 2px solid var(--energy1); }
+
+  .cls { font-size: 14px; font-weight: 800; }
+  .row1 { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .utile { display: inline-block; padding: 2px 8px; border-radius: 7px; font-size: 11px;
+           font-weight: 800; color: #fff; white-space: nowrap; }
+  .u0 { background: #27187E; } .u1 { background: #0e7f9e; } .u2 { background: #b45815; }
+  .u3 { background: #1f8a43; } .u4 { background: #a02563; } .u5 { background: #6b3fc9; }
+  .ntile { display: inline-block; padding: 2px 7px; border-radius: 6px; border: 1px solid var(--border);
+           background: #fff; font-size: 11px; font-weight: 800; }
+  .noplan { color: var(--sub); font-size: 11.5px; font-weight: 600; }
+  .detail { font-size: 11.5px; color: var(--sub); margin-top: 3px; line-height: 1.35; }
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 5px; font-size: 10px; font-weight: 800; }
+  .b-mv { background: #d9d2e9; color: #4b3a75; }
+  .b-as { background: #ffe1cc; color: #b45815; }
+  .b-sh { background: #fff0c2; color: #93760a; }
+  .mvfrom { display: block; font-size: 10.5px; color: var(--sub); margin-top: 3px; }
+  .out { color: #9a97ad; }
+  .out .cls { text-decoration: line-through; }
+
+  .cal { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .ctag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; }
+  .cnote { font-size: 11.5px; color: var(--sub); margin-top: 3px; }
+  .gnum { display: inline-flex; width: 17px; height: 17px; border-radius: 999px; background: var(--energy1);
+          color: #fff; font-size: 10.5px; font-weight: 800; align-items: center; justify-content: center; }
+
+  .foot { margin-top: 9px; color: var(--sub); font-size: 11.5px; text-align: right; }
+  .empty { padding: 40px; text-align: center; color: var(--sub); }
+</style>
+</head>
+<body>
+<div id="app"><div class="empty">불러오는 중…</div></div>
+
+<script>
+var DATA = null;
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+/* 학사일정 종류에 맞는 색 (앱과 같은 변수를 쓴다) */
+function calStyle(lbl) {
+  return `background:var(--c-${lbl},#eee); color:var(--ct-${lbl},#555)`;
+}
+function mdOf(dateStr) {
+  var p = String(dateStr || '').split('-');
+  return p.length === 3 ? Number(p[1]) + '/' + Number(p[2]) : '';
+}
+
+function cellHtml(c, day) {
+  if (day.holiday) return '';
+  // 다른 날로 옮겨 간 자리 — 앱처럼 취소선으로 남긴다
+  if (c.movedOut) {
+    return '<div class="out"><span class="cls">' + esc(c.movedOut.cls) + '</span>'
+      + '<span class="mvfrom">→ ' + esc(mdOf(c.movedOut.toDate)) + ' '
+      + esc(c.movedOut.toPeriod || '') + '교시로 ' + esc(c.movedOut.kind) + '</span></div>';
+  }
+  if (c.lesson) {
+    var l = c.lesson, h = '<div class="row1"><span class="cls">' + esc(l.cls) + '</span>';
+    if (l.movedIn) h += '<span class="badge b-mv">' + esc((l.mv && l.mv.kind) || '수업이동') + '</span>';
+    if (l.assigned) h += '<span class="badge b-as">직접 배정</span>';
+    if (l.shifted) h += '<span class="badge b-sh">↷순연</span>';
+    h += '</div><div class="row1" style="margin-top:4px">';
+    if (l.unit) h += '<span class="utile u' + (l.u % 6) + '">' + esc(l.unit) + '</span>';
+    if (l.n) h += '<span class="ntile">' + l.n + '차시</span>';
+    else h += '<span class="noplan">차시 미지정</span>';
+    h += '</div>';
+    if (l.detail) h += '<div class="detail">' + esc(l.detail) + '</div>';
+    else if (l.topic) h += '<div class="detail">' + esc(l.topic) + '</div>';
+    if (l.movedIn && l.mv && l.mv.fromDate) {
+      h += '<span class="mvfrom">← ' + esc(mdOf(l.mv.fromDate)) + ' '
+        + esc(l.mv.fromPeriod || '') + '교시에서 옮김</span>';
+    }
+    return h;
+  }
+  if (c.cal) {
+    var cal = c.cal, t = '';
+    if (cal.allSame || cal.parts.length <= 1) {
+      t = '<div class="cal"><span class="ctag" style="' + calStyle(cal.lbl) + '">' + esc(cal.lbl) + '</span></div>';
+    } else {
+      t = '<div class="cal">' + cal.parts.map(function (p) {
+        return '<span class="gnum">' + esc(String(p.gr).replace(/[^0-9]/g, '')) + '</span>'
+          + '<span class="ctag" style="' + calStyle(p.lbl) + '">' + esc(p.lbl) + '</span>';
+      }).join('') + '</div>';
+    }
+    if (cal.note) t += '<div class="cnote">' + esc(cal.note) + '</div>';
+    return t;
+  }
+  return '';
+}
+
+function render() {
+  var box = document.getElementById('app');
+  if (!DATA || !DATA.week || !DATA.week.length) {
+    box.innerHTML = '<div class="empty">아직 자료가 없습니다. 위젯이 자료를 받아오면 표시됩니다.</div>';
+    return;
+  }
+  var wk = DATA.week;
+  var first = wk[0], last = wk[wk.length - 1];
+
+  var head = '<div class="head"><h1>🗓️ 주간 시간표</h1>'
+    + '<span class="range">' + esc(first.date) + ' ~ ' + esc(last.date) + '</span>'
+    + '<span class="spacer"></span>'
+    + '<button onclick="widgetAPI.refreshNow()">⟳ 새로고침</button>'
+    + '<button onclick="widgetAPI.openApp()">↗ 앱에서 열기</button></div>';
+
+  var th = '<tr><th class="per">교시</th>' + wk.map(function (d) {
+    return '<th class="' + (d.today ? 'today-col' : '') + '">'
+      + '<span class="dnote">' + esc(d.note || '') + '</span>'
+      + '<span class="dname">' + esc(d.dow) + '요일'
+      + (d.holiday ? '<span class="holbadge">휴업</span>' : '') + '</span>'
+      + '<span class="dt">' + esc(d.md) + '</span></th>';
+  }).join('') + '</tr>';
+
+  var rows = '';
+  for (var p = 1; p <= 7; p++) {
+    rows += '<tr>';
+    // 교시 시각은 그 주에 실제로 쓰이는 것 중 첫 번째를 쓴다 (압축 시정표 대응)
+    var t = '';
+    wk.forEach(function (d) {
+      if (t) return;
+      var c = (d.cells || [])[p - 1];
+      if (c && c.time) t = c.time;
+    });
+    rows += '<td class="per">' + p + '교시<small>' + esc(t) + '</small></td>';
+    wk.forEach(function (d) {
+      var c = (d.cells || [])[p - 1] || { p: p };
+      var cls = 'cell' + (d.today ? ' today-col' : '') + (d.holiday ? ' hol' : '');
+      rows += '<td class="' + cls + '">' + (d.holiday ? '휴업' : cellHtml(c, d)) + '</td>';
+    });
+    rows += '</tr>';
+  }
+
+  box.innerHTML = head + '<table><thead>' + th + '</thead><tbody>' + rows + '</tbody></table>'
+    + '<div class="foot">수업진도 위젯 · 오늘 ' + esc(DATA.date || '') + '</div>';
+}
+
+widgetAPI.onData(function (p) {
+  DATA = p.data && p.data.ready ? p.data : null;
+  render();
+});
+</script>
+</body>
+</html>
