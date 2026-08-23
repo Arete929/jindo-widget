@@ -1,5 +1,6 @@
-// 파일명: main.js | @version 1.0.0
+// 파일명: main.js | @version 1.0.1
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
+// 수정요약: v1.0.1 전체 앱은 크롬(없으면 엣지)으로 열기 · 로그인 창 UA 정리 · 로그인되면 창 자동 닫기
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -9,6 +10,7 @@
 
 const { app, BrowserWindow, Tray, Menu, ipcMain, shell, Notification, screen } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -37,6 +39,40 @@ function debugLog(msg) {
       });
     });
   });
+}
+
+// 구글은 "앱 안에 끼워 넣은 브라우저"로 들어오는 로그인을 막는 일이 있다. 기본 UA 에는
+// Electron/JindoWidget 표시가 붙는데, 그것만 떼면 평범한 크롬과 같은 문자열이 된다.
+app.userAgentFallback = String(app.userAgentFallback || '')
+  .replace(/ JindoWidget\/[^ ]+/g, '')
+  .replace(/ Electron\/[^ ]+/g, '');
+
+// 전체 앱을 브라우저로 열 때 — 기본 브라우저(이 PC 는 웨일)가 아니라 크롬을 쓴다.
+// 크롬이 없으면 엣지, 그것도 없으면 기본 브라우저.
+function browserPath() {
+  const PF = process.env.ProgramFiles || 'C:\\Program Files';
+  const PF86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+  const LOCAL = process.env.LOCALAPPDATA || '';
+  const list = [
+    path.join(PF, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    path.join(PF86, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    path.join(LOCAL, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    path.join(PF, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+    path.join(PF86, 'Microsoft', 'Edge', 'Application', 'msedge.exe')
+  ];
+  for (const p of list) { try { if (fs.existsSync(p)) return p; } catch (e) { /* 무시 */ } }
+  return null;
+}
+function openInBrowser(url) {
+  const exe = browserPath();
+  if (!exe) { debugLog('크롬·엣지를 못 찾아 기본 브라우저로 엽니다'); shell.openExternal(url); return; }
+  debugLog(`브라우저로 열기: ${path.basename(exe)}`);
+  try {
+    spawn(exe, [url], { detached: true, stdio: 'ignore', windowsHide: false }).unref();
+  } catch (e) {
+    debugLog(`브라우저 실행 실패(${e.message}) — 기본 브라우저로 대체`);
+    shell.openExternal(url);
+  }
 }
 
 let widgetWin = null;      // 화면에 보이는 카드
@@ -221,7 +257,23 @@ function openLoginWindow() {
     }
   }));
   loginWin.loadURL(APP_URL);
+
+  // 로그인이 끝나면 알아서 창을 닫아 준다 — 사용자가 "이제 닫아도 되나" 고민할 필요가 없게.
+  const watch = setInterval(async () => {
+    if (!loginWin || loginWin.isDestroyed()) { clearInterval(watch); return; }
+    try {
+      const ok = await loginWin.webContents.executeJavaScript(
+        'window.__widgetData ? !!window.__widgetData().ready : false', true);
+      if (!ok) return;
+      clearInterval(watch);
+      debugLog('로그인 완료 감지 — 로그인 창을 닫는다');
+      loginWin.close();
+      notify('수업진도 위젯', '로그인됐어요. 이제 위젯에 오늘 수업이 표시됩니다.');
+    } catch (e) { /* 페이지 이동 중이면 실패할 수 있다 — 다음 번에 다시 본다 */ }
+  }, 2000);
+
   loginWin.on('closed', () => {
+    clearInterval(watch);
     loginWin = null;
     // 로그인하고 닫았을 수 있으니 숨은 창을 새로 띄워 세션을 다시 읽는다
     if (workerWin && !workerWin.isDestroyed()) workerWin.webContents.reloadIgnoringCache();
@@ -355,7 +407,7 @@ function createTray() {
           debugLog('위젯 위치 초기화: 주 모니터 가운데(' + x + ', ' + y + ')');
         }
       },
-      { label: '수업진도 앱 열기', click: () => shell.openExternal(APP_URL) },
+      { label: '수업진도 앱 열기 (크롬)', click: () => openInBrowser(APP_URL) },
       { label: '로그인 창 열기', click: () => openLoginWindow() },
       {
         label: 'Windows 시작 시 자동 실행', type: 'checkbox',
@@ -382,7 +434,7 @@ function createTray() {
 /* ===================== IPC ===================== */
 ipcMain.on('refresh-now', () => pollOnce());
 ipcMain.on('open-login', () => openLoginWindow());
-ipcMain.on('open-app', () => shell.openExternal(APP_URL));
+ipcMain.on('open-app', () => openInBrowser(APP_URL));
 ipcMain.on('set-view', (_e, view) => {
   if (!['today', 'week', 'progress'].includes(view)) return;
   saveState({ view });

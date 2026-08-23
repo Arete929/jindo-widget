@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.0.0 -->
+<!-- 파일명: widget.html | @version 1.0.1 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -218,8 +218,13 @@ function render() {
   if (!STATE) { app.innerHTML = '<div class="empty">불러오는 중…</div>'; return report(); }
 
   if (STATE.needLogin) {
-    app.innerHTML = '<div class="empty">수업진도에 로그인해 주세요.<br>'
-      + '<button class="btn" onclick="widgetAPI.openLogin()">구글 로그인</button></div>';
+    // 로그인은 반드시 이 버튼으로 열리는 창에서 해야 한다. 브라우저에서 로그인하면
+    // 그 세션은 브라우저 것이라 위젯이 쓸 수 없다 — 그래서 안내를 함께 둔다.
+    app.innerHTML = '<div class="empty">수업진도에 로그인해 주세요.'
+      + '<br><button class="btn" onclick="widgetAPI.openLogin()">구글 로그인</button>'
+      + '<div style="margin-top:9px;font-size:10.5px;line-height:1.5;color:#6f7885">'
+      + '이 버튼으로 열리는 창에서 로그인해야 합니다.<br>'
+      + '브라우저에서 로그인한 것은 위젯이 쓸 수 없어요.</div></div>';
     return report();
   }
 
