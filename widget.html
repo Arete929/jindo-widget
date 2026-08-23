@@ -123,7 +123,9 @@
   .gr thead th { padding: 3px 1px 4px; font-size: 11px; font-weight: 800; background: #1a1e25; }
   .gr thead th small { display: block; font-size: 9px; font-weight: 600; color: var(--dim); }
   .gr thead th i { display: block; font-style: normal; font-size: 8.5px; color: #d8ac6e;
-                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                   line-height: 1.3; margin-top: 1px; }
+  .gr thead th i em { display: block; font-style: normal;
+                      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .gr td.pc, .gr th.pc { width: 20px; background: #1a1e25; font-size: 10px; font-weight: 800; color: var(--dim); }
   .gr td { height: 34px; font-size: 10px; }
   .gr td.c { position: relative; color: #fff; font-weight: 700; line-height: 1.15; padding: 2px 1px; }
@@ -134,6 +136,9 @@
                border-radius: 999px; background: #fff; opacity: .9; }
   .gr td.u0 { background: #3a2f8f; } .gr td.u1 { background: #12708a; } .gr td.u2 { background: #96491a; }
   .gr td.u3 { background: #1d7440; } .gr td.u4 { background: #8a2456; } .gr td.u5 { background: #5c3aad; }
+  /* 학사일정으로 수업이 없어진 칸 — 수업 색을 쓰지 않는다 */
+  .gr td.blk { background: #2b2721; color: #b09b7d; }
+  .gr td.blk b { opacity: .75; }
   .gr td.cal { background: #232a35; color: #9fb0c4; font-weight: 700; font-size: 9.5px; }
   .gr td.cal u { color: #7d8b9c; }
   .gr td.out { background: #1a1e25; color: #5d6672; text-decoration: line-through; }
@@ -233,11 +238,34 @@ function loadWeek(off) {
     render();
   }).catch(function () { wkBusy = false; WK = null; render(); });
 }
+function whenTxt(date, period) {
+  var p = String(date || '').split('-');
+  var md = p.length === 3 ? Number(p[1]) + '/' + Number(p[2]) : '';
+  return md + (period ? ' ' + period + '교시' : '');
+}
 function cellTip(c, l) {
+  if (l.blocked) {
+    return l.cls + ' · ' + ((c.cellCal && c.cellCal.lbl) || '수업 없음')
+      + ((c.cellCal && c.cellCal.note) ? ' · ' + c.cellCal.note : '')
+      + (c.pushedTo ? '\n→ ' + whenTxt(c.pushedTo.date, c.pushedTo.period) + '로 밀림' : '')
+      + (l.orig ? '\n원래 ' + l.orig + '교시' : '')
+      + (c.time ? '\n' + c.time : '');
+  }
   return l.cls + ' · ' + (l.unit || '') + (l.n ? ' ' + l.n + '차시' : ' 차시미정')
     + (l.topic ? ' · ' + l.topic : '') + (l.detail ? '\n' + l.detail : '')
+    + (l.orig ? '\n원래 ' + l.orig + '교시' : '')
     + (l.movedIn ? '\n(수업이동)' : '') + (l.assigned ? '\n(직접 배정)' : '')
     + (l.shifted ? '\n(순연)' : '') + (c.time ? '\n' + c.time : '');
+}
+
+/* 학사일정 메모는 콤마로 나뉜 여러 건이다 — 한 줄에 하나씩 보여준다 */
+function noteLines(note) {
+  if (!note) return '';
+  var parts = String(note).split(',').map(function (t) { return t.trim(); })
+    .filter(function (t) { return t; });
+  if (!parts.length) return '';
+  return '<i title="' + esc(parts.join(' / ')) + '">'
+    + parts.map(function (t) { return '<em>' + esc(t) + '</em>'; }).join('') + '</i>';
 }
 
 function viewWeek(d) {
@@ -260,7 +288,7 @@ function viewWeek(d) {
   days.forEach(function (w) {
     h += '<th class="' + (w.today ? 'tdy' : '') + '">' + esc(w.dow)
       + '<small>' + esc(w.md) + '</small>'
-      + (w.note ? '<i title="' + esc(w.note) + '">' + esc(w.note) + '</i>' : '')
+      + noteLines(w.note)
       + '</th>';
   });
   h += '</tr></thead><tbody>';
@@ -273,6 +301,13 @@ function viewWeek(d) {
       if (w.holiday) { h += '<td class="hol' + klass + '"></td>'; return; }
       if (c.lesson) {
         var l = c.lesson;
+        // 학사일정(동아리 등)으로 수업이 없어진 칸 — 수업처럼 그리면 안 된다
+        if (l.blocked) {
+          h += '<td class="c blk' + klass + '" title="' + esc(cellTip(c, l)) + '">'
+            + '<b>' + esc(l.cls) + '</b><u>'
+            + esc((c.cellCal && c.cellCal.lbl) || '수업 없음') + '</u></td>';
+          return;
+        }
         // 차시 번호 뒤에 주제(또는 상세)를 함께 — "1 개학 후 측정" 처럼
         var what = l.n ? String(l.n) : '';
         var extra = l.topic || l.detail || '';

@@ -53,7 +53,8 @@
 
   thead th { background: #f3f1ff; text-align: center; font-weight: 800; padding: 8px 6px; }
   th.per { width: 88px; }
-  thead .dnote { display: block; font-size: 11px; font-weight: 700; color: var(--ct-진로); margin-bottom: 3px; min-height: 14px; }
+  thead .dnote { display: block; font-size: 11px; font-weight: 700; color: var(--ct-진로); margin-bottom: 3px; min-height: 14px; line-height: 1.35; }
+  thead .dnote em { display: block; font-style: normal; }
   thead .dname { font-size: 14px; }
   thead .dt { display: block; font-size: 11.5px; font-weight: 600; color: var(--sub); margin-top: 1px; }
   thead .holbadge { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px;
@@ -83,6 +84,11 @@
   .b-as { background: #ffe1cc; color: #b45815; }
   .b-sh { background: #fff0c2; color: #93760a; }
   .mvfrom { display: block; font-size: 10.5px; color: var(--sub); margin-top: 3px; }
+  /* 학사일정으로 밀린 수업이 어디로 갔는지 */
+  .pushline { display: block; font-size: 10.5px; color: #b45815; font-weight: 700; margin-top: 3px; }
+  /* 동아리 날은 자리≠교시 — 원래 몇 교시였는지 */
+  .orig { display: inline-flex; width: 17px; height: 17px; border-radius: 5px; background: #dbe8ff;
+          color: #1e50b5; font-size: 10.5px; font-weight: 800; align-items: center; justify-content: center; }
   .out { color: #9a97ad; }
   .out .cls { text-decoration: line-through; }
 
@@ -141,6 +147,15 @@ function toggle(which) {
   render();
 }
 
+/* 학사일정 메모는 콤마로 나뉜 여러 건이다 — 한 줄에 하나씩 */
+function noteLines(note) {
+  var parts = String(note || '').split(',').map(function (t) { return t.trim(); })
+    .filter(function (t) { return t; });
+  if (!parts.length) return '<span class="dnote"></span>';
+  return '<span class="dnote">'
+    + parts.map(function (t) { return '<em>' + esc(t) + '</em>'; }).join('') + '</span>';
+}
+
 function cellHtml(c, day) {
   if (day.holiday) return '';
   // 다른 날로 옮겨 간 자리 — 앱처럼 취소선으로 남긴다
@@ -150,7 +165,27 @@ function cellHtml(c, day) {
       + esc(c.movedOut.toPeriod || '') + '교시로 ' + esc(c.movedOut.kind) + '</span></div>';
   }
   if (c.lesson) {
-    var l = c.lesson, h = '<div class="row1"><span class="cls">' + esc(l.cls) + '</span>';
+    var l = c.lesson;
+    // 학사일정(동아리 등)으로 수업이 없어진 칸 — 그 수업은 다음 가능한 시간으로 밀린다
+    if (l.blocked) {
+      var b = '<div class="row1">'
+        + (l.orig ? '<span class="orig">' + l.orig + '</span>' : '')
+        + '<span class="cls">' + esc(l.cls) + '</span></div>'
+        + '<div class="noplan">수업 없음</div>';
+      if (c.cellCal) {
+        b += '<div class="cal" style="margin-top:4px"><span class="ctag" style="' + calStyle(c.cellCal.lbl) + '">'
+          + esc(c.cellCal.lbl) + '</span></div>';
+        if (c.cellCal.note) b += '<div class="cnote">' + esc(c.cellCal.note) + '</div>';
+      }
+      if (c.pushedTo) {
+        b += '<span class="pushline">→ ' + esc(mdOf(c.pushedTo.date)) + ' '
+          + esc(c.pushedTo.period || '') + '교시로 밀림</span>';
+      }
+      return b;
+    }
+    var h = '<div class="row1">'
+      + (l.orig ? '<span class="orig" title="동아리 날이라 교시 순서가 바뀝니다">' + l.orig + '</span>' : '')
+      + '<span class="cls">' + esc(l.cls) + '</span>';
     if (l.movedIn) h += '<span class="badge b-mv">' + esc((l.mv && l.mv.kind) || '수업이동') + '</span>';
     if (l.assigned) h += '<span class="badge b-as">직접 배정</span>';
     if (l.shifted) h += '<span class="badge b-sh">↷순연</span>';
@@ -188,7 +223,7 @@ function tableHtml(wk, readonly) {
   var days = wk.days || [];
   var th = '<tr><th class="per">교시</th>' + days.map(function (d) {
     return '<th class="' + (d.today ? 'today-col' : '') + '">'
-      + '<span class="dnote">' + esc(d.note || '') + '</span>'
+      + noteLines(d.note)
       + '<span class="dname">' + esc(d.dow) + '요일'
       + (d.holiday ? '<span class="holbadge">휴업</span>' : '') + '</span>'
       + '<span class="dt">' + esc(d.md) + '</span></th>';
