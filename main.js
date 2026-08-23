@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.5.0
+// 파일명: main.js | @version 1.6.0
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.5.0 [버그] 동아리 등으로 없어진 수업을 그냥 수업으로 그리던 문제 + 학사일정 메모 콤마 줄바꿈
+// 수정요약: v1.6.0 «주간업무» 탭(입력본·합본 선택·주차 이동·검색) / v1.5.0 동아리로 없어진 수업 표시 바로잡음
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -97,7 +97,7 @@ const SIZES = { small: 0.85, medium: 1, large: 1.2 };
 function getScale() { const s = loadState().size; return SIZES[s] ? s : 'medium'; }
 function getOpacity() { const o = loadState().opacity; return typeof o === 'number' ? o : 1; }
 function getAlwaysOnTop() { const v = loadState().alwaysOnTop; return v === undefined ? true : !!v; }
-function getView() { const v = loadState().view; return ['today', 'week', 'progress'].includes(v) ? v : 'today'; }
+function getView() { const v = loadState().view; return ['today', 'week', 'progress', 'work'].includes(v) ? v : 'today'; }
 
 /* ===================== 자동 업데이트 ===================== */
 // 새 버전이 나오면 알아서 내려받고, 다 받으면 알림을 띄운다. 누르면 재시작하며 설치.
@@ -391,7 +391,7 @@ async function finishLogin(idToken, retried) {
 
 /* ===================== 위젯 창 ===================== */
 // 이번주 격자는 요일 다섯 칸이 들어가야 해서 카드가 넓어야 한다. 다른 화면은 좁게.
-function baseWidthFor(view) { return view === 'week' ? 560 : 360; }
+function baseWidthFor(view) { return (view === 'week' || view === 'work') ? 560 : 360; }
 function widgetSize(view) {
   const k = SIZES[getScale()];
   return { width: Math.round(baseWidthFor(view || getView()) * k), height: Math.round(300 * k) };
@@ -586,6 +586,17 @@ ipcMain.on('refresh-now', () => pollOnce());
 ipcMain.on('open-login', () => startLogin());
 ipcMain.on('open-timetable', () => openTimetableWindow());
 // 이전주·다음주 — 숨은 창의 앱에게 그 주 자료를 물어본다
+// 주간업무계획 — 앱이 저장해 둔 것을 그대로 가져온다
+ipcMain.handle('get-work', async () => {
+  const win = getWorkerWindow();
+  try {
+    return await win.webContents.executeJavaScript(
+      'window.__widgetWork ? window.__widgetWork() : null', true);
+  } catch (e) {
+    debugLog(`주간업무 가져오기 실패: ${e && e.message ? e.message : e}`);
+    return null;
+  }
+});
 ipcMain.handle('get-week', async (_e, off) => {
   const win = getWorkerWindow();
   try {
@@ -598,7 +609,7 @@ ipcMain.handle('get-week', async (_e, off) => {
 });
 ipcMain.on('open-app', () => openInBrowser(APP_URL));
 ipcMain.on('set-view', (_e, view) => {
-  if (!['today', 'week', 'progress'].includes(view)) return;
+  if (!['today', 'week', 'progress', 'work'].includes(view)) return;
   saveState({ view });
   applyWidgetWidth(view);
 });

@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   openApp: () => ipcRenderer.send('open-app'),
   openTimetable: () => ipcRenderer.send('open-timetable'),
   getWeek: (off) => ipcRenderer.invoke('get-week', off),
+  getWork: () => ipcRenderer.invoke('get-work'),
   setView: (view) => ipcRenderer.send('set-view', view),
   reportHeight: (h) => ipcRenderer.send('content-height', h)
 });

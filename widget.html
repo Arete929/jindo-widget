@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.4.0 -->
+<!-- 파일명: widget.html | @version 1.6.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -144,6 +144,30 @@
   .gr td.out { background: #1a1e25; color: #5d6672; text-decoration: line-through; }
   .gr td.hol { background: repeating-linear-gradient(45deg, #241a1a, #241a1a 4px, #2e2020 4px, #2e2020 8px); }
   .gr .tdy { box-shadow: inset 0 0 0 1.5px var(--accent); }
+
+  /* ── 주간업무 ── */
+  .wq {
+    -webkit-app-region: no-drag;
+    flex: 1; min-width: 60px; background: #1a1e25; border: 1px solid var(--line);
+    color: var(--fg); border-radius: 6px; padding: 3px 8px;
+    font-size: 11px; font-family: inherit; outline: none;
+  }
+  .wq:focus { border-color: var(--accent); }
+  .wkb[disabled] { opacity: .35; cursor: default; }
+  .wkhead { font-size: 11.5px; font-weight: 800; margin-bottom: 6px; text-align: center; }
+  .wkcal { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
+  .wkchip { padding: 2px 7px; border-radius: 5px; background: #2a2419; color: #f0c98a;
+            font-size: 10px; font-weight: 700; line-height: 1.35; }
+  .wkdt { background: var(--card); border-radius: 7px; padding: 6px 8px; margin-bottom: 5px; }
+  .wkdt b { display: block; font-size: 11.5px; font-weight: 800; color: var(--accent); margin-bottom: 3px; }
+  .wkln { font-size: 10.5px; color: #c3cbd6; line-height: 1.45; margin-bottom: 2px; }
+  .wkres { display: flex; flex-direction: column; gap: 3px; }
+  .wkline { background: var(--card); border-radius: 6px; padding: 5px 7px;
+            font-size: 10.5px; color: #c3cbd6; line-height: 1.45; }
+  .wkwhen { display: inline-block; margin-right: 5px; padding: 1px 5px; border-radius: 4px;
+            background: #262c35; color: var(--dim); font-size: 9.5px; font-weight: 800; }
+  .wkdept { display: inline-block; margin-right: 5px; color: var(--accent); font-size: 9.5px; font-weight: 800; }
+  .wkdept.cal { color: #f0c98a; }
 
   .empty { padding: 18px 6px; text-align: center; color: var(--dim); font-size: 12px; line-height: 1.6; }
   .btn {
@@ -336,6 +360,96 @@ function viewWeek(d) {
   return h;
 }
 
+/* ── 주간업무 ──
+   앱이 구글 문서(입력본·합본)를 읽어 저장해 둔 것을 보여준다.
+   합본은 주차가 20개쯤 쌓여 있어서 ◀ ▶ 로 넘기거나 검색으로 찾는다. */
+var WORK = null, workBusy = false, workDoc = 'input', workOff = 0, workQ = '';
+
+function loadWork() {
+  if (workBusy) return;
+  workBusy = true;
+  widgetAPI.getWork().then(function (d) {
+    workBusy = false; WORK = d || { empty: true }; render();
+  }).catch(function () { workBusy = false; WORK = { empty: true }; render(); });
+}
+
+function workHit(line, q) { return q && line.toLowerCase().indexOf(q.toLowerCase()) >= 0; }
+
+function viewWork() {
+  if (!WORK) { loadWork(); return '<div class="empty">주간업무를 불러오는 중…</div>'; }
+
+  var weeks = (workDoc === 'input' ? WORK.input : WORK.merged) || [];
+  var h = '<div class="wknav">'
+    + '<button class="wkb' + (workDoc === 'input' ? ' now' : '') + '" data-doc="input">입력본</button>'
+    + '<button class="wkb' + (workDoc === 'merged' ? ' now' : '') + '" data-doc="merged">합본</button>'
+    + '<input class="wq" type="text" placeholder="검색" value="' + esc(workQ) + '">'
+    + '<button class="wkb" id="workGet" title="구글 문서에서 다시 가져오기">⟳</button>'
+    + '</div>';
+
+  if (!weeks.length) {
+    return h + '<div class="empty">아직 가져온 주간업무가 없습니다.<br>'
+      + '<button class="btn" onclick="widgetAPI.openLogin()">지금 가져오기</button>'
+      + '<div style="margin-top:8px;font-size:10.5px;color:#6f7885">'
+      + '크롬이 열립니다. 구글 로그인하면 문서를 읽어옵니다.'
+      + (WORK.error ? '<br>' + esc(WORK.error) : '') + '</div></div>';
+  }
+
+  // 검색 — 모든 주차의 부서 내용에서 찾는다
+  if (workQ) {
+    var rows = [], q = workQ;
+    weeks.forEach(function (w) {
+      w.depts.forEach(function (p) {
+        p.lines.forEach(function (t) {
+          if (workHit(t, q) && rows.length < 60) {
+            rows.push('<div class="wkline"><span class="wkwhen">' + esc(shortRange(w.range)) + '</span>'
+              + '<span class="wkdept">' + esc(p.name) + '</span>' + esc(t) + '</div>');
+          }
+        });
+      });
+      (w.notes || []).forEach(function (t) {
+        if (workHit(t, q) && rows.length < 60) {
+          rows.push('<div class="wkline"><span class="wkwhen">' + esc(shortRange(w.range)) + '</span>'
+            + '<span class="wkdept cal">학사일정</span>' + esc(t) + '</div>');
+        }
+      });
+    });
+    return h + (rows.length
+      ? '<div class="wkres">' + rows.join('') + '</div>'
+      : '<div class="empty">「' + esc(workQ) + '」 찾은 것이 없습니다.</div>');
+  }
+
+  var i = Math.min(Math.max(workOff, 0), weeks.length - 1);
+  var w = weeks[i];
+  if (weeks.length > 1) {
+    h += '<div class="wknav">'
+      + '<button class="wkb" data-woff="' + (i + 1) + '"' + (i >= weeks.length - 1 ? ' disabled' : '') + '>◀ 이전</button>'
+      + '<span class="wklab">' + esc(shortRange(w.range)) + '<small>' + (i + 1) + ' / ' + weeks.length + '</small></span>'
+      + '<button class="wkb" data-woff="' + (i - 1) + '"' + (i <= 0 ? ' disabled' : '') + '>다음 ▶</button>'
+      + '</div>';
+  } else {
+    h += '<div class="wkhead">' + esc(w.range) + '</div>';
+  }
+
+  if ((w.notes || []).length) {
+    h += '<div class="wkcal">' + w.notes.map(function (t) {
+      return '<span class="wkchip">' + esc(t) + '</span>';
+    }).join('') + '</div>';
+  }
+
+  h += w.depts.map(function (p, di) {
+    return '<div class="wkdt"><b>' + esc(p.name) + '</b>'
+      + p.lines.map(function (t) { return '<div class="wkln">' + esc(t) + '</div>'; }).join('')
+      + '</div>';
+  }).join('') || '<div class="empty">이 주차에는 등록된 업무가 없습니다.</div>';
+  return h;
+}
+function shortRange(r) {
+  // "2026. 8. 24.(월) ~ 2026. 8. 28.(금)" -> "8/24 ~ 8/28"
+  var m = String(r || '').match(/(\d{1,2})\s*\.\s*(\d{1,2})\s*\.?\s*\([월화수목금토일]\)\s*[~〜～]\s*20\d\d\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})/);
+  if (!m) return String(r || '').slice(0, 22);
+  return m[1] + '/' + m[2] + ' ~ ' + m[3] + '/' + m[4];
+}
+
 /* ── 반별 진도 ── */
 function viewProgress(d) {
   var ps = (d.progress || []).filter(function (p) { return p.total > 0; });
@@ -378,17 +492,30 @@ function render() {
   }
 
   html += '<div class="chips">'
-    + ['today,오늘', 'week,이번주', 'progress,진도'].map(function (s) {
+    + ['today,오늘', 'week,이번주', 'progress,진도', 'work,주간업무'].map(function (s) {
         var p = s.split(',');
         return '<button class="chip' + (VIEW === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">' + p[1] + '</button>';
       }).join('') + '</div>';
 
-  html += VIEW === 'week' ? viewWeek(d) : VIEW === 'progress' ? viewProgress(d) : viewToday(d);
+  html += VIEW === 'week' ? viewWeek(d)
+    : VIEW === 'progress' ? viewProgress(d)
+    : VIEW === 'work' ? viewWork()
+    : viewToday(d);
   app.innerHTML = html;
 
   app.querySelectorAll('.wkb').forEach(function (b) {
-    b.addEventListener('click', function () { WK = null; loadWeek(Number(b.dataset.off)); });
+    b.addEventListener('click', function () {
+      if (b.dataset.off !== undefined) { WK = null; loadWeek(Number(b.dataset.off)); return; }
+      if (b.dataset.doc) { workDoc = b.dataset.doc; workOff = 0; render(); return; }
+      if (b.dataset.woff !== undefined) { workOff = Number(b.dataset.woff); render(); return; }
+      if (b.id === 'workGet') { widgetAPI.openLogin(); return; }
+    });
   });
+  var wq = app.querySelector('.wq');
+  if (wq) {
+    wq.addEventListener('input', function () { workQ = wq.value.trim(); workOff = 0; render(); });
+    if (workQ) { wq.focus(); wq.setSelectionRange(workQ.length, workQ.length); }
+  }
 
   app.querySelectorAll('.chip').forEach(function (b) {
     b.addEventListener('click', function () {
