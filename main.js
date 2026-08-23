@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.0.1
+// 파일명: main.js | @version 1.0.2
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.0.1 전체 앱은 크롬(없으면 엣지)으로 열기 · 로그인 창 UA 정리 · 로그인되면 창 자동 닫기
+// 수정요약: v1.0.2 구글 "로그인할 수 없음" 대응 — Sec-CH-UA 헤더·navigator.userAgentData 에서도 Electron 표시 제거 / v1.0.1 전체 앱은 크롬(없으면 엣지)으로 열기 · 로그인 창 UA 정리 · 로그인되면 창 자동 닫기
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -8,7 +8,7 @@
 //   앱이 화면을 그릴 때 쓰는 것과 똑같은 계산 결과라서, 앱 화면이 바뀌어도 안 깨진다.
 //   로그인(구글)도 그 창에서 한 번만 하면 세션이 저장된다.
 
-const { app, BrowserWindow, Tray, Menu, ipcMain, shell, Notification, screen } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, shell, Notification, screen, session } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const path = require('path');
@@ -41,11 +41,33 @@ function debugLog(msg) {
   });
 }
 
-// 구글은 "앱 안에 끼워 넣은 브라우저"로 들어오는 로그인을 막는 일이 있다. 기본 UA 에는
-// Electron/JindoWidget 표시가 붙는데, 그것만 떼면 평범한 크롬과 같은 문자열이 된다.
+// 구글은 "앱 안에 끼워 넣은 브라우저"로 들어오는 로그인을 막는다. 판단 근거가 세 군데라
+// 세 군데를 다 정리해야 통과한다.
+//   1) User-Agent 문자열      — 여기
+//   2) Sec-CH-UA 계열 헤더     — installUaCleanup()
+//   3) navigator.userAgentData — login-preload.js
 app.userAgentFallback = String(app.userAgentFallback || '')
   .replace(/ JindoWidget\/[^ ]+/g, '')
   .replace(/ Electron\/[^ ]+/g, '');
+
+// 클라이언트 힌트 헤더에서 Electron 브랜드를 지운다.
+// (`"Chromium";v="134", "Not:A-Brand";v="24", "Electron";v="35"` 같은 형식)
+function installUaCleanup(ses) {
+  ses.webRequest.onBeforeSendHeaders((details, done) => {
+    const h = details.requestHeaders;
+    Object.keys(h).forEach((k) => {
+      if (!/^sec-ch-ua/i.test(k) || typeof h[k] !== 'string') return;
+      if (!/electron/i.test(h[k])) return;
+      h[k] = h[k]
+        .replace(/"Electron";\s*v="[^"]*"/gi, '')
+        .replace(/,\s*,/g, ',')
+        .replace(/^\s*,\s*/, '')
+        .replace(/\s*,\s*$/, '')
+        .trim();
+    });
+    done({ requestHeaders: h });
+  });
+}
 
 // 전체 앱을 브라우저로 열 때 — 기본 브라우저(이 PC 는 웨일)가 아니라 크롬을 쓴다.
 // 크롬이 없으면 엣지, 그것도 없으면 기본 브라우저.
@@ -244,19 +266,30 @@ function updateTrayTooltip() {
 /* ===================== 로그인 창 ===================== */
 function openLoginWindow() {
   if (loginWin && !loginWin.isDestroyed()) { loginWin.show(); loginWin.focus(); return; }
+  const loginPreload = path.join(__dirname, 'login-preload.js');
   loginWin = new BrowserWindow({
     width: 1100, height: 820, title: '수업진도 로그인',
-    webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false }
+    webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, preload: loginPreload }
   });
-  // 구글 로그인은 팝업 창으로 열린다 — 같은 세션(partition)을 쓰는 진짜 창으로 열어줘야 한다
+  // 구글 로그인은 팝업 창으로 열린다 — 같은 세션(partition)을 쓰는 진짜 창으로 열어줘야 한다.
+  // 실제 구글 로그인 화면이 뜨는 곳이 여기라, preload 도 반드시 같이 붙여야 한다.
   loginWin.webContents.setWindowOpenHandler(() => ({
     action: 'allow',
     overrideBrowserWindowOptions: {
       width: 520, height: 650, autoHideMenuBar: true,
-      webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false }
+      webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, preload: loginPreload }
     }
   }));
   loginWin.loadURL(APP_URL);
+
+  // 구글이 또 막을 경우를 대비해, 실제로 어떤 브라우저 표시를 보내고 있는지 로그에 남긴다
+  loginWin.webContents.once('did-finish-load', async () => {
+    try {
+      const info = await loginWin.webContents.executeJavaScript(
+        'JSON.stringify({ ua: navigator.userAgent, brands: (navigator.userAgentData||{}).brands })', true);
+      debugLog(`로그인 창 브라우저 표시: ${info}`);
+    } catch (e) { /* 무시 */ }
+  });
 
   // 로그인이 끝나면 알아서 창을 닫아 준다 — 사용자가 "이제 닫아도 되나" 고민할 필요가 없게.
   const watch = setInterval(async () => {
@@ -463,6 +496,7 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     debugLog('=== 시작 ===');
+    installUaCleanup(session.fromPartition(PARTITION));
     createWidgetWindow();
     createTray();
     getWorkerWindow();
