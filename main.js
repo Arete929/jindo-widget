@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.3.1
+// 파일명: main.js | @version 1.4.0
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.3.1 업데이트가 «종료할 때 설치»로 깔리면 위젯이 안 돌아오던 문제 / v1.3.0 주간 시간표(압축 격자 + 크게 보기 창)
+// 수정요약: v1.4.0 주간 이동(이전주·다음주)·펼치기·칸에 차시 내용 표시 / v1.3.1 업데이트 설치 후 위젯이 안 돌아오던 문제
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -585,6 +585,17 @@ function createTray() {
 ipcMain.on('refresh-now', () => pollOnce());
 ipcMain.on('open-login', () => startLogin());
 ipcMain.on('open-timetable', () => openTimetableWindow());
+// 이전주·다음주 — 숨은 창의 앱에게 그 주 자료를 물어본다
+ipcMain.handle('get-week', async (_e, off) => {
+  const win = getWorkerWindow();
+  try {
+    return await win.webContents.executeJavaScript(
+      `window.__widgetWeek ? window.__widgetWeek(${Number(off) || 0}) : null`, true);
+  } catch (e) {
+    debugLog(`주간 자료 가져오기 실패(${off}): ${e && e.message ? e.message : e}`);
+    return null;
+  }
+});
 ipcMain.on('open-app', () => openInBrowser(APP_URL));
 ipcMain.on('set-view', (_e, view) => {
   if (!['today', 'week', 'progress'].includes(view)) return;

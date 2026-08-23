@@ -1,5 +1,6 @@
-<!-- 파일명: timetable.html | @version 1.3.0 -->
-<!-- 주간 시간표 «크게 보기» 창 — 앱의 표를 최대한 그대로 옮겼다. 색·구조 모두 앱과 같은 값. -->
+<!-- 파일명: timetable.html | @version 1.4.0 -->
+<!-- 주간 시간표 «크게 보기» 창 — 앱의 표를 최대한 그대로 옮겼다. 색·구조 모두 앱과 같은 값.
+     이전주·다음주로 옮겨 볼 수 있고, 위아래로 펼쳐서 세 주를 한 번에 볼 수도 있다. -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -28,16 +29,20 @@
     font-family: "Pretendard", "Segoe UI", "Malgun Gothic", sans-serif;
     padding: 14px; font-size: 13px;
   }
-  .head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
   .head h1 { font-size: 17px; font-weight: 800; letter-spacing: -.3px; }
-  .head .range { color: var(--sub); font-size: 12.5px; font-weight: 600; }
+  .head .range { color: var(--sub); font-size: 12.5px; font-weight: 700; }
   .head .spacer { flex: 1; }
-  .head button {
+  button {
     border: 1px solid var(--border); background: #fff; color: var(--ink);
     border-radius: 8px; padding: 5px 11px; cursor: pointer;
     font-size: 12px; font-weight: 700; font-family: inherit;
   }
-  .head button:hover { background: #f2f0ff; }
+  button:hover { background: #f2f0ff; }
+  button.on { background: linear-gradient(120deg, var(--energy1), var(--energy2)); color: #fff; border-color: transparent; }
+
+  .nav { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .nav .gap { flex: 1; }
 
   table { border-collapse: separate; border-spacing: 0; width: 100%; background: var(--card);
           border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(30,20,80,.07); }
@@ -60,8 +65,7 @@
   td.cell { height: 62px; }
   td.hol { background: repeating-linear-gradient(45deg, #fff5f4, #fff5f4 6px, #ffe6e3 6px, #ffe6e3 12px);
            text-align: center; color: #b23223; font-weight: 700; }
-  td.today-col { border-left: 2px solid var(--energy1); border-right: 2px solid var(--energy1); }
-  thead th.today-col { border-left: 2px solid var(--energy1); border-right: 2px solid var(--energy1); }
+  td.today-col, thead th.today-col { border-left: 2px solid var(--energy1); border-right: 2px solid var(--energy1); }
 
   .cls { font-size: 14px; font-weight: 800; }
   .row1 { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
@@ -73,6 +77,7 @@
            background: #fff; font-size: 11px; font-weight: 800; }
   .noplan { color: var(--sub); font-size: 11.5px; font-weight: 600; }
   .detail { font-size: 11.5px; color: var(--sub); margin-top: 3px; line-height: 1.35; }
+  .detail b { color: var(--ink); font-weight: 700; }
   .badge { display: inline-block; padding: 1px 6px; border-radius: 5px; font-size: 10px; font-weight: 800; }
   .b-mv { background: #d9d2e9; color: #4b3a75; }
   .b-as { background: #ffe1cc; color: #b45815; }
@@ -87,6 +92,17 @@
   .gnum { display: inline-flex; width: 17px; height: 17px; border-radius: 999px; background: var(--energy1);
           color: #fff; font-size: 10.5px; font-weight: 800; align-items: center; justify-content: center; }
 
+  /* 위·아래로 펼친 다른 주 */
+  .wkblock { margin: 12px 0; opacity: .92; }
+  .wktitle { display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+             font-size: 13px; font-weight: 800; color: var(--energy1); }
+  .wkrange { font-size: 11.5px; font-weight: 600; color: var(--sub); }
+  .wkro { margin-left: auto; padding: 2px 8px; border-radius: 999px;
+          background: #eceef2; color: #6b7280; font-size: 10.5px; font-weight: 800; }
+  table.ro { box-shadow: none; border: 1px solid var(--border); }
+  table.ro td.cell { height: 48px; }
+  table.ro .cls { font-size: 12.5px; }
+
   .foot { margin-top: 9px; color: var(--sub); font-size: 11.5px; text-align: right; }
   .empty { padding: 40px; text-align: center; color: var(--sub); }
 </style>
@@ -95,19 +111,34 @@
 <div id="app"><div class="empty">불러오는 중…</div></div>
 
 <script>
-var DATA = null;
+var DATA = null;          // 위젯이 보내주는 오늘 자료 (날짜 표시용)
+var OFF = 0;              // 지금 보고 있는 주 (0 = 이번주)
+var WEEKS = {};           // 오프셋별로 받아둔 주간 자료
+var prevOn = false, nextOn = false;   // 위·아래 펼치기
+var busy = {};
 
 function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
-/* 학사일정 종류에 맞는 색 (앱과 같은 변수를 쓴다) */
-function calStyle(lbl) {
-  return `background:var(--c-${lbl},#eee); color:var(--ct-${lbl},#555)`;
-}
+function calStyle(lbl) { return 'background:var(--c-' + lbl + ',#eee); color:var(--ct-' + lbl + ',#555)'; }
 function mdOf(dateStr) {
   var p = String(dateStr || '').split('-');
   return p.length === 3 ? Number(p[1]) + '/' + Number(p[2]) : '';
+}
+
+/* 필요한 주를 앱에게 물어본다. 이미 받아뒀으면 그대로 쓴다. */
+function need(off) {
+  if (WEEKS[off] !== undefined || busy[off]) return;
+  busy[off] = true;
+  widgetAPI.getWeek(off).then(function (d) {
+    busy[off] = false; WEEKS[off] = d || null; render();
+  }).catch(function () { busy[off] = false; WEEKS[off] = null; render(); });
+}
+function go(off) { OFF = off; render(); }
+function toggle(which) {
+  if (which === 'prev') prevOn = !prevOn; else nextOn = !nextOn;
+  render();
 }
 
 function cellHtml(c, day) {
@@ -128,8 +159,8 @@ function cellHtml(c, day) {
     if (l.n) h += '<span class="ntile">' + l.n + '차시</span>';
     else h += '<span class="noplan">차시 미지정</span>';
     h += '</div>';
+    if (l.topic) h += '<div class="detail"><b>' + esc(l.topic) + '</b></div>';
     if (l.detail) h += '<div class="detail">' + esc(l.detail) + '</div>';
-    else if (l.topic) h += '<div class="detail">' + esc(l.topic) + '</div>';
     if (l.movedIn && l.mv && l.mv.fromDate) {
       h += '<span class="mvfrom">← ' + esc(mdOf(l.mv.fromDate)) + ' '
         + esc(l.mv.fromPeriod || '') + '교시에서 옮김</span>';
@@ -152,22 +183,10 @@ function cellHtml(c, day) {
   return '';
 }
 
-function render() {
-  var box = document.getElementById('app');
-  if (!DATA || !DATA.week || !DATA.week.length) {
-    box.innerHTML = '<div class="empty">아직 자료가 없습니다. 위젯이 자료를 받아오면 표시됩니다.</div>';
-    return;
-  }
-  var wk = DATA.week;
-  var first = wk[0], last = wk[wk.length - 1];
-
-  var head = '<div class="head"><h1>🗓️ 주간 시간표</h1>'
-    + '<span class="range">' + esc(first.date) + ' ~ ' + esc(last.date) + '</span>'
-    + '<span class="spacer"></span>'
-    + '<button onclick="widgetAPI.refreshNow()">⟳ 새로고침</button>'
-    + '<button onclick="widgetAPI.openApp()">↗ 앱에서 열기</button></div>';
-
-  var th = '<tr><th class="per">교시</th>' + wk.map(function (d) {
+/* 표 하나 (한 주) */
+function tableHtml(wk, readonly) {
+  var days = wk.days || [];
+  var th = '<tr><th class="per">교시</th>' + days.map(function (d) {
     return '<th class="' + (d.today ? 'today-col' : '') + '">'
       + '<span class="dnote">' + esc(d.note || '') + '</span>'
       + '<span class="dname">' + esc(d.dow) + '요일'
@@ -177,31 +196,73 @@ function render() {
 
   var rows = '';
   for (var p = 1; p <= 7; p++) {
-    rows += '<tr>';
     // 교시 시각은 그 주에 실제로 쓰이는 것 중 첫 번째를 쓴다 (압축 시정표 대응)
     var t = '';
-    wk.forEach(function (d) {
+    days.forEach(function (d) {
       if (t) return;
       var c = (d.cells || [])[p - 1];
       if (c && c.time) t = c.time;
     });
-    rows += '<td class="per">' + p + '교시<small>' + esc(t) + '</small></td>';
-    wk.forEach(function (d) {
+    rows += '<tr><td class="per">' + p + '교시<small>' + esc(t) + '</small></td>';
+    days.forEach(function (d) {
       var c = (d.cells || [])[p - 1] || { p: p };
       var cls = 'cell' + (d.today ? ' today-col' : '') + (d.holiday ? ' hol' : '');
       rows += '<td class="' + cls + '">' + (d.holiday ? '휴업' : cellHtml(c, d)) + '</td>';
     });
     rows += '</tr>';
   }
+  return '<table class="' + (readonly ? 'ro' : '') + '"><thead>' + th + '</thead><tbody>' + rows + '</tbody></table>';
+}
 
-  box.innerHTML = head + '<table><thead>' + th + '</thead><tbody>' + rows + '</tbody></table>'
-    + '<div class="foot">수업진도 위젯 · 오늘 ' + esc(DATA.date || '') + '</div>';
+function blockHtml(off, tag) {
+  var wk = WEEKS[off];
+  if (wk === undefined) {
+    need(off);
+    return '<div class="wkblock"><div class="wktitle">' + tag + ' 불러오는 중…</div></div>';
+  }
+  if (!wk) return '<div class="wkblock"><div class="wktitle">' + tag + ' — 자료를 가져오지 못했습니다</div></div>';
+  return '<div class="wkblock"><div class="wktitle">' + esc(wk.label || '') + ' · ' + tag
+    + '<span class="wkrange">' + esc(wk.range || '') + '</span>'
+    + '<span class="wkro">보기 전용</span></div>' + tableHtml(wk, true) + '</div>';
+}
+
+function render() {
+  var box = document.getElementById('app');
+  var wk = WEEKS[OFF];
+  if (wk === undefined) need(OFF);
+
+  var head = '<div class="head"><h1>🗓️ 주간 시간표</h1>'
+    + '<span class="range">' + (wk ? esc(wk.label || '') + ' · ' + esc(wk.range || '') : '불러오는 중…') + '</span>'
+    + '<span class="spacer"></span>'
+    + '<button onclick="widgetAPI.refreshNow()">⟳</button>'
+    + '<button onclick="widgetAPI.openApp()">↗ 앱에서 열기</button></div>';
+
+  var nav = '<div class="nav">'
+    + '<button onclick="go(' + (OFF - 1) + ')">◀ 이전주</button>'
+    + '<button class="' + (OFF === 0 ? 'on' : '') + '" onclick="go(0)">이번주</button>'
+    + '<button onclick="go(' + (OFF + 1) + ')">다음주 ▶</button>'
+    + '<span class="gap"></span>'
+    + '<button class="' + (prevOn ? 'on' : '') + '" onclick="toggle(&quot;prev&quot;)">▲ 이전주 '
+    + (prevOn ? '접기' : '펼치기') + '</button>'
+    + '<button class="' + (nextOn ? 'on' : '') + '" onclick="toggle(&quot;next&quot;)">▼ 다음주 '
+    + (nextOn ? '접기' : '펼치기') + '</button>'
+    + '</div>';
+
+  var body = '';
+  if (prevOn) body += blockHtml(OFF - 1, '이전주');
+  body += wk ? tableHtml(wk, false) : '<div class="empty">시간표를 불러오는 중…</div>';
+  if (nextOn) body += blockHtml(OFF + 1, '다음주');
+
+  box.innerHTML = head + nav + body
+    + '<div class="foot">수업진도 위젯 · 오늘 ' + esc((DATA && DATA.date) || '') + '</div>';
 }
 
 widgetAPI.onData(function (p) {
   DATA = p.data && p.data.ready ? p.data : null;
+  WEEKS = {};            // 자료가 새로 오면 받아둔 주들도 다시 받는다
   render();
 });
+render();
 </script>
 </body>
 </html>

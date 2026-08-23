@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.0.1 -->
+<!-- 파일명: widget.html | @version 1.4.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -106,6 +106,18 @@
   .gap { color: #f0928a; font-weight: 700; }
 
   /* ── 이번 주 압축 격자 ── */
+  .wknav { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
+  .wkb {
+    -webkit-app-region: no-drag;
+    background: none; border: 1px solid var(--line); color: var(--dim);
+    border-radius: 6px; padding: 3px 8px; cursor: pointer;
+    font-size: 11px; font-weight: 800; font-family: inherit;
+  }
+  .wkb:hover { border-color: #3d4551; color: var(--fg); }
+  .wkb.now { background: var(--accent); border-color: var(--accent); color: #1a1206; }
+  .wklab { flex: 1; text-align: center; font-size: 11.5px; font-weight: 800; line-height: 1.2; }
+  .wklab small { display: block; font-size: 9px; font-weight: 600; color: var(--dim); }
+
   .gr { width: 100%; border-collapse: collapse; table-layout: fixed; }
   .gr th, .gr td { border: 1px solid #232830; padding: 0; text-align: center; }
   .gr thead th { padding: 3px 1px 4px; font-size: 11px; font-weight: 800; background: #1a1e25; }
@@ -113,15 +125,17 @@
   .gr thead th i { display: block; font-style: normal; font-size: 8.5px; color: #d8ac6e;
                    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .gr td.pc, .gr th.pc { width: 20px; background: #1a1e25; font-size: 10px; font-weight: 800; color: var(--dim); }
-  .gr td { height: 26px; font-size: 10px; }
+  .gr td { height: 34px; font-size: 10px; }
   .gr td.c { position: relative; color: #fff; font-weight: 700; line-height: 1.15; padding: 2px 1px; }
   .gr td.c b { font-size: 11px; font-weight: 800; }
-  .gr td.c u { display: block; text-decoration: none; font-size: 9px; opacity: .85; }
+  .gr td.c u { display: block; text-decoration: none; font-size: 8.5px; opacity: .9;
+               line-height: 1.15; max-height: 20px; overflow: hidden; word-break: break-all; }
   .gr td.c s { position: absolute; top: 2px; right: 2px; width: 4px; height: 4px;
                border-radius: 999px; background: #fff; opacity: .9; }
   .gr td.u0 { background: #3a2f8f; } .gr td.u1 { background: #12708a; } .gr td.u2 { background: #96491a; }
   .gr td.u3 { background: #1d7440; } .gr td.u4 { background: #8a2456; } .gr td.u5 { background: #5c3aad; }
   .gr td.cal { background: #232a35; color: #9fb0c4; font-weight: 700; font-size: 9.5px; }
+  .gr td.cal u { color: #7d8b9c; }
   .gr td.out { background: #1a1e25; color: #5d6672; text-decoration: line-through; }
   .gr td.hol { background: repeating-linear-gradient(45deg, #241a1a, #241a1a 4px, #2e2020 4px, #2e2020 8px); }
   .gr .tdy { box-shadow: inset 0 0 0 1.5px var(--accent); }
@@ -205,46 +219,67 @@ function viewToday(d) {
 }
 
 /* ── 이번 주 : 압축 격자 (교시 × 요일) ──
-   앱의 표를 좁은 카드에 맞게 줄인 것. 자세히 볼 때는 ⤢ 로 큰 창을 연다. */
-function viewWeek(d) {
-  var wk = d.week || [];
-  if (!wk.length) return '<div class="empty">시간표가 없습니다.</div>';
-  var hasCells = wk.some(function (w) { return w.cells && w.cells.length; });
-  if (!hasCells) {
-    // 앱이 아직 옛 버전이면 칸 자료가 없다 — 예전 목록으로 보여준다
-    return '<div class="wk">' + wk.map(function (w) {
-      var inner = w.holiday ? '휴업일'
-        : (w.lessons && w.lessons.length
-          ? w.lessons.map(function (l) { return l.period + '교시 ' + esc(l.cls); }).join(' · ')
-          : '수업 없음');
-      return '<div class="wkrow' + (w.today ? ' today' : '') + '"><div class="wkd">' + esc(w.dow)
-        + '<small>' + esc(w.md) + '</small></div><div class="wkl">' + inner + '</div></div>';
-    }).join('') + '</div>';
-  }
+   앱의 표를 좁은 카드에 맞게 줄인 것. 자세히 볼 때는 ⤢ 로 큰 창을 연다.
+   ◀ ▶ 로 다른 주도 볼 수 있다 (그 주 자료는 앱에게 그때 물어본다). */
+var WEEKOFF = 0, WK = null, wkBusy = false;
 
-  var h = '<table class="gr"><thead><tr><th class="pc"></th>';
-  wk.forEach(function (w) {
+function loadWeek(off) {
+  if (wkBusy) return;
+  wkBusy = true;
+  WEEKOFF = off;
+  widgetAPI.getWeek(off).then(function (d) {
+    wkBusy = false;
+    WK = d || null;
+    render();
+  }).catch(function () { wkBusy = false; WK = null; render(); });
+}
+function cellTip(c, l) {
+  return l.cls + ' · ' + (l.unit || '') + (l.n ? ' ' + l.n + '차시' : ' 차시미정')
+    + (l.topic ? ' · ' + l.topic : '') + (l.detail ? '\n' + l.detail : '')
+    + (l.movedIn ? '\n(수업이동)' : '') + (l.assigned ? '\n(직접 배정)' : '')
+    + (l.shifted ? '\n(순연)' : '') + (c.time ? '\n' + c.time : '');
+}
+
+function viewWeek(d) {
+  if (!WK) {
+    if (!wkBusy) loadWeek(WEEKOFF);
+    return '<div class="empty">시간표를 불러오는 중…</div>';
+  }
+  var days = WK.days || [];
+  if (!days.length) return '<div class="empty">시간표가 없습니다.</div>';
+
+  // 주 이동 줄
+  var nav = '<div class="wknav">'
+    + '<button class="wkb" data-off="' + (WEEKOFF - 1) + '" title="이전 주">◀</button>'
+    + '<span class="wklab">' + esc(WK.label || '') + '<small>' + esc(WK.range || '') + '</small></span>'
+    + '<button class="wkb" data-off="' + (WEEKOFF + 1) + '" title="다음 주">▶</button>'
+    + (WEEKOFF !== 0 ? '<button class="wkb now" data-off="0">이번주</button>' : '')
+    + '</div>';
+
+  var h = nav + '<table class="gr"><thead><tr><th class="pc"></th>';
+  days.forEach(function (w) {
     h += '<th class="' + (w.today ? 'tdy' : '') + '">' + esc(w.dow)
       + '<small>' + esc(w.md) + '</small>'
-      + (w.note ? '<i title="' + esc(w.note) + '">' + esc(w.note.slice(0, 5)) + '</i>' : '')
+      + (w.note ? '<i title="' + esc(w.note) + '">' + esc(w.note) + '</i>' : '')
       + '</th>';
   });
   h += '</tr></thead><tbody>';
 
   for (var p = 1; p <= 7; p++) {
     h += '<tr><td class="pc">' + p + '</td>';
-    wk.forEach(function (w) {
+    days.forEach(function (w) {
       var c = (w.cells || [])[p - 1] || {};
       var klass = w.today ? ' tdy' : '';
       if (w.holiday) { h += '<td class="hol' + klass + '"></td>'; return; }
       if (c.lesson) {
         var l = c.lesson;
-        var tip = l.cls + ' · ' + (l.unit || '') + (l.n ? ' ' + l.n + '차시' : ' 차시미정')
-          + (l.topic ? ' · ' + l.topic : '') + (l.detail ? '\n' + l.detail : '')
-          + (l.movedIn ? '\n(수업이동)' : '') + (l.assigned ? '\n(직접 배정)' : '')
-          + (l.shifted ? '\n(순연)' : '') + (c.time ? '\n' + c.time : '');
-        h += '<td class="c u' + (l.u % 6) + klass + '" title="' + esc(tip) + '">'
-          + '<b>' + esc(l.cls) + '</b>' + (l.n ? '<u>' + l.n + '</u>' : '')
+        // 차시 번호 뒤에 주제(또는 상세)를 함께 — "1 개학 후 측정" 처럼
+        var what = l.n ? String(l.n) : '';
+        var extra = l.topic || l.detail || '';
+        if (extra) what += (what ? ' ' : '') + extra;
+        if (!what) what = '차시미정';
+        h += '<td class="c u' + (l.u % 6) + klass + '" title="' + esc(cellTip(c, l)) + '">'
+          + '<b>' + esc(l.cls) + '</b><u>' + esc(what) + '</u>'
           + (l.movedIn || l.assigned || l.shifted ? '<s></s>' : '') + '</td>';
         return;
       }
@@ -255,7 +290,7 @@ function viewWeek(d) {
       }
       if (c.cal) {
         h += '<td class="c cal' + klass + '" title="' + esc(c.cal.lbl + (c.cal.note ? ' · ' + c.cal.note : '')) + '">'
-          + esc(c.cal.lbl) + '</td>';
+          + esc(c.cal.lbl) + (c.cal.note ? '<u>' + esc(c.cal.note) + '</u>' : '') + '</td>';
         return;
       }
       h += '<td class="' + (klass || '') + '"></td>';
@@ -316,6 +351,10 @@ function render() {
   html += VIEW === 'week' ? viewWeek(d) : VIEW === 'progress' ? viewProgress(d) : viewToday(d);
   app.innerHTML = html;
 
+  app.querySelectorAll('.wkb').forEach(function (b) {
+    b.addEventListener('click', function () { WK = null; loadWeek(Number(b.dataset.off)); });
+  });
+
   app.querySelectorAll('.chip').forEach(function (b) {
     b.addEventListener('click', function () {
       VIEW = b.dataset.v;
@@ -341,6 +380,7 @@ widgetAPI.onData(function (p) {
     SCALE = p.scale;
     document.body.style.zoom = SCALE;
   }
+  if (VIEW === 'week' && STATE && STATE.ready) { WK = null; loadWeek(WEEKOFF); }
   render();
 });
 
