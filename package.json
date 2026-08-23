@@ -1,0 +1,63 @@
+{
+  "name": "jindo-widget",
+  "productName": "JindoWidget",
+  "version": "1.0.0",
+  "description": "체육 수업진도 — 오늘 수업·이번주·반별 진도를 항상 위에 띄워 보여주는 위젯",
+  "main": "main.js",
+  "author": "Arete929",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
+  "build": {
+    "appId": "kr.hyewon.jindowidget",
+    "productName": "JindoWidget",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "widget.html",
+      "assets/**",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "artifactName": "JindoWidget-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "shortcutName": "수업진도 위젯"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Arete929",
+        "repo": "jindo-widget"
+      }
+    ]
+  },
+  "allowScripts": {
+    "electron@35.7.5": true
+  }
+}

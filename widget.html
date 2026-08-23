@@ -1,0 +1,278 @@
+<!-- 파일명: widget.html | @version 1.0.0 -->
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>수업진도</title>
+<style>
+  :root {
+    --bg: #15181d;
+    --card: #1c2027;
+    --line: #2b313a;
+    --fg: #eef1f5;
+    --dim: #97a1ae;
+    --accent: #ff8b3d;
+    --now: #35c98b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Pretendard", "Segoe UI", "Malgun Gothic", sans-serif;
+    font-size: 13px;
+    overflow: hidden;
+    user-select: none;
+    -webkit-app-region: drag;
+  }
+  #app { padding: 10px 11px 11px; }
+
+  /* ── 머리 ── */
+  .head { display: flex; align-items: center; gap: 6px; }
+  .date { font-size: 14px; font-weight: 700; letter-spacing: -.2px; }
+  .dow { color: var(--dim); font-size: 12px; font-weight: 600; }
+  .spacer { flex: 1; }
+  .ico {
+    -webkit-app-region: no-drag;
+    background: none; border: 0; color: var(--dim);
+    font-size: 13px; cursor: pointer; padding: 2px 4px; border-radius: 5px;
+  }
+  .ico:hover { background: #262c35; color: var(--fg); }
+
+  /* ── 학사일정 메모 ── */
+  .note {
+    margin-top: 7px; padding: 5px 8px; border-radius: 6px;
+    background: #2a2419; color: #f0c98a; font-size: 11.5px; font-weight: 600;
+    line-height: 1.35;
+  }
+  .note.hol { background: #331d1d; color: #f0928a; }
+
+  /* ── 칩 ── */
+  .chips { display: flex; gap: 5px; margin: 9px 0 8px; }
+  .chip {
+    -webkit-app-region: no-drag;
+    flex: 1; padding: 5px 0; border-radius: 7px; cursor: pointer;
+    background: none; border: 1px solid var(--line); color: var(--dim);
+    font-size: 11.5px; font-weight: 700; font-family: inherit;
+  }
+  .chip:hover { border-color: #3d4551; color: var(--fg); }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #1a1206; }
+
+  /* ── 오늘 수업 ── */
+  .lesson {
+    display: flex; gap: 9px; padding: 7px 8px; border-radius: 8px;
+    background: var(--card); margin-bottom: 5px; align-items: flex-start;
+  }
+  .lesson.past { opacity: .42; }
+  .lesson.now { background: #12291f; box-shadow: inset 0 0 0 1.5px var(--now); }
+  .per {
+    min-width: 34px; text-align: center; padding-top: 1px;
+    font-size: 13px; font-weight: 800; color: var(--accent);
+  }
+  .lesson.now .per { color: var(--now); }
+  .per small { display: block; font-size: 9.5px; font-weight: 600; color: var(--dim); margin-top: 1px; }
+  .body { flex: 1; min-width: 0; }
+  .who { font-size: 13px; font-weight: 700; }
+  .what { font-size: 11.5px; color: var(--dim); margin-top: 2px; line-height: 1.35; }
+  .what b { color: #cfd6df; font-weight: 700; }
+  .badge {
+    display: inline-block; margin-left: 5px; padding: 1px 5px; border-radius: 4px;
+    font-size: 9.5px; font-weight: 700; vertical-align: 1.5px;
+  }
+  .b-수행평가 { background: #3a2340; color: #e0a8f0; }
+  .b-시험 { background: #402323; color: #f0a0a0; }
+  .b-행사 { background: #1f3340; color: #8ecbf0; }
+  .b-순연 { background: #2f2a1a; color: #e8cf87; }
+  .b-이동 { background: #1d3330; color: #86ddc4; }
+  .when { font-size: 11px; font-weight: 700; color: var(--now); margin-top: 3px; }
+  .when.soon { color: var(--accent); }
+
+  /* ── 이번 주 ── */
+  .wk { display: flex; flex-direction: column; gap: 4px; }
+  .wkrow { display: flex; gap: 7px; align-items: flex-start; padding: 5px 7px; border-radius: 7px; background: var(--card); }
+  .wkrow.today { box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .wkrow.hol { opacity: .5; }
+  .wkd { min-width: 46px; font-size: 11.5px; font-weight: 800; }
+  .wkd small { display: block; font-size: 9.5px; font-weight: 600; color: var(--dim); }
+  .wkl { flex: 1; font-size: 11px; color: var(--dim); line-height: 1.5; }
+  .wkl span { color: #cfd6df; }
+
+  /* ── 진도 ── */
+  .pg { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 7px; background: var(--card); margin-bottom: 4px; }
+  .pgc { min-width: 40px; font-size: 12px; font-weight: 700; }
+  .bar { flex: 1; height: 7px; border-radius: 4px; background: #262c35; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+  .pgn { min-width: 62px; text-align: right; font-size: 11px; color: var(--dim); font-weight: 600; }
+  .pgn em { font-style: normal; color: var(--fg); font-weight: 700; }
+  .gap { color: #f0928a; font-weight: 700; }
+
+  .empty { padding: 18px 6px; text-align: center; color: var(--dim); font-size: 12px; line-height: 1.6; }
+  .btn {
+    -webkit-app-region: no-drag;
+    display: inline-block; margin-top: 8px; padding: 6px 14px; border-radius: 7px;
+    background: var(--accent); color: #1a1206; border: 0; cursor: pointer;
+    font-size: 12px; font-weight: 700; font-family: inherit;
+  }
+  .foot { margin-top: 7px; text-align: right; font-size: 9.5px; color: #5d6672; }
+</style>
+</head>
+<body>
+<div id="app"><div class="empty">불러오는 중…</div></div>
+
+<script>
+var STATE = null, VIEW = 'today', SCALE = 1, VER = '';
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function pad(n) { return String(n).padStart(2, '0'); }
+function nowMin() { var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+/* "11:00~11:45" 또는 "11:00" 을 분 단위로 */
+function parseTime(t) {
+  if (!t) return null;
+  var m = String(t).match(/^(\d{1,2}):(\d{2})(?:~(\d{1,2}):(\d{2}))?/);
+  if (!m) return null;
+  var s = Number(m[1]) * 60 + Number(m[2]);
+  var e = m[3] ? Number(m[3]) * 60 + Number(m[4]) : s + 45;
+  return { s: s, e: e };
+}
+function human(min) {
+  if (min >= 60) return Math.floor(min / 60) + '시간 ' + (min % 60) + '분';
+  return min + '분';
+}
+
+/* ── 오늘 ── */
+function viewToday(d) {
+  var ls = d.lessons || [];
+  if (d.holiday) return '<div class="empty">휴업일이라 수업이 없습니다.</div>';
+  if (!d.weekday) return '<div class="empty">주말입니다. 푹 쉬세요.</div>';
+  if (!ls.length) return '<div class="empty">오늘은 배정된 수업이 없습니다.</div>';
+
+  var n = nowMin(), html = '';
+  // 지금 진행 중인 수업 / 아직 안 한 첫 수업 찾기
+  var curIdx = -1, nextIdx = -1;
+  ls.forEach(function (l, i) {
+    var t = parseTime(l.time);
+    if (!t) return;
+    if (n >= t.s && n < t.e) curIdx = i;
+    else if (n < t.s && nextIdx < 0) nextIdx = i;
+  });
+
+  ls.forEach(function (l, i) {
+    var t = parseTime(l.time);
+    var past = t && n >= t.e;
+    var cls = 'lesson' + (i === curIdx ? ' now' : past ? ' past' : '');
+    var badges = '';
+    if (l.type && l.type !== '수업') badges += '<span class="badge b-' + esc(l.type) + '">' + esc(l.type) + '</span>';
+    if (l.shifted) badges += '<span class="badge b-순연">↷순연</span>';
+    if (l.movedIn) badges += '<span class="badge b-이동">이동</span>';
+
+    var what = l.n
+      ? '<b>' + esc(l.unit) + ' ' + l.n + '차시</b>' + (l.topic ? ' · ' + esc(l.topic) : '')
+      : '차시 미지정';
+
+    var when = '';
+    if (i === curIdx && t) when = '<div class="when">지금 수업 중 · ' + human(t.e - n) + ' 남음</div>';
+    else if (i === nextIdx && t) when = '<div class="when soon">' + human(t.s - n) + ' 뒤 시작</div>';
+
+    html += '<div class="' + cls + '">'
+      + '<div class="per">' + l.period + '<small>' + esc((l.time || '').split('~')[0]) + '</small></div>'
+      + '<div class="body"><div class="who">' + esc(l.grade) + ' ' + esc(l.cls) + badges + '</div>'
+      + '<div class="what">' + what + '</div>' + when + '</div></div>';
+  });
+  return html;
+}
+
+/* ── 이번 주 ── */
+function viewWeek(d) {
+  var rows = (d.week || []).map(function (w) {
+    var cls = 'wkrow' + (w.today ? ' today' : '') + (w.holiday ? ' hol' : '');
+    var inner = w.holiday
+      ? '<div class="wkl">휴업일</div>'
+      : (w.lessons && w.lessons.length
+        ? '<div class="wkl">' + w.lessons.map(function (l) {
+            return '<span>' + l.period + '</span>교시 ' + esc(l.cls) + ' ' + esc(l.unit) + (l.n ? ' ' + l.n : '');
+          }).join(' · ') + '</div>'
+        : '<div class="wkl">수업 없음</div>');
+    return '<div class="' + cls + '"><div class="wkd">' + esc(w.dow) + '<small>' + esc(w.md) + '</small></div>' + inner + '</div>';
+  }).join('');
+  return '<div class="wk">' + (rows || '<div class="empty">시간표가 없습니다.</div>') + '</div>';
+}
+
+/* ── 반별 진도 ── */
+function viewProgress(d) {
+  var ps = (d.progress || []).filter(function (p) { return p.total > 0; });
+  if (!ps.length) return '<div class="empty">진도 자료가 아직 없습니다.</div>';
+  var max = Math.max.apply(null, ps.map(function (p) { return p.total; }));
+  return ps.map(function (p) {
+    var w = max ? Math.round(p.done / max * 100) : 0;
+    var gap = p.gap < 0 ? '<span class="gap"> ' + p.gap + '</span>' : '';
+    return '<div class="pg"><div class="pgc">' + esc(p.cls) + '</div>'
+      + '<div class="bar"><i style="width:' + w + '%"></i></div>'
+      + '<div class="pgn"><em>' + p.done + '</em>/' + p.total + '차시' + gap + '</div></div>';
+  }).join('');
+}
+
+function render() {
+  var app = document.getElementById('app');
+  if (!STATE) { app.innerHTML = '<div class="empty">불러오는 중…</div>'; return report(); }
+
+  if (STATE.needLogin) {
+    app.innerHTML = '<div class="empty">수업진도에 로그인해 주세요.<br>'
+      + '<button class="btn" onclick="widgetAPI.openLogin()">구글 로그인</button></div>';
+    return report();
+  }
+
+  var d = STATE, html = '';
+  html += '<div class="head"><span class="date">' + esc(d.date.slice(5).replace('-', '월 ')) + '일</span>'
+    + '<span class="dow">' + esc(d.dow) + '요일</span><span class="spacer"></span>'
+    + '<button class="ico" title="지금 새로고침" onclick="widgetAPI.refreshNow()">⟳</button>'
+    + '<button class="ico" title="수업진도 앱 열기" onclick="widgetAPI.openApp()">↗</button></div>';
+
+  if (d.note || d.holiday) {
+    html += '<div class="note' + (d.holiday ? ' hol' : '') + '">'
+      + (d.holiday ? '🚫 휴업일' : '📌 오늘 일정') + (d.note ? ' · ' + esc(d.note) : '') + '</div>';
+  }
+
+  html += '<div class="chips">'
+    + ['today,오늘', 'week,이번주', 'progress,진도'].map(function (s) {
+        var p = s.split(',');
+        return '<button class="chip' + (VIEW === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">' + p[1] + '</button>';
+      }).join('') + '</div>';
+
+  html += VIEW === 'week' ? viewWeek(d) : VIEW === 'progress' ? viewProgress(d) : viewToday(d);
+  app.innerHTML = html;
+
+  app.querySelectorAll('.chip').forEach(function (b) {
+    b.addEventListener('click', function () {
+      VIEW = b.dataset.v;
+      widgetAPI.setView(VIEW);
+      render();
+    });
+  });
+  report();
+}
+
+/* 내용 높이를 알려주면 메인이 카드 높이를 맞춰준다 */
+function report() {
+  requestAnimationFrame(function () {
+    widgetAPI.reportHeight(document.getElementById('app').scrollHeight + 4);
+  });
+}
+
+widgetAPI.onData(function (p) {
+  STATE = p.data;
+  VIEW = p.view || VIEW;
+  VER = p.version || '';
+  if (p.scale && p.scale !== SCALE) {
+    SCALE = p.scale;
+    document.body.style.zoom = SCALE;
+  }
+  render();
+});
+
+// 남은 시간·지금 수업 표시는 1분마다 다시 그린다 (자료는 그대로, 시계만 흐른다)
+setInterval(function () { if (STATE && !STATE.needLogin && VIEW === 'today') render(); }, 30 * 1000);
+</script>
+</body>
+</html>
