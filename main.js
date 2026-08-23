@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.1.0
+// 파일명: main.js | @version 1.2.0
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.1.0 ★로그인을 진짜 크롬에서 하고 결과만 넘겨받는 방식으로 (구글이 앱 안 브라우저 로그인을 막음)
+// 수정요약: v1.2.0 크롬이 127.0.0.1 로 가는 fetch 를 막아서, 폼 전송으로도 받도록 (+ping 진단·버튼 여러번 눌러도 안전)
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -75,6 +75,7 @@ function openInBrowser(url) {
 let widgetWin = null;      // 화면에 보이는 카드
 let workerWin = null;      // 값을 가져오는 숨은 창
 let handoffServer = null;   // 크롬에서 로그인 결과를 받는 잠깐짜리 서버
+let handoffNonce = null;    // 그때그때 만드는 일회용 확인값
 let tray = null;
 let pollTimer = null;
 let lastData = null;
@@ -256,38 +257,87 @@ function stopHandoffServer() {
   handoffServer = null;
 }
 
+// 로그인이 끝나면 크롬 화면에 보여줄 쪽지 (폼 전송으로 왔을 때만 쓴다)
+const DONE_HTML = '<!doctype html><meta charset="utf-8"><title>위젯 연결됨</title>'
+  + '<style>body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;'
+  + 'background:#27187E;color:#fff;font-family:"Segoe UI","Malgun Gothic",sans-serif;text-align:center}'
+  + 'h1{font-size:24px;margin:0 0 10px}p{opacity:.85;font-size:14px;margin:0;line-height:1.6}</style>'
+  + '<div><h1>위젯에 연결됐습니다 ✅</h1>'
+  + '<p>이 탭은 닫으셔도 됩니다.<br>바탕화면 위젯에 오늘 수업이 표시됩니다.</p></div>';
+
 function startLogin() {
+  // 이미 기다리고 있으면 서버를 새로 만들지 않는다 — 버튼을 여러 번 눌러도
+  // 앞서 연 크롬 탭이 무효가 되지 않게. (탭만 다시 띄운다)
+  if (handoffServer && handoffServer.listening) {
+    const p = handoffServer.address().port;
+    debugLog(`이미 로그인을 기다리는 중 (127.0.0.1:${p}) — 크롬 탭만 다시 엽니다`);
+    openInBrowser(`${APP_URL}?widget=${p}&nonce=${handoffNonce}`);
+    return;
+  }
   stopHandoffServer();
-  const nonce = crypto.randomBytes(16).toString('hex');
+  handoffNonce = crypto.randomBytes(16).toString('hex');
+  const nonce = handoffNonce;
+
+  // 크롬은 인터넷 페이지가 내 컴퓨터 안(127.0.0.1)으로 보내는 요청을 막을 수 있어서
+  // (사설망 접근 제한) 허용 헤더를 함께 내려준다. 그래도 막히면 앱이 폼 전송으로 바꾼다.
   const cors = {
     'Access-Control-Allow-Origin': APP_ORIGIN,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Private-Network': 'true'
   };
 
   handoffServer = http.createServer((req, res) => {
+    const url = String(req.url || '');
     if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }
-    if (req.method !== 'POST' || !String(req.url).startsWith('/handoff')) {
-      res.writeHead(404, cors); res.end('no'); return;
+
+    // 크롬에서 통로가 열려 있는지 확인하는 신호
+    if (req.method === 'GET' && url.startsWith('/ping')) {
+      debugLog('크롬에서 연결 확인(ping) 도착 — 통로 정상');
+      res.writeHead(200, Object.assign({ 'Content-Type': 'text/plain' }, cors));
+      res.end('pong');
+      return;
     }
+
+    if (req.method !== 'POST' || !url.startsWith('/handoff')) {
+      debugLog(`알 수 없는 요청 무시: ${req.method} ${url.slice(0, 40)}`);
+      res.writeHead(404, cors); res.end('no');
+      return;
+    }
+
     let body = '';
     req.on('data', (c) => {
       body += c;
       if (body.length > 32 * 1024) req.destroy();   // 토큰은 훨씬 짧다 — 그 이상이면 끊는다
     });
     req.on('end', () => {
-      let j = null;
-      try { j = JSON.parse(body); } catch (e) { /* 아래에서 걸러진다 */ }
-      if (!j || j.nonce !== nonce || !j.idToken) {
-        debugLog('로그인 넘겨받기 거부 — 확인값이 맞지 않습니다');
+      // fetch 로 오면 JSON, 폼 전송으로 오면 form 형식이다
+      const isForm = String(req.headers['content-type'] || '')
+        .indexOf('application/x-www-form-urlencoded') >= 0;
+      let gotNonce = null, idToken = null;
+      if (isForm) {
+        const p = new URLSearchParams(body);
+        gotNonce = p.get('nonce'); idToken = p.get('idToken');
+      } else {
+        try { const j = JSON.parse(body); gotNonce = j.nonce; idToken = j.idToken; } catch (e) { /* 아래에서 걸러짐 */ }
+      }
+
+      if (gotNonce !== nonce || !idToken) {
+        debugLog(`로그인 넘겨받기 거부 — 확인값이 맞지 않습니다 (${isForm ? '폼' : 'fetch'})`);
         res.writeHead(400, cors); res.end('bad');
         return;
       }
-      res.writeHead(200, Object.assign({ 'Content-Type': 'text/plain' }, cors));
-      res.end('ok');
-      debugLog('크롬에서 로그인 정보를 넘겨받았습니다');
+
+      if (isForm) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(DONE_HTML);
+      } else {
+        res.writeHead(200, Object.assign({ 'Content-Type': 'text/plain' }, cors));
+        res.end('ok');
+      }
+      debugLog(`크롬에서 로그인 정보를 넘겨받았습니다 (${isForm ? '폼 전송' : 'fetch'})`);
       stopHandoffServer();
-      finishLogin(j.idToken);
+      finishLogin(idToken);
     });
   });
 
@@ -301,6 +351,7 @@ function startLogin() {
     const port = handoffServer.address().port;
     debugLog(`로그인 대기 시작 (127.0.0.1:${port}) — 크롬을 엽니다`);
     openInBrowser(`${APP_URL}?widget=${port}&nonce=${nonce}`);
+    notify('수업진도 위젯', '크롬 탭을 열었어요. 거기서 구글 로그인해 주세요.');
   });
 
   // 5분 안에 안 끝나면 서버를 닫는다 (열어둔 채로 두지 않는다)
