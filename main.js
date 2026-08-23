@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.3.0
+// 파일명: main.js | @version 1.3.1
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.3.0 주간 시간표 — 위젯 안 압축 격자 + «크게 보기» 창(앱 표를 거의 그대로)
+// 수정요약: v1.3.1 업데이트가 «종료할 때 설치»로 깔리면 위젯이 안 돌아오던 문제 / v1.3.0 주간 시간표(압축 격자 + 크게 보기 창)
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -81,6 +81,8 @@ let tray = null;
 let pollTimer = null;
 let lastData = null;
 let rebuildTrayMenu = null;
+let userQuit = false;        // 트레이 «종료»로 직접 끈 것인지
+let installingUpdate = false; // 업데이트 설치 중(중복 방지)
 
 /* ===================== 설정 저장 ===================== */
 function loadState() {
@@ -157,7 +159,8 @@ autoUpdater.on('error', (err) => {
 });
 
 function installUpdateNow() {
-  if (updateState !== 'ready') return;
+  if (updateState !== 'ready' || installingUpdate) return;
+  installingUpdate = true;
   debugLog('업데이트 설치 — quitAndInstall');
   if (pollTimer) clearInterval(pollTimer);
   autoUpdater.quitAndInstall(true, true);
@@ -566,7 +569,7 @@ function createTray() {
       { label: `버전 v${app.getVersion()}`, enabled: false },
       { label: '업데이트 확인', click: () => checkForUpdates(true) },
       { type: 'separator' },
-      { label: '종료', click: () => app.quit() }
+      { label: '종료', click: () => { userQuit = true; app.quit(); } }
     ]);
   };
   tray.setContextMenu(buildMenu());
@@ -632,4 +635,16 @@ if (!gotLock) {
 }
 
 app.on('window-all-closed', (e) => { e.preventDefault && e.preventDefault(); });
-app.on('before-quit', () => { if (pollTimer) clearInterval(pollTimer); });
+app.on('before-quit', (e) => {
+  if (pollTimer) clearInterval(pollTimer);
+  // 받아둔 업데이트가 있으면 여기서 설치한다. 이때 반드시 다시 띄워야 한다 —
+  // electron-updater 의 autoInstallOnAppQuit 은 설치만 하고 앱을 안 살려서,
+  // 위젯이 조용히 사라진 채로 남는다(그러면 업데이트 확인도 영영 못 한다).
+  // 사용자가 트레이 «종료»로 직접 끈 경우에는 되살리지 않는다.
+  if (updateState === 'ready' && !userQuit && !installingUpdate) {
+    installingUpdate = true;
+    e.preventDefault();
+    debugLog('종료 전에 업데이트를 설치하고 다시 띄웁니다');
+    autoUpdater.quitAndInstall(true, true);
+  }
+});
