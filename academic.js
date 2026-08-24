@@ -9,40 +9,11 @@
 //     탭 이름 = 월 ('3'~'12','1','2', 방학이 낀 달은 '8-1','8-2' 처럼 나뉘기도 한다)
 //     열: [일, 요일, N월 행사내용, (작년 참고), 1학년 1~7교시, 2학년 1~7교시, 3학년 1~7교시]
 
-const https = require('https');
+const { fetchText } = require('./fetchtext.js');
 
 const DEFAULT_SHEET = '1T8Ww4ejXmPsM1Q8NRny13VBElRF0C41L';
 // 학년도 순서 — 3월에 시작해 이듬해 2월에 끝난다
 const MONTH_TABS = ['3', '4', '5', '6', '7', '8-1', '8-2', '8', '9', '10', '11', '12', '1', '2'];
-
-function getText(url, depth) {
-  return new Promise((resolve, reject) => {
-    if ((depth || 0) > 5) { reject(new Error('주소가 너무 많이 바뀝니다')); return; }
-    const req = https.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-        Accept: '*/*'
-      }
-    }, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        res.resume();
-        resolve(getText(new URL(res.headers.location, url).toString(), (depth || 0) + 1));
-        return;
-      }
-      if (res.statusCode !== 200) {
-        res.resume();
-        reject(new Error(res.statusCode === 404 ? '탭을 찾을 수 없습니다'
-          : res.statusCode === 403 ? '시트가 공유되어 있지 않습니다' : `오류 ${res.statusCode}`));
-        return;
-      }
-      const chunks = [];
-      res.on('data', (c) => chunks.push(c));
-      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    });
-    req.on('error', reject);
-    req.setTimeout(25000, () => req.destroy(new Error('구글 시트가 응답하지 않습니다')));
-  });
-}
 
 /* 큰따옴표 안의 쉼표·줄바꿈까지 지키는 CSV 해석 */
 function parseCsv(text) {
@@ -105,7 +76,7 @@ function parseMonth(csv, tab) {
 /* 한 달 받기 */
 async function fetchMonth(tab, sheetId) {
   const id = sheetId || DEFAULT_SHEET;
-  const csv = await getText(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`);
+  const csv = await fetchText(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`);
   return parseMonth(csv, tab);
 }
 

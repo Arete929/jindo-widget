@@ -5,33 +5,15 @@
 //   한 주 급식은 5줄이라 넉넉하다.
 // ★ 학교 코드는 이름으로 찾는다 — 시도교육청코드(B10 등) + 표준학교코드 두 개가 필요하다.
 
-const https = require('https');
+const { fetchText } = require('./fetchtext.js');
 
-const HOST = 'open.neis.go.kr';
+const BASE = 'https://open.neis.go.kr';
 
-function getJson(path) {
-  return new Promise((resolve, reject) => {
-    const req = https.get({
-      host: HOST, path: path,
-      // ★나이스는 낯선 User-Agent 에 500 을 돌려준다 — 평범한 브라우저처럼 보낸다
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-        Accept: 'application/json, text/plain, */*',
-        'Accept-Language': 'ko-KR,ko;q=0.9'
-      }
-    }, (res) => {
-      const chunks = [];
-      res.on('data', (c) => chunks.push(c));
-      res.on('end', () => {
-        const t = Buffer.concat(chunks).toString('utf8');
-        try { resolve(JSON.parse(t)); } catch (e) { reject(new Error('나이스 응답을 해석하지 못했습니다')); }
-      });
-    });
-    req.on('error', reject);
-    req.setTimeout(20000, () => req.destroy(new Error('나이스가 응답하지 않습니다')));
-  });
+async function getJson(path) {
+  // ★나이스는 낯선 User-Agent 에 500 을 돌려준다 — 브라우저처럼 보낸다
+  const t = await fetchText(BASE + path, { accept: 'application/json, text/plain, */*' });
+  try { return JSON.parse(t); } catch (e) { throw new Error('나이스 응답을 해석하지 못했습니다'); }
 }
-
 /* 나이스는 «자료 없음»도 200 으로 돌려준다 — RESULT.CODE 를 봐야 한다 */
 function rowsOf(j, key) {
   const box = j && j[key];

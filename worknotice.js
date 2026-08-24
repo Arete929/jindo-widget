@@ -8,42 +8,12 @@
 //   묶어 두어서 검증 안 받은 앱에는 잘 내주지 않는다. 그래서 계속 403 이 났다.
 //   이 길은 권한도, 로그인도, 크롬 왕복도 필요 없다.
 
-const https = require('https');
+const { fetchText } = require('./fetchtext.js');
 
 const DOCS = {
   input: '1wtwG8gIc1aSQBTK15cYpB5MN52WUS2BQjDT_NT9yg2s',   // 입력본 (이번 주)
   merged: '1FSTfU1JVke3IA5zgiouS1ozeSR14rkXLBg4_KsuFSB0'   // 합본 (누적)
 };
-
-function getText(url, depth) {
-  return new Promise((resolve, reject) => {
-    if ((depth || 0) > 5) { reject(new Error('주소가 너무 많이 바뀝니다')); return; }
-    const req = https.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-        Accept: '*/*'
-      }
-    }, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        res.resume();
-        resolve(getText(new URL(res.headers.location, url).toString(), (depth || 0) + 1));
-        return;
-      }
-      if (res.statusCode !== 200) {
-        res.resume();
-        reject(new Error(res.statusCode === 404 ? '문서를 찾을 수 없습니다'
-          : res.statusCode === 403 ? '문서가 공유되어 있지 않습니다'
-            : `오류 ${res.statusCode}`));
-        return;
-      }
-      const chunks = [];
-      res.on('data', (c) => chunks.push(c));
-      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    });
-    req.on('error', reject);
-    req.setTimeout(25000, () => req.destroy(new Error('구글 문서 서버가 응답하지 않습니다')));
-  });
-}
 
 const DAY_RE = /^(\d{1,2})\s*\(\s*([월화수목금토일])\s*\)$/;
 const RANGE_RE = /^20\d\d\s*\.\s*\d{1,2}\s*\.\s*\d{1,2}\s*\.?\s*\([월화수목금토일]\)\s*[~〜～]/;
@@ -136,7 +106,7 @@ async function fetchWork(ids) {
   const out = { fetchedAt: new Date().toISOString(), input: null, merged: null, error: '' };
   const one = async (key, label) => {
     try {
-      out[key] = parseWork(await getText(`https://docs.google.com/document/d/${docs[key]}/export?format=txt`));
+      out[key] = parseWork(await fetchText(`https://docs.google.com/document/d/${docs[key]}/export?format=txt`));
     } catch (e) {
       out.error += `${label}: ${(e && e.message) || e}  `;
     }

@@ -1,7 +1,7 @@
 {
   "name": "jindo-widget",
   "productName": "JindoWidget",
-  "version": "1.10.2",
+  "version": "1.11.0",
   "description": "체육 수업진도 — 오늘 수업·이번주·반별 진도를 항상 위에 띄워 보여주는 위젯",
   "main": "main.js",
   "author": "Arete929",
@@ -29,6 +29,7 @@
       "widget.html",
       "timetable.html",
       "comcigan.js",
+      "fetchtext.js",
       "worknotice.js",
       "neis.js",
       "academic.js",
