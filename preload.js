@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   getAcademic: () => ipcRenderer.invoke('get-academic'),
   academicFetch: () => ipcRenderer.invoke('academic-fetch'),
   onAcademicChanged: (cb) => ipcRenderer.on('academic-changed', () => cb()),
+  neisSearch: (name) => ipcRenderer.invoke('neis-search', name),
   getMeals: () => ipcRenderer.invoke('get-meals'),
   mealsFetch: () => ipcRenderer.invoke('meals-fetch'),
   onMealsChanged: (cb) => ipcRenderer.on('meals-changed', () => cb())

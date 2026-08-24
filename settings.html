@@ -1,4 +1,4 @@
-<!-- 파일명: settings.html | @version 1.7.1 -->
+<!-- 파일명: settings.html | @version 1.10.1 -->
 <!-- 위젯 설정 창 — 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기 등)을 여기서 한다. -->
 <!doctype html>
 <html lang="ko">
@@ -97,6 +97,41 @@
     한 번 불러오면 <b>교사·학급 시간표를 함께</b> 저장해 둡니다 — 위에서 볼 것만 골라 두면
     다시 불러오지 않아도 바로 바뀝니다. 인터넷이 없어도 계속 보이고, 시간표가 바뀌면 다시 불러오세요.<br>
     교사 이름은 컴시간이 <b>김*환</b>처럼 가려서 내려줍니다.<br>같은 이름으로 가려지는 분이 있을 수 있어 <b>컴시간 앱과 같은 번호</b>를 함께 보여줍니다.
+  </div>
+</section>
+
+<section>
+  <h2>급식 (나이스)</h2>
+  <div class="row">
+    <label class="lb">학교</label>
+    <input type="text" id="nQ" placeholder="학교 이름 (예: 혜원여자중학교)">
+    <button id="nFind">검색</button>
+  </div>
+  <div id="nList" class="list" style="display:none"></div>
+  <div class="row" id="nPicked" style="display:none"></div>
+  <div class="row">
+    <button class="go" id="nFetch">지금 불러오기</button>
+    <span id="nMsg" class="hint" style="margin:0"></span>
+  </div>
+  <div class="hint">
+    나이스 교육정보 개방포털에서 받아옵니다 — <b>인증키가 필요 없습니다.</b><br>
+    컴시간과 별개로 고를 수 있습니다. 같은 이름의 학교가 여러 곳이면
+    교육청·학교종류를 보고 골라주세요.
+  </div>
+</section>
+
+<section>
+  <h2>학사일정</h2>
+  <div class="row">
+    <label class="lb">시트 주소</label>
+    <input type="text" id="acSheet" placeholder="구글 시트 주소 또는 ID">
+    <button id="acSave">저장</button>
+  </div>
+  <div class="hint">
+    학교 «연간 수업일수 계획표» 시트입니다. <b>내 것이 아니어도 보기 권한만 있으면 됩니다.</b><br>
+    다만 <b>«링크가 있는 사람»</b> 으로 공유돼 있어야 읽을 수 있습니다 —
+    소유자가 «제한됨» 으로 바꾸면 못 읽습니다.<br>
+    학년이 바뀌어 새 시트가 나오면 여기에 주소를 바꿔 넣으세요.
   </div>
 </section>
 
@@ -220,6 +255,8 @@ function paint() {
   $('loginState').innerHTML = UI.loggedIn
     ? '<span class="ok">로그인됨</span>' : '<span class="warn">로그인 필요</span>';
   $('verText').textContent = 'v' + UI.version;
+  if (UI.academicSheet && !$('acSheet').value) $('acSheet').value = UI.academicSheet;
+  paintNeis();
 }
 
 /* ── 컴시간 ── */
@@ -275,6 +312,76 @@ $('opRow').querySelectorAll('button').forEach(function (b) {
 $('aotBtn').onclick = function () { UI.alwaysOnTop = !UI.alwaysOnTop; widgetAPI.setUi({ alwaysOnTop: UI.alwaysOnTop }); paint(); };
 $('autoBtn').onclick = function () { UI.autoLaunch = !UI.autoLaunch; widgetAPI.setUi({ autoLaunch: UI.autoLaunch }); paint(); };
 $('posBtn').onclick = function () { widgetAPI.setUi({ resetPos: true }); };
+
+/* ── 급식 학교 (나이스) ── */
+// 컴시간과 따로 고른다. 같은 이름의 학교가 여러 곳일 수 있어서 교육청·종류를 함께 보여준다.
+var nFound = [];
+
+function paintNeis() {
+  if (UI.neis && UI.neis.code) {
+    $('nPicked').style.display = '';
+    $('nPicked').innerHTML = '<label class="lb">선택됨</label><span class="ok">✔ '
+      + esc(UI.neis.atptName || '') + ' · ' + esc(UI.neis.name || '')
+      + (UI.neis.kind ? ' (' + esc(UI.neis.kind) + ')' : '') + '</span>';
+  } else {
+    $('nPicked').style.display = 'none';
+  }
+  $('nFetch').disabled = !(UI.neis && UI.neis.code);
+  if (UI.meals && UI.meals.fetchedAt) {
+    var d = new Date(UI.meals.fetchedAt);
+    $('nMsg').innerHTML = '<span class="ok">마지막 · ' + (d.getMonth() + 1) + '/' + d.getDate()
+      + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
+      + '</span> · 급식 ' + ((UI.meals.meals || []).length) + '건';
+  }
+}
+
+$('nFind').onclick = function () {
+  var q = $('nQ').value.trim();
+  if (!q) return;
+  $('nFind').disabled = true;
+  $('nList').style.display = '';
+  $('nList').innerHTML = '<div>찾는 중…</div>';
+  widgetAPI.neisSearch(q).then(function (r) {
+    $('nFind').disabled = false;
+    if (r && r.error) { $('nList').innerHTML = '<div class="warn">' + esc(r.error) + '</div>'; return; }
+    nFound = (r && r.list) || [];
+    if (!nFound.length) { $('nList').innerHTML = '<div>찾은 학교가 없습니다.</div>'; return; }
+    $('nList').innerHTML = nFound.map(function (s, i) {
+      return '<div data-ni="' + i + '">' + esc(s.atptName) + ' · ' + esc(s.name)
+        + ' <span style="color:#6b6a86">(' + esc(s.kind || '') + ')</span></div>';
+    }).join('');
+    $('nList').querySelectorAll('div[data-ni]').forEach(function (el) {
+      el.onclick = function () {
+        UI.neis = nFound[Number(el.dataset.ni)];
+        widgetAPI.setUi({ neis: UI.neis });
+        $('nList').style.display = 'none';
+        paintNeis();
+      };
+    });
+  });
+};
+$('nQ').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('nFind').click(); });
+
+$('nFetch').onclick = function () {
+  $('nFetch').disabled = true;
+  $('nMsg').textContent = '급식을 불러오는 중…';
+  widgetAPI.mealsFetch().then(function (d) {
+    UI.meals = d || null;
+    if (d && d.error) $('nMsg').innerHTML = '<span class="warn">' + esc(d.error) + '</span>';
+    $('nFetch').disabled = false;
+    paintNeis();
+  });
+};
+
+/* ── 학사일정 시트 ── */
+$('acSave').onclick = function () {
+  var v = $('acSheet').value.trim();
+  // 주소를 통째로 붙여넣어도 되게 ID 만 뽑는다
+  var m = v.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  var id = m ? m[1] : v;
+  widgetAPI.setUi({ academicSheet: id });
+  $('acSheet').value = id;
+};
 
 /* ── 연결·정보 ── */
 $('loginBtn').onclick = function () { widgetAPI.openLogin(); };

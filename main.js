@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.10.0
+// 파일명: main.js | @version 1.10.1
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.10.0 학사일정·급식(나이스) 탭 추가 · 오늘/이번주/진도를 «시간표» 하나로 묶음
+// 수정요약: v1.10.1 급식 학교를 따로 검색·지정 · 학사일정 시트 주소 설정 / v1.10.0 학사일정·급식 탭
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -655,6 +655,15 @@ async function refreshMeals(baseDate) {
     return Object.assign({}, old, { error: (e && e.message) || '받지 못했습니다' });
   } finally { mealFetching = false; }
 }
+ipcMain.handle('neis-search', async (_e, name) => {
+  try {
+    debugLog(`나이스 학교 검색: ${name}`);
+    return { list: await neis.searchSchool(String(name || '')) };
+  } catch (e) {
+    debugLog(`나이스 검색 실패: ${e && e.message ? e.message : e}`);
+    return { error: (e && e.message) || '검색에 실패했습니다' };
+  }
+});
 ipcMain.handle('get-meals', () => loadMeals());
 ipcMain.handle('meals-fetch', async () => await refreshMeals());
 
@@ -683,6 +692,9 @@ ipcMain.handle('get-settings', () => ({
     size: getScale(), opacity: getOpacity(), alwaysOnTop: getAlwaysOnTop(),
     autoLaunch: app.getLoginItemSettings().openAtLogin,
     version: app.getVersion(),
+    academicSheet: loadState().academicSheet || academic.DEFAULT_SHEET,
+    neis: loadState().neis || null,
+    meals: loadMeals(),
     loggedIn: !!(lastData && !lastData.needLogin)
   }
 }));
@@ -693,6 +705,14 @@ ipcMain.on('set-ui', (_e, v) => {
   if (v.opacity !== undefined) applyOpacity(Number(v.opacity));
   if (v.alwaysOnTop !== undefined) applyAlwaysOnTop(!!v.alwaysOnTop);
   if (v.autoLaunch !== undefined) app.setLoginItemSettings({ openAtLogin: !!v.autoLaunch });
+  if (v.neis && v.neis.code) {
+    saveState({ neis: v.neis });
+    debugLog(`급식 학교 지정: ${v.neis.name} (${v.neis.atpt}/${v.neis.code})`);
+  }
+  if (v.academicSheet !== undefined) {
+    saveState({ academicSheet: String(v.academicSheet || '') });
+    debugLog(`학사일정 시트 주소 변경: ${v.academicSheet}`);
+  }
   if (v.resetPos) resetWidgetPosition();
   if (rebuildTrayMenu) rebuildTrayMenu();
 });
