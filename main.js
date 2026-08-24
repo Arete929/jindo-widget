@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.9.0
+// 파일명: main.js | @version 1.10.0
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.9.0 ★주간업무를 위젯이 직접 받는다(드라이브 권한·로그인 불필요) / v1.8.2 업데이트 확인 30분
+// 수정요약: v1.10.0 학사일정·급식(나이스) 탭 추가 · 오늘/이번주/진도를 «시간표» 하나로 묶음
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -98,7 +98,7 @@ const SIZES = { small: 0.85, medium: 1, large: 1.2 };
 function getScale() { const s = loadState().size; return SIZES[s] ? s : 'medium'; }
 function getOpacity() { const o = loadState().opacity; return typeof o === 'number' ? o : 1; }
 function getAlwaysOnTop() { const v = loadState().alwaysOnTop; return v === undefined ? true : !!v; }
-function getView() { const v = loadState().view; return ['today', 'week', 'progress', 'work', 'comci'].includes(v) ? v : 'today'; }
+function getView() { const v = loadState().view; return ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal'].includes(v) ? v : 'today'; }
 
 /* ===================== 자동 업데이트 ===================== */
 // 새 버전이 나오면 알아서 내려받고, 다 받으면 알림을 띄운다. 누르면 재시작하며 설치.
@@ -394,7 +394,7 @@ async function finishLogin(idToken, retried) {
 
 /* ===================== 위젯 창 ===================== */
 // 이번주 격자는 요일 다섯 칸이 들어가야 해서 카드가 넓어야 한다. 다른 화면은 좁게.
-function baseWidthFor(view) { return ['week', 'work', 'comci'].includes(view) ? 560 : 360; }
+function baseWidthFor(view) { return ['week', 'work', 'comci', 'cal'].includes(view) ? 560 : 360; }
 function widgetSize(view) {
   const k = SIZES[getScale()];
   return { width: Math.round(baseWidthFor(view || getView()) * k), height: Math.round(300 * k) };
@@ -589,6 +589,75 @@ ipcMain.on('comci-config', (_e, cfg) => {
   sendToWidget();
 });
 
+/* ===================== 학사일정 (구글 시트) ===================== */
+// 학교 «연간 수업일수 계획표» 원본을 그대로 훑어본다. 권한 없이 받아진다.
+const academic = require('./academic.js');
+const academicFile = path.join(userDataPath, 'academic.json');
+
+function loadAcademic() {
+  try { return JSON.parse(fs.readFileSync(academicFile, 'utf-8')); } catch (e) { return null; }
+}
+let academicFetching = false;
+async function refreshAcademic() {
+  if (academicFetching) return loadAcademic();
+  academicFetching = true;
+  try {
+    const sheetId = loadState().academicSheet || academic.DEFAULT_SHEET;
+    debugLog('학사일정 받기 시작');
+    const a = await academic.fetchYear(sheetId);
+    try { fs.writeFileSync(academicFile, JSON.stringify(a)); } catch (e) { /* 무시 */ }
+    debugLog(`학사일정 받기 완료 — ${a.months.length}개월`);
+    if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('academic-changed');
+    return a;
+  } catch (e) {
+    debugLog(`학사일정 받기 실패: ${e && e.message ? e.message : e}`);
+    return loadAcademic();
+  } finally { academicFetching = false; }
+}
+ipcMain.handle('get-academic', () => loadAcademic());
+ipcMain.handle('academic-fetch', async () => await refreshAcademic());
+
+/* ===================== 급식 (나이스) ===================== */
+const neis = require('./neis.js');
+const mealFile = path.join(userDataPath, 'meals.json');
+
+function loadMeals() {
+  try { return JSON.parse(fs.readFileSync(mealFile, 'utf-8')); } catch (e) { return null; }
+}
+/* 나이스 학교는 컴시간에서 고른 학교 이름으로 자동으로 찾아둔다 */
+async function neisSchool() {
+  const st = loadState();
+  if (st.neis && st.neis.code) return st.neis;
+  const name = (st.comci && st.comci.school && st.comci.school.name) || '';
+  if (!name) throw new Error('설정에서 학교를 먼저 골라주세요');
+  const list = await neis.searchSchool(name);
+  if (!list.length) throw new Error(`나이스에서 «${name}» 을 찾지 못했습니다`);
+  const picked = list[0];
+  saveState({ neis: picked });
+  debugLog(`나이스 학교 찾음: ${picked.name} (${picked.atptName}/${picked.code})`);
+  return picked;
+}
+let mealFetching = false;
+async function refreshMeals(baseDate) {
+  if (mealFetching) return loadMeals();
+  mealFetching = true;
+  try {
+    const school = await neisSchool();
+    const w = await neis.fetchWeekMeals(school, baseDate);
+    w.school = school.name;
+    try { fs.writeFileSync(mealFile, JSON.stringify(w)); } catch (e) { /* 무시 */ }
+    debugLog(`급식 받기 완료 — ${w.meals.length}건 (${w.from}~${w.to})`);
+    if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('meals-changed');
+    return w;
+  } catch (e) {
+    debugLog(`급식 받기 실패: ${e && e.message ? e.message : e}`);
+    const old = loadMeals() || {};
+    return Object.assign({}, old, { error: (e && e.message) || '받지 못했습니다' });
+  } finally { mealFetching = false; }
+}
+ipcMain.handle('get-meals', () => loadMeals());
+ipcMain.handle('meals-fetch', async () => await refreshMeals());
+
 /* ===================== 설정 창 ===================== */
 // 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기)을 위해 창을 따로 둔다.
 function openSettingsWindow() {
@@ -750,7 +819,7 @@ ipcMain.handle('get-week', async (_e, off) => {
 });
 ipcMain.on('open-app', () => openInBrowser(APP_URL));
 ipcMain.on('set-view', (_e, view) => {
-  if (!['today', 'week', 'progress', 'work', 'comci'].includes(view)) return;
+  if (!['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal'].includes(view)) return;
   saveState({ view });
   applyWidgetWidth(view);
 });
@@ -793,6 +862,12 @@ if (!gotLock) {
     const age = w0 && w0.fetchedAt ? (Date.now() - new Date(w0.fetchedAt).getTime()) : Infinity;
     if (age > WORK_REFRESH_MS) setTimeout(() => refreshWork('시작'), 8000);
     setInterval(() => refreshWork('주기'), WORK_REFRESH_MS);
+
+    // 급식 — 이번 주 것이 없거나 오래됐으면 조용히 받는다
+    const m0 = loadMeals();
+    const mAge = m0 && m0.fetchedAt ? (Date.now() - new Date(m0.fetchedAt).getTime()) : Infinity;
+    if (mAge > 12 * 60 * 60 * 1000) setTimeout(() => refreshMeals(), 12000);
+    setInterval(() => refreshMeals(), 12 * 60 * 60 * 1000);
     // 절전에서 깨거나 잠금을 풀었을 때도 한 번 본다 (그 사이 새 버전이 나왔을 수 있다)
     try {
       powerMonitor.on('resume', () => { debugLog('절전 해제 — 업데이트 확인'); checkForUpdates(); });

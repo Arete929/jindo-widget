@@ -27,5 +27,13 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   comciFetch: () => ipcRenderer.invoke('comci-fetch'),
   comciGet: () => ipcRenderer.invoke('comci-get'),
   onComciChanged: (cb) => ipcRenderer.on('comci-changed', () => cb()),
-  setComciConfig: (cfg) => ipcRenderer.send('comci-config', cfg)
+  setComciConfig: (cfg) => ipcRenderer.send('comci-config', cfg),
+
+  /* 학사일정·급식 */
+  getAcademic: () => ipcRenderer.invoke('get-academic'),
+  academicFetch: () => ipcRenderer.invoke('academic-fetch'),
+  onAcademicChanged: (cb) => ipcRenderer.on('academic-changed', () => cb()),
+  getMeals: () => ipcRenderer.invoke('get-meals'),
+  mealsFetch: () => ipcRenderer.invoke('meals-fetch'),
+  onMealsChanged: (cb) => ipcRenderer.on('meals-changed', () => cb())
 });
