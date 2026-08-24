@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.8.1
+// 파일명: main.js | @version 1.8.2
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.8.1 맨 아래 만든 사람·버전 표시 / v1.8.0 업데이트 띠
+// 수정요약: v1.8.2 업데이트 자동 확인 6시간→30분 + 절전 해제·잠금 해제 때도 확인 / v1.8.1 만든 사람 표시
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -8,7 +8,7 @@
 //   앱이 화면을 그릴 때 쓰는 것과 똑같은 계산 결과라서, 앱 화면이 바뀌어도 안 깨진다.
 //   로그인은 진짜 크롬에서 하고 그 결과(구글 ID 토큰)만 127.0.0.1 로 넘겨받는다 — startLogin() 참고.
 
-const { app, BrowserWindow, Tray, Menu, ipcMain, shell, Notification, screen } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, shell, Notification, screen, powerMonitor } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const http = require('http');
@@ -20,7 +20,7 @@ const APP_URL = 'https://jindo-dashboard.web.app/';
 const APP_ORIGIN = 'https://jindo-dashboard.web.app';
 const PARTITION = 'persist:jindo';
 const POLL_INTERVAL_MS = 60 * 1000;          // 1분마다 값 갱신
-const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;   // 30분마다 새 버전 확인
 const RELEASES_PAGE_URL = 'https://github.com/Arete929/jindo-widget/releases/latest';
 
 const userDataPath = app.getPath('userData');
@@ -765,6 +765,11 @@ if (!gotLock) {
 
     checkForUpdates();
     setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
+    // 절전에서 깨거나 잠금을 풀었을 때도 한 번 본다 (그 사이 새 버전이 나왔을 수 있다)
+    try {
+      powerMonitor.on('resume', () => { debugLog('절전 해제 — 업데이트 확인'); checkForUpdates(); });
+      powerMonitor.on('unlock-screen', () => checkForUpdates());
+    } catch (e) { debugLog(`전원 감시 등록 실패: ${e.message}`); }
 
     screen.on('display-removed', () => {
       if (!widgetWin || widgetWin.isDestroyed()) return;
