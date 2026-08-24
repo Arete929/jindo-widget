@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.13.1
+// 파일명: main.js | @version 1.14.0
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.13.1 v1.13.0 에서 CSS 가 대량으로 지워져 화면이 깨진 것을 되살림(스타일 전량 복구)
+// 수정요약: v1.14.0 주간업무 원문 그대로(표·들여쓰기)·프리텐다드·학사일정 연속+오늘단추+월따라가기·이번주 오늘 고침·클로드/제미나이 사용량 직접 읽기·새 6가지 테마
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -15,6 +15,7 @@ const http = require('http');
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
+const aiusage = require('./aiusage.js');
 
 const APP_URL = 'https://jindo-dashboard.web.app/';
 const APP_ORIGIN = 'https://jindo-dashboard.web.app';
@@ -23,6 +24,7 @@ const POLL_INTERVAL_MS = 60 * 1000;          // 1분마다 값 갱신
 // 2분마다 새 버전 확인. 확인은 latest.yml(350바이트 남짓) 하나를 받는 것이 전부라
 // 이 정도 주기도 부담이 없다 — 새 버전이 나오면 사실상 바로 뜬다.
 const UPDATE_CHECK_INTERVAL_MS = 2 * 60 * 1000;
+const USAGE_INTERVAL_MS = 60 * 1000;         // AI 사용량도 1분마다
 const RELEASES_PAGE_URL = 'https://github.com/Arete929/jindo-widget/releases/latest';
 
 const userDataPath = app.getPath('userData');
@@ -101,6 +103,8 @@ function getScale() { const s = loadState().size; return SIZES[s] ? s : 'medium'
 function getOpacity() { const o = loadState().opacity; return typeof o === 'number' ? o : 1; }
 function getAlwaysOnTop() { const v = loadState().alwaysOnTop; return v === undefined ? true : !!v; }
 function getTheme() { return loadState().theme || ''; }
+function getUsageShow() { const v = loadState().usageShow; return v === undefined ? true : !!v; }
+function getUsageStyle() { return loadState().usageStyle === 'bar' ? 'bar' : 'ring'; }
 function getView() { const v = loadState().view; return ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal'].includes(v) ? v : 'today'; }
 
 /* ===================== 자동 업데이트 ===================== */
@@ -235,6 +239,7 @@ function sendToWidget() {
     scale: SIZES[getScale()],
     version: app.getVersion(),
     theme: getTheme(),
+    usage: { show: getUsageShow(), style: getUsageStyle(), data: aiusage.snapshot() },
     update: { state: updateState, version: updateVersion }
   };
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
@@ -732,6 +737,8 @@ ipcMain.handle('get-settings', () => ({
     autoLaunch: app.getLoginItemSettings().openAtLogin,
     version: app.getVersion(),
     theme: getTheme(),
+    usageShow: getUsageShow(),
+    usageStyle: getUsageStyle(),
     academicSheet: loadState().academicSheet || academic.DEFAULT_SHEET,
     neis: loadState().neis || null,
     meals: loadMeals(),
@@ -750,6 +757,11 @@ ipcMain.on('set-ui', (_e, v) => {
     debugLog(`급식 학교 지정: ${v.neis.name} (${v.neis.atpt}/${v.neis.code})`);
   }
   if (v.theme !== undefined) { saveState({ theme: String(v.theme || '') }); sendToWidget(); }
+  if (v.usageShow !== undefined) { saveState({ usageShow: !!v.usageShow }); sendToWidget(); }
+  if (v.usageStyle !== undefined) {
+    saveState({ usageStyle: v.usageStyle === 'bar' ? 'bar' : 'ring' });
+    sendToWidget();
+  }
   if (v.academicSheet !== undefined) {
     saveState({ academicSheet: String(v.academicSheet || '') });
     debugLog(`학사일정 시트 주소 변경: ${v.academicSheet}`);
@@ -844,6 +856,14 @@ function createTray() {
 ipcMain.on('refresh-now', () => pollOnce());
 ipcMain.on('open-login', () => startLogin());
 ipcMain.on('open-timetable', () => openTimetableWindow());
+
+/* ── AI 사용량 ── */
+ipcMain.on('usage-login', (_e, key) => aiusage.openLogin(String(key || '')));
+ipcMain.on('usage-refresh', () => aiusage.pollAll());
+ipcMain.on('usage-style', (_e, style) => {
+  saveState({ usageStyle: style === 'bar' ? 'bar' : 'ring' });
+  sendToWidget();
+});
 // 이전주·다음주 — 숨은 창의 앱에게 그 주 자료를 물어본다
 /* ===================== 진행 상태 알리기 =====================
    무엇을 언제 받는지 화면에 보이게 한다. 그동안 조용히 실패하면
@@ -958,6 +978,13 @@ if (!gotLock) {
     checkForUpdates();
     setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
 
+    // AI 사용량 — 값이 들어오면 그때그때 위젯에 밀어 준다.
+    // 숨은 창으로 claude.ai · gemini.google.com 을 열어 읽는 것이라 시작 직후는 피한다.
+    aiusage.setLogger(debugLog);
+    aiusage.onUpdate(() => sendToWidget());
+    setTimeout(() => aiusage.pollAll(), 9000);
+    setInterval(() => aiusage.pollAll(), USAGE_INTERVAL_MS);
+
     // 주간업무 — 오래됐거나 «실패로 저장된» 것이면 다시 받는다.
     // ★실패 기록을 성공처럼 붙들고 있으면, 문제가 고쳐진 뒤에도 옛 오류를 계속 보여준다.
     const w0 = loadWork();
@@ -997,6 +1024,7 @@ if (!gotLock) {
 app.on('window-all-closed', (e) => { e.preventDefault && e.preventDefault(); });
 app.on('before-quit', (e) => {
   if (pollTimer) clearInterval(pollTimer);
+  aiusage.stop();
   // 받아둔 업데이트가 있으면 여기서 설치한다. 이때 반드시 다시 띄워야 한다 —
   // electron-updater 의 autoInstallOnAppQuit 은 설치만 하고 앱을 안 살려서,
   // 위젯이 조용히 사라진 채로 남는다(그러면 업데이트 확인도 영영 못 한다).

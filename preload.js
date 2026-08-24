@@ -1,4 +1,4 @@
-// 파일명: preload.js | @version 1.7.0
+// 파일명: preload.js | @version 1.8.0
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
@@ -15,6 +15,11 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   onWorkChanged: (cb) => ipcRenderer.on('work-changed', () => cb()),
   setView: (view) => ipcRenderer.send('set-view', view),
   reportHeight: (h) => ipcRenderer.send('content-height', h),
+
+  /* AI 사용량 (클로드·제미나이) */
+  usageLogin: (key) => ipcRenderer.send('usage-login', key),
+  usageRefresh: () => ipcRenderer.send('usage-refresh'),
+  setUsageStyle: (style) => ipcRenderer.send('usage-style', style),
 
   /* 설정 창 */
   getSettings: () => ipcRenderer.invoke('get-settings'),

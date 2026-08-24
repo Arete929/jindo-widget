@@ -1,10 +1,12 @@
-<!-- 파일명: settings.html | @version 1.13.1 -->
+<!-- 파일명: settings.html | @version 1.14.0 -->
 <!-- 위젯 설정 창 — 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기 등)을 여기서 한다. -->
 <!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8" />
 <title>수업진도 위젯 설정</title>
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <style>
   :root {
     --ink:#1a1636; --sub:#6b6a86; --canvas:#F7F7FF; --card:#fff;
@@ -13,7 +15,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     background: var(--canvas); color: var(--ink); padding: 16px 18px 22px;
-    font-family: "Pretendard", "Segoe UI", "Malgun Gothic", sans-serif; font-size: 13px;
+    font-family: "Pretendard Variable", Pretendard, "Segoe UI", "Malgun Gothic", sans-serif; font-size: 13px;
   }
   h1 { font-size: 17px; font-weight: 800; margin-bottom: 12px; letter-spacing: -.3px; }
   section { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
@@ -146,10 +148,22 @@
   <div class="row">
     <label class="lb">테마</label>
     <div class="chips" id="thRow">
-      <button data-th="">인디고</button><button data-th="ocean">바다</button>
-      <button data-th="forest">숲</button><button data-th="sunset">노을</button>
-      <button data-th="plum">자두</button><button data-th="slate">먹색</button>
+      <button data-th="">페르시안</button><button data-th="ghost">고스트</button>
+      <button data-th="truepink">트루핑크</button><button data-th="chillwhite">칠화이트</button>
+      <button data-th="night">나이트</button><button data-th="kiwi">키위</button>
     </div>
+  </div>
+  <div class="row">
+    <label class="lb">AI 사용량</label>
+    <div class="chips" id="usgRow">
+      <button data-usg="on">보이기</button><button data-usg="off">숨기기</button>
+      <button data-usgstyle="ring">원형</button><button data-usgstyle="bar">막대</button>
+    </div>
+  </div>
+  <div class="row">
+    <label class="lb"></label>
+    <div class="hint">클로드·제미나이 사용량을 위젯 맨 위에 보여줍니다.
+      처음 한 번은 위젯의 «로그인하기» 를 눌러 각각 로그인해야 합니다.</div>
   </div>
   <div class="row">
     <label class="lb">투명도</label>
@@ -262,6 +276,10 @@ function paint() {
   $('thRow').querySelectorAll('button').forEach(function (b) {
     b.className = (b.dataset.th === (UI.theme || '')) ? 'on' : '';
   });
+  $('usgRow').querySelectorAll('button').forEach(function (b) {
+    if (b.dataset.usg) b.className = ((b.dataset.usg === 'on') === (UI.usageShow !== false)) ? 'on' : '';
+    else b.className = (b.dataset.usgstyle === (UI.usageStyle || 'ring')) ? 'on' : '';
+  });
   $('aotBtn').className = UI.alwaysOnTop ? 'on' : '';
   $('autoBtn').className = UI.autoLaunch ? 'on' : '';
   $('loginState').innerHTML = UI.loggedIn
@@ -327,6 +345,13 @@ $('posBtn').onclick = function () { widgetAPI.setUi({ resetPos: true }); };
 $('autoSizeBtn').onclick = function () { widgetAPI.setUi({ autoSize: true }); };
 $('thRow').querySelectorAll('button').forEach(function (b) {
   b.onclick = function () { UI.theme = b.dataset.th; widgetAPI.setUi({ theme: UI.theme }); paint(); };
+});
+$('usgRow').querySelectorAll('button').forEach(function (b) {
+  b.onclick = function () {
+    if (b.dataset.usg) { UI.usageShow = (b.dataset.usg === 'on'); widgetAPI.setUi({ usageShow: UI.usageShow }); }
+    else { UI.usageStyle = b.dataset.usgstyle; widgetAPI.setUi({ usageStyle: UI.usageStyle }); }
+    paint();
+  };
 });
 
 /* ── 급식 학교 (나이스) ── */

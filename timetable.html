@@ -1,4 +1,4 @@
-<!-- 파일명: timetable.html | @version 1.4.0 -->
+<!-- 파일명: timetable.html | @version 1.14.0 -->
 <!-- 주간 시간표 «크게 보기» 창 — 앱의 표를 최대한 그대로 옮겼다. 색·구조 모두 앱과 같은 값.
      이전주·다음주로 옮겨 볼 수 있고, 위아래로 펼쳐서 세 주를 한 번에 볼 수도 있다. -->
 <!doctype html>
@@ -6,6 +6,8 @@
 <head>
 <meta charset="utf-8" />
 <title>주간 시간표</title>
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <style>
   :root {
     --ink:#1a1636; --sub:#6b6a86; --canvas:#F7F7FF; --card:#fff;
@@ -26,7 +28,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     background: var(--canvas); color: var(--ink);
-    font-family: "Pretendard", "Segoe UI", "Malgun Gothic", sans-serif;
+    font-family: "Pretendard Variable", Pretendard, "Segoe UI", "Malgun Gothic", sans-serif;
     padding: 14px; font-size: 13px;
   }
   .head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
