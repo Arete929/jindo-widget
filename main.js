@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.6.0
+// 파일명: main.js | @version 1.7.0
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.6.0 «주간업무» 탭(입력본·합본 선택·주차 이동·검색) / v1.5.0 동아리로 없어진 수업 표시 바로잡음
+// 수정요약: v1.7.0 컴시간알리미(교사·학급 시간표) + 설정 창 / v1.6.0 주간업무 탭
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -75,6 +75,7 @@ function openInBrowser(url) {
 let widgetWin = null;      // 화면에 보이는 카드
 let workerWin = null;      // 값을 가져오는 숨은 창
 let timetableWin = null;   // 주간 시간표 «크게 보기» 창
+let settingsWin = null;    // 설정 창
 let handoffServer = null;   // 크롬에서 로그인 결과를 받는 잠깐짜리 서버
 let handoffNonce = null;    // 그때그때 만드는 일회용 확인값
 let tray = null;
@@ -97,7 +98,7 @@ const SIZES = { small: 0.85, medium: 1, large: 1.2 };
 function getScale() { const s = loadState().size; return SIZES[s] ? s : 'medium'; }
 function getOpacity() { const o = loadState().opacity; return typeof o === 'number' ? o : 1; }
 function getAlwaysOnTop() { const v = loadState().alwaysOnTop; return v === undefined ? true : !!v; }
-function getView() { const v = loadState().view; return ['today', 'week', 'progress', 'work'].includes(v) ? v : 'today'; }
+function getView() { const v = loadState().view; return ['today', 'week', 'progress', 'work', 'comci'].includes(v) ? v : 'today'; }
 
 /* ===================== 자동 업데이트 ===================== */
 // 새 버전이 나오면 알아서 내려받고, 다 받으면 알림을 띄운다. 누르면 재시작하며 설치.
@@ -391,7 +392,7 @@ async function finishLogin(idToken, retried) {
 
 /* ===================== 위젯 창 ===================== */
 // 이번주 격자는 요일 다섯 칸이 들어가야 해서 카드가 넓어야 한다. 다른 화면은 좁게.
-function baseWidthFor(view) { return (view === 'week' || view === 'work') ? 560 : 360; }
+function baseWidthFor(view) { return ['week', 'work', 'comci'].includes(view) ? 560 : 360; }
 function widgetSize(view) {
   const k = SIZES[getScale()];
   return { width: Math.round(baseWidthFor(view || getView()) * k), height: Math.round(300 * k) };
@@ -469,6 +470,17 @@ function applyScale(key) {
   }
   sendToWidget();
 }
+function resetWidgetPosition() {
+  if (!widgetWin || widgetWin.isDestroyed()) { createWidgetWindow(); return; }
+  const a = screen.getPrimaryDisplay().workArea;
+  const b = widgetWin.getBounds();
+  const x = Math.round(a.x + (a.width - b.width) / 2);
+  const y = Math.round(a.y + (a.height - b.height) / 2);
+  widgetWin.setBounds({ x, y, width: b.width, height: b.height });
+  saveState({ x, y });
+  widgetWin.show(); widgetWin.focus();
+  debugLog(`위젯 위치 초기화: 주 모니터 가운데(${x}, ${y})`);
+}
 function applyOpacity(v) {
   saveState({ opacity: v });
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.setOpacity(v);
@@ -505,6 +517,110 @@ function openTimetableWindow() {
   debugLog('주간 시간표 창을 열었습니다');
 }
 
+/* ===================== 컴시간알리미 ===================== */
+// 학교 시간표를 한 번 받아 파일에 저장해 둔다 — 그 뒤로는 인터넷이 없어도 계속 보인다.
+const comcigan = require('./comcigan.js');
+const comciFile = path.join(userDataPath, 'comcigan.json');
+
+function loadComci() {
+  try { return JSON.parse(fs.readFileSync(comciFile, 'utf-8')); } catch (e) { return null; }
+}
+function saveComci(v) {
+  try { fs.writeFileSync(comciFile, JSON.stringify(v)); } catch (e) { debugLog(`컴시간 저장 실패: ${e.message}`); }
+}
+function getComciConfig() {
+  const s = loadState().comci || {};
+  return {
+    school: s.school || null,
+    wantTeacher: s.wantTeacher === undefined ? true : !!s.wantTeacher,
+    wantClasses: !!s.wantClasses,
+    teacher: s.teacher || ''
+  };
+}
+
+ipcMain.handle('comci-search', async (_e, name) => {
+  try {
+    debugLog(`컴시간 학교 검색: ${name}`);
+    return { list: await comcigan.searchSchool(String(name || '')) };
+  } catch (e) {
+    debugLog(`컴시간 검색 실패: ${e && e.message ? e.message : e}`);
+    return { error: (e && e.message) || '검색에 실패했습니다' };
+  }
+});
+
+ipcMain.handle('comci-fetch', async () => {
+  const cfg = getComciConfig();
+  if (!cfg.school) return { error: '학교를 먼저 골라주세요' };
+  try {
+    debugLog(`컴시간 시간표 받기: ${cfg.school.name} (교사:${cfg.wantTeacher} 학급:${cfg.wantClasses})`);
+    const data = await comcigan.fetchTimetable(cfg.school.code, {
+      teacher: cfg.wantTeacher, classes: cfg.wantClasses
+    });
+    data.schoolName = cfg.school.name;     // 컴시간이 학교명을 가려서 주므로 고른 이름을 쓴다
+    saveComci(data);
+    debugLog(`컴시간 받기 완료 — 교사 ${(data.teachers || []).length}명`);
+    sendToWidget();
+    return { data };
+  } catch (e) {
+    debugLog(`컴시간 받기 실패: ${e && e.message ? e.message : e}`);
+    return { error: (e && e.message) || '불러오지 못했습니다' };
+  }
+});
+
+ipcMain.handle('comci-get', () => ({ config: getComciConfig(), data: loadComci() }));
+ipcMain.on('comci-config', (_e, cfg) => {
+  if (!cfg || typeof cfg !== 'object') return;
+  saveState({ comci: {
+    school: cfg.school || null,
+    wantTeacher: !!cfg.wantTeacher,
+    wantClasses: !!cfg.wantClasses,
+    teacher: String(cfg.teacher || '')
+  } });
+  sendToWidget();
+});
+
+/* ===================== 설정 창 ===================== */
+// 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기)을 위해 창을 따로 둔다.
+function openSettingsWindow() {
+  if (settingsWin && !settingsWin.isDestroyed()) { settingsWin.show(); settingsWin.focus(); return; }
+  settingsWin = new BrowserWindow({
+    width: 620, height: 760, title: '수업진도 위젯 설정',
+    backgroundColor: '#F7F7FF', autoHideMenuBar: true, resizable: true,
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true, nodeIntegration: false
+    }
+  });
+  settingsWin.loadFile('settings.html');
+  settingsWin.on('closed', () => { settingsWin = null; if (rebuildTrayMenu) rebuildTrayMenu(); });
+  debugLog('설정 창을 열었습니다');
+}
+
+ipcMain.handle('get-settings', () => ({
+  comci: getComciConfig(),
+  timetable: loadComci(),
+  ui: {
+    size: getScale(), opacity: getOpacity(), alwaysOnTop: getAlwaysOnTop(),
+    autoLaunch: app.getLoginItemSettings().openAtLogin,
+    version: app.getVersion(),
+    loggedIn: !!(lastData && !lastData.needLogin)
+  }
+}));
+
+ipcMain.on('set-ui', (_e, v) => {
+  if (!v || typeof v !== 'object') return;
+  if (v.size) { applyScale(v.size); }
+  if (v.opacity !== undefined) applyOpacity(Number(v.opacity));
+  if (v.alwaysOnTop !== undefined) applyAlwaysOnTop(!!v.alwaysOnTop);
+  if (v.autoLaunch !== undefined) app.setLoginItemSettings({ openAtLogin: !!v.autoLaunch });
+  if (v.resetPos) resetWidgetPosition();
+  if (rebuildTrayMenu) rebuildTrayMenu();
+});
+ipcMain.on('check-update', () => checkForUpdates(true));
+ipcMain.on('open-log', () => shell.openPath(debugLogFile));
+ipcMain.on('open-settings', () => openSettingsWindow());
+
 /* ===================== 트레이 ===================== */
 function createTray() {
   tray = new Tray(path.join(__dirname, 'assets', 'tray.png'));
@@ -528,6 +644,8 @@ function createTray() {
 
     return Menu.buildFromTemplate([
       ...updateItems,
+      { label: '⚙️ 설정', click: () => openSettingsWindow() },
+      { type: 'separator' },
       {
         label: '위젯 보이기', type: 'checkbox',
         checked: !!(widgetWin && !widgetWin.isDestroyed() && widgetWin.isVisible()),
@@ -545,17 +663,7 @@ function createTray() {
       {
         // 다른 모니터를 뽑았거나 위젯을 어디 뒀는지 못 찾을 때 쓰는 탈출구
         label: '위젯 위치 초기화 (화면 가운데로)',
-        click: () => {
-          if (!widgetWin || widgetWin.isDestroyed()) { createWidgetWindow(); return; }
-          const a = screen.getPrimaryDisplay().workArea;
-          const b = widgetWin.getBounds();
-          const x = Math.round(a.x + (a.width - b.width) / 2);
-          const y = Math.round(a.y + (a.height - b.height) / 2);
-          widgetWin.setBounds({ x, y, width: b.width, height: b.height });
-          saveState({ x, y });
-          widgetWin.show(); widgetWin.focus();
-          debugLog('위젯 위치 초기화: 주 모니터 가운데(' + x + ', ' + y + ')');
-        }
+        click: () => resetWidgetPosition()
       },
       { label: '수업진도 앱 열기 (크롬)', click: () => openInBrowser(APP_URL) },
       { label: '크롬으로 로그인', click: () => startLogin() },
@@ -609,7 +717,7 @@ ipcMain.handle('get-week', async (_e, off) => {
 });
 ipcMain.on('open-app', () => openInBrowser(APP_URL));
 ipcMain.on('set-view', (_e, view) => {
-  if (!['today', 'week', 'progress', 'work'].includes(view)) return;
+  if (!['today', 'week', 'progress', 'work', 'comci'].includes(view)) return;
   saveState({ view });
   applyWidgetWidth(view);
 });

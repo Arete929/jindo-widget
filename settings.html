@@ -1,0 +1,269 @@
+<!-- 파일명: settings.html | @version 1.7.0 -->
+<!-- 위젯 설정 창 — 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기 등)을 여기서 한다. -->
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>수업진도 위젯 설정</title>
+<style>
+  :root {
+    --ink:#1a1636; --sub:#6b6a86; --canvas:#F7F7FF; --card:#fff;
+    --border:#e6e4f2; --energy1:#27187E; --energy2:#4433B0; --ok:#1f8a5f; --warn:#b45815;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--canvas); color: var(--ink); padding: 16px 18px 22px;
+    font-family: "Pretendard", "Segoe UI", "Malgun Gothic", sans-serif; font-size: 13px;
+  }
+  h1 { font-size: 17px; font-weight: 800; margin-bottom: 12px; letter-spacing: -.3px; }
+  section { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 13px 15px; margin-bottom: 12px; }
+  h2 { font-size: 13.5px; font-weight: 800; color: var(--energy1); margin-bottom: 9px; }
+  .row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 8px; }
+  .row:last-child { margin-bottom: 0; }
+  label.lb { min-width: 74px; font-size: 12px; font-weight: 700; color: var(--sub); }
+  input[type=text] {
+    flex: 1; min-width: 140px; border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 10px; font-size: 12.5px; font-family: inherit; outline: none;
+  }
+  input[type=text]:focus { border-color: var(--energy2); }
+  button {
+    border: 1px solid var(--border); background: #fff; color: var(--ink);
+    border-radius: 8px; padding: 6px 12px; cursor: pointer;
+    font-size: 12px; font-weight: 700; font-family: inherit;
+  }
+  button:hover { background: #f2f0ff; }
+  button.on { background: linear-gradient(120deg, var(--energy1), var(--energy2)); color: #fff; border-color: transparent; }
+  button.go { background: var(--energy1); color: #fff; border-color: transparent; }
+  button.go:hover { background: var(--energy2); }
+  button:disabled { opacity: .45; cursor: default; }
+  .hint { font-size: 11.5px; color: var(--sub); line-height: 1.5; margin-top: 6px; }
+  .ok { color: var(--ok); font-weight: 700; }
+  .warn { color: var(--warn); font-weight: 700; }
+  .list { max-height: 150px; overflow-y: auto; border: 1px solid var(--border);
+          border-radius: 8px; margin-top: 6px; }
+  .list div { padding: 6px 10px; cursor: pointer; font-size: 12.5px; border-bottom: 1px solid #f1eff9; }
+  .list div:last-child { border-bottom: 0; }
+  .list div:hover { background: #f2f0ff; }
+  .list div.sel { background: #e9e5ff; font-weight: 800; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tname { display: flex; gap: 5px; flex-wrap: wrap; max-height: 116px; overflow-y: auto; }
+  .tname button { padding: 4px 9px; font-size: 11.5px; }
+  .foot { font-size: 11.5px; color: var(--sub); text-align: center; margin-top: 4px; }
+</style>
+</head>
+<body>
+<h1>⚙️ 수업진도 위젯 설정</h1>
+
+<section>
+  <h2>컴시간알리미</h2>
+  <div class="row">
+    <label class="lb">학교</label>
+    <input type="text" id="schoolQ" placeholder="학교 이름 (예: 혜원여자중학교)">
+    <button id="schoolFind">검색</button>
+  </div>
+  <div id="schoolList" class="list" style="display:none"></div>
+  <div class="row" id="schoolPicked" style="display:none"></div>
+
+  <div class="row">
+    <label class="lb">불러올 것</label>
+    <div class="chips">
+      <button id="wantTeacher">교사 시간표</button>
+      <button id="wantClasses">학급 시간표</button>
+    </div>
+  </div>
+
+  <div class="row" id="teacherRow" style="display:none">
+    <label class="lb">내 이름</label>
+    <div class="tname" id="teacherList"></div>
+  </div>
+
+  <div class="row">
+    <button class="go" id="fetchBtn">지금 불러오기</button>
+    <span id="fetchMsg" class="hint" style="margin:0"></span>
+  </div>
+  <div class="hint">
+    한 번 불러오면 위젯에 저장되어 <b>인터넷이 없어도 계속 보입니다.</b>
+    시간표가 바뀌면 다시 불러오세요.<br>
+    교사 이름은 컴시간이 <b>김*환</b>처럼 가려서 내려줍니다 — 그대로 표시합니다.
+  </div>
+</section>
+
+<section>
+  <h2>모양</h2>
+  <div class="row">
+    <label class="lb">위젯 크기</label>
+    <div class="chips" id="sizeRow">
+      <button data-size="small">소</button><button data-size="medium">중</button><button data-size="large">대</button>
+    </div>
+  </div>
+  <div class="row">
+    <label class="lb">투명도</label>
+    <div class="chips" id="opRow">
+      <button data-op="1">100%</button><button data-op="0.9">90%</button>
+      <button data-op="0.8">80%</button><button data-op="0.7">70%</button>
+    </div>
+  </div>
+  <div class="row">
+    <label class="lb">기타</label>
+    <div class="chips">
+      <button id="aotBtn">항상 위로 고정</button>
+      <button id="autoBtn">Windows 시작 시 자동 실행</button>
+      <button id="posBtn">위젯 위치 초기화</button>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>연결</h2>
+  <div class="row">
+    <label class="lb">구글</label>
+    <span id="loginState" class="hint" style="margin:0;flex:1"></span>
+    <button id="loginBtn">크롬으로 로그인</button>
+  </div>
+  <div class="row">
+    <label class="lb">주간업무</label>
+    <span class="hint" style="margin:0;flex:1">구글 문서(입력본·합본)를 다시 읽어옵니다</span>
+    <button id="workBtn">다시 가져오기</button>
+  </div>
+</section>
+
+<section>
+  <h2>정보</h2>
+  <div class="row">
+    <label class="lb">버전</label>
+    <span id="verText" class="hint" style="margin:0;flex:1"></span>
+    <button id="updBtn">업데이트 확인</button>
+    <button id="logBtn">디버그 로그</button>
+  </div>
+</section>
+<div class="foot">설정은 바로 저장됩니다.</div>
+
+<script>
+var CFG = { school: null, wantTeacher: true, wantClasses: false, teacher: '' };
+var UI = { size: 'medium', opacity: 1, alwaysOnTop: true, autoLaunch: false, version: '', loggedIn: false };
+var TIMETABLE = null, found = [];
+
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function save() { widgetAPI.setComciConfig(CFG); }
+
+function paint() {
+  // 학교
+  if (CFG.school) {
+    $('schoolPicked').style.display = '';
+    $('schoolPicked').innerHTML = '<label class="lb">선택됨</label>'
+      + '<span class="ok">✔ ' + esc(CFG.school.region) + ' · ' + esc(CFG.school.name) + '</span>';
+  } else {
+    $('schoolPicked').style.display = 'none';
+  }
+  $('wantTeacher').className = CFG.wantTeacher ? 'on' : '';
+  $('wantClasses').className = CFG.wantClasses ? 'on' : '';
+
+  // 교사 고르기 — 불러온 뒤에만 목록이 있다
+  var names = (TIMETABLE && TIMETABLE.teachers) || [];
+  $('teacherRow').style.display = (CFG.wantTeacher && names.length) ? '' : 'none';
+  $('teacherList').innerHTML = names.map(function (t) {
+    return '<button data-tname="' + esc(t.name) + '" class="' + (CFG.teacher === t.name ? 'on' : '')
+      + '">' + esc(t.name) + '</button>';
+  }).join('');
+  $('teacherList').querySelectorAll('button').forEach(function (b) {
+    b.onclick = function () { CFG.teacher = b.dataset.tname; save(); paint(); };
+  });
+
+  $('fetchBtn').disabled = !CFG.school || (!CFG.wantTeacher && !CFG.wantClasses);
+  if (TIMETABLE && TIMETABLE.fetchedAt) {
+    var d = new Date(TIMETABLE.fetchedAt);
+    $('fetchMsg').innerHTML = '<span class="ok">마지막 · '
+      + (d.getMonth() + 1) + '/' + d.getDate() + ' '
+      + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
+      + '</span>' + (TIMETABLE.updatedAt ? ' · 컴시간 갱신 ' + esc(TIMETABLE.updatedAt) : '');
+  }
+
+  // 모양
+  $('sizeRow').querySelectorAll('button').forEach(function (b) {
+    b.className = (b.dataset.size === UI.size) ? 'on' : '';
+  });
+  $('opRow').querySelectorAll('button').forEach(function (b) {
+    b.className = (Number(b.dataset.op) === Number(UI.opacity)) ? 'on' : '';
+  });
+  $('aotBtn').className = UI.alwaysOnTop ? 'on' : '';
+  $('autoBtn').className = UI.autoLaunch ? 'on' : '';
+  $('loginState').innerHTML = UI.loggedIn
+    ? '<span class="ok">로그인됨</span>' : '<span class="warn">로그인 필요</span>';
+  $('verText').textContent = 'v' + UI.version;
+}
+
+/* ── 컴시간 ── */
+$('schoolFind').onclick = function () {
+  var q = $('schoolQ').value.trim();
+  if (!q) return;
+  $('schoolFind').disabled = true;
+  $('schoolList').style.display = '';
+  $('schoolList').innerHTML = '<div>찾는 중…</div>';
+  widgetAPI.comciSearch(q).then(function (r) {
+    $('schoolFind').disabled = false;
+    found = (r && r.list) || [];
+    if (r && r.error) { $('schoolList').innerHTML = '<div class="warn">' + esc(r.error) + '</div>'; return; }
+    if (!found.length) { $('schoolList').innerHTML = '<div>찾은 학교가 없습니다.</div>'; return; }
+    $('schoolList').innerHTML = found.map(function (s, i) {
+      return '<div data-i="' + i + '">' + esc(s.region) + ' · ' + esc(s.name) + '</div>';
+    }).join('');
+    $('schoolList').querySelectorAll('div[data-i]').forEach(function (el) {
+      el.onclick = function () {
+        CFG.school = found[Number(el.dataset.i)];
+        save(); $('schoolList').style.display = 'none'; paint();
+      };
+    });
+  });
+};
+$('schoolQ').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('schoolFind').click(); });
+$('wantTeacher').onclick = function () { CFG.wantTeacher = !CFG.wantTeacher; save(); paint(); };
+$('wantClasses').onclick = function () { CFG.wantClasses = !CFG.wantClasses; save(); paint(); };
+
+$('fetchBtn').onclick = function () {
+  $('fetchBtn').disabled = true;
+  $('fetchMsg').textContent = '컴시간에서 불러오는 중…';
+  widgetAPI.comciFetch().then(function (r) {
+    if (r && r.error) { $('fetchMsg').innerHTML = '<span class="warn">' + esc(r.error) + '</span>'; }
+    else {
+      TIMETABLE = r && r.data;
+      if (TIMETABLE && !CFG.teacher && TIMETABLE.teachers && TIMETABLE.teachers.length) {
+        $('fetchMsg').innerHTML = '<span class="ok">받았습니다 — 아래에서 내 이름을 골라주세요</span>';
+      }
+    }
+    $('fetchBtn').disabled = false;
+    paint();
+  });
+};
+
+/* ── 모양 ── */
+$('sizeRow').querySelectorAll('button').forEach(function (b) {
+  b.onclick = function () { UI.size = b.dataset.size; widgetAPI.setUi({ size: UI.size }); paint(); };
+});
+$('opRow').querySelectorAll('button').forEach(function (b) {
+  b.onclick = function () { UI.opacity = Number(b.dataset.op); widgetAPI.setUi({ opacity: UI.opacity }); paint(); };
+});
+$('aotBtn').onclick = function () { UI.alwaysOnTop = !UI.alwaysOnTop; widgetAPI.setUi({ alwaysOnTop: UI.alwaysOnTop }); paint(); };
+$('autoBtn').onclick = function () { UI.autoLaunch = !UI.autoLaunch; widgetAPI.setUi({ autoLaunch: UI.autoLaunch }); paint(); };
+$('posBtn').onclick = function () { widgetAPI.setUi({ resetPos: true }); };
+
+/* ── 연결·정보 ── */
+$('loginBtn').onclick = function () { widgetAPI.openLogin(); };
+$('workBtn').onclick = function () { widgetAPI.openLogin(); };
+$('updBtn').onclick = function () { widgetAPI.checkUpdate(); };
+$('logBtn').onclick = function () { widgetAPI.openLog(); };
+
+widgetAPI.getSettings().then(function (s) {
+  if (!s) return;
+  CFG = Object.assign(CFG, s.comci || {});
+  UI = Object.assign(UI, s.ui || {});
+  TIMETABLE = s.timetable || null;
+  paint();
+});
+</script>
+</body>
+</html>

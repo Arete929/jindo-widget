@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.6.0 -->
+<!-- 파일명: widget.html | @version 1.7.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -450,6 +450,89 @@ function shortRange(r) {
   return m[1] + '/' + m[2] + ' ~ ' + m[3] + '/' + m[4];
 }
 
+/* ── 컴시간 ──
+   설정 창에서 한 번 불러온 학교 시간표를 보여준다. 교사·학급 중 불러온 것만 나온다. */
+var CM = null, cmBusy = false, cmMode = '', cmGrade = 1, cmCls = 1;
+
+function loadComci() {
+  if (cmBusy) return;
+  cmBusy = true;
+  widgetAPI.comciGet().then(function (r) {
+    cmBusy = false; CM = r || { empty: true }; render();
+  }).catch(function () { cmBusy = false; CM = { empty: true }; render(); });
+}
+
+function cmTable(days, cell) {
+  var maxP = 1;
+  days.forEach(function (d) { maxP = Math.max(maxP, (d.periods || []).length); });
+  var h = '<table class="gr"><thead><tr><th class="pc"></th>'
+    + days.map(function (d) { return '<th>' + esc(d.dow) + '</th>'; }).join('') + '</tr></thead><tbody>';
+  for (var p = 0; p < maxP; p++) {
+    h += '<tr><td class="pc">' + (p + 1) + '</td>';
+    days.forEach(function (d) {
+      var x = (d.periods || [])[p];
+      h += x ? cell(x) : '<td></td>';
+    });
+    h += '</tr>';
+  }
+  return h + '</tbody></table>';
+}
+
+function viewComci() {
+  if (!CM) { loadComci(); return '<div class="empty">컴시간 자료를 불러오는 중…</div>'; }
+  var cfg = CM.config || {}, d = CM.data;
+  if (!d) {
+    return '<div class="empty">아직 불러온 컴시간 시간표가 없습니다.<br>'
+      + '<button class="btn" onclick="widgetAPI.openSettings()">설정에서 불러오기</button>'
+      + '<div style="margin-top:8px;font-size:10.5px;color:#6f7885">'
+      + '학교를 고르고 «지금 불러오기» 를 누르면 됩니다.</div></div>';
+  }
+  var hasT = !!(d.byTeacher && d.byTeacher.length);
+  var hasC = !!(d.classes && d.classes.length);
+  if (!cmMode) cmMode = hasT ? 'teacher' : 'class';
+  if (cmMode === 'teacher' && !hasT) cmMode = 'class';
+  if (cmMode === 'class' && !hasC) cmMode = 'teacher';
+
+  var h = '<div class="wknav">';
+  if (hasT) h += '<button class="wkb' + (cmMode === 'teacher' ? ' now' : '') + '" data-cm="teacher">교사</button>';
+  if (hasC) h += '<button class="wkb' + (cmMode === 'class' ? ' now' : '') + '" data-cm="class">학급</button>';
+  h += '<span class="wklab">' + esc(d.schoolName || d.school || '')
+    + '<small>' + esc((d.updatedAt || '').slice(0, 10)) + ' 기준</small></span>'
+    + '<button class="wkb" id="cmGet" title="설정에서 다시 불러오기">⚙</button></div>';
+
+  if (cmMode === 'teacher') {
+    var me = d.byTeacher.filter(function (t) { return t.name === cfg.teacher; })[0] || d.byTeacher[0];
+    h += '<div class="wknav" style="margin-bottom:5px"><span class="wklab" style="text-align:left">'
+      + esc(me.name) + ' 선생님<small>설정에서 내 이름을 바꿀 수 있어요</small></span></div>';
+    h += cmTable(me.days, function (x) {
+      return '<td class="c u1" title="' + esc(x.grade + '-' + x.cls + ' ' + x.subject) + '">'
+        + '<b>' + x.grade + '-' + x.cls + '</b><u>' + esc(x.subject) + '</u></td>';
+    });
+    return h;
+  }
+
+  // 학급 — 학년·반 고르기
+  var gsel = d.classes.filter(function (g) { return g.grade === cmGrade; })[0] || d.classes[0];
+  cmGrade = gsel.grade;
+  h += '<div class="wknav">'
+    + d.classes.map(function (g) {
+      return '<button class="wkb' + (g.grade === cmGrade ? ' now' : '') + '" data-cg="' + g.grade + '">'
+        + g.grade + '학년</button>';
+    }).join('')
+    + '<span style="flex:1"></span>'
+    + gsel.classes.map(function (c) {
+      return '<button class="wkb' + (c.cls === cmCls ? ' now' : '') + '" data-cc="' + c.cls + '">'
+        + c.cls + '반</button>';
+    }).join('') + '</div>';
+  var cl = gsel.classes.filter(function (c) { return c.cls === cmCls; })[0] || gsel.classes[0];
+  cmCls = cl.cls;
+  h += cmTable(cl.days, function (x) {
+    return '<td class="c u0" title="' + esc(x.subject + ' / ' + x.teacher) + '">'
+      + '<b>' + esc(x.subject) + '</b><u>' + esc(x.teacher) + '</u></td>';
+  });
+  return h;
+}
+
 /* ── 반별 진도 ── */
 function viewProgress(d) {
   var ps = (d.progress || []).filter(function (p) { return p.total > 0; });
@@ -483,6 +566,7 @@ function render() {
   html += '<div class="head"><span class="date">' + esc(d.date.slice(5).replace('-', '월 ')) + '일</span>'
     + '<span class="dow">' + esc(d.dow) + '요일</span><span class="spacer"></span>'
     + '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>'
+    + '<button class="ico" title="설정" onclick="widgetAPI.openSettings()">⚙</button>'
     + '<button class="ico" title="지금 새로고침" onclick="widgetAPI.refreshNow()">⟳</button>'
     + '<button class="ico" title="수업진도 앱 열기(크롬)" onclick="widgetAPI.openApp()">↗</button></div>';
 
@@ -492,7 +576,7 @@ function render() {
   }
 
   html += '<div class="chips">'
-    + ['today,오늘', 'week,이번주', 'progress,진도', 'work,주간업무'].map(function (s) {
+    + ['today,오늘', 'week,이번주', 'progress,진도', 'work,주간업무', 'comci,컴시간'].map(function (s) {
         var p = s.split(',');
         return '<button class="chip' + (VIEW === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">' + p[1] + '</button>';
       }).join('') + '</div>';
@@ -500,6 +584,7 @@ function render() {
   html += VIEW === 'week' ? viewWeek(d)
     : VIEW === 'progress' ? viewProgress(d)
     : VIEW === 'work' ? viewWork()
+    : VIEW === 'comci' ? viewComci()
     : viewToday(d);
   app.innerHTML = html;
 
@@ -509,6 +594,10 @@ function render() {
       if (b.dataset.doc) { workDoc = b.dataset.doc; workOff = 0; render(); return; }
       if (b.dataset.woff !== undefined) { workOff = Number(b.dataset.woff); render(); return; }
       if (b.id === 'workGet') { widgetAPI.openLogin(); return; }
+      if (b.id === 'cmGet') { widgetAPI.openSettings(); return; }
+      if (b.dataset.cm) { cmMode = b.dataset.cm; render(); return; }
+      if (b.dataset.cg) { cmGrade = Number(b.dataset.cg); cmCls = 1; render(); return; }
+      if (b.dataset.cc) { cmCls = Number(b.dataset.cc); render(); return; }
     });
   });
   var wq = app.querySelector('.wq');
