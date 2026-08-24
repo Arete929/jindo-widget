@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.14.0 -->
+<!-- 파일명: widget.html | @version 1.14.2 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -611,7 +611,13 @@ function countBlocks(bs, q) {
 }
 function countWeek(w, q) {
   var n = w.cal ? countBlocks([w.cal], q) : 0;
-  w.depts.forEach(function (p) { n += countQ(p.name, q) + countBlocks(p.blocks, q); });
+  w.depts.forEach(function (p) {
+    n += countQ(p.name, q);
+    n += p.blocks ? countBlocks(p.blocks, q)
+      : (p.lines || []).reduce(function (a, l) {
+          return a + countQ(l && l.t !== undefined ? l.t : l, q);
+        }, 0);
+  });
   return n;
 }
 
@@ -673,6 +679,11 @@ function viewWork() {
     + '<button class="wkb" id="wkFontUp" title="글자 크게">A+</button></span>'
     + '<button class="wkb" id="workGet" title="다시 가져오기">⟳</button></div>';
 
+  if (!weeks.length && WORK.refreshing) {
+    return h + '</div><div class="empty">주간업무를 새 모양(표·들여쓰기까지)으로 다시 받는 중…'
+      + '<div style="margin-top:8px;font-size:10.5px;opacity:.8">'
+      + '십몇 초쯤 걸립니다. 다 받으면 저절로 나타납니다.</div></div>';
+  }
   if (!weeks.length) {
     return h + '</div><div class="empty">아직 가져온 주간업무가 없습니다.<br>'
       + '<button class="btn" id="workGetBig">지금 가져오기</button>'
@@ -693,7 +704,12 @@ function viewWork() {
 
   if (w.cal) h += wblock(w.cal);
   h += w.depts.map(function (p) {
-    return '<div class="wkdt"><b>' + mk(p.name) + '</b>' + wblocks(p.blocks) + '</div>';
+    // 예전에 받아 둔 자료는 blocks 대신 lines(글줄만)를 들고 있다 — 그것도 그려는 준다
+    var inner = p.blocks ? wblocks(p.blocks)
+      : (p.lines || []).map(function (l) {
+          return '<div class="wkp">' + mk(l && l.t !== undefined ? l.t : l) + '</div>';
+        }).join('');
+    return '<div class="wkdt"><b>' + mk(p.name) + '</b>' + inner + '</div>';
   }).join('') || '<div class="empty">이 주차에는 등록된 업무가 없습니다.</div>';
   return h;
 }

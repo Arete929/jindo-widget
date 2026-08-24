@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.14.1
+// 파일명: main.js | @version 1.14.2
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.14.1 v1.14.0 이 aiusage.js 를 빌드에 안 담아 앱이 아예 안 뜨던 것 수정(package.json build.files)
+// 수정요약: v1.14.2 예전 형식으로 저장된 주간업무를 그대로 읽어 부서 카드가 텅 비던 것 수정(옛 모양이면 자동 재수집)
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -901,6 +901,16 @@ const WORK_REFRESH_MS = 6 * 60 * 60 * 1000;   // 6시간마다 조용히 다시 
 function loadWork() {
   try { return JSON.parse(fs.readFileSync(workFile, 'utf-8')); } catch (e) { return null; }
 }
+/* ★ v1.14 에서 주간업무를 «표까지 살리는 새 모양»으로 바꿨다.
+   예전에 받아 둔 파일은 부서마다 lines(글줄만)를 들고 있어서, 그대로 그리면
+   부서 이름만 있고 속은 텅 빈 카드가 된다. 옛 모양이면 다시 받아야 한다. */
+function workIsOld(w) {
+  if (!w) return true;
+  const wk = ((w.input || [])[0]) || ((w.merged || [])[0]);
+  if (!wk) return true;
+  const d = (wk.depts || [])[0];
+  return !!(d && !d.blocks);
+}
 function saveWork(v) {
   try { fs.writeFileSync(workFile, JSON.stringify(v)); } catch (e) { debugLog(`주간업무 저장 실패: ${e.message}`); }
 }
@@ -921,7 +931,15 @@ async function refreshWork(why) {
   } finally { workFetching = false; }
 }
 
-ipcMain.handle('get-work', () => loadWork());
+ipcMain.handle('get-work', () => {
+  const w = loadWork();
+  // 옛 모양이면 그리지 말고 곧바로 다시 받는다 — 다 받으면 work-changed 로 알려 준다
+  if (workIsOld(w)) {
+    scheduleTask('work', '주간업무', 200, () => refreshWork('옛 모양이라 새로 받음'));
+    return { input: [], merged: [], error: '', refreshing: true };
+  }
+  return w;
+});
 ipcMain.handle('work-fetch', async () => {
   setTask('work', '주간업무', 'busy');
   try { return await refreshWork('직접 요청'); } finally { setTask('work', null, null); }
@@ -989,7 +1007,8 @@ if (!gotLock) {
     // ★실패 기록을 성공처럼 붙들고 있으면, 문제가 고쳐진 뒤에도 옛 오류를 계속 보여준다.
     const w0 = loadWork();
     const age = w0 && w0.fetchedAt ? (Date.now() - new Date(w0.fetchedAt).getTime()) : Infinity;
-    const wBad = !w0 || w0.error || !((w0.input || []).length || (w0.merged || []).length);
+    const wBad = !w0 || w0.error || workIsOld(w0)
+      || !((w0.input || []).length || (w0.merged || []).length);
     if (wBad || age > WORK_REFRESH_MS) {
       scheduleTask('work', '주간업무', 2000, () => refreshWork(wBad ? '이전 실패' : '시작'));
     }
