@@ -23,5 +23,6 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   comciSearch: (name) => ipcRenderer.invoke('comci-search', name),
   comciFetch: () => ipcRenderer.invoke('comci-fetch'),
   comciGet: () => ipcRenderer.invoke('comci-get'),
+  onComciChanged: (cb) => ipcRenderer.on('comci-changed', () => cb()),
   setComciConfig: (cfg) => ipcRenderer.send('comci-config', cfg)
 });

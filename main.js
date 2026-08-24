@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.7.1
+// 파일명: main.js | @version 1.7.2
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.7.1 교사 명단에 컴시간 번호 표시·번호로 저장 / v1.7.0 컴시간알리미 + 설정 창
+// 수정요약: v1.7.2 [버그] 설정에서 교사를 바꿔도 위젯이 예전 자료를 계속 보여주던 문제
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -539,6 +539,11 @@ function getComciConfig() {
   };
 }
 
+// 컴시간 자료나 설정이 바뀌면 위젯이 들고 있던 것을 버리고 다시 읽게 한다.
+// (안 그러면 설정에서 교사를 바꿔도 위젯은 예전 자료를 계속 보여준다)
+function comciChanged() {
+  if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('comci-changed');
+}
 ipcMain.handle('comci-search', async (_e, name) => {
   try {
     debugLog(`컴시간 학교 검색: ${name}`);
@@ -560,6 +565,7 @@ ipcMain.handle('comci-fetch', async () => {
     data.schoolName = cfg.school.name;     // 컴시간이 학교명을 가려서 주므로 고른 이름을 쓴다
     saveComci(data);
     debugLog(`컴시간 받기 완료 — 교사 ${(data.teachers || []).length}명`);
+    comciChanged();
     sendToWidget();
     return { data };
   } catch (e) {
@@ -578,6 +584,7 @@ ipcMain.on('comci-config', (_e, cfg) => {
     teacher: String(cfg.teacher || ''),
     teacherIdx: Number(cfg.teacherIdx) || 0
   } });
+  comciChanged();
   sendToWidget();
 });
 

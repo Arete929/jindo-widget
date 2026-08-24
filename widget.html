@@ -626,6 +626,9 @@ function report() {
   });
 }
 
+// 설정에서 컴시간을 바꾸거나 다시 불러오면, 들고 있던 자료를 버리고 새로 읽는다
+widgetAPI.onComciChanged(function () { CM = null; if (VIEW === 'comci') render(); });
+
 widgetAPI.onData(function (p) {
   STATE = p.data;
   VIEW = p.view || VIEW;
