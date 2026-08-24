@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.7.0
+// 파일명: main.js | @version 1.7.1
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.7.0 컴시간알리미(교사·학급 시간표) + 설정 창 / v1.6.0 주간업무 탭
+// 수정요약: v1.7.1 교사 명단에 컴시간 번호 표시·번호로 저장 / v1.7.0 컴시간알리미 + 설정 창
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -534,7 +534,8 @@ function getComciConfig() {
     school: s.school || null,
     wantTeacher: s.wantTeacher === undefined ? true : !!s.wantTeacher,
     wantClasses: !!s.wantClasses,
-    teacher: s.teacher || ''
+    teacher: s.teacher || '',
+    teacherIdx: Number(s.teacherIdx) || 0
   };
 }
 
@@ -574,7 +575,8 @@ ipcMain.on('comci-config', (_e, cfg) => {
     school: cfg.school || null,
     wantTeacher: !!cfg.wantTeacher,
     wantClasses: !!cfg.wantClasses,
-    teacher: String(cfg.teacher || '')
+    teacher: String(cfg.teacher || ''),
+    teacherIdx: Number(cfg.teacherIdx) || 0
   } });
   sendToWidget();
 });

@@ -1,4 +1,4 @@
-<!-- 파일명: settings.html | @version 1.7.0 -->
+<!-- 파일명: settings.html | @version 1.7.1 -->
 <!-- 위젯 설정 창 — 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기 등)을 여기서 한다. -->
 <!doctype html>
 <html lang="ko">
@@ -47,8 +47,19 @@
   .list div:hover { background: #f2f0ff; }
   .list div.sel { background: #e9e5ff; font-weight: 800; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-  .tname { display: flex; gap: 5px; flex-wrap: wrap; max-height: 116px; overflow-y: auto; }
-  .tname button { padding: 4px 9px; font-size: 11.5px; }
+  /* 교사 명단 — 컴시간 앱처럼 번호를 붙여 세로로 (가려진 이름만으로는 구분이 안 된다) */
+  .tname { width: 100%; max-height: 210px; overflow-y: auto;
+           border: 1px solid var(--border); border-radius: 8px; }
+  .tname .tr { display: flex; align-items: center; gap: 9px; padding: 7px 11px;
+               cursor: pointer; border-bottom: 1px solid #f1eff9; font-size: 13px; }
+  .tname .tr:last-child { border-bottom: 0; }
+  .tname .tr:hover { background: #f6f4ff; }
+  .tname .tr.sel { background: #e9e5ff; font-weight: 800; }
+  .tname .no { min-width: 22px; text-align: right; color: var(--sub); font-weight: 700; font-size: 12px; }
+  .tname .tr.sel .no { color: var(--energy1); }
+  .tname .dot { margin-left: auto; width: 15px; height: 15px; border-radius: 999px;
+                border: 2px solid #cfcae6; }
+  .tname .tr.sel .dot { border-color: var(--energy1); background: radial-gradient(var(--energy1) 42%, #fff 46%); }
   .foot { font-size: 11.5px; color: var(--sub); text-align: center; margin-top: 4px; }
 </style>
 </head>
@@ -85,7 +96,7 @@
   <div class="hint">
     한 번 불러오면 위젯에 저장되어 <b>인터넷이 없어도 계속 보입니다.</b>
     시간표가 바뀌면 다시 불러오세요.<br>
-    교사 이름은 컴시간이 <b>김*환</b>처럼 가려서 내려줍니다 — 그대로 표시합니다.
+    교사 이름은 컴시간이 <b>김*환</b>처럼 가려서 내려줍니다.<br>같은 이름으로 가려지는 분이 있을 수 있어 <b>컴시간 앱과 같은 번호</b>를 함께 보여줍니다.
   </div>
 </section>
 
@@ -140,7 +151,7 @@
 <div class="foot">설정은 바로 저장됩니다.</div>
 
 <script>
-var CFG = { school: null, wantTeacher: true, wantClasses: false, teacher: '' };
+var CFG = { school: null, wantTeacher: true, wantClasses: false, teacher: '', teacherIdx: 0 };
 var UI = { size: 'medium', opacity: 1, alwaysOnTop: true, autoLaunch: false, version: '', loggedIn: false };
 var TIMETABLE = null, found = [];
 
@@ -163,16 +174,30 @@ function paint() {
   $('wantTeacher').className = CFG.wantTeacher ? 'on' : '';
   $('wantClasses').className = CFG.wantClasses ? 'on' : '';
 
-  // 교사 고르기 — 불러온 뒤에만 목록이 있다
+  // 교사 고르기 — 불러온 뒤에만 목록이 있다.
+  // 컴시간이 이름을 «김*호» 처럼 가려서 주기 때문에 이름만으로는 서로 구분이 안 될 수 있다
+  // (예: 김진호·김민호 -> 둘 다 김*호). 그래서 컴시간 앱처럼 번호를 붙이고, 저장도 번호로 한다.
   var names = (TIMETABLE && TIMETABLE.teachers) || [];
   $('teacherRow').style.display = (CFG.wantTeacher && names.length) ? '' : 'none';
   $('teacherList').innerHTML = names.map(function (t) {
-    return '<button data-tname="' + esc(t.name) + '" class="' + (CFG.teacher === t.name ? 'on' : '')
-      + '">' + esc(t.name) + '</button>';
+    var on = (CFG.teacherIdx === t.i);
+    return '<div class="tr' + (on ? ' sel' : '') + '" data-ti="' + t.i + '">'
+      + '<span class="no">' + t.i + '</span><span>' + esc(t.name) + '</span>'
+      + '<span class="dot"></span></div>';
   }).join('');
-  $('teacherList').querySelectorAll('button').forEach(function (b) {
-    b.onclick = function () { CFG.teacher = b.dataset.tname; save(); paint(); };
+  $('teacherList').querySelectorAll('.tr').forEach(function (el) {
+    el.onclick = function () {
+      CFG.teacherIdx = Number(el.dataset.ti);
+      var f = names.filter(function (x) { return x.i === CFG.teacherIdx; })[0];
+      CFG.teacher = f ? f.name : '';
+      save(); paint();
+    };
   });
+  var picked = names.filter(function (x) { return x.i === CFG.teacherIdx; })[0];
+  if (picked) {
+    var sel = $('teacherList').querySelector('.tr.sel');
+    if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest' });
+  }
 
   $('fetchBtn').disabled = !CFG.school || (!CFG.wantTeacher && !CFG.wantClasses);
   if (TIMETABLE && TIMETABLE.fetchedAt) {

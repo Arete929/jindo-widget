@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.7.0 -->
+<!-- 파일명: widget.html | @version 1.7.1 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -501,7 +501,10 @@ function viewComci() {
     + '<button class="wkb" id="cmGet" title="설정에서 다시 불러오기">⚙</button></div>';
 
   if (cmMode === 'teacher') {
-    var me = d.byTeacher.filter(function (t) { return t.name === cfg.teacher; })[0] || d.byTeacher[0];
+    // 저장은 번호로 한다 — 가려진 이름은 겹칠 수 있다(김진호·김민호 -> 둘 다 김*호)
+    var me = d.byTeacher.filter(function (t) { return t.i === cfg.teacherIdx; })[0]
+      || d.byTeacher.filter(function (t) { return t.name === cfg.teacher; })[0]
+      || d.byTeacher[0];
     h += '<div class="wknav" style="margin-bottom:5px"><span class="wklab" style="text-align:left">'
       + esc(me.name) + ' 선생님<small>설정에서 내 이름을 바꿀 수 있어요</small></span></div>';
     h += cmTable(me.days, function (x) {
