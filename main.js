@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.8.2
+// 파일명: main.js | @version 1.9.0
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.8.2 업데이트 자동 확인 6시간→30분 + 절전 해제·잠금 해제 때도 확인 / v1.8.1 만든 사람 표시
+// 수정요약: v1.9.0 ★주간업무를 위젯이 직접 받는다(드라이브 권한·로그인 불필요) / v1.8.2 업데이트 확인 30분
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -705,17 +705,39 @@ ipcMain.on('refresh-now', () => pollOnce());
 ipcMain.on('open-login', () => startLogin());
 ipcMain.on('open-timetable', () => openTimetableWindow());
 // 이전주·다음주 — 숨은 창의 앱에게 그 주 자료를 물어본다
-// 주간업무계획 — 앱이 저장해 둔 것을 그대로 가져온다
-ipcMain.handle('get-work', async () => {
-  const win = getWorkerWindow();
+/* ===================== 주간업무계획 ===================== */
+// ★드라이브 권한이 필요 없다. 구글 문서를 «링크 공유» 주소로 그냥 받아온다.
+//   (drive.readonly 는 구글이 «제한된 권한»이라 검증 안 받은 앱엔 안 내준다 — 계속 403 이 났다)
+const worknotice = require('./worknotice.js');
+const workFile = path.join(userDataPath, 'work.json');
+const WORK_REFRESH_MS = 6 * 60 * 60 * 1000;   // 6시간마다 조용히 다시 받는다
+
+function loadWork() {
+  try { return JSON.parse(fs.readFileSync(workFile, 'utf-8')); } catch (e) { return null; }
+}
+function saveWork(v) {
+  try { fs.writeFileSync(workFile, JSON.stringify(v)); } catch (e) { debugLog(`주간업무 저장 실패: ${e.message}`); }
+}
+let workFetching = false;
+async function refreshWork(why) {
+  if (workFetching) return loadWork();
+  workFetching = true;
   try {
-    return await win.webContents.executeJavaScript(
-      'window.__widgetWork ? window.__widgetWork() : null', true);
+    debugLog(`주간업무 받기 (${why})`);
+    const w = await worknotice.fetchWork();
+    saveWork(w);
+    debugLog(`주간업무 받기 완료 — 입력본 ${(w.input || []).length}주 / 합본 ${(w.merged || []).length}주` + (w.error ? ` · ${w.error}` : ''));
+    if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('work-changed');
+    return w;
   } catch (e) {
-    debugLog(`주간업무 가져오기 실패: ${e && e.message ? e.message : e}`);
-    return null;
-  }
-});
+    debugLog(`주간업무 받기 실패: ${e && e.message ? e.message : e}`);
+    return loadWork();
+  } finally { workFetching = false; }
+}
+
+ipcMain.handle('get-work', () => loadWork());
+ipcMain.handle('work-fetch', async () => await refreshWork('직접 요청'));
+
 ipcMain.handle('get-week', async (_e, off) => {
   const win = getWorkerWindow();
   try {
@@ -765,6 +787,12 @@ if (!gotLock) {
 
     checkForUpdates();
     setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
+
+    // 주간업무 — 받아둔 게 오래됐으면 조용히 다시 받는다 (로그인·크롬 필요 없다)
+    const w0 = loadWork();
+    const age = w0 && w0.fetchedAt ? (Date.now() - new Date(w0.fetchedAt).getTime()) : Infinity;
+    if (age > WORK_REFRESH_MS) setTimeout(() => refreshWork('시작'), 8000);
+    setInterval(() => refreshWork('주기'), WORK_REFRESH_MS);
     // 절전에서 깨거나 잠금을 풀었을 때도 한 번 본다 (그 사이 새 버전이 나왔을 수 있다)
     try {
       powerMonitor.on('resume', () => { debugLog('절전 해제 — 업데이트 확인'); checkForUpdates(); });

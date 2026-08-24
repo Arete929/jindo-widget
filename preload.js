@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   openSettings: () => ipcRenderer.send('open-settings'),
   getWeek: (off) => ipcRenderer.invoke('get-week', off),
   getWork: () => ipcRenderer.invoke('get-work'),
+  workFetch: () => ipcRenderer.invoke('work-fetch'),
+  onWorkChanged: (cb) => ipcRenderer.on('work-changed', () => cb()),
   setView: (view) => ipcRenderer.send('set-view', view),
   reportHeight: (h) => ipcRenderer.send('content-height', h),
 

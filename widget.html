@@ -400,9 +400,9 @@ function viewWork() {
 
   if (!weeks.length) {
     return h + '<div class="empty">아직 가져온 주간업무가 없습니다.<br>'
-      + '<button class="btn" onclick="widgetAPI.openLogin()">지금 가져오기</button>'
+      + '<button class="btn" onclick="widgetAPI.workFetch().then(function(d){ WORK = d || {empty:true}; render(); })">지금 가져오기</button>'
       + '<div style="margin-top:8px;font-size:10.5px;color:#6f7885">'
-      + '크롬이 열립니다. 구글 로그인하면 문서를 읽어옵니다.'
+      + '구글 문서에서 바로 받아옵니다. 로그인은 필요 없습니다.'
       + (WORK.error ? '<br>' + esc(WORK.error) : '') + '</div></div>';
   }
 
@@ -633,7 +633,9 @@ function render() {
       if (b.dataset.off !== undefined) { WK = null; loadWeek(Number(b.dataset.off)); return; }
       if (b.dataset.doc) { workDoc = b.dataset.doc; workOff = 0; render(); return; }
       if (b.dataset.woff !== undefined) { workOff = Number(b.dataset.woff); render(); return; }
-      if (b.id === 'workGet') { widgetAPI.openLogin(); return; }
+      if (b.id === 'workGet') { WORK = null; workBusy = true; render();
+        widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
+        return; }
       if (b.id === 'cmGet') { widgetAPI.openSettings(); return; }
       if (b.dataset.cm) { cmMode = b.dataset.cm; render(); return; }
       if (b.dataset.cg) { cmGrade = Number(b.dataset.cg); cmCls = 1; render(); return; }
@@ -665,6 +667,7 @@ function report() {
 
 // 설정에서 컴시간을 바꾸거나 다시 불러오면, 들고 있던 자료를 버리고 새로 읽는다
 widgetAPI.onComciChanged(function () { CM = null; if (VIEW === 'comci') render(); });
+widgetAPI.onWorkChanged(function () { WORK = null; if (VIEW === 'work') render(); });
 
 widgetAPI.onData(function (p) {
   STATE = p.data;
