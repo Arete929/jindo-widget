@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.10.0 -->
+<!-- 파일명: widget.html | @version 1.12.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -14,6 +14,48 @@
     --accent: #ff8b3d;
     --now: #35c98b;
   }
+  /* ── 테마 여섯 가지 ──
+     :root 에 data-theme 을 붙여서 바꾼다. 색 이름은 그대로 두고 값만 갈아끼우므로
+     화면 코드는 하나도 손대지 않아도 된다. */
+  :root[data-theme="ocean"] {
+    --bg: #0e1a20; --card: #152630; --line: #1f3947;
+    --fg: #e8f4f8; --dim: #8fb0bd; --accent: #2bb3d6; --now: #3ecf9e;
+  }
+  :root[data-theme="forest"] {
+    --bg: #111a14; --card: #18271d; --line: #22392a;
+    --fg: #e9f4ec; --dim: #93b39c; --accent: #4bbf72; --now: #8fd6a8;
+  }
+  :root[data-theme="sunset"] {
+    --bg: #1c140f; --card: #28190f; --line: #3a2617;
+    --fg: #f7ece4; --dim: #bfa593; --accent: #ff9a4d; --now: #ffc46b;
+  }
+  :root[data-theme="plum"] {
+    --bg: #180f16; --card: #251522; --line: #37202f;
+    --fg: #f6eaf2; --dim: #bb96ad; --accent: #e267a6; --now: #8fd4c0;
+  }
+  :root[data-theme="slate"] {
+    --bg: #12161c; --card: #1a2029; --line: #28313d;
+    --fg: #e9eef5; --dim: #93a1b3; --accent: #6f9ed8; --now: #5ecfae;
+  }
+  /* 밝은 화면을 좋아하는 분을 위해 하나 — 글자색·칸색을 뒤집는다 */
+  :root[data-theme="paper"] {
+    --bg: #f4f4fa; --card: #ffffff; --line: #dedbee;
+    --fg: #1f1b35; --dim: #6b6a86; --accent: #6a4bd6; --now: #1f8a5f;
+  }
+  :root[data-theme="paper"] .gr th, :root[data-theme="paper"] .gr td { border-color: #e6e3f2; }
+  :root[data-theme="paper"] .gr thead th,
+  :root[data-theme="paper"] .gr td.pc, :root[data-theme="paper"] .gr th.pc { background: #efedf9; }
+  :root[data-theme="paper"] .note { background: #fff6e0; color: #8a6414; }
+  :root[data-theme="paper"] .lesson.now { background: #e6f7ef; }
+  :root[data-theme="paper"] .ico:hover { background: #e9e6f7; }
+  :root[data-theme="paper"] .wq, :root[data-theme="paper"] .upd.busy { background: #eeecf8; }
+  :root[data-theme="paper"] .gr td.cal { background: #eceaf6; color: #5b5a75; }
+  :root[data-theme="paper"] .gr td.blk { background: #f0e8de; color: #8a6a4a; }
+  :root[data-theme="paper"] .gr td.out { background: #f0eff7; color: #9a97ad; }
+  :root[data-theme="paper"] .acc .cd { background: #e6e3f2; color: #5b5a75; }
+  :root[data-theme="paper"] .mld span, :root[data-theme="paper"] .wkwhen { background: #eeecf8; color: #3f3b60; }
+  :root[data-theme="paper"] .foot { color: #9a97ad; }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     background: var(--bg);
@@ -225,7 +267,7 @@
 <div id="app"><div class="empty">불러오는 중…</div></div>
 
 <script>
-var STATE = null, VIEW = 'today', SCALE = 1, VER = '', UPD = null, LASTTT = 'today';
+var STATE = null, VIEW = 'today', SCALE = 1, VER = '', UPD = null, LASTTT = 'today', THEME = '';
 
 function esc(s) {
   return String(s == null ? '' : s)
@@ -833,6 +875,11 @@ widgetAPI.onData(function (p) {
   VIEW = p.view || VIEW;
   VER = p.version || '';
   UPD = p.update || null;
+  if (p.theme !== undefined && p.theme !== THEME) {
+    THEME = p.theme || '';
+    if (THEME) document.documentElement.dataset.theme = THEME;
+    else delete document.documentElement.dataset.theme;
+  }
   if (p.scale && p.scale !== SCALE) {
     SCALE = p.scale;
     document.body.style.zoom = SCALE;

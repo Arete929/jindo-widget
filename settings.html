@@ -1,4 +1,4 @@
-<!-- 파일명: settings.html | @version 1.10.1 -->
+<!-- 파일명: settings.html | @version 1.12.0 -->
 <!-- 위젯 설정 창 — 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기 등)을 여기서 한다. -->
 <!doctype html>
 <html lang="ko">
@@ -144,6 +144,15 @@
     </div>
   </div>
   <div class="row">
+    <label class="lb">테마</label>
+    <div class="chips" id="thRow">
+      <button data-th="">기본</button><button data-th="ocean">바다</button>
+      <button data-th="forest">숲</button><button data-th="sunset">노을</button>
+      <button data-th="plum">자두</button><button data-th="slate">밤</button>
+      <button data-th="paper">종이</button>
+    </div>
+  </div>
+  <div class="row">
     <label class="lb">투명도</label>
     <div class="chips" id="opRow">
       <button data-op="1">100%</button><button data-op="0.9">90%</button>
@@ -250,6 +259,9 @@ function paint() {
   $('opRow').querySelectorAll('button').forEach(function (b) {
     b.className = (Number(b.dataset.op) === Number(UI.opacity)) ? 'on' : '';
   });
+  $('thRow').querySelectorAll('button').forEach(function (b) {
+    b.className = (b.dataset.th === (UI.theme || '')) ? 'on' : '';
+  });
   $('aotBtn').className = UI.alwaysOnTop ? 'on' : '';
   $('autoBtn').className = UI.autoLaunch ? 'on' : '';
   $('loginState').innerHTML = UI.loggedIn
@@ -312,6 +324,9 @@ $('opRow').querySelectorAll('button').forEach(function (b) {
 $('aotBtn').onclick = function () { UI.alwaysOnTop = !UI.alwaysOnTop; widgetAPI.setUi({ alwaysOnTop: UI.alwaysOnTop }); paint(); };
 $('autoBtn').onclick = function () { UI.autoLaunch = !UI.autoLaunch; widgetAPI.setUi({ autoLaunch: UI.autoLaunch }); paint(); };
 $('posBtn').onclick = function () { widgetAPI.setUi({ resetPos: true }); };
+$('thRow').querySelectorAll('button').forEach(function (b) {
+  b.onclick = function () { UI.theme = b.dataset.th; widgetAPI.setUi({ theme: UI.theme }); paint(); };
+});
 
 /* ── 급식 학교 (나이스) ── */
 // 컴시간과 따로 고른다. 같은 이름의 학교가 여러 곳일 수 있어서 교육청·종류를 함께 보여준다.

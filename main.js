@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.11.1
+// 파일명: main.js | @version 1.12.0
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.11.1 업데이트 확인 10분→2분 / v1.11.0 SSL 검사 망 대응
+// 수정요약: v1.12.0 테마 7가지 · 저장된 «실패»를 붙들고 있던 문제(주간업무·학사일정) / v1.11.1 확인 2분
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -100,6 +100,7 @@ const SIZES = { small: 0.85, medium: 1, large: 1.2 };
 function getScale() { const s = loadState().size; return SIZES[s] ? s : 'medium'; }
 function getOpacity() { const o = loadState().opacity; return typeof o === 'number' ? o : 1; }
 function getAlwaysOnTop() { const v = loadState().alwaysOnTop; return v === undefined ? true : !!v; }
+function getTheme() { return loadState().theme || ''; }
 function getView() { const v = loadState().view; return ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal'].includes(v) ? v : 'today'; }
 
 /* ===================== 자동 업데이트 ===================== */
@@ -233,6 +234,7 @@ function sendToWidget() {
     view: getView(),
     scale: SIZES[getScale()],
     version: app.getVersion(),
+    theme: getTheme(),
     update: { state: updateState, version: updateVersion }
   };
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
@@ -694,6 +696,7 @@ ipcMain.handle('get-settings', () => ({
     size: getScale(), opacity: getOpacity(), alwaysOnTop: getAlwaysOnTop(),
     autoLaunch: app.getLoginItemSettings().openAtLogin,
     version: app.getVersion(),
+    theme: getTheme(),
     academicSheet: loadState().academicSheet || academic.DEFAULT_SHEET,
     neis: loadState().neis || null,
     meals: loadMeals(),
@@ -711,6 +714,7 @@ ipcMain.on('set-ui', (_e, v) => {
     saveState({ neis: v.neis });
     debugLog(`급식 학교 지정: ${v.neis.name} (${v.neis.atpt}/${v.neis.code})`);
   }
+  if (v.theme !== undefined) { saveState({ theme: String(v.theme || '') }); sendToWidget(); }
   if (v.academicSheet !== undefined) {
     saveState({ academicSheet: String(v.academicSheet || '') });
     debugLog(`학사일정 시트 주소 변경: ${v.academicSheet}`);
@@ -880,16 +884,23 @@ if (!gotLock) {
     checkForUpdates();
     setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
 
-    // 주간업무 — 받아둔 게 오래됐으면 조용히 다시 받는다 (로그인·크롬 필요 없다)
+    // 주간업무 — 오래됐거나 «실패로 저장된» 것이면 다시 받는다.
+    // ★실패 기록을 성공처럼 붙들고 있으면, 문제가 고쳐진 뒤에도 옛 오류를 계속 보여준다.
     const w0 = loadWork();
     const age = w0 && w0.fetchedAt ? (Date.now() - new Date(w0.fetchedAt).getTime()) : Infinity;
-    if (age > WORK_REFRESH_MS) setTimeout(() => refreshWork('시작'), 8000);
+    const wBad = !w0 || w0.error || !((w0.input || []).length || (w0.merged || []).length);
+    if (wBad || age > WORK_REFRESH_MS) setTimeout(() => refreshWork(wBad ? '이전 실패' : '시작'), 8000);
     setInterval(() => refreshWork('주기'), WORK_REFRESH_MS);
+
+    // 학사일정 — 받아둔 것이 없거나 실패로 남아 있으면 한 번 받아 둔다
+    const a0 = loadAcademic();
+    if (!a0 || a0.error || !((a0.months || []).length)) setTimeout(() => refreshAcademic(), 16000);
 
     // 급식 — 이번 주 것이 없거나 오래됐으면 조용히 받는다
     const m0 = loadMeals();
     const mAge = m0 && m0.fetchedAt ? (Date.now() - new Date(m0.fetchedAt).getTime()) : Infinity;
-    if (mAge > 12 * 60 * 60 * 1000) setTimeout(() => refreshMeals(), 12000);
+    const mBad = !m0 || m0.error || !((m0.meals || []).length);
+    if (mBad || mAge > 12 * 60 * 60 * 1000) setTimeout(() => refreshMeals(), 12000);
     setInterval(() => refreshMeals(), 12 * 60 * 60 * 1000);
     // 절전에서 깨거나 잠금을 풀었을 때도 한 번 본다 (그 사이 새 버전이 나왔을 수 있다)
     try {
