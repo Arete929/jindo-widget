@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   setUi: (v) => ipcRenderer.send('set-ui', v),
   checkUpdate: () => ipcRenderer.send('check-update'),
+  installUpdate: () => ipcRenderer.send('install-update'),
   openLog: () => ipcRenderer.send('open-log'),
 
   /* 컴시간알리미 */

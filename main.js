@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.7.3
+// 파일명: main.js | @version 1.8.0
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.7.3 교사·학급을 늘 함께 받아둔다(학급 칩이 안 보이던 문제) / v1.7.2 설정 바꿔도 안 바뀌던 문제
+// 수정요약: v1.8.0 위젯 맨 위에 «눌러서 설치» 업데이트 띠 / v1.7.3 교사·학급 함께 저장
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -126,6 +126,7 @@ function setUpdateState(state, version) {
   updateState = state;
   if (version) updateVersion = version;
   if (rebuildTrayMenu) rebuildTrayMenu();
+  sendToWidget();   // 띠를 바로 띄운다
 }
 
 autoUpdater.on('update-available', (info) => {
@@ -229,7 +230,8 @@ function sendToWidget() {
     data: lastData,
     view: getView(),
     scale: SIZES[getScale()],
-    version: app.getVersion()
+    version: app.getVersion(),
+    update: { state: updateState, version: updateVersion }
   };
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
   if (timetableWin && !timetableWin.isDestroyed()) timetableWin.webContents.send('jindo-data', payload);
@@ -628,6 +630,7 @@ ipcMain.on('set-ui', (_e, v) => {
 ipcMain.on('check-update', () => checkForUpdates(true));
 ipcMain.on('open-log', () => shell.openPath(debugLogFile));
 ipcMain.on('open-settings', () => openSettingsWindow());
+ipcMain.on('install-update', () => installUpdateNow());
 
 /* ===================== 트레이 ===================== */
 function createTray() {

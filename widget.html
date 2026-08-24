@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.7.1 -->
+<!-- 파일명: widget.html | @version 1.8.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -37,6 +37,18 @@
     font-size: 13px; cursor: pointer; padding: 2px 4px; border-radius: 5px;
   }
   .ico:hover { background: #262c35; color: var(--fg); }
+
+  /* ── 업데이트 띠 (맨 위) ── */
+  .upd {
+    -webkit-app-region: no-drag;
+    display: block; width: 100%; margin-bottom: 8px;
+    padding: 7px 10px; border-radius: 7px; border: 0;
+    font-size: 11.5px; font-weight: 800; font-family: inherit;
+    text-align: center; line-height: 1.3;
+  }
+  .upd.ready { background: var(--accent); color: #1a1206; cursor: pointer; }
+  .upd.ready:hover { filter: brightness(1.08); }
+  .upd.busy { background: #23282f; color: var(--dim); cursor: default; }
 
   /* ── 학사일정 메모 ── */
   .note {
@@ -183,7 +195,7 @@
 <div id="app"><div class="empty">불러오는 중…</div></div>
 
 <script>
-var STATE = null, VIEW = 'today', SCALE = 1, VER = '';
+var STATE = null, VIEW = 'today', SCALE = 1, VER = '', UPD = null;
 
 function esc(s) {
   return String(s == null ? '' : s)
@@ -559,14 +571,29 @@ function viewProgress(d) {
   }).join('');
 }
 
+/* 업데이트가 준비되면 맨 위에 눌러서 설치할 수 있는 띠를 띄운다.
+   윈도우 알림과 트레이 메뉴만으로는 계속 놓치기 쉬워서 화면에 직접 둔다. */
+function updBar() {
+  if (!UPD || !UPD.state) return '';
+  if (UPD.state === 'ready') {
+    return '<button class="upd ready" onclick="widgetAPI.installUpdate()">'
+      + '🆕 v' + esc(UPD.version || '') + ' 준비됨 · 눌러서 설치'
+      + '</button>';
+  }
+  if (UPD.state === 'available') {
+    return '<div class="upd busy">⬇ 새 버전 v' + esc(UPD.version || '') + ' 내려받는 중…</div>';
+  }
+  return '';
+}
+
 function render() {
   var app = document.getElementById('app');
-  if (!STATE) { app.innerHTML = '<div class="empty">불러오는 중…</div>'; return report(); }
+  if (!STATE) { app.innerHTML = updBar() + '<div class="empty">불러오는 중…</div>'; return report(); }
 
   if (STATE.needLogin) {
     // 구글이 앱 안 브라우저 로그인을 막기 때문에, 크롬을 열어 거기서 로그인하고
     // 결과만 위젯이 넘겨받는다 (main.js 의 startLogin 참고).
-    app.innerHTML = '<div class="empty">수업진도에 로그인해 주세요.'
+    app.innerHTML = updBar() + '<div class="empty">수업진도에 로그인해 주세요.'
       + '<br><button class="btn" onclick="widgetAPI.openLogin()">크롬으로 로그인</button>'
       + '<div style="margin-top:9px;font-size:10.5px;line-height:1.5;color:#6f7885">'
       + '크롬 탭이 열립니다. 거기서 구글 로그인하면<br>'
@@ -574,7 +601,7 @@ function render() {
     return report();
   }
 
-  var d = STATE, html = '';
+  var d = STATE, html = updBar();
   html += '<div class="head"><span class="date">' + esc(d.date.slice(5).replace('-', '월 ')) + '일</span>'
     + '<span class="dow">' + esc(d.dow) + '요일</span><span class="spacer"></span>'
     + '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>'
@@ -642,6 +669,7 @@ widgetAPI.onData(function (p) {
   STATE = p.data;
   VIEW = p.view || VIEW;
   VER = p.version || '';
+  UPD = p.update || null;
   if (p.scale && p.scale !== SCALE) {
     SCALE = p.scale;
     document.body.style.zoom = SCALE;
