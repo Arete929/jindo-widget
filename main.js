@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.11.0
+// 파일명: main.js | @version 1.11.1
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.11.0 ★SSL 검사 망에서 급식·주간업무·학사일정이 «self signed certificate» 로 막히던 문제
+// 수정요약: v1.11.1 업데이트 확인 10분→2분 / v1.11.0 SSL 검사 망 대응
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -20,7 +20,9 @@ const APP_URL = 'https://jindo-dashboard.web.app/';
 const APP_ORIGIN = 'https://jindo-dashboard.web.app';
 const PARTITION = 'persist:jindo';
 const POLL_INTERVAL_MS = 60 * 1000;          // 1분마다 값 갱신
-const UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000;   // 10분마다 새 버전 확인
+// 2분마다 새 버전 확인. 확인은 latest.yml(350바이트 남짓) 하나를 받는 것이 전부라
+// 이 정도 주기도 부담이 없다 — 새 버전이 나오면 사실상 바로 뜬다.
+const UPDATE_CHECK_INTERVAL_MS = 2 * 60 * 1000;
 const RELEASES_PAGE_URL = 'https://github.com/Arete929/jindo-widget/releases/latest';
 
 const userDataPath = app.getPath('userData');
