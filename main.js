@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.10.1
+// 파일명: main.js | @version 1.10.2
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.10.1 급식 학교를 따로 검색·지정 · 학사일정 시트 주소 설정 / v1.10.0 학사일정·급식 탭
+// 수정요약: v1.10.2 업데이트 확인 10분·트레이 클릭 때도 확인 · 로그가 조용히 끊기던 문제
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -20,7 +20,7 @@ const APP_URL = 'https://jindo-dashboard.web.app/';
 const APP_ORIGIN = 'https://jindo-dashboard.web.app';
 const PARTITION = 'persist:jindo';
 const POLL_INTERVAL_MS = 60 * 1000;          // 1분마다 값 갱신
-const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;   // 30분마다 새 버전 확인
+const UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000;   // 10분마다 새 버전 확인
 const RELEASES_PAGE_URL = 'https://github.com/Arete929/jindo-widget/releases/latest';
 
 const userDataPath = app.getPath('userData');
@@ -28,20 +28,20 @@ const stateFile = path.join(userDataPath, 'widget-state.json');
 const debugLogFile = path.join(userDataPath, 'debug.log');
 const MAX_DEBUG_LOG_BYTES = 300 * 1024;
 
-let debugLogTrimming = false;
+// 로그는 동기로 쓴다. 예전엔 비동기(appendFile)였는데 어느 순간부터 조용히 실패해
+// 몇 시간치 기록이 통째로 비었다 — 진단이 안 남으면 원인을 못 찾는다.
+// 한 분에 몇 줄뿐이라 동기로 써도 부담이 없다.
 function debugLog(msg) {
-  const line = `[${new Date().toISOString()}] ${msg}\n`;
-  fs.appendFile(debugLogFile, line, (err) => {
-    if (err || debugLogTrimming) return;
-    fs.stat(debugLogFile, (statErr, stat) => {
-      if (statErr || !stat || stat.size <= MAX_DEBUG_LOG_BYTES) return;
-      debugLogTrimming = true;
-      fs.readFile(debugLogFile, 'utf-8', (readErr, content) => {
-        if (!readErr) fs.writeFile(debugLogFile, content.slice(-MAX_DEBUG_LOG_BYTES / 2), () => { debugLogTrimming = false; });
-        else debugLogTrimming = false;
-      });
-    });
-  });
+  const line = `[${new Date().toISOString()}] ${msg}
+`;
+  try {
+    fs.appendFileSync(debugLogFile, line);
+    const st = fs.statSync(debugLogFile);
+    if (st.size > MAX_DEBUG_LOG_BYTES) {
+      const keep = fs.readFileSync(debugLogFile, 'utf-8').slice(-MAX_DEBUG_LOG_BYTES / 2);
+      fs.writeFileSync(debugLogFile, keep);
+    }
+  } catch (e) { /* 로그 때문에 앱이 멈추지는 않게 */ }
 }
 
 // 전체 앱을 브라우저로 열 때 — 기본 브라우저(이 PC 는 웨일)가 아니라 크롬을 쓴다.
@@ -783,6 +783,7 @@ function createTray() {
   tray.setContextMenu(buildMenu());
   rebuildTrayMenu = () => tray.setContextMenu(buildMenu());
   tray.on('click', () => {
+    checkForUpdates();   // 켜볼 때 한 번 — 새 버전이 있으면 바로 띠가 뜬다
     if (!widgetWin || widgetWin.isDestroyed()) { createWidgetWindow(); return; }
     widgetWin.isVisible() ? widgetWin.hide() : widgetWin.show();
   });
@@ -866,7 +867,7 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
-    debugLog('=== 시작 ===');
+    debugLog(`=== 시작 === v${app.getVersion()} · 로그: ${debugLogFile}`);
     createWidgetWindow();
     createTray();
     getWorkerWindow();
