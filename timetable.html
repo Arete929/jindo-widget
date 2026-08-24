@@ -1,4 +1,4 @@
-<!-- 파일명: timetable.html | @version 1.14.0 -->
+<!-- 파일명: timetable.html | @version 1.15.0 -->
 <!-- 주간 시간표 «크게 보기» 창 — 앱의 표를 최대한 그대로 옮겼다. 색·구조 모두 앱과 같은 값.
      이전주·다음주로 옮겨 볼 수 있고, 위아래로 펼쳐서 세 주를 한 번에 볼 수도 있다. -->
 <!doctype html>
@@ -291,7 +291,7 @@ function render() {
   if (nextOn) body += blockHtml(OFF + 1, '다음주');
 
   box.innerHTML = head + nav + body
-    + '<div class="foot">수업진도 위젯 · 오늘 ' + esc((DATA && DATA.date) || '') + '</div>';
+    + '<div class="foot">혜원 데스크 · 오늘 ' + esc((DATA && DATA.date) || '') + '</div>';
 }
 
 widgetAPI.onData(function (p) {

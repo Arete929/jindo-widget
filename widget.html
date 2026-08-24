@@ -1,9 +1,9 @@
-<!-- 파일명: widget.html | @version 1.14.3 -->
+<!-- 파일명: widget.html | @version 1.15.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8" />
-<title>수업진도</title>
+<title>혜원 데스크</title>
 <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <style>
@@ -88,7 +88,20 @@
   .ico:hover { background: var(--card2); color: var(--fg); }
 
   /* ── AI 사용량 띠 (맨 위) ── */
-  .usg { display: flex; gap: 6px; margin-bottom: 8px; }
+  /* ── 제목 줄 ──
+     창틀이 없는 위젯이라 «잡고 끌 곳»이 꼭 있어야 한다.
+     사용량 띠가 맨 위로 오면서 끌 자리가 사라져 위젯을 못 옮기게 됐었다. */
+  .bar {
+    display: flex; align-items: center; gap: 6px;
+    -webkit-app-region: drag; cursor: move;
+    padding: 0 2px 6px;
+  }
+  .ttl { font-size: 11px; font-weight: 800; letter-spacing: .4px; color: var(--dim); }
+  .grip { margin-left: auto; font-size: 10px; letter-spacing: 2px; color: var(--dim); opacity: .55; }
+
+  /* 사용량 띠의 빈 곳으로도 끌 수 있게 — 단, 단추는 눌려야 한다 */
+  .usg { display: flex; gap: 6px; margin-bottom: 8px; -webkit-app-region: drag; }
+  .usg button { -webkit-app-region: no-drag; }
   .usg .box {
     flex: 1; min-width: 0; background: var(--card); border-radius: 8px; padding: 6px 8px;
   }
@@ -1125,6 +1138,11 @@ function taskBar() {
   }).join('');
 }
 
+/* 맨 위 제목 줄 — 여기를 잡고 끌면 위젯이 움직인다 */
+function titleBar() {
+  return '<div class="bar"><span class="ttl">혜원 데스크</span>'
+    + '<span class="grip" title="여기를 잡고 끌면 위젯이 움직입니다">⠿⠿</span></div>';
+}
 function updBar() {
   if (!UPD || !UPD.state) return '';
   if (UPD.state === 'ready') {
@@ -1141,12 +1159,12 @@ function updBar() {
 function render() {
   if (composing) return;   // 한글 조합 중에는 화면을 건드리지 않는다
   var app = document.getElementById('app');
-  if (!STATE) { app.innerHTML = updBar() + taskBar() + '<div class="empty">불러오는 중…</div>'; return report(); }
+  if (!STATE) { app.innerHTML = titleBar() + updBar() + taskBar() + '<div class="empty">불러오는 중…</div>'; return report(); }
 
   if (STATE.needLogin) {
     // 구글이 앱 안 브라우저 로그인을 막기 때문에, 크롬을 열어 거기서 로그인하고
     // 결과만 위젯이 넘겨받는다 (main.js 의 startLogin 참고).
-    app.innerHTML = updBar() + taskBar() + '<div class="empty">수업진도에 로그인해 주세요.'
+    app.innerHTML = titleBar() + updBar() + taskBar() + '<div class="empty">수업진도에 로그인해 주세요.'
       + '<br><button class="btn" onclick="widgetAPI.openLogin()">크롬으로 로그인</button>'
       + '<div style="margin-top:9px;font-size:10.5px;line-height:1.5;color:#6f7885">'
       + '크롬 탭이 열립니다. 거기서 구글 로그인하면<br>'
@@ -1154,7 +1172,7 @@ function render() {
     return report();
   }
 
-  var d = STATE, html = '<div class="top">' + usageBar() + updBar() + taskBar();
+  var d = STATE, html = '<div class="top">' + titleBar() + usageBar() + updBar() + taskBar();
   html += '<div class="head"><span class="date">' + esc(d.date.slice(5).replace('-', '월 ')) + '일</span>'
     + '<span class="dow">' + esc(d.dow) + '요일</span><span class="spacer"></span>'
     + '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>'

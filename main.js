@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.14.3
-// 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.14.3 학사일정 — «오늘로» 단추를 오른쪽 눈에 띄는 자리로, 오늘이 화면 맨 위에 오도록 자리잡기 고침, 달을 탭 이름에서 뽑아 8월 단추 겹침 해결
+// 파일명: main.js | @version 1.15.0
+// 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (체육 수업진도·주간업무·학사일정·급식·AI 사용량)
+// 수정요약: v1.15.0 위젯 이름을 «혜원 데스크»로 정하고 맨 위에 제목 줄 추가 — 이 줄을 잡고 끌어 위젯을 옮긴다
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -142,7 +142,7 @@ autoUpdater.on('update-available', (info) => {
 });
 autoUpdater.on('update-not-available', () => {
   debugLog(`업데이트 없음 (현재 v${app.getVersion()}이 최신)`);
-  if (manualUpdateCheck) { manualUpdateCheck = false; notify('수업진도 위젯', `이미 최신 버전이에요 (v${app.getVersion()}).`); }
+  if (manualUpdateCheck) { manualUpdateCheck = false; notify('혜원 데스크', `이미 최신 버전이에요 (v${app.getVersion()}).`); }
 });
 let lastLoggedPercent = -1;
 autoUpdater.on('download-progress', (p) => {
@@ -153,7 +153,7 @@ autoUpdater.on('update-downloaded', (info) => {
   lastLoggedPercent = -1;
   manualUpdateCheck = false;
   setUpdateState('ready', info.version);
-  notify('수업진도 위젯 업데이트 준비됨',
+  notify('혜원 데스크 업데이트 준비됨',
     `새 버전 v${info.version}을(를) 다 받았어요. 클릭하면 재시작하며 설치합니다.`,
     () => installUpdateNow());
 });
@@ -162,7 +162,7 @@ autoUpdater.on('error', (err) => {
   debugLog(`업데이트 오류: ${err && err.message ? err.message : err}`);
   if (manualUpdateCheck) {
     manualUpdateCheck = false;
-    notify('수업진도 위젯', '업데이트 확인에 실패했어요. 클릭하면 릴리스 페이지를 엽니다.',
+    notify('혜원 데스크', '업데이트 확인에 실패했어요. 클릭하면 릴리스 페이지를 엽니다.',
       () => shell.openExternal(RELEASES_PAGE_URL));
   }
 });
@@ -177,11 +177,11 @@ function installUpdateNow() {
 function checkForUpdates(manual) {
   if (!app.isPackaged) {
     debugLog('개발 모드라 업데이트 확인을 건너뜀');
-    if (manual) notify('수업진도 위젯', '개발 모드에서는 업데이트를 확인하지 않아요.');
+    if (manual) notify('혜원 데스크', '개발 모드에서는 업데이트를 확인하지 않아요.');
     return;
   }
   if (updateState === 'ready') {
-    if (manual) notify('수업진도 위젯 업데이트 준비됨',
+    if (manual) notify('혜원 데스크 업데이트 준비됨',
       `v${updateVersion} 설치 준비가 끝났어요. 클릭하면 재시작하며 설치합니다.`, () => installUpdateNow());
     return;
   }
@@ -249,9 +249,9 @@ function sendToWidget() {
 
 function updateTrayTooltip() {
   if (!tray) return;
-  if (!lastData || lastData.needLogin) { tray.setToolTip('수업진도 위젯 — 로그인이 필요합니다'); return; }
+  if (!lastData || lastData.needLogin) { tray.setToolTip('혜원 데스크 — 로그인이 필요합니다'); return; }
   const ls = lastData.lessons || [];
-  if (!ls.length) { tray.setToolTip(`수업진도 — 오늘(${lastData.dow}) 수업 없음`); return; }
+  if (!ls.length) { tray.setToolTip(`혜원 데스크 — 오늘(${lastData.dow}) 수업 없음`); return; }
   const lines = ls.map((l) => `${l.period}교시 ${l.cls} ${l.unit}${l.n ? ' ' + l.n + '차시' : ''}`);
   tray.setToolTip(`오늘 수업 ${ls.length}개\n` + lines.join('\n'));
 }
@@ -360,7 +360,7 @@ function startLogin() {
 
   handoffServer.on('error', (e) => {
     debugLog(`로그인 서버를 못 열었습니다: ${e.message}`);
-    notify('수업진도 위젯', '로그인 창을 여는 데 실패했어요. 잠시 뒤 다시 시도해 주세요.');
+    notify('혜원 데스크', '로그인 창을 여는 데 실패했어요. 잠시 뒤 다시 시도해 주세요.');
     stopHandoffServer();
   });
 
@@ -368,7 +368,7 @@ function startLogin() {
     const port = handoffServer.address().port;
     debugLog(`로그인 대기 시작 (127.0.0.1:${port}) — 크롬을 엽니다`);
     openInBrowser(`${APP_URL}?widget=${port}&nonce=${nonce}`);
-    notify('수업진도 위젯', '크롬 탭을 열었어요. 거기서 구글 로그인해 주세요.');
+    notify('혜원 데스크', '크롬 탭을 열었어요. 거기서 구글 로그인해 주세요.');
   });
 
   // 5분 안에 안 끝나면 서버를 닫는다 (열어둔 채로 두지 않는다)
@@ -393,11 +393,11 @@ async function finishLogin(idToken, retried) {
       return;
     }
     debugLog('로그인 완료');
-    notify('수업진도 위젯', '로그인됐어요. 이제 위젯에 오늘 수업이 표시됩니다.');
+    notify('혜원 데스크', '로그인됐어요. 이제 위젯에 오늘 수업이 표시됩니다.');
     setTimeout(pollOnce, 2500);
   } catch (e) {
     debugLog(`로그인 마무리 실패: ${e && e.message ? e.message : e}`);
-    notify('수업진도 위젯', '로그인을 마무리하지 못했어요. 트레이 메뉴에서 다시 시도해 주세요.');
+    notify('혜원 데스크', '로그인을 마무리하지 못했어요. 트레이 메뉴에서 다시 시도해 주세요.');
   }
 }
 
@@ -733,7 +733,7 @@ ipcMain.handle('meals-fetch', async () => {
 function openSettingsWindow() {
   if (settingsWin && !settingsWin.isDestroyed()) { settingsWin.show(); settingsWin.focus(); return; }
   settingsWin = new BrowserWindow({
-    width: 620, height: 760, title: '수업진도 위젯 설정',
+    width: 620, height: 760, title: '혜원 데스크 설정',
     backgroundColor: '#F7F7FF', autoHideMenuBar: true, resizable: true,
     icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: {
