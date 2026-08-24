@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.12.0
+// 파일명: main.js | @version 1.12.1
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.12.0 테마 7가지 · 저장된 «실패»를 붙들고 있던 문제(주간업무·학사일정) / v1.11.1 확인 2분
+// 수정요약: v1.12.1 스크롤 안 되던 문제·한글 검색 입력 깨짐·받는 중 상태 표시 / v1.12.0 테마
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -464,7 +464,7 @@ function createWidgetWindow() {
     }, 400);
   });
   widgetWin.on('closed', () => { widgetWin = null; });
-  widgetWin.webContents.once('did-finish-load', () => sendToWidget());
+  widgetWin.webContents.once('did-finish-load', () => { sendToWidget(); sendTasks(); });
 }
 
 function applyScale(key) {
@@ -619,7 +619,10 @@ async function refreshAcademic() {
   } finally { academicFetching = false; }
 }
 ipcMain.handle('get-academic', () => loadAcademic());
-ipcMain.handle('academic-fetch', async () => await refreshAcademic());
+ipcMain.handle('academic-fetch', async () => {
+  setTask('cal', '학사일정', 'busy');
+  try { return await refreshAcademic(); } finally { setTask('cal', null, null); }
+});
 
 /* ===================== 급식 (나이스) ===================== */
 const neis = require('./neis.js');
@@ -669,7 +672,10 @@ ipcMain.handle('neis-search', async (_e, name) => {
   }
 });
 ipcMain.handle('get-meals', () => loadMeals());
-ipcMain.handle('meals-fetch', async () => await refreshMeals());
+ipcMain.handle('meals-fetch', async () => {
+  setTask('meal', '급식', 'busy');
+  try { return await refreshMeals(); } finally { setTask('meal', null, null); }
+});
 
 /* ===================== 설정 창 ===================== */
 // 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기)을 위해 창을 따로 둔다.
@@ -801,6 +807,32 @@ ipcMain.on('refresh-now', () => pollOnce());
 ipcMain.on('open-login', () => startLogin());
 ipcMain.on('open-timetable', () => openTimetableWindow());
 // 이전주·다음주 — 숨은 창의 앱에게 그 주 자료를 물어본다
+/* ===================== 진행 상태 알리기 =====================
+   무엇을 언제 받는지 화면에 보이게 한다. 그동안 조용히 실패하면
+   사용자는 «안 된다»고만 알 수 있었다. */
+const tasks = {};   // key -> { label, state:'wait'|'busy', at }
+
+function sendTasks() {
+  if (!widgetWin || widgetWin.isDestroyed()) return;
+  const list = Object.keys(tasks).map((k) => Object.assign({ key: k }, tasks[k]));
+  widgetWin.webContents.send('task-status', list);
+}
+function setTask(key, label, state, at) {
+  if (!state) delete tasks[key];
+  else tasks[key] = { label: label, state: state, at: at || 0 };
+  sendTasks();
+}
+
+/* 잠시 뒤에 할 일을 예약하고, 그 사이 남은 시간을 화면에 보여준다 */
+function scheduleTask(key, label, delayMs, run) {
+  setTask(key, label, 'wait', Date.now() + delayMs);
+  setTimeout(async () => {
+    setTask(key, label, 'busy');
+    try { await run(); } catch (e) { /* 각자 안에서 로그를 남긴다 */ }
+    setTask(key, null, null);
+  }, delayMs);
+}
+
 /* ===================== 주간업무계획 ===================== */
 // ★드라이브 권한이 필요 없다. 구글 문서를 «링크 공유» 주소로 그냥 받아온다.
 //   (drive.readonly 는 구글이 «제한된 권한»이라 검증 안 받은 앱엔 안 내준다 — 계속 403 이 났다)
@@ -832,7 +864,10 @@ async function refreshWork(why) {
 }
 
 ipcMain.handle('get-work', () => loadWork());
-ipcMain.handle('work-fetch', async () => await refreshWork('직접 요청'));
+ipcMain.handle('work-fetch', async () => {
+  setTask('work', '주간업무', 'busy');
+  try { return await refreshWork('직접 요청'); } finally { setTask('work', null, null); }
+});
 
 ipcMain.handle('get-week', async (_e, off) => {
   const win = getWorkerWindow();
@@ -889,18 +924,24 @@ if (!gotLock) {
     const w0 = loadWork();
     const age = w0 && w0.fetchedAt ? (Date.now() - new Date(w0.fetchedAt).getTime()) : Infinity;
     const wBad = !w0 || w0.error || !((w0.input || []).length || (w0.merged || []).length);
-    if (wBad || age > WORK_REFRESH_MS) setTimeout(() => refreshWork(wBad ? '이전 실패' : '시작'), 8000);
+    if (wBad || age > WORK_REFRESH_MS) {
+      scheduleTask('work', '주간업무', 2000, () => refreshWork(wBad ? '이전 실패' : '시작'));
+    }
     setInterval(() => refreshWork('주기'), WORK_REFRESH_MS);
 
     // 학사일정 — 받아둔 것이 없거나 실패로 남아 있으면 한 번 받아 둔다
     const a0 = loadAcademic();
-    if (!a0 || a0.error || !((a0.months || []).length)) setTimeout(() => refreshAcademic(), 16000);
+    if (!a0 || a0.error || !((a0.months || []).length)) {
+      scheduleTask('cal', '학사일정', 4000, () => refreshAcademic());
+    }
 
     // 급식 — 이번 주 것이 없거나 오래됐으면 조용히 받는다
     const m0 = loadMeals();
     const mAge = m0 && m0.fetchedAt ? (Date.now() - new Date(m0.fetchedAt).getTime()) : Infinity;
     const mBad = !m0 || m0.error || !((m0.meals || []).length);
-    if (mBad || mAge > 12 * 60 * 60 * 1000) setTimeout(() => refreshMeals(), 12000);
+    if (mBad || mAge > 12 * 60 * 60 * 1000) {
+      scheduleTask('meal', '급식', 3000, () => refreshMeals());
+    }
     setInterval(() => refreshMeals(), 12 * 60 * 60 * 1000);
     // 절전에서 깨거나 잠금을 풀었을 때도 한 번 본다 (그 사이 새 버전이 나왔을 수 있다)
     try {

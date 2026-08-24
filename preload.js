@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
   onData: (cb) => ipcRenderer.on('jindo-data', (_e, payload) => cb(payload)),
+  onTasks: (cb) => ipcRenderer.on('task-status', (_e, list) => cb(list)),
   refreshNow: () => ipcRenderer.send('refresh-now'),
   openLogin: () => ipcRenderer.send('open-login'),
   openApp: () => ipcRenderer.send('open-app'),
