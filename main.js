@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.12.1
+// 파일명: main.js | @version 1.12.2
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.12.1 스크롤 안 되던 문제·한글 검색 입력 깨짐·받는 중 상태 표시 / v1.12.0 테마
+// 수정요약: v1.12.2 위젯이 화면 밖 모서리에 숨던 문제 / v1.12.1 스크롤·한글 입력
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -415,21 +415,34 @@ function applyWidgetWidth(view) {
   widgetWin.setBounds({ x, y: b.y, width: want, height: b.height });
   saveState({ x });
 }
-// 모니터를 뽑았거나 해상도가 바뀌어 저장된 위치가 화면 밖이면 주 모니터로 데려온다
+// 저장된 위치가 «쓸 만하게 보이는지» 본다.
+// ★예전에는 1픽셀만 겹쳐도 통과시켜서, 위젯이 옆 모니터 맨 위 모서리에 4분의 1만 걸친 채
+//   사라진 것처럼 보인 적이 있다. 머리 줄을 잡을 수 있을 만큼은 보여야 한다.
+const NEED_W = 200, NEED_H = 60;
+function isUsablePos(x, y, size) {
+  return screen.getAllDisplays().some((d) => {
+    const a = d.workArea;
+    const w = Math.min(x + size.width, a.x + a.width) - Math.max(x, a.x);
+    const h = Math.min(y + size.height, a.y + a.height) - Math.max(y, a.y);
+    return w >= Math.min(NEED_W, size.width) && h >= Math.min(NEED_H, size.height);
+  });
+}
 function safePosition(state, size) {
-  const displays = screen.getAllDisplays();
   const x = state.x, y = state.y;
-  if (typeof x === 'number' && typeof y === 'number') {
-    const inside = displays.some((d) => {
-      const a = d.workArea;
-      return x + size.width > a.x && x < a.x + a.width && y + size.height > a.y && y < a.y + a.height;
-    });
-    if (inside) return { x, y };
-  }
+  if (typeof x === 'number' && typeof y === 'number' && isUsablePos(x, y, size)) return { x, y };
   const a = screen.getPrimaryDisplay().workArea;
   return { x: a.x + a.width - size.width - 30, y: a.y + 60 };
 }
-
+// 모니터를 뽑거나 배치가 바뀐 뒤 위젯이 화면 밖에 남지 않게 확인한다
+function keepOnScreen() {
+  if (!widgetWin || widgetWin.isDestroyed()) return;
+  const b = widgetWin.getBounds();
+  if (isUsablePos(b.x, b.y, b)) return;
+  const p = safePosition({}, b);
+  widgetWin.setBounds({ x: p.x, y: p.y, width: b.width, height: b.height });
+  saveState({ x: p.x, y: p.y });
+  debugLog(`위젯이 화면 밖이라 되돌렸습니다 -> (${p.x}, ${p.y})`);
+}
 function createWidgetWindow() {
   const size = widgetSize();
   const pos = safePosition(loadState(), size);
@@ -949,11 +962,8 @@ if (!gotLock) {
       powerMonitor.on('unlock-screen', () => checkForUpdates());
     } catch (e) { debugLog(`전원 감시 등록 실패: ${e.message}`); }
 
-    screen.on('display-removed', () => {
-      if (!widgetWin || widgetWin.isDestroyed()) return;
-      const b = widgetWin.getBounds();
-      const p = safePosition({}, b);
-      widgetWin.setBounds({ x: p.x, y: p.y, width: b.width, height: b.height });
+    ['display-removed', 'display-added', 'display-metrics-changed'].forEach((ev) => {
+      screen.on(ev, () => setTimeout(keepOnScreen, 400));
     });
   });
 }
