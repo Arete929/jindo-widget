@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.12.1 -->
+<!-- 파일명: widget.html | @version 1.13.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -15,250 +15,115 @@
     --now: #35c98b;
   }
   /* ── 테마 여섯 가지 ──
-     :root 에 data-theme 을 붙여서 바꾼다. 색 이름은 그대로 두고 값만 갈아끼우므로
-     화면 코드는 하나도 손대지 않아도 된다. */
+     운동처방일지·수업진도 앱과 같은 여섯: 인디고·바다·숲·노을·자두·먹색.
+     밝은 화면용 색을 위젯의 어두운 카드에 맞게 변주하되, 이름과 개수는 그대로 둔다. */
   :root[data-theme="ocean"] {
-    --bg: #0e1a20; --card: #152630; --line: #1f3947;
-    --fg: #e8f4f8; --dim: #8fb0bd; --accent: #2bb3d6; --now: #3ecf9e;
+    --bg: #0b1a21; --card: #122530; --line: #1d3a48;
+    --fg: #e6f3f8; --dim: #8caebc; --accent: #2e9dc4; --now: #3ecf9e;
   }
   :root[data-theme="forest"] {
-    --bg: #111a14; --card: #18271d; --line: #22392a;
-    --fg: #e9f4ec; --dim: #93b39c; --accent: #4bbf72; --now: #8fd6a8;
+    --bg: #0d1812; --card: #14261b; --line: #1e3a29;
+    --fg: #e8f4ec; --dim: #90b39b; --accent: #37a468; --now: #8fd6a8;
   }
   :root[data-theme="sunset"] {
-    --bg: #1c140f; --card: #28190f; --line: #3a2617;
-    --fg: #f7ece4; --dim: #bfa593; --accent: #ff9a4d; --now: #ffc46b;
+    --bg: #1b120c; --card: #271810; --line: #3b2618;
+    --fg: #f8ece3; --dim: #c0a48f; --accent: #d4762a; --now: #ffc46b;
   }
   :root[data-theme="plum"] {
-    --bg: #180f16; --card: #251522; --line: #37202f;
-    --fg: #f6eaf2; --dim: #bb96ad; --accent: #e267a6; --now: #8fd4c0;
+    --bg: #170c14; --card: #24121f; --line: #371e2e;
+    --fg: #f7e9f2; --dim: #bd93ac; --accent: #b6438a; --now: #8fd4c0;
   }
   :root[data-theme="slate"] {
-    --bg: #12161c; --card: #1a2029; --line: #28313d;
-    --fg: #e9eef5; --dim: #93a1b3; --accent: #6f9ed8; --now: #5ecfae;
+    --bg: #0f151c; --card: #171f29; --line: #232f3d;
+    --fg: #e8eef6; --dim: #91a1b5; --accent: #4d7aa6; --now: #5ecfae;
   }
-  /* 밝은 화면을 좋아하는 분을 위해 하나 — 글자색·칸색을 뒤집는다 */
-  :root[data-theme="paper"] {
-    --bg: #f4f4fa; --card: #ffffff; --line: #dedbee;
-    --fg: #1f1b35; --dim: #6b6a86; --accent: #6a4bd6; --now: #1f8a5f;
-  }
-  :root[data-theme="paper"] .gr th, :root[data-theme="paper"] .gr td { border-color: #e6e3f2; }
-  :root[data-theme="paper"] .gr thead th,
-  :root[data-theme="paper"] .gr td.pc, :root[data-theme="paper"] .gr th.pc { background: #efedf9; }
-  :root[data-theme="paper"] .note { background: #fff6e0; color: #8a6414; }
-  :root[data-theme="paper"] .lesson.now { background: #e6f7ef; }
-  :root[data-theme="paper"] .ico:hover { background: #e9e6f7; }
-  :root[data-theme="paper"] .wq, :root[data-theme="paper"] .upd.busy { background: #eeecf8; }
-  :root[data-theme="paper"] .gr td.cal { background: #eceaf6; color: #5b5a75; }
-  :root[data-theme="paper"] .gr td.blk { background: #f0e8de; color: #8a6a4a; }
-  :root[data-theme="paper"] .gr td.out { background: #f0eff7; color: #9a97ad; }
-  :root[data-theme="paper"] .acc .cd { background: #e6e3f2; color: #5b5a75; }
-  :root[data-theme="paper"] .mld span, :root[data-theme="paper"] .wkwhen { background: #eeecf8; color: #3f3b60; }
-  :root[data-theme="paper"] .foot { color: #9a97ad; }
+  /* 기본(인디고) — :root 값을 그대로 쓴다 */
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body {
-    background: var(--bg);
-    color: var(--fg);
-    font-family: "Pretendard", "Segoe UI", "Malgun Gothic", sans-serif;
-    font-size: 13px;
-    overflow: hidden;
-    user-select: none;
+  /* ── 머리 고정 ──
+     내용이 길어도 날짜·탭은 늘 보이게 붙여 둔다. */
+  .top {
+    position: sticky; top: -10px; z-index: 6;
+    background: var(--bg); padding: 10px 0 2px; margin: -10px 0 0;
   }
-  /* 내용이 길면 세로로 넘긴다. 창 전체를 끌기 영역으로 두면 휠·스크롤이 창 이동으로
-     가로채여서 아예 안 움직인다 — 그래서 끌기는 머리 줄에만 준다. */
-  #app { padding: 10px 11px 11px; max-height: 100vh; overflow-y: auto; overflow-x: hidden; }
-  #app::-webkit-scrollbar { width: 7px; }
-  #app::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
-  #app::-webkit-scrollbar-track { background: transparent; }
-
-  /* ── 머리 ── */
-  .head { display: flex; align-items: center; gap: 6px; -webkit-app-region: drag; }
-  .note, .task { -webkit-app-region: drag; }
-  .date { font-size: 14px; font-weight: 700; letter-spacing: -.2px; }
-  .dow { color: var(--dim); font-size: 12px; font-weight: 600; }
-  .spacer { flex: 1; }
-  .ico {
-    -webkit-app-region: no-drag;
-    background: none; border: 0; color: var(--dim);
-    font-size: 13px; cursor: pointer; padding: 2px 4px; border-radius: 5px;
-  }
-  .ico:hover { background: #262c35; color: var(--fg); }
-
-  /* ── 업데이트 띠 (맨 위) ── */
-  .upd {
-    -webkit-app-region: no-drag;
-    display: block; width: 100%; margin-bottom: 8px;
-    padding: 7px 10px; border-radius: 7px; border: 0;
-    font-size: 11.5px; font-weight: 800; font-family: inherit;
-    text-align: center; line-height: 1.3;
-  }
-  .upd.ready { background: var(--accent); color: #1a1206; cursor: pointer; }
-  .upd.ready:hover { filter: brightness(1.08); }
-  .upd.busy { background: #23282f; color: var(--dim); cursor: default; }
-
-  /* ── 진행 상태 줄 ── */
-  .task {
-    display: flex; align-items: center; gap: 6px; margin-bottom: 7px;
-    padding: 5px 9px; border-radius: 7px; background: var(--card);
-    font-size: 10.5px; font-weight: 700; color: var(--dim);
-  }
-  .task b { color: var(--fg); font-weight: 800; }
-  .task .sp { flex: 1; }
-  .task .cnt { color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
-  .task .dots::after { content: ''; animation: dots 1.2s steps(4, end) infinite; }
-  @keyframes dots { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} }
-
-  /* ── 학사일정 메모 ── */
-  .note {
-    margin-top: 7px; padding: 5px 8px; border-radius: 6px;
-    background: #2a2419; color: #f0c98a; font-size: 11.5px; font-weight: 600;
-    line-height: 1.35;
-  }
-  .note.hol { background: #331d1d; color: #f0928a; }
-
-  /* ── 칩 ── */
-  .chips { display: flex; gap: 5px; margin: 9px 0 8px; }
-  .chip {
-    -webkit-app-region: no-drag;
-    flex: 1; padding: 5px 0; border-radius: 7px; cursor: pointer;
-    background: none; border: 1px solid var(--line); color: var(--dim);
-    font-size: 11.5px; font-weight: 700; font-family: inherit;
-  }
-  .chip:hover { border-color: #3d4551; color: var(--fg); }
-  .chip.on { background: var(--accent); border-color: var(--accent); color: #1a1206; }
-
-  /* ── 오늘 수업 ── */
-  .lesson {
-    display: flex; gap: 9px; padding: 7px 8px; border-radius: 8px;
-    background: var(--card); margin-bottom: 5px; align-items: flex-start;
-  }
-  .lesson.past { opacity: .42; }
-  .lesson.now { background: #12291f; box-shadow: inset 0 0 0 1.5px var(--now); }
-  .per {
-    min-width: 34px; text-align: center; padding-top: 1px;
-    font-size: 13px; font-weight: 800; color: var(--accent);
-  }
-  .lesson.now .per { color: var(--now); }
-  .per small { display: block; font-size: 9.5px; font-weight: 600; color: var(--dim); margin-top: 1px; }
-  .body { flex: 1; min-width: 0; }
-  .who { font-size: 13px; font-weight: 700; }
-  .what { font-size: 11.5px; color: var(--dim); margin-top: 2px; line-height: 1.35; }
-  .what b { color: #cfd6df; font-weight: 700; }
-  .badge {
-    display: inline-block; margin-left: 5px; padding: 1px 5px; border-radius: 4px;
-    font-size: 9.5px; font-weight: 700; vertical-align: 1.5px;
-  }
-  .b-수행평가 { background: #3a2340; color: #e0a8f0; }
-  .b-시험 { background: #402323; color: #f0a0a0; }
-  .b-행사 { background: #1f3340; color: #8ecbf0; }
-  .b-순연 { background: #2f2a1a; color: #e8cf87; }
-  .b-이동 { background: #1d3330; color: #86ddc4; }
-  .when { font-size: 11px; font-weight: 700; color: var(--now); margin-top: 3px; }
-  .when.soon { color: var(--accent); }
-
-  /* ── 이번 주 ── */
-  .wk { display: flex; flex-direction: column; gap: 4px; }
-  .wkrow { display: flex; gap: 7px; align-items: flex-start; padding: 5px 7px; border-radius: 7px; background: var(--card); }
-  .wkrow.today { box-shadow: inset 0 0 0 1.5px var(--accent); }
-  .wkrow.hol { opacity: .5; }
-  .wkd { min-width: 46px; font-size: 11.5px; font-weight: 800; }
-  .wkd small { display: block; font-size: 9.5px; font-weight: 600; color: var(--dim); }
-  .wkl { flex: 1; font-size: 11px; color: var(--dim); line-height: 1.5; }
-  .wkl span { color: #cfd6df; }
-
-  /* ── 진도 ── */
-  .pg { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 7px; background: var(--card); margin-bottom: 4px; }
-  .pgc { min-width: 40px; font-size: 12px; font-weight: 700; }
-  .bar { flex: 1; height: 7px; border-radius: 4px; background: #262c35; overflow: hidden; }
-  .bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
-  .pgn { min-width: 62px; text-align: right; font-size: 11px; color: var(--dim); font-weight: 600; }
-  .pgn em { font-style: normal; color: var(--fg); font-weight: 700; }
-  .gap { color: #f0928a; font-weight: 700; }
-
-  /* ── 이번 주 압축 격자 ── */
-  .wknav { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
-  .wkb {
-    -webkit-app-region: no-drag;
-    background: none; border: 1px solid var(--line); color: var(--dim);
-    border-radius: 6px; padding: 3px 8px; cursor: pointer;
-    font-size: 11px; font-weight: 800; font-family: inherit;
-  }
-  .wkb:hover { border-color: #3d4551; color: var(--fg); }
-  .wkb.now { background: var(--accent); border-color: var(--accent); color: #1a1206; }
-  .wklab { flex: 1; text-align: center; font-size: 11.5px; font-weight: 800; line-height: 1.2; }
-  .wklab small { display: block; font-size: 9px; font-weight: 600; color: var(--dim); }
-
-  .gr { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  .gr th, .gr td { border: 1px solid #232830; padding: 0; text-align: center; }
-  .gr thead th { padding: 3px 1px 4px; font-size: 11px; font-weight: 800; background: #1a1e25; }
-  .gr thead th small { display: block; font-size: 9px; font-weight: 600; color: var(--dim); }
-  .gr thead th i { display: block; font-style: normal; font-size: 8.5px; color: #d8ac6e;
-                   line-height: 1.3; margin-top: 1px; }
-  .gr thead th i em { display: block; font-style: normal;
-                      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .gr td.pc, .gr th.pc { width: 20px; background: #1a1e25; font-size: 10px; font-weight: 800; color: var(--dim); }
-  .gr td { height: 34px; font-size: 10px; }
-  .gr td.c { position: relative; color: #fff; font-weight: 700; line-height: 1.15; padding: 2px 1px; }
-  .gr td.c b { font-size: 11px; font-weight: 800; }
-  .gr td.c u { display: block; text-decoration: none; font-size: 8.5px; opacity: .9;
-               line-height: 1.15; max-height: 20px; overflow: hidden; word-break: break-all; }
-  .gr td.c s { position: absolute; top: 2px; right: 2px; width: 4px; height: 4px;
-               border-radius: 999px; background: #fff; opacity: .9; }
-  .gr td.u0 { background: #3a2f8f; } .gr td.u1 { background: #12708a; } .gr td.u2 { background: #96491a; }
-  .gr td.u3 { background: #1d7440; } .gr td.u4 { background: #8a2456; } .gr td.u5 { background: #5c3aad; }
-  /* 학사일정으로 수업이 없어진 칸 — 수업 색을 쓰지 않는다 */
-  .gr td.blk { background: #2b2721; color: #b09b7d; }
-  .gr td.blk b { opacity: .75; }
-  .gr td.cal { background: #232a35; color: #9fb0c4; font-weight: 700; font-size: 9.5px; }
-  .gr td.cal u { color: #7d8b9c; }
-  .gr td.out { background: #1a1e25; color: #5d6672; text-decoration: line-through; }
-  .gr td.hol { background: repeating-linear-gradient(45deg, #241a1a, #241a1a 4px, #2e2020 4px, #2e2020 8px); }
-  .gr .tdy { box-shadow: inset 0 0 0 1.5px var(--accent); }
 
   /* ── 주간업무 ── */
-  .wq {
-    -webkit-app-region: no-drag;
-    flex: 1; min-width: 60px; background: #1a1e25; border: 1px solid var(--line);
-    color: var(--fg); border-radius: 6px; padding: 3px 8px;
-    font-size: 11px; font-family: inherit; outline: none;
+  .wfs { display: flex; gap: 3px; }
+  .wkdt b { display: block; font-size: calc(11.5px * var(--wf, 1)); font-weight: 800;
+            color: var(--accent); margin-bottom: 3px; }
+  .wkln { font-size: calc(10.5px * var(--wf, 1)); color: #c3cbd6; line-height: 1.5; margin-bottom: 2px; }
+  .wkln.i1 { padding-left: 12px; } .wkln.i2 { padding-left: 24px; } .wkln.i3 { padding-left: 36px; }
+  .wkln mark, .wkchip mark { background: var(--accent); color: #14100a; border-radius: 3px; padding: 0 2px; }
+  .wkln.hit { background: rgba(255,255,255,.07); border-radius: 4px; }
+  .wkln.hit.cur { box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .wkfind { display: flex; align-items: center; gap: 4px; font-size: 10.5px;
+            font-weight: 800; color: var(--dim); white-space: nowrap; }
+  .wkfind em { font-style: normal; color: var(--accent); }
+
+/* ── 학사일정 ──
+   월을 하나씩 갈아끼우지 않고 3월부터 2월까지 쭉 이어 놓는다.
+   월 단추는 «그 자리로 데려가는» 역할만 한다. */
+var AC = null, acBusy = false, acScrolled = false;
+
+function loadAcademic() {
+  if (acBusy) return;
+  acBusy = true;
+  widgetAPI.getAcademic().then(function (d) {
+    acBusy = false; AC = d || { empty: true }; render();
+  }).catch(function () { acBusy = false; AC = { empty: true }; render(); });
+}
+/* 오늘이 낀 주(월~일)를 구해 둔다 — 그 주를 은은하게 칠한다 */
+function weekRange() {
+  var d = new Date(), day = d.getDay();
+  var mon = new Date(d); mon.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  var sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  return { from: mon, to: sun };
+}
+function viewAcademic() {
+  if (!AC) { loadAcademic(); return '<div class="empty">학사일정을 불러오는 중…</div>'; }
+  var ms = (AC.months) || [];
+  if (!ms.length) {
+    return '<div class="empty">아직 가져온 학사일정이 없습니다.'
+      + (acBusy ? '<div style="margin-top:8px">받는 중…</div>' : '')
+      + '<br><button class="btn" id="acGetBig">지금 가져오기</button>'
+      + '<div style="margin-top:8px;font-size:10.5px;color:#6f7885">'
+      + '학교 «연간 수업일수 계획표» 시트에서 받아옵니다. 한 해치라 20초쯤 걸립니다.'
+      + (AC.error ? '<br>' + esc(AC.error) : '') + '</div></div>';
   }
-  .wq:focus { border-color: var(--accent); }
-  .wkb[disabled] { opacity: .35; cursor: default; }
-  .wkhead { font-size: 11.5px; font-weight: 800; margin-bottom: 6px; text-align: center; }
-  .wkcal { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
-  .wkchip { padding: 2px 7px; border-radius: 5px; background: #2a2419; color: #f0c98a;
-            font-size: 10px; font-weight: 700; line-height: 1.35; }
-  .wkdt { background: var(--card); border-radius: 7px; padding: 6px 8px; margin-bottom: 5px; }
-  .wkdt b { display: block; font-size: 11.5px; font-weight: 800; color: var(--accent); margin-bottom: 3px; }
-  .wkln { font-size: 10.5px; color: #c3cbd6; line-height: 1.45; margin-bottom: 2px; }
-  .wkres { display: flex; flex-direction: column; gap: 3px; }
-  .wkline { background: var(--card); border-radius: 6px; padding: 5px 7px;
-            font-size: 10.5px; color: #c3cbd6; line-height: 1.45; }
-  .wkwhen { display: inline-block; margin-right: 5px; padding: 1px 5px; border-radius: 4px;
-            background: #262c35; color: var(--dim); font-size: 9.5px; font-weight: 800; }
-  .wkdept { display: inline-block; margin-right: 5px; color: var(--accent); font-size: 9.5px; font-weight: 800; }
-  .wkdept.cal { color: #f0c98a; }
 
-  /* 시간표 안의 작은 탭 */
-  .chips.sub { margin: -3px 0 8px; }
-  .chips.sub .chip { padding: 3px 0; font-size: 10.5px; border-radius: 6px; }
-  .chips.sub .chip.on { background: #3a3f49; border-color: #3a3f49; color: var(--fg); }
+  var now = new Date(), todayD = now.getDate(), todayM = String(now.getMonth() + 1);
+  var wr = weekRange();
+  var year = now.getFullYear();
 
-  /* ── 학사일정 ── */
-  .acl { display: flex; flex-direction: column; gap: 2px; }
-  .acr { display: flex; align-items: center; gap: 8px; padding: 4px 7px; border-radius: 6px;
-         background: var(--card); font-size: 11px; }
-  .acr.wknd { opacity: .5; }
-  .acr.tdy { box-shadow: inset 0 0 0 1.5px var(--accent); }
-  .acd { min-width: 34px; font-weight: 800; font-size: 12px; }
-  .acd small { font-size: 9.5px; font-weight: 600; color: var(--dim); margin-left: 3px; }
-  .ace { flex: 1; color: #c3cbd6; line-height: 1.35; }
-  .acc { display: flex; gap: 2px; }
-  .acc .cd { display: inline-flex; width: 15px; height: 15px; border-radius: 3px;
-             align-items: center; justify-content: center; font-style: normal;
-             font-size: 8.5px; font-weight: 800; background: #2b323c; color: #9fb0c4; }
-  .acc .cd.off { background: #1a1e25; }
+  var h = '<div class="wknav" style="flex-wrap:wrap">'
+    + ms.map(function (x) {
+        return '<button class="wkb" data-ac="' + esc(x.tab) + '">' + esc(x.month) + '월'
+          + (/-/.test(x.tab) ? '<small>' + esc(x.tab) + '</small>' : '') + '</button>';
+      }).join('')
+    + '<span style="flex:1"></span><button class="wkb" id="acGet" title="다시 가져오기">⟳</button></div>';
+
+  h += ms.map(function (m) {
+    var rows = m.days.map(function (d) {
+      var isToday = (m.month === todayM && d.day === todayD);
+      var weekend = (d.dow === '토' || d.dow === '일');
+      // 이 날이 오늘이 낀 주에 드는지 — 월이 다르면 학년도를 넘길 수 있어 느슨하게 본다
+      var dt = new Date(year, Number(m.month) - 1, d.day);
+      var inWeek = dt >= wr.from && dt <= wr.to;
+      var codes = d.grades && d.grades[3] ? d.grades[3] : null;
+      var lit = codes ? codes.map(function (c, i) {
+        return c ? '<i class="cd" title="' + (i + 1) + '교시">' + esc(c) + '</i>' : '<i class="cd off"></i>';
+      }).join('') : '';
+      return '<div class="acr' + (isToday ? ' tdy' : '') + (inWeek && !isToday ? ' wk' : '')
+        + (weekend ? ' wknd' : '') + '"' + (isToday ? ' id="actoday"' : '') + '>'
+        + '<span class="acd">' + d.day + '<small>' + esc(d.dow) + '</small></span>'
+        + '<span class="ace">' + esc(d.event || '') + '</span>'
+        + (lit ? '<span class="acc">' + lit + '</span>' : '') + '</div>';
+    }).join('');
+    return '<div class="acmon" id="acm-' + esc(m.tab) + '">' + esc(m.month) + '월'
+      + (/-/.test(m.tab) ? ' (' + esc(m.tab) + ')' : '') + '</div>'
+      + '<div class="acl">' + rows + '</div>';
+  }).join('');
+  return h;
+}
 
   /* ── 급식 ── */
   .ml { background: var(--card); border-radius: 8px; padding: 7px 9px; margin-bottom: 5px; }
@@ -462,16 +327,16 @@ function viewWeek(d) {
 }
 
 /* ── 주간업무 ──
-   앱이 구글 문서(입력본·합본)를 읽어 저장해 둔 것을 보여준다.
-   합본은 주차가 20개쯤 쌓여 있어서 ◀ ▶ 로 넘기거나 검색으로 찾는다. */
+   검색은 «따로 목록을 보여주는 것»이 아니라 그 자리로 데려간다.
+   찾은 것이 여럿이면 ▲▼ 로 옮겨 다닌다. */
 var WORK = null, workBusy = false, workDoc = 'input', workOff = 0, workQ = '';
+var workHits = [], workHitIdx = 0, workFont = 1, wantScrollHit = false;
 var composing = false, renderTimer = null;
-/* 글자를 칠 때마다 그리면 버벅이고 조합도 깨진다 — 잠깐 모았다가 한 번 그린다 */
+
 function laterRender() {
   clearTimeout(renderTimer);
   renderTimer = setTimeout(function () { if (!composing) render(); }, 250);
 }
-
 function loadWork() {
   if (workBusy) return;
   workBusy = true;
@@ -479,54 +344,65 @@ function loadWork() {
     workBusy = false; WORK = d || { empty: true }; render();
   }).catch(function () { workBusy = false; WORK = { empty: true }; render(); });
 }
-
-function workHit(line, q) { return q && line.toLowerCase().indexOf(q.toLowerCase()) >= 0; }
+function hasQ(t, q) { return q && String(t).toLowerCase().indexOf(q.toLowerCase()) >= 0; }
+function markQ(t, q) {
+  var s = esc(t);
+  if (!q) return s;
+  var i = s.toLowerCase().indexOf(esc(q).toLowerCase());
+  if (i < 0) return s;
+  var n = esc(q).length;
+  return s.slice(0, i) + '<mark>' + s.slice(i, i + n) + '</mark>' + s.slice(i + n);
+}
+/* 찾은 자리를 모은다 — 주차·부서·줄 번호 */
+function findHits(weeks, q) {
+  var out = [];
+  if (!q) return out;
+  weeks.forEach(function (w, wi) {
+    (w.notes || []).forEach(function (t, ni) {
+      if (hasQ(t, q)) out.push({ wi: wi, kind: 'note', ni: ni });
+    });
+    w.depts.forEach(function (p, di) {
+      p.lines.forEach(function (l, li) {
+        if (hasQ(l.t || l, q)) out.push({ wi: wi, kind: 'line', di: di, li: li });
+      });
+    });
+  });
+  return out;
+}
 
 function viewWork() {
   if (!WORK) { loadWork(); return '<div class="empty">주간업무를 불러오는 중…</div>'; }
-
   var weeks = (workDoc === 'input' ? WORK.input : WORK.merged) || [];
+
   var h = '<div class="wknav">'
     + '<button class="wkb' + (workDoc === 'input' ? ' now' : '') + '" data-doc="input">입력본</button>'
     + '<button class="wkb' + (workDoc === 'merged' ? ' now' : '') + '" data-doc="merged">합본</button>'
-    + '<input class="wq" type="text" placeholder="검색" value="' + esc(workQ) + '">'
-    + '<button class="wkb" id="workGet" title="구글 문서에서 다시 가져오기">⟳</button>'
-    + '</div>';
+    + '<input class="wq" type="text" placeholder="검색" value="' + esc(workQ) + '">';
+  if (workQ) {
+    h += '<span class="wkfind">' + (workHits.length
+      ? '<em>' + (workHitIdx + 1) + '</em>/' + workHits.length : '0')
+      + '</span>'
+      + '<button class="wkb" id="wkPrev" title="이전 (Shift+Enter)">▲</button>'
+      + '<button class="wkb" id="wkNext" title="다음 (Enter)">▼</button>';
+  }
+  h += '<span class="wfs"><button class="wkb" id="wkFontDn" title="글자 작게">A−</button>'
+    + '<button class="wkb" id="wkFontUp" title="글자 크게">A+</button></span>'
+    + '<button class="wkb" id="workGet" title="다시 가져오기">⟳</button></div>';
 
   if (!weeks.length) {
     return h + '<div class="empty">아직 가져온 주간업무가 없습니다.<br>'
-      + '<button class="btn" onclick="widgetAPI.workFetch().then(function(d){ WORK = d || {empty:true}; render(); })">지금 가져오기</button>'
+      + '<button class="btn" id="workGetBig">지금 가져오기</button>'
       + '<div style="margin-top:8px;font-size:10.5px;color:#6f7885">'
       + '구글 문서에서 바로 받아옵니다. 로그인은 필요 없습니다.'
       + (WORK.error ? '<br>' + esc(WORK.error) : '') + '</div></div>';
   }
 
-  // 검색 — 모든 주차의 부서 내용에서 찾는다
-  if (workQ) {
-    var rows = [], q = workQ;
-    weeks.forEach(function (w) {
-      w.depts.forEach(function (p) {
-        p.lines.forEach(function (t) {
-          if (workHit(t, q) && rows.length < 60) {
-            rows.push('<div class="wkline"><span class="wkwhen">' + esc(shortRange(w.range)) + '</span>'
-              + '<span class="wkdept">' + esc(p.name) + '</span>' + esc(t) + '</div>');
-          }
-        });
-      });
-      (w.notes || []).forEach(function (t) {
-        if (workHit(t, q) && rows.length < 60) {
-          rows.push('<div class="wkline"><span class="wkwhen">' + esc(shortRange(w.range)) + '</span>'
-            + '<span class="wkdept cal">학사일정</span>' + esc(t) + '</div>');
-        }
-      });
-    });
-    return h + (rows.length
-      ? '<div class="wkres">' + rows.join('') + '</div>'
-      : '<div class="empty">「' + esc(workQ) + '」 찾은 것이 없습니다.</div>');
-  }
-
-  var i = Math.min(Math.max(workOff, 0), weeks.length - 1);
+  workHits = findHits(weeks, workQ);
+  if (workHitIdx >= workHits.length) workHitIdx = 0;
+  var cur = workHits[workHitIdx] || null;
+  var i = cur ? cur.wi : Math.min(Math.max(workOff, 0), weeks.length - 1);
   var w = weeks[i];
+
   if (weeks.length > 1) {
     h += '<div class="wknav">'
       + '<button class="wkb" data-woff="' + (i + 1) + '"' + (i >= weeks.length - 1 ? ' disabled' : '') + '>◀ 이전</button>'
@@ -538,23 +414,37 @@ function viewWork() {
   }
 
   if ((w.notes || []).length) {
-    h += '<div class="wkcal">' + w.notes.map(function (t) {
-      return '<span class="wkchip">' + esc(t) + '</span>';
+    h += '<div class="wkcal">' + w.notes.map(function (t, ni) {
+      var on = cur && cur.kind === 'note' && cur.wi === i && cur.ni === ni;
+      return '<span class="wkchip' + (on ? ' hit cur' : '') + '"' + (on ? ' id="curhit"' : '') + '>'
+        + markQ(t, workQ) + '</span>';
     }).join('') + '</div>';
   }
 
   h += w.depts.map(function (p, di) {
     return '<div class="wkdt"><b>' + esc(p.name) + '</b>'
-      + p.lines.map(function (t) { return '<div class="wkln">' + esc(t) + '</div>'; }).join('')
+      + p.lines.map(function (l, li) {
+          var t = l.t !== undefined ? l.t : l;
+          var ind = l.ind || 0;
+          var isHit = hasQ(t, workQ);
+          var on = cur && cur.kind === 'line' && cur.wi === i && cur.di === di && cur.li === li;
+          return '<div class="wkln i' + ind + (isHit ? ' hit' : '') + (on ? ' cur' : '') + '"'
+            + (on ? ' id="curhit"' : '') + '>' + markQ(t, workQ) + '</div>';
+        }).join('')
       + '</div>';
   }).join('') || '<div class="empty">이 주차에는 등록된 업무가 없습니다.</div>';
   return h;
 }
 function shortRange(r) {
-  // "2026. 8. 24.(월) ~ 2026. 8. 28.(금)" -> "8/24 ~ 8/28"
   var m = String(r || '').match(/(\d{1,2})\s*\.\s*(\d{1,2})\s*\.?\s*\([월화수목금토일]\)\s*[~〜～]\s*20\d\d\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})/);
   if (!m) return String(r || '').slice(0, 22);
   return m[1] + '/' + m[2] + ' ~ ' + m[3] + '/' + m[4];
+}
+function moveHit(step) {
+  if (!workHits.length) return;
+  workHitIdx = (workHitIdx + step + workHits.length) % workHits.length;
+  wantScrollHit = true;
+  render();
 }
 
 /* ── 컴시간 ──
@@ -810,7 +700,7 @@ function render() {
     return report();
   }
 
-  var d = STATE, html = updBar() + taskBar();
+  var d = STATE, html = '<div class="top">' + updBar() + taskBar();
   html += '<div class="head"><span class="date">' + esc(d.date.slice(5).replace('-', '월 ')) + '일</span>'
     + '<span class="dow">' + esc(d.dow) + '요일</span><span class="spacer"></span>'
     + '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>'
@@ -840,6 +730,7 @@ function render() {
         }).join('') + '</div>';
   }
 
+  html += '</div>';   // 머리 끝 — 여기부터는 스크롤된다
   html += VIEW === 'week' ? viewWeek(d)
     : VIEW === 'progress' ? viewProgress(d)
     : VIEW === 'work' ? viewWork()
@@ -848,6 +739,7 @@ function render() {
     : VIEW === 'meal' ? viewMeals()
     : viewToday(d);
   html += '<div class="foot">@JINHOKIM · v' + esc(VER) + '</div>';
+  app.style.setProperty('--wf', String(workFont));
   app.innerHTML = html;
 
   app.querySelectorAll('.wkb').forEach(function (b) {
@@ -859,6 +751,10 @@ function render() {
         widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
         return; }
       if (b.id === 'cmGet') { widgetAPI.openSettings(); return; }
+      if (b.id === 'wkFontUp') { workFont = Math.min(1.6, workFont + 0.1); render(); return; }
+      if (b.id === 'wkFontDn') { workFont = Math.max(0.8, workFont - 0.1); render(); return; }
+      if (b.id === 'wkNext') { moveHit(1); return; }
+      if (b.id === 'wkPrev') { moveHit(-1); return; }
       if (b.dataset.cm) { cmMode = b.dataset.cm; render(); return; }
       if (b.dataset.cg) { cmGrade = Number(b.dataset.cg); cmCls = 1; render(); return; }
       if (b.dataset.cc) { cmCls = Number(b.dataset.cc); render(); return; }
@@ -876,6 +772,11 @@ function render() {
     wq.addEventListener('input', function () {
       if (composing) return;
       workQ = wq.value.trim(); workOff = 0; laterRender();
+    });
+    wq.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      moveHit(e.shiftKey ? -1 : 1);
     });
     if (workQ) { wq.focus(); wq.setSelectionRange(wq.value.length, wq.value.length); }
   }
@@ -901,8 +802,22 @@ function render() {
     widgetAPI.mealsFetch().then(function (d) { mlBusy = false; ML = d || { empty: true }; render(); });
   });
   app.querySelectorAll('[data-ac]').forEach(function (b) {
-    b.addEventListener('click', function () { acMonth = b.dataset.ac; render(); });
+    b.addEventListener('click', function () {
+      var el = app.querySelector('#acm-' + CSS.escape(b.dataset.ac));
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
   });
+  // 찾은 자리·오늘 자리로 데려간다
+  if (wantScrollHit) {
+    wantScrollHit = false;
+    var hit = app.querySelector('#curhit');
+    if (hit && hit.scrollIntoView) hit.scrollIntoView({ block: 'center' });
+  }
+  if (VIEW === 'cal' && !acScrolled) {
+    var td = app.querySelector('#actoday');
+    if (td && td.scrollIntoView) { td.scrollIntoView({ block: 'start' }); acScrolled = true; }
+  }
+  if (VIEW !== 'cal') acScrolled = false;
   report();
 }
 

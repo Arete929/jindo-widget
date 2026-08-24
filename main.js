@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.12.2
+// 파일명: main.js | @version 1.13.0
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.12.2 위젯이 화면 밖 모서리에 숨던 문제 / v1.12.1 스크롤·한글 입력
+// 수정요약: v1.13.0 창 크기 조절·머리 고정·학사일정 연속 스크롤·주간업무 검색 이동/글자크기/들여쓰기·테마 6가지 정렬
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -398,13 +398,18 @@ async function finishLogin(idToken, retried) {
 
 /* ===================== 위젯 창 ===================== */
 // 이번주 격자는 요일 다섯 칸이 들어가야 해서 카드가 넓어야 한다. 다른 화면은 좁게.
+// 사용자가 직접 크기를 바꿨으면 그 크기를 존중한다 — 화면을 옮길 때마다 되돌리면 곤란하다
+function userSized() { const s = loadState(); return !!(s.userW && s.userH); }
 function baseWidthFor(view) { return ['week', 'work', 'comci', 'cal'].includes(view) ? 560 : 360; }
 function widgetSize(view) {
+  const s = loadState();
+  if (s.userW && s.userH) return { width: s.userW, height: s.userH };
   const k = SIZES[getScale()];
   return { width: Math.round(baseWidthFor(view || getView()) * k), height: Math.round(300 * k) };
 }
 function applyWidgetWidth(view) {
   if (!widgetWin || widgetWin.isDestroyed()) return;
+  if (userSized()) return;   // 직접 맞춰 둔 크기를 건드리지 않는다
   const want = Math.round(baseWidthFor(view) * SIZES[getScale()]);
   const b = widgetWin.getBounds();
   if (b.width === want) return;
@@ -450,7 +455,8 @@ function createWidgetWindow() {
     width: size.width, height: size.height, x: pos.x, y: pos.y,
     frame: false,
     backgroundColor: '#15181d',
-    resizable: false,
+    resizable: true,
+    minWidth: 300, minHeight: 180,
     alwaysOnTop: getAlwaysOnTop(),
     skipTaskbar: true,
     opacity: getOpacity(),
@@ -466,6 +472,16 @@ function createWidgetWindow() {
   if (getAlwaysOnTop()) widgetWin.setAlwaysOnTop(true, 'screen-saver');
   widgetWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   widgetWin.loadFile('widget.html');
+
+  let sizeTimer = null;
+  widgetWin.on('resize', () => {
+    clearTimeout(sizeTimer);
+    sizeTimer = setTimeout(() => {
+      if (!widgetWin || widgetWin.isDestroyed()) return;
+      const b = widgetWin.getBounds();
+      saveState({ userW: b.width, userH: b.height });
+    }, 400);
+  });
 
   let saveTimer = null;
   widgetWin.on('move', () => {
@@ -738,6 +754,15 @@ ipcMain.on('set-ui', (_e, v) => {
     saveState({ academicSheet: String(v.academicSheet || '') });
     debugLog(`학사일정 시트 주소 변경: ${v.academicSheet}`);
   }
+  if (v.autoSize) {
+    saveState({ userW: 0, userH: 0 });
+    if (widgetWin && !widgetWin.isDestroyed()) {
+      const s = widgetSize(getView());
+      const b = widgetWin.getBounds();
+      widgetWin.setBounds({ x: b.x, y: b.y, width: s.width, height: s.height });
+    }
+    debugLog('위젯 크기를 자동 맞춤으로 되돌렸습니다');
+  }
   if (v.resetPos) resetWidgetPosition();
   if (rebuildTrayMenu) rebuildTrayMenu();
 });
@@ -902,6 +927,7 @@ ipcMain.on('set-view', (_e, view) => {
 ipcMain.on('content-height', (_e, h) => {
   if (!widgetWin || widgetWin.isDestroyed()) return;
   const k = SIZES[getScale()];
+  if (userSized()) return;   // 직접 맞춰 둔 크기를 건드리지 않는다
   const want = Math.round(Math.min(Math.max(h, 120), 620) * k);
   const b = widgetWin.getBounds();
   if (Math.abs(b.height - want) < 3) return;

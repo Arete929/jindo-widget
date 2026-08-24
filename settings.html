@@ -1,4 +1,4 @@
-<!-- 파일명: settings.html | @version 1.12.0 -->
+<!-- 파일명: settings.html | @version 1.13.0 -->
 <!-- 위젯 설정 창 — 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기 등)을 여기서 한다. -->
 <!doctype html>
 <html lang="ko">
@@ -146,10 +146,9 @@
   <div class="row">
     <label class="lb">테마</label>
     <div class="chips" id="thRow">
-      <button data-th="">기본</button><button data-th="ocean">바다</button>
+      <button data-th="">인디고</button><button data-th="ocean">바다</button>
       <button data-th="forest">숲</button><button data-th="sunset">노을</button>
-      <button data-th="plum">자두</button><button data-th="slate">밤</button>
-      <button data-th="paper">종이</button>
+      <button data-th="plum">자두</button><button data-th="slate">먹색</button>
     </div>
   </div>
   <div class="row">
@@ -165,6 +164,7 @@
       <button id="aotBtn">항상 위로 고정</button>
       <button id="autoBtn">Windows 시작 시 자동 실행</button>
       <button id="posBtn">위젯 위치 초기화</button>
+      <button id="autoSizeBtn">위젯 크기 자동으로</button>
     </div>
   </div>
 </section>
@@ -324,6 +324,7 @@ $('opRow').querySelectorAll('button').forEach(function (b) {
 $('aotBtn').onclick = function () { UI.alwaysOnTop = !UI.alwaysOnTop; widgetAPI.setUi({ alwaysOnTop: UI.alwaysOnTop }); paint(); };
 $('autoBtn').onclick = function () { UI.autoLaunch = !UI.autoLaunch; widgetAPI.setUi({ autoLaunch: UI.autoLaunch }); paint(); };
 $('posBtn').onclick = function () { widgetAPI.setUi({ resetPos: true }); };
+$('autoSizeBtn').onclick = function () { widgetAPI.setUi({ autoSize: true }); };
 $('thRow').querySelectorAll('button').forEach(function (b) {
   b.onclick = function () { UI.theme = b.dataset.th; widgetAPI.setUi({ theme: UI.theme }); paint(); };
 });

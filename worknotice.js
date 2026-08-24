@@ -38,8 +38,13 @@ function parseWork(text) {
   const cells = String(text || '')
     .replace(/\r/g, '\n')
     .split(/[\n\t]/)
-    .map(clean)
-    .map((s) => (JUNK_RE.test(s) ? '' : s));
+    .map((raw) => {
+      const t = clean(raw);
+      if (!t || JUNK_RE.test(t)) return { t: '', ind: 0 };
+      // 원문의 앞 공백을 단계로 바꿔 둔다 («  가.» 같은 하위 항목을 들여쓰기로 보이게)
+      const sp = (String(raw).match(/^[  	]*/) || [''])[0].length;
+      return { t: t, ind: Math.min(3, Math.floor(sp / 2)) };
+    });
 
   const weeks = [];
   let wk = null, dept = null;
@@ -58,7 +63,8 @@ function parseWork(text) {
     dayRun = []; waiting = [];
   }
 
-  for (const cell of cells) {
+  for (const cellObj of cells) {
+    const cell = cellObj.t;
     if (RANGE_RE.test(cell)) {
       flushDays();
       wk = { range: cell, days: [], notes: [], depts: [] };
@@ -88,13 +94,13 @@ function parseWork(text) {
       continue;
     }
     if (dayRun.length) { waiting.push(cell); continue; }
-    if (dept && cell) dept.lines.push(cell);
+    if (dept && cell) dept.lines.push({ t: cell, ind: cellObj.ind });
   }
   flushDays();
 
   weeks.forEach((w) => {
     w.days = w.days.filter((d) => d.items.length);
-    w.depts = w.depts.filter((d) => d.lines.length && !(d.lines.length === 1 && /^없음$/.test(d.lines[0])));
+    w.depts = w.depts.filter((d) => d.lines.length && !(d.lines.length === 1 && /^없음$/.test(d.lines[0].t)));
     w.count = w.depts.reduce((n, d) => n + d.lines.length, 0);
   });
   return weeks;
