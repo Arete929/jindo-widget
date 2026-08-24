@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.7.2
+// 파일명: main.js | @version 1.7.3
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.7.2 [버그] 설정에서 교사를 바꿔도 위젯이 예전 자료를 계속 보여주던 문제
+// 수정요약: v1.7.3 교사·학급을 늘 함께 받아둔다(학급 칩이 안 보이던 문제) / v1.7.2 설정 바꿔도 안 바뀌던 문제
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -558,10 +558,9 @@ ipcMain.handle('comci-fetch', async () => {
   const cfg = getComciConfig();
   if (!cfg.school) return { error: '학교를 먼저 골라주세요' };
   try {
-    debugLog(`컴시간 시간표 받기: ${cfg.school.name} (교사:${cfg.wantTeacher} 학급:${cfg.wantClasses})`);
-    const data = await comcigan.fetchTimetable(cfg.school.code, {
-      teacher: cfg.wantTeacher, classes: cfg.wantClasses
-    });
+    debugLog(`컴시간 시간표 받기: ${cfg.school.name}`);
+    // 한 번 부르면 교사·학급이 같이 온다 — 둘 다 저장해 두고, 무엇을 볼지는 위젯에서 고른다
+    const data = await comcigan.fetchTimetable(cfg.school.code);
     data.schoolName = cfg.school.name;     // 컴시간이 학교명을 가려서 주므로 고른 이름을 쓴다
     saveComci(data);
     debugLog(`컴시간 받기 완료 — 교사 ${(data.teachers || []).length}명`);

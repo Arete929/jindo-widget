@@ -487,8 +487,17 @@ function viewComci() {
       + '<div style="margin-top:8px;font-size:10.5px;color:#6f7885">'
       + '학교를 고르고 «지금 불러오기» 를 누르면 됩니다.</div></div>';
   }
-  var hasT = !!(d.byTeacher && d.byTeacher.length);
-  var hasC = !!(d.classes && d.classes.length);
+  // 자료는 둘 다 받아 두고, 설정의 «볼 것» 으로 무엇을 보여줄지 고른다
+  var hasT = !!(d.byTeacher && d.byTeacher.length) && cfg.wantTeacher !== false;
+  var hasC = !!(d.classes && d.classes.length) && cfg.wantClasses !== false;
+  if (!hasT && !hasC) {
+    hasT = !!(d.byTeacher && d.byTeacher.length);
+    hasC = !!(d.classes && d.classes.length);
+  }
+  if (!hasT && !hasC) {
+    return '<div class="empty">받아둔 시간표에 교사·학급 자료가 없습니다.<br>'
+      + '<button class="btn" onclick="widgetAPI.openSettings()">설정에서 다시 불러오기</button></div>';
+  }
   if (!cmMode) cmMode = hasT ? 'teacher' : 'class';
   if (cmMode === 'teacher' && !hasT) cmMode = 'class';
   if (cmMode === 'class' && !hasC) cmMode = 'teacher';

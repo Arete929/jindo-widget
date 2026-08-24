@@ -192,14 +192,12 @@ function shape(j, want) {
   return out;
 }
 
-/* 학교 코드로 원하는 것만 받아 정리한다.
-   want = { teacher:true/false, classes:true/false } */
-async function fetchTimetable(schoolCode, want) {
-  const w = { teacher: !!(want && want.teacher), classes: !!(want && want.classes) };
-  if (!w.teacher && !w.classes) throw new Error('불러올 것을 하나는 골라주세요');
-  // 두 조회가 같은 알맹이를 주므로 한 번만 받아서 둘 다 만든다
-  const j = await fetchRaw(schoolCode, w.classes ? 1 : 2);
-  return shape(j, w);
+/* 학교 코드로 시간표를 받아 정리한다.
+   ★ 한 번 요청하면 교사·학급 자료가 같이 오므로 언제나 둘 다 만들어 둔다.
+     («무엇을 볼지» 는 위젯에서 고르면 되고, 그때 다시 받을 필요가 없다) */
+async function fetchTimetable(schoolCode) {
+  const j = await fetchRaw(schoolCode, 1);
+  return shape(j, { teacher: true, classes: true });
 }
 
 module.exports = { searchSchool, fetchTimetable, readProtocol };
