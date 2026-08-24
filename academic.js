@@ -1,4 +1,4 @@
-// 파일명: academic.js | @version 1.0.0
+// 파일명: academic.js | @version 1.14.3
 // 학교 «연간 수업일수 계획표» 구글 시트에서 학사일정을 받아온다.
 //
 // ★ 권한이 필요 없다. «링크가 있는 사람» 공유이면 아래 주소로 그냥 받아진다.
@@ -69,8 +69,14 @@ function parseMonth(csv, tab) {
     }
     days.push({ day: dayNum, dow: dow, event: event, grades: grades });
   }
-  return { tab: tab, month: (String(rows.map(r => r[2] || '').find(v => /(\d{1,2})월/.test(v)) || '')
-    .match(/(\d{1,2})월/) || [])[1] || tab, days: days };
+  // ★ 달은 «탭 이름»에서 뽑는 것이 가장 확실하다.
+  //   예전에는 시트 안에서 «N월» 이라고 적힌 칸을 찾아 썼는데, 표 어딘가에 다른 달이
+  //   적혀 있으면 엉뚱한 달이 된다 — 실제로 «8» 탭이 «3월» 로 잡혀 단추가 겹쳤다.
+  //   탭 이름은 3~12·1·2 와 «8-1»·«8-2» 처럼 한 달을 둘로 나눈 것뿐이라 앞자리만 보면 된다.
+  const fromTab = (String(tab).match(/^(\d{1,2})/) || [])[1];
+  const fromCell = (String(rows.map(r => r[2] || '').find(v => /(\d{1,2})월/.test(v)) || '')
+    .match(/(\d{1,2})월/) || [])[1];
+  return { tab: tab, month: fromTab || fromCell || tab, days: days };
 }
 
 /* 한 달 받기 */

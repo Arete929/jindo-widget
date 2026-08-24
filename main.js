@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.14.2
+// 파일명: main.js | @version 1.14.3
 // 체육 수업진도 위젯 — 바탕화면에 항상 떠 있는 작은 카드
-// 수정요약: v1.14.2 예전 형식으로 저장된 주간업무를 그대로 읽어 부서 카드가 텅 비던 것 수정(옛 모양이면 자동 재수집)
+// 수정요약: v1.14.3 학사일정 — «오늘로» 단추를 오른쪽 눈에 띄는 자리로, 오늘이 화면 맨 위에 오도록 자리잡기 고침, 달을 탭 이름에서 뽑아 8월 단추 겹침 해결
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -652,7 +652,24 @@ async function refreshAcademic() {
     return loadAcademic();
   } finally { academicFetching = false; }
 }
-ipcMain.handle('get-academic', () => loadAcademic());
+/* ★ v1.14.3 에서 «달»을 탭 이름에서 뽑도록 고쳤다.
+   그 전에 받아 둔 자료는 시트 안 글자를 보고 달을 정해서, 예를 들어 «8» 탭이 «3월» 로
+   잡혀 월 단추가 겹쳐 보였다. 탭 이름과 달이 어긋나 있으면 다시 받는다. */
+function academicIsOld(a) {
+  if (!a || !(a.months || []).length) return false;   // 아예 없는 건 따로 처리한다
+  return a.months.some((m) => {
+    const fromTab = (String(m.tab).match(/^(\d{1,2})/) || [])[1];
+    return fromTab && String(m.month) !== fromTab;
+  });
+}
+ipcMain.handle('get-academic', () => {
+  const a = loadAcademic();
+  if (academicIsOld(a)) {
+    scheduleTask('cal', '학사일정', 200, () => refreshAcademic());
+    debugLog('학사일정: 달 표시가 어긋난 옛 자료라 다시 받습니다');
+  }
+  return a;
+});
 ipcMain.handle('academic-fetch', async () => {
   setTask('cal', '학사일정', 'busy');
   try { return await refreshAcademic(); } finally { setTask('cal', null, null); }
