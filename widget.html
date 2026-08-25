@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.18.0 -->
+<!-- 파일명: widget.html | @version 1.19.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -113,7 +113,21 @@
   }
   .tlogo { width: 18px; height: 18px; object-fit: contain; flex: 0 0 auto; }
   .ttl { font-size: 15px; font-weight: 800; letter-spacing: -.3px; color: var(--fg); }
-  .grip { margin-left: auto; font-size: 11px; letter-spacing: 2px; color: var(--dim); opacity: .55; }
+  /* 설정 톱니 — 제목 옆에 둔다. 테마 바탕색에 따라 그림을 갈아 끼운다.
+     밝은 바탕에는 검정, 어두운 바탕에는 하늘색, 강렬한 빨강 바탕에는 테두리가 있는 것. */
+  .gear {
+    -webkit-app-region: no-drag;
+    margin-left: auto; width: 17px; height: 17px; padding: 0; border: 0;
+    background: none no-repeat center / contain; cursor: pointer; opacity: .85;
+    background-image: url('assets/setting_blue.png');
+    transition: transform .15s, opacity .15s;
+  }
+  .gear:hover { opacity: 1; transform: rotate(45deg); }
+  :root[data-theme="ghost"] .gear,
+  :root[data-theme="chillwhite"] .gear,
+  :root[data-theme="kiwi"] .gear { background-image: url('assets/setting_bk.png'); }
+  :root[data-theme="truepink"] .gear { background-image: url('assets/setting_bluebk.png'); }
+  .grip { margin-left: 7px; font-size: 11px; letter-spacing: 2px; color: var(--dim); opacity: .55; }
 
   /* 사용량 띠의 빈 곳으로도 끌 수 있게 — 단, 단추는 눌려야 한다 */
   .usg { display: flex; gap: 6px; margin-bottom: 8px; -webkit-app-region: drag; }
@@ -357,8 +371,14 @@
   .acr { display: flex; align-items: center; gap: 8px; padding: 4px 7px; border-radius: 6px;
          background: var(--card); font-size: 11px; }
   .acr.wknd { opacity: .5; }
-  /* 이번주 — 칠하지 않고 테두리로만 표시한다 (오늘만 크게 강조) */
-  .acr.acwk { box-shadow: inset 0 0 0 1.5px var(--accent); opacity: 1; }
+  /* 이번 주 — 날짜마다가 아니라 «한 주를 통째로» 테두리로 묶는다 */
+  .acweek {
+    display: flex; flex-direction: column; gap: 2px;
+    box-shadow: inset 0 0 0 2px var(--accent);
+    border-radius: 9px; padding: 4px; margin: 4px 0;
+  }
+  .acweek .acr.wknd { opacity: .7; }
+  /* 오늘 — 주간 테두리와 «선 색»을 달리해 구분한다 */
   .acr.tdy {
     box-shadow: inset 0 0 0 2px var(--now); background: color-mix(in srgb, var(--now) 14%, var(--card));
     padding: 9px; font-size: 13px; opacity: 1;
@@ -922,7 +942,7 @@ function viewAcademic() {
 
   h += ms.map(function (m) {
     var year = acYear(m.month);
-    var rows = m.days.map(function (d) {
+    var rowObjs = m.days.map(function (d) {
       var isToday = (m.month === todayM && d.day === todayD);
       var weekend = (d.dow === '토' || d.dow === '일');
       var dt = new Date(year, Number(m.month) - 1, d.day);
@@ -940,13 +960,30 @@ function viewAcademic() {
       }).join('');
       // ★ 같은 달이 8-1·8-2 로 나뉘어 있으면 «오늘»이 여러 군데 생긴다.
       //   id 는 달마다 다르게 주고, 어디로 갈지는 goToday() 가 고른다.
-      return '<div class="acr' + (isToday ? ' tdy' : '') + (inWeek && !isToday ? ' acwk' : '')
-        + (weekend ? ' wknd' : '') + '"'
-        + (isToday ? ' data-today="1" id="actoday-' + esc(m.tab) + '"' : '') + '>'
-        + '<span class="acd">' + d.day + '<small>' + esc(d.dow) + '</small></span>'
-        + '<span class="ace">' + esc(d.event || '') + '</span>'
-        + (lit ? '<span class="acc">' + lit + '</span>' : '') + '</div>';
-    }).join('');
+      return {
+        inWeek: inWeek,
+        html: '<div class="acr' + (isToday ? ' tdy' : '') + (weekend ? ' wknd' : '') + '"'
+          + (isToday ? ' data-today="1" id="actoday-' + esc(m.tab) + '"' : '') + '>'
+          + '<span class="acd">' + d.day + '<small>' + esc(d.dow) + '</small></span>'
+          + '<span class="ace">' + esc(d.event || '') + '</span>'
+          + (lit ? '<span class="acc">' + lit + '</span>' : '') + '</div>'
+      };
+    });
+    // 이번 주는 «날짜마다» 가 아니라 «한 주를 통째로» 테두리로 묶는다.
+    // 오늘 칸은 그 안에서 다른 색 테두리로 한 번 더 구분한다.
+    var pack = [], run = [];
+    var flush = function () {
+      if (!run.length) return;
+      pack.push('<div class="acweek">' + run.join('') + '</div>');
+      run = [];
+    };
+    rowObjs.forEach(function (r) {
+      if (r.inWeek) { run.push(r.html); return; }
+      flush();
+      pack.push(r.html);
+    });
+    flush();
+    var rows = pack.join('');
     return '<div class="acmon" id="acm-' + esc(m.tab) + '" data-mon="' + esc(m.tab) + '">'
       + esc(m.month) + '월' + (/-/.test(m.tab) ? ' (' + esc(m.tab) + ')' : '') + '</div>'
       + '<div class="acl">' + rows + '</div>';
@@ -1179,6 +1216,7 @@ function titleBar() {
   return '<div class="tbar">'
     + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
     + '<span class="ttl">' + esc(APPNAME) + '</span>'
+    + '<button class="gear" title="설정" onclick="widgetAPI.openSettings()"></button>'
     + '<span class="grip" title="여기를 잡고 끌면 위젯이 움직입니다">⠿⠿</span></div>';
 }
 function updBar() {
@@ -1219,7 +1257,6 @@ function render() {
   html += '<div class="head"><span class="date">' + esc(dText) + '</span>'
     + '<span class="dow">' + esc(dowText) + '</span><span class="spacer"></span>'
     + (HAS_TT ? '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>' : '')
-    + '<button class="ico" title="설정" onclick="widgetAPI.openSettings()">⚙</button>'
     + '<button class="ico" title="지금 새로고침" onclick="widgetAPI.refreshNow()">⟳</button>'
     + (HAS_TT ? '<button class="ico" title="수업진도 앱 열기(크롬)" onclick="widgetAPI.openApp()">↗</button>' : '')
     + '</div>';
