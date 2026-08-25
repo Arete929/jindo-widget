@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.15.1
+// 파일명: main.js | @version 1.16.0
 // 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (체육 수업진도·주간업무·학사일정·급식·AI 사용량)
-// 수정요약: v1.15.1 제목 줄 클래스 이름이 진도 막대(.bar)와 겹쳐 7px 로 눌리고 글자가 잘리던 것 수정 — .tbar 로 분리, 제목 15px 로 키움
+// 수정요약: v1.16.0 테마를 넷으로 정리 — 블랙(처음 위젯 색, 기본)·고스트·칠화이트·나이트. 페르시안·트루핑크·키위 삭제
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -102,7 +102,13 @@ const SIZES = { small: 0.85, medium: 1, large: 1.2 };
 function getScale() { const s = loadState().size; return SIZES[s] ? s : 'medium'; }
 function getOpacity() { const o = loadState().opacity; return typeof o === 'number' ? o : 1; }
 function getAlwaysOnTop() { const v = loadState().alwaysOnTop; return v === undefined ? true : !!v; }
-function getTheme() { return loadState().theme || ''; }
+// 테마는 넷뿐이다 — 블랙(기본, 빈 값) · 고스트 · 칠화이트 · 나이트.
+// 없앤 이름(페르시안·트루핑크·키위 등)이 저장돼 있으면 기본(블랙)으로 되돌린다.
+const THEMES = ['', 'ghost', 'chillwhite', 'night'];
+function getTheme() {
+  const t = loadState().theme || '';
+  return THEMES.includes(t) ? t : '';
+}
 function getUsageShow() { const v = loadState().usageShow; return v === undefined ? true : !!v; }
 function getUsageStyle() { return loadState().usageStyle === 'bar' ? 'bar' : 'ring'; }
 function getView() { const v = loadState().view; return ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal'].includes(v) ? v : 'today'; }
