@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   refreshNow: () => ipcRenderer.send('refresh-now'),
   openLogin: () => ipcRenderer.send('open-login'),
   openApp: () => ipcRenderer.send('open-app'),
+  openUrl: (url) => ipcRenderer.send('open-url', url),
   openTimetable: () => ipcRenderer.send('open-timetable'),
   openSettings: () => ipcRenderer.send('open-settings'),
   getWeek: (off) => ipcRenderer.invoke('get-week', off),
@@ -36,6 +37,21 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   comciGet: () => ipcRenderer.invoke('comci-get'),
   onComciChanged: (cb) => ipcRenderer.on('comci-changed', () => cb()),
   setComciConfig: (cfg) => ipcRenderer.send('comci-config', cfg),
+
+  /* 학생기록 */
+  recState: () => ipcRenderer.invoke('rec-state'),
+  recSignIn: () => ipcRenderer.invoke('rec-signin'),
+  recSignOut: () => ipcRenderer.invoke('rec-signout'),
+  recCreate: () => ipcRenderer.invoke('rec-create'),
+  recTrash: () => ipcRenderer.invoke('rec-trash'),
+  recAttach: (url) => ipcRenderer.invoke('rec-attach', url),
+  recLoad: () => ipcRenderer.invoke('rec-load'),
+  recSave: (p) => ipcRenderer.invoke('rec-save', p),
+  recClear: (row) => ipcRenderer.invoke('rec-clear', row),
+  recCats: (cats) => ipcRenderer.invoke('rec-cats', cats),
+  recOpenSheet: () => ipcRenderer.send('rec-open-sheet'),
+  rosterGet: () => ipcRenderer.invoke('roster-get'),
+  rosterFetch: () => ipcRenderer.invoke('roster-fetch'),
 
   /* 학사일정·급식 */
   getAcademic: () => ipcRenderer.invoke('get-academic'),

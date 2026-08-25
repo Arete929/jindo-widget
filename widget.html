@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.20.0 -->
+<!-- 파일명: widget.html | @version 1.21.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -396,6 +396,12 @@
     white-space: pre-wrap; word-break: break-word;
   }
   .wtb tr:first-child td { background: var(--card2); font-weight: 800; color: var(--fg); text-align: center; }
+  .wlink {
+    -webkit-app-region: no-drag;
+    color: var(--accent); text-decoration: underline; text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .wlink:hover { filter: brightness(1.15); }
   .wkp.a-center { text-align: center; }
   .wkp.a-right { text-align: right; }
   .wtb .wkp { margin: 0; font-size: inherit; }
@@ -458,6 +464,54 @@
   }
   .cmh small { font-weight: 600; color: var(--dim); margin-left: 6px; letter-spacing: 0; }
 
+  /* ── 학생기록 ── */
+  .recintro { padding: 12px 4px; text-align: center; }
+  .recintro .rt { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+  .recintro .rp { font-size: 11.5px; color: var(--dim); line-height: 1.6; margin-bottom: 10px; }
+  .recintro .rw { font-size: 11.5px; color: var(--warnfg); background: var(--warnbg);
+                  border-radius: 7px; padding: 8px 10px; margin-bottom: 10px; line-height: 1.5; }
+  .recintro .rok { font-size: 11px; font-weight: 700; color: var(--now); margin-bottom: 10px; }
+  /* 학생 타일 — 3201 강재은 */
+  .stiles { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .stile {
+    -webkit-app-region: no-drag;
+    position: relative; border: 1px solid var(--line); background: var(--card); color: var(--fg2);
+    border-radius: 7px; padding: 5px 9px; cursor: pointer;
+    font-size: calc(11px * var(--wf)); font-family: inherit; white-space: nowrap;
+  }
+  .stile b { font-weight: 800; color: var(--dim); margin-right: 3px; }
+  .stile:hover { border-color: var(--dim); }
+  .stile.on { background: var(--accent); border-color: var(--accent); color: var(--on); }
+  .stile.on b { color: var(--on); opacity: .8; }
+  .stile i { font-style: normal; font-size: 8.5px; font-weight: 800; color: var(--now); margin-left: 4px; }
+  .rhead { font-size: calc(12.5px * var(--wf)); font-weight: 800; margin: 8px 0 6px; }
+  .rta {
+    -webkit-app-region: no-drag;
+    width: 100%; min-height: 120px; resize: vertical;
+    background: var(--card); border: 1px solid var(--line); color: var(--fg);
+    border-radius: 8px; padding: 8px 10px; font-family: inherit;
+    font-size: calc(11.5px * var(--wf)); line-height: 1.6; outline: none;
+  }
+  .rta:focus { border-color: var(--accent); }
+  .rbyte { font-size: 10px; font-weight: 700; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .rsaved { font-size: 10.5px; font-weight: 700; color: var(--now); margin-top: -2px; }
+  /* 시트 바로가기 — 표준 시트 그림 */
+  .shbtn {
+    -webkit-app-region: no-drag;
+    border: 0; background: none; padding: 0 2px; cursor: pointer; line-height: 0;
+  }
+  .shbtn img { width: 17px; height: 17px; object-fit: contain; -webkit-user-drag: none; }
+  .shbtn:hover img { filter: brightness(1.15); }
+  /* 통계 */
+  .slab { font-size: 10px; font-weight: 800; color: var(--dim); min-width: 30px; }
+  .rsum { font-size: 11px; font-weight: 700; color: var(--dim); margin: 6px 0; }
+  .rcard { background: var(--card); border-radius: 8px; padding: 7px 9px; margin-bottom: 5px; }
+  .rch { display: flex; align-items: center; gap: 5px; font-size: 10.5px;
+         font-weight: 800; color: var(--accent); margin-bottom: 4px; }
+  .rcb { font-size: calc(11px * var(--wf)); color: var(--fg2); line-height: 1.6; white-space: pre-wrap; }
+  /* 카테고리 편집 */
+  .crow { display: flex; gap: 4px; margin-bottom: 4px; }
+
   /* ── 급식 ── */
   .ml { background: var(--card); border-radius: 8px; padding: 7px 9px; margin-bottom: 5px; }
   .ml.tdy { box-shadow: inset 0 0 0 1.5px var(--now); }
@@ -495,8 +549,8 @@ var TODAYEV = '';
 /* 업데이트 내역 — 새 버전으로 켜졌을 때 한 번 보여주고, 닫으면 다시 안 뜬다 */
 var NOTES = null;
 /* 탭마다 글자 크기 배율을 따로 둔다. 메인이 저장해 두므로 껐다 켜도 그대로다. */
-var FS = { work: 1, comci: 1, cal: 1, meal: 1 };
-function fsKey() { return ({ work: 'work', comci: 'comci', cal: 'cal', meal: 'meal' })[VIEW] || ''; }
+var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1 };
+function fsKey() { return ({ work: 'work', comci: 'comci', cal: 'cal', meal: 'meal', rec: 'rec' })[VIEW] || ''; }
 function fontBtns(key) {
   return '<span class="wfs">'
     + '<button class="wkb" data-fs="' + key + ',-1" title="글자 작게">A−</button>'
@@ -764,10 +818,27 @@ function countWeek(w, q) {
 }
 
 /* 덩어리 그리기 — 글은 원문 공백 그대로, 표는 표 그대로 */
+/* 원문에 걸려 있던 링크를 눌리는 글자로 바꾼다.
+   찾기 표시(<mark>)가 이미 들어간 뒤라, 태그 밖의 글자에서만 자리를 찾는다. */
+function withLinks(html, links) {
+  if (!links || !links.length) return html;
+  var out = html;
+  links.forEach(function (lk) {
+    var t = esc(lk.t);
+    var i = out.indexOf(t);
+    if (i < 0) return;
+    out = out.slice(0, i)
+      + '<a class="wlink" data-url="' + esc(lk.url) + '" title="' + esc(lk.url) + '">' + t + '</a>'
+      + out.slice(i + t.length);
+  });
+  return out;
+}
 function wblocks(bs) { return (bs || []).map(wblock).join(''); }
 function wblock(b) {
   // 원문이 가운데(또는 오른쪽) 정렬이면 그대로 따라간다 — 급식지도 안내표의 이름 등
-  if (b.k === 'p') return '<div class="wkp' + (b.al ? ' a-' + b.al : '') + '">' + mk(b.t) + '</div>';
+  if (b.k === 'p') {
+    return '<div class="wkp' + (b.al ? ' a-' + b.al : '') + '">' + withLinks(mk(b.t), b.links) + '</div>';
+  }
   return '<div class="wtbw"><table class="wtb">'
     + (b.rows || []).map(function (r) {
         return '<tr>' + r.map(function (c) {
@@ -1278,6 +1349,246 @@ function usageBar() {
     + '</div></div>';
 }
 
+/* ── 학생기록 ──────────────────────────────────────────────────
+   학급 → 학생 타일 → 카테고리 → 작성. «통계» 로 넘기면 학생·카테고리·날짜를
+   각각 여러 개 골라 걸러 볼 수 있다.
+
+   기록은 구글 시트에 쌓인다. 시트에서 직접 고쳐도 여기에 반영되고,
+   여기서 쓴 것도 시트에 그대로 남는다. */
+var REC = null;          // 메인이 알려 주는 상태(연결·시트·학급·명렬표)
+var RECDATA = null;      // 시트에서 읽어 온 기록·카테고리
+var recBusy = false, recErr = '';
+var recMode = 'write';   // write | stat | cats
+var recCls = '', recSid = '', recCat = '';
+var recDraft = '', recSavedAt = '';
+var statStu = [], statCat = [], statMon = [];   // 통계에서 고른 것들 (여러 개)
+var catEdit = null;      // 카테고리 편집 중인 목록
+
+function recLoad(force) {
+  if (recBusy) return;
+  if (RECDATA && !force) return;
+  recBusy = true; recErr = '';
+  widgetAPI.recLoad().then(function (d) {
+    recBusy = false;
+    if (d && d.need === 'sheet') { RECDATA = null; render(); return; }
+    RECDATA = d || null; render();
+  }).catch(function (e) {
+    recBusy = false; RECDATA = null;
+    recErr = (e && e.message) || String(e);
+    render();
+  });
+}
+function recCats() {
+  var c = (RECDATA && RECDATA.cats) || [];
+  var on = c.filter(function (x) { return x.on !== false; });
+  return on.length ? on : [{ name: '행발' }, { name: '세특' }, { name: '자율' },
+    { name: '동아리' }, { name: '진로' }, { name: '자유학기' }];
+}
+function recClassList() {
+  var all = (REC && REC.roster && REC.roster.classes) || [];
+  var pick = (REC && REC.classes) || [];
+  if (!pick.length) return all;                      // 아직 안 골랐으면 전부
+  return all.filter(function (c) { return pick.indexOf(c.key) >= 0; });
+}
+function recStudents() {
+  var c = recClassList().filter(function (x) { return x.key === recCls; })[0];
+  return (c && c.students) || [];
+}
+function recFind(sid, cat) {
+  var rs = (RECDATA && RECDATA.records) || [];
+  for (var i = 0; i < rs.length; i++) {
+    if (rs[i].id === sid && rs[i].cat === cat && rs[i].text) return rs[i];
+  }
+  return null;
+}
+/* 나이스 글자 수 — 한글3 · 영숫1 · 엔터1 바이트 */
+function neisBytes(t) {
+  var n = 0;
+  String(t || '').split('').forEach(function (ch) {
+    if (ch === '\n') n += 1;
+    else if (ch.charCodeAt(0) > 127) n += 3;
+    else n += 1;
+  });
+  return n;
+}
+function sheetBtn() {
+  if (!(REC && REC.sheet && REC.sheet.id)) return '';
+  return '<button class="shbtn" title="연결된 구글 시트 열기" onclick="widgetAPI.recOpenSheet()">'
+    + '<img src="assets/sheet.png" alt=""></button>';
+}
+
+/* ── 아직 준비가 안 됐을 때 보여주는 안내 ── */
+function recSetup() {
+  var st = REC || {};
+  var h = '<div class="recintro">'
+    + '<div class="rt">학생기록</div>'
+    + '<div class="rp">학생기록 시트는 <b>지금 로그인한 구글 계정</b>에 만들어집니다.<br>'
+    + '시트와 위젯에서 쓴 내용은 <b>서로 연동</b>되어 어느 쪽에서 고쳐도 함께 바뀝니다.</div>';
+
+  if (!st.hasClient) {
+    h += '<div class="rw">먼저 설정에서 <b>구글 연결 정보</b>를 넣어 주세요.<br>'
+      + '설정 → 학생기록 에 넣는 방법이 적혀 있습니다.</div>'
+      + '<button class="btn" onclick="widgetAPI.openSettings()">설정 열기</button>';
+    return h + '</div>';
+  }
+  if (!st.linked) {
+    h += '<div class="rw">구글에 한 번 연결해 주세요. 크롬이 열리고, 허용하면 끝납니다.</div>'
+      + '<button class="btn" id="recIn">구글 연결하기</button>';
+    return h + '</div>';
+  }
+  h += '<div class="rok">연결됨 · ' + esc(st.email || '') + '</div>';
+  if (!st.sheet || !st.sheet.id || st.sheet.trashedAt) {
+    if (st.sheet && st.sheet.trashedAt) {
+      h += '<div class="rw">지난 시트는 ' + esc(st.sheet.trashedAt) + ' 에 휴지통으로 보냈습니다.</div>';
+    }
+    h += '<button class="btn" id="recNew">시트 만들기</button>'
+      + '<div class="rp" style="margin-top:10px">이미 만들어 둔 시트가 있으면 주소를 붙여 넣으세요.</div>'
+      + '<div class="wknav"><input class="wq" id="recUrl" type="text" placeholder="구글 시트 주소">'
+      + '<button class="wkb" id="recAt">연결</button></div>';
+  }
+  return h + '</div>';
+}
+
+/* ── 쓰기 ── */
+function recWrite() {
+  var classes = recClassList();
+  if (!classes.length) {
+    return '<div class="empty">명렬표를 아직 못 읽었습니다.<br>'
+      + '<button class="btn" id="recRoster">지금 받아오기</button></div>';
+  }
+  if (!recCls) recCls = classes[0].key;
+
+  var h = '<div class="wknav">' + classes.map(function (c) {
+    return '<button class="wkb' + (c.key === recCls ? ' now' : '') + '" data-rc="' + esc(c.key) + '">'
+      + c.grade + '-' + c.cls + '</button>';
+  }).join('') + '</div>';
+
+  var studs = recStudents();
+  h += '<div class="stiles">' + studs.map(function (s) {
+    var n = ((RECDATA && RECDATA.records) || []).filter(function (r) {
+      return r.id === s.id && r.text;
+    }).length;
+    return '<button class="stile' + (s.id === recSid ? ' on' : '') + '" data-rs="' + s.id + '">'
+      + '<b>' + esc(s.id) + '</b> ' + esc(s.name)
+      + (n ? '<i>' + n + '</i>' : '') + '</button>';
+  }).join('') + '</div>';
+
+  if (!recSid) return h;
+  var me = studs.filter(function (s) { return s.id === recSid; })[0];
+  if (!me) return h;
+
+  var cats = recCats();
+  if (!recCat) recCat = cats[0].name;
+  h += '<div class="rhead">' + esc(me.id) + ' ' + esc(me.name) + '</div>';
+  h += '<div class="wknav">' + cats.map(function (c) {
+    var has = !!recFind(me.id, c.name);
+    return '<button class="wkb' + (c.name === recCat ? ' now' : '') + '" data-rk="' + esc(c.name) + '">'
+      + esc(c.name) + (has ? '<small>●</small>' : '') + '</button>';
+  }).join('')
+    + '<span class="spacer"></span>'
+    + '<button class="wkb" id="recCatEdit" title="카테고리 편집">⚙</button></div>';
+
+  var cur = recFind(me.id, recCat);
+  var text = recDraft !== null && recDraft !== '' ? recDraft : (cur ? cur.text : '');
+  h += '<textarea class="rta" id="recText" placeholder="' + esc(recCat) + ' 내용을 적어 주세요">'
+    + esc(text) + '</textarea>';
+  h += '<div class="wknav"><button class="wkb go" id="recSave">저장</button>'
+    + '<span class="rbyte">' + neisBytes(text) + ' Byte · ' + text.length + '자</span>'
+    + '<span class="spacer"></span>'
+    + (cur ? '<button class="wkb" id="recDel" title="이 기록 지우기">지우기</button>' : '')
+    + '</div>';
+  if (recSavedAt) h += '<div class="rsaved">✅ 저장됨 · ' + esc(recSavedAt) + '</div>';
+  else if (cur && cur.edited) h += '<div class="rsaved">마지막 저장 · ' + esc(cur.edited) + '</div>';
+  return h;
+}
+
+/* ── 통계 ── */
+function recStat() {
+  var rs = ((RECDATA && RECDATA.records) || []).filter(function (r) { return r.text; });
+  var studs = [];
+  recClassList().forEach(function (c) { studs = studs.concat(c.students); });
+  var cats = recCats();
+  var months = [];
+  rs.forEach(function (r) {
+    var m = String(r.at || '').slice(0, 7);          // 2026.08
+    if (m && months.indexOf(m) < 0) months.push(m);
+  });
+  months.sort().reverse();
+
+  function chips(list, chosen, key, label) {
+    return '<div class="wknav"><span class="slab">' + label + '</span>'
+      + '<button class="wkb' + (chosen.length ? '' : ' now') + '" data-sa="' + key + '">전체</button>'
+      + list.map(function (v) {
+          return '<button class="wkb' + (chosen.indexOf(v.v) >= 0 ? ' now' : '') + '" data-s' + key + '="' + esc(v.v) + '">'
+            + esc(v.t) + '</button>';
+        }).join('') + '</div>';
+  }
+  var h = '<div class="top2">'
+    + chips(studs.map(function (s) { return { v: s.id, t: s.id + ' ' + s.name }; }), statStu, 'u', '학생')
+    + chips(cats.map(function (c) { return { v: c.name, t: c.name }; }), statCat, 'c', '분류')
+    + chips(months.map(function (m) { return { v: m, t: m.replace('.', '년 ') + '월' }; }), statMon, 'm', '날짜')
+    + '</div>';
+
+  var out = rs.filter(function (r) {
+    if (statStu.length && statStu.indexOf(r.id) < 0) return false;
+    if (statCat.length && statCat.indexOf(r.cat) < 0) return false;
+    if (statMon.length && statMon.indexOf(String(r.at).slice(0, 7)) < 0) return false;
+    return true;
+  });
+  h += '<div class="rsum">모두 ' + out.length + '건'
+    + (statStu.length || statCat.length || statMon.length ? ' (걸러 봄)' : '') + '</div>';
+  if (!out.length) return h + '<div class="empty">해당하는 기록이 없습니다.</div>';
+
+  h += out.map(function (r, i) {
+    return '<div class="rcard"><div class="rch">' + esc(r.id) + ' ' + esc(r.name)
+      + ' · ' + esc(r.cat) + ' · ' + esc(String(r.at).slice(0, 10))
+      + '<span class="spacer"></span><span class="rbyte">' + neisBytes(r.text) + ' Byte</span>'
+      + '<button class="wkb" data-cp="' + i + '" title="복사">⧉</button></div>'
+      + '<div class="rcb" id="rcb-' + i + '">' + esc(r.text) + '</div></div>';
+  }).join('');
+  return h;
+}
+
+/* ── 카테고리 편집 ── */
+function recCatsEdit() {
+  var list = catEdit || recCats().map(function (c) { return { name: c.name, on: c.on !== false }; });
+  var h = '<div class="rhead">카테고리 편집</div>';
+  h += list.map(function (c, i) {
+    return '<div class="crow">'
+      + '<input class="wq" data-ci="' + i + '" value="' + esc(c.name) + '">'
+      + '<button class="wkb" data-cu="' + i + '" title="위로">▲</button>'
+      + '<button class="wkb" data-cd="' + i + '" title="아래로">▼</button>'
+      + '<button class="wkb" data-cx="' + i + '" title="지우기">✕</button></div>';
+  }).join('');
+  h += '<div class="wknav"><button class="wkb" id="cAdd">+ 추가</button>'
+    + '<span class="spacer"></span>'
+    + '<button class="wkb go" id="cSave">저장</button>'
+    + '<button class="wkb" id="cCancel">그만두기</button></div>';
+  return h;
+}
+
+function viewRec() {
+  if (!REC) return '<div class="empty">준비 중…</div>';
+  if (!REC.hasClient || !REC.linked || !REC.sheet || !REC.sheet.id || REC.sheet.trashedAt) {
+    return recSetup();
+  }
+  if (!RECDATA && !recErr) { recLoad(); return '<div class="empty">학생기록을 불러오는 중…</div>'; }
+  if (recErr) {
+    return '<div class="empty">기록을 읽지 못했습니다.<br><span style="font-size:10.5px">'
+      + esc(recErr) + '</span><br><button class="btn" id="recRetry">다시 시도</button></div>';
+  }
+
+  var h = '<div class="wknav">'
+    + '<button class="wkb' + (recMode === 'write' ? ' now' : '') + '" data-rm="write">쓰기</button>'
+    + '<button class="wkb' + (recMode === 'stat' ? ' now' : '') + '" data-rm="stat">통계</button>'
+    + '<span class="spacer"></span>' + sheetBtn()
+    + fontBtns('rec')
+    + '<button class="wkb" id="recReload" title="다시 읽기">⟳</button></div>';
+
+  if (recMode === 'cats') return h + recCatsEdit();
+  return h + (recMode === 'stat' ? recStat() : recWrite());
+}
+
 function taskBar() {
   if (!TASKS.length) return '';
   var now = Date.now();
@@ -1362,8 +1673,8 @@ function render() {
   var TT_SUB = ['today', 'week', 'progress'];
   var tab = TT_SUB.indexOf(VIEW) >= 0 ? 'tt' : VIEW;
   html += '<div class="chips">'
-    + (HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식']
-              : ['work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식']).map(function (s) {
+    + (HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록']
+              : ['work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록']).map(function (s) {
         var p = s.split(',');
         return '<button class="chip' + (tab === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">' + p[1] + '</button>';
       }).join('') + '</div>';
@@ -1383,6 +1694,7 @@ function render() {
     : VIEW === 'comci' ? viewComci()
     : VIEW === 'cal' ? viewAcademic()
     : VIEW === 'meal' ? viewMeals()
+    : VIEW === 'rec' ? viewRec()
     : viewToday(d);
   html += '<div class="foot">@JINHOKIM</div>';   // 버전은 제목 줄 오른쪽 끝에 있다
   app.style.setProperty('--wf', String(FS[fsKey()] || 1));
@@ -1405,6 +1717,82 @@ function render() {
         widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
         return; }
       if (b.id === 'cmGet') { widgetAPI.openSettings(); return; }
+      // 학생기록
+      if (b.dataset.rm) { recMode = b.dataset.rm; render(); return; }
+      if (b.dataset.rc) { recCls = b.dataset.rc; recSid = ''; recDraft = ''; recSavedAt = ''; render(); return; }
+      if (b.dataset.rk) { recCat = b.dataset.rk; recDraft = ''; recSavedAt = ''; render(); return; }
+      if (b.id === 'recCatEdit') { catEdit = null; recMode = 'cats'; render(); return; }
+      if (b.id === 'recReload') { RECDATA = null; recLoad(true); return; }
+      if (b.id === 'recRetry') { recErr = ''; RECDATA = null; recLoad(true); return; }
+      if (b.id === 'recAt') {
+        var u = (app.querySelector('#recUrl') || {}).value || '';
+        widgetAPI.recAttach(u).then(function (st) { REC = st; RECDATA = null; render(); });
+        return;
+      }
+      if (b.dataset.sa !== undefined) {          // 통계 «전체»
+        if (b.dataset.sa === 'u') statStu = [];
+        if (b.dataset.sa === 'c') statCat = [];
+        if (b.dataset.sa === 'm') statMon = [];
+        render(); return;
+      }
+      if (b.dataset.su || b.dataset.sc || b.dataset.sm) {
+        var arr = b.dataset.su ? statStu : (b.dataset.sc ? statCat : statMon);
+        var v = b.dataset.su || b.dataset.sc || b.dataset.sm;
+        var k = arr.indexOf(v);
+        if (k >= 0) arr.splice(k, 1); else arr.push(v);
+        render(); return;
+      }
+      if (b.dataset.cp !== undefined) {          // 통계 — 내용 복사
+        var el = document.getElementById('rcb-' + b.dataset.cp);
+        if (el) { navigator.clipboard.writeText(el.textContent || ''); b.textContent = '✓'; }
+        return;
+      }
+      if (b.dataset.cu !== undefined || b.dataset.cd !== undefined || b.dataset.cx !== undefined) {
+        catEdit = readCatEdit(app);
+        var i = Number(b.dataset.cu !== undefined ? b.dataset.cu
+          : (b.dataset.cd !== undefined ? b.dataset.cd : b.dataset.cx));
+        if (b.dataset.cx !== undefined) catEdit.splice(i, 1);
+        else {
+          var j = b.dataset.cu !== undefined ? i - 1 : i + 1;
+          if (j >= 0 && j < catEdit.length) {
+            var tmp = catEdit[i]; catEdit[i] = catEdit[j]; catEdit[j] = tmp;
+          }
+        }
+        render(); return;
+      }
+      if (b.id === 'cAdd') { catEdit = readCatEdit(app).concat([{ name: '새 항목', on: true }]); render(); return; }
+      if (b.id === 'cCancel') { catEdit = null; recMode = 'write'; render(); return; }
+      if (b.id === 'cSave') {
+        var list = readCatEdit(app).filter(function (c) { return c.name; });
+        recBusy = true; render();
+        widgetAPI.recCats(list).then(function () {
+          catEdit = null; recMode = 'write'; recBusy = false; RECDATA = null; recLoad(true);
+        }).catch(function (e) { recBusy = false; recErr = (e && e.message) || String(e); render(); });
+        return;
+      }
+      if (b.id === 'recSave') {
+        var ta = app.querySelector('#recText');
+        var txt = ta ? ta.value : '';
+        var studs = recStudents();
+        var me = studs.filter(function (x) { return x.id === recSid; })[0];
+        if (!me) return;
+        var cur = recFind(recSid, recCat);
+        recBusy = true;
+        widgetAPI.recSave({ student: me, cat: recCat, text: txt, row: cur ? cur.row : 0 })
+          .then(function (r) {
+            recBusy = false; recSavedAt = (r && r.at) || ''; recDraft = '';
+            RECDATA = null; recLoad(true);
+          })
+          .catch(function (e) { recBusy = false; recErr = (e && e.message) || String(e); render(); });
+        return;
+      }
+      if (b.id === 'recDel') {
+        var cur2 = recFind(recSid, recCat);
+        if (!cur2) return;
+        if (!confirm('이 기록을 지울까요?\n\n' + recCat + ' — ' + recSid)) return;
+        widgetAPI.recClear(cur2.row).then(function () { recDraft = ''; RECDATA = null; recLoad(true); });
+        return;
+      }
       if (b.dataset.fs) {
         var fp = b.dataset.fs.split(',');
         bumpFont(fp[0], Number(fp[1]));
@@ -1483,6 +1871,40 @@ function render() {
       USGSTYLE = b.dataset.usgstyle; widgetAPI.setUsageStyle(USGSTYLE); render();
     });
   });
+  app.querySelectorAll('[data-rs]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      recSid = b.dataset.rs; recDraft = ''; recSavedAt = ''; render();
+    });
+  });
+  var rin = app.querySelector('#recIn');
+  if (rin) rin.addEventListener('click', function () {
+    rin.textContent = '크롬에서 허용해 주세요…';
+    widgetAPI.recSignIn().then(function (st) { REC = st; render(); })
+      .catch(function (e) { recErr = (e && e.message) || String(e); render(); });
+  });
+  var rnew = app.querySelector('#recNew');
+  if (rnew) rnew.addEventListener('click', function () {
+    rnew.textContent = '만드는 중…';
+    widgetAPI.recCreate().then(function (st) { REC = st; RECDATA = null; render(); })
+      .catch(function (e) { recErr = (e && e.message) || String(e); render(); });
+  });
+  var rro = app.querySelector('#recRoster');
+  if (rro) rro.addEventListener('click', function () {
+    rro.textContent = '받는 중…';
+    widgetAPI.rosterFetch().then(function () { widgetAPI.recState().then(function (st) { REC = st; render(); }); });
+  });
+  var rta = app.querySelector('#recText');
+  if (rta) {
+    rta.addEventListener('input', function () { recDraft = rta.value; });
+    // 글자 수만 다시 그린다 (통째로 그리면 쓰던 글이 튄다)
+    rta.addEventListener('keyup', function () {
+      var by = app.querySelector('.rbyte');
+      if (by) by.textContent = neisBytes(rta.value) + ' Byte · ' + rta.value.length + '자';
+    });
+  }
+  app.querySelectorAll('.wlink').forEach(function (a) {
+    a.addEventListener('click', function () { widgetAPI.openUrl(a.dataset.url); });
+  });
   var nx = app.querySelector('#notesX');
   if (nx) nx.addEventListener('click', function () { NOTES = null; widgetAPI.notesSeen(); render(); });
   var ug = app.querySelector('#usgGet');
@@ -1510,6 +1932,15 @@ document.getElementById('app').addEventListener('scroll', function () {
 var acSpyTimer = null;
 
 /* 내용 높이를 알려주면 메인이 카드 높이를 맞춰준다 */
+/* 카테고리 편집 화면에 적힌 것을 그대로 읽어 온다 */
+function readCatEdit(app) {
+  var out = [];
+  app.querySelectorAll('input[data-ci]').forEach(function (el) {
+    out.push({ name: String(el.value || '').trim(), on: true });
+  });
+  return out.length ? out : (catEdit || []);
+}
+
 function report() {
   requestAnimationFrame(function () {
     widgetAPI.reportHeight(document.getElementById('app').scrollHeight + 4);
@@ -1537,6 +1968,12 @@ widgetAPI.onData(function (p) {
   if (p.fontScale) FS = Object.assign(FS, p.fontScale);
   if (p.todayEvent !== undefined) TODAYEV = p.todayEvent;
   if (p.notes !== undefined) NOTES = p.notes;
+  if (p.rec) {
+    var wasSheet = REC && REC.sheet && REC.sheet.id;
+    REC = p.rec;
+    // 시트가 바뀌었으면 들고 있던 기록은 버린다
+    if ((REC.sheet && REC.sheet.id) !== wasSheet) RECDATA = null;
+  }
   if (p.flavor) {
     FLAVOR = p.flavor;
     HAS_TT = FLAVOR !== 'hyewon';

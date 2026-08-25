@@ -1,4 +1,4 @@
-<!-- 파일명: settings.html | @version 1.20.0 -->
+<!-- 파일명: settings.html | @version 1.21.0 -->
 <!-- 위젯 설정 창 — 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기 등)을 여기서 한다. -->
 <!doctype html>
 <html lang="ko">
@@ -161,6 +161,65 @@
     다만 <b>«링크가 있는 사람»</b> 으로 공유돼 있어야 읽을 수 있습니다 —
     소유자가 «제한됨» 으로 바꾸면 못 읽습니다.<br>
     학년이 바뀌어 새 시트가 나오면 여기에 주소를 바꿔 넣으세요.
+  </div>
+</section>
+
+<section>
+  <h2>학생기록</h2>
+  <div class="hint" style="margin-top:0">
+    학생기록 시트는 <b>지금 로그인한 구글 계정</b>에 만들어집니다.<br>
+    시트와 위젯에서 쓴 내용은 <b>서로 연동</b>되어 어느 쪽에서 고쳐도 함께 바뀝니다.
+  </div>
+
+  <div class="row" style="margin-top:10px">
+    <label class="lb">구글 연결</label>
+    <span id="recState" class="hint" style="margin:0;flex:1"></span>
+    <button id="recOut">연결 끊기</button>
+  </div>
+
+  <div class="row">
+    <label class="lb">클라이언트 ID</label>
+    <input type="text" id="gcId" placeholder="…apps.googleusercontent.com">
+  </div>
+  <div class="row">
+    <label class="lb">비밀값</label>
+    <input type="text" id="gcSec" placeholder="GOCSPX-…">
+    <button id="gcSave">저장</button>
+  </div>
+  <div class="hint">
+    구글이 «누구의 계정인지» 를 알아보게 하려면 한 번만 준비가 필요합니다.<br>
+    <b>1.</b> <a href="#" id="gcLink">console.cloud.google.com</a> 에서 프로젝트를 하나 만듭니다<br>
+    <b>2.</b> «API 및 서비스 → 사용자 인증 정보» 에서 <b>OAuth 클라이언트 ID</b> 를 만듭니다.
+    애플리케이션 유형은 <b>데스크톱 앱</b> 입니다<br>
+    <b>3.</b> «API 라이브러리» 에서 <b>Google Sheets API</b> 와 <b>Google Drive API</b> 를 켭니다<br>
+    <b>4.</b> 만들어진 <b>클라이언트 ID</b> 와 <b>비밀값</b> 을 위에 붙여 넣고 저장한 뒤,
+    위젯의 학생기록 탭에서 «구글 연결하기» 를 누릅니다<br>
+    쓰는 권한은 <b>«이 앱이 만든 파일»</b> 짜리라 다른 파일은 건드리지 못합니다.
+  </div>
+
+  <div class="row" style="margin-top:10px">
+    <label class="lb">기록 시트</label>
+    <span id="recSheet" class="hint" style="margin:0;flex:1"></span>
+    <button id="recOpen">시트 열기</button>
+  </div>
+
+  <div class="row">
+    <label class="lb">맡은 학급</label>
+    <div class="chips" id="clsRow"></div>
+  </div>
+  <div class="hint">고른 학급만 학생기록에 보입니다. 아무것도 안 고르면 전체가 보입니다.</div>
+
+  <div class="row" style="margin-top:10px">
+    <label class="lb">명렬표 시트</label>
+    <input type="text" id="roSheet" placeholder="구글 시트 주소 또는 ID">
+    <button id="roSave">저장</button>
+    <button id="roGet">다시 받기</button>
+  </div>
+  <div class="hint">
+    전교생 명렬표입니다. <b>내 것이 아니어도 보기 권한만 있으면 됩니다.</b>
+    «통합» 탭을 읽습니다.<br>
+    학번은 <b>학년1 + 반1 + 번호2</b> 네 자리입니다 (1101 = 1학년 1반 1번).<br>
+    <span id="roCount"></span>
   </div>
 </section>
 
@@ -337,6 +396,7 @@ function paint() {
   $('h1').textContent = '⚙️ ' + (UI.appName || '위젯') + ' 설정';
   if (UI.academicSheet && !$('acSheet').value) $('acSheet').value = UI.academicSheet;
   paintNeis();
+  paintRec();
 }
 
 /* ── 컴시간 ── */
@@ -486,16 +546,88 @@ $('acSave').onclick = function () {
 /* ── 연결·정보 ── */
 $('loginBtn').onclick = function () { widgetAPI.openLogin(); };
 $('workBtn').onclick = function () { widgetAPI.openLogin(); };
+
+/* ── 학생기록 ─────────────────────────────────────────────────
+   구글 연결·기록 시트·맡은 학급·명렬표. 자세한 안내는 화면에 적어 두었다. */
+function paintRec() {
+  var r = (UI && UI.rec) || {};
+  $('recState').innerHTML = r.linked
+    ? '<span class="ok">연결됨</span> ' + (r.email || '')
+    : (r.hasClient ? '<span class="warn">아직 연결 안 됨</span> — 위젯의 학생기록 탭에서 연결하세요'
+      : '<span class="warn">아래 클라이언트 정보를 먼저 넣어 주세요</span>');
+  $('recOut').disabled = !r.linked;
+
+  var sh = r.sheet;
+  $('recSheet').innerHTML = !sh || !sh.id
+    ? '아직 없습니다 — 위젯의 학생기록 탭에서 «시트 만들기»'
+    : (sh.trashedAt
+      ? '<span class="warn">휴지통으로 보냄 · ' + sh.trashedAt + '</span> (30일 안에 되살릴 수 있습니다)'
+      : '<span class="ok">있음</span>' + (sh.createdAt ? ' · 만든날 ' + sh.createdAt : ''));
+  $('recOpen').disabled = !(sh && sh.id && !sh.trashedAt);
+
+  // 맡은 학급 — 명렬표에서 읽은 반을 그대로 늘어놓는다
+  var cls = (r.roster && r.roster.classes) || [];
+  var pick = r.classes || [];
+  $('clsRow').innerHTML = cls.length
+    ? cls.map(function (c) {
+        return '<button data-cl="' + c.key + '" class="' + (pick.indexOf(c.key) >= 0 ? 'on' : '') + '">'
+          + c.grade + '-' + c.cls + '</button>';
+      }).join('')
+    : '<span class="hint" style="margin:0">명렬표를 아직 못 읽었습니다</span>';
+  $('clsRow').querySelectorAll('button').forEach(function (b) {
+    b.onclick = function () {
+      var k = b.dataset.cl, cur = (UI.rec.classes || []).slice();
+      var i = cur.indexOf(k);
+      if (i >= 0) cur.splice(i, 1); else cur.push(k);
+      UI.rec.classes = cur;
+      widgetAPI.setUi({ recClasses: cur });
+      paintRec();
+    };
+  });
+
+  if (r.rosterSheet && !$('roSheet').value) $('roSheet').value = r.rosterSheet;
+  $('roCount').textContent = r.roster
+    ? (r.roster.error ? r.roster.error : '지금 ' + r.roster.count + '명 / ' + (r.roster.classes || []).length + '개 반을 읽어 두었습니다')
+    : '아직 못 읽었습니다';
+}
+
+$('gcSave').onclick = function () {
+  widgetAPI.setUi({ gclient: { clientId: $('gcId').value, clientSecret: $('gcSec').value } });
+  $('gcSave').textContent = '저장됨';
+  setTimeout(function () { $('gcSave').textContent = '저장'; load(); }, 900);
+};
+$('gcLink').onclick = function (e) {
+  e.preventDefault();
+  widgetAPI.openUrl('https://console.cloud.google.com/apis/credentials');
+};
+$('recOut').onclick = function () {
+  if (!confirm('구글 연결을 끊을까요?\n\n시트와 기록은 그대로 남습니다.')) return;
+  widgetAPI.recSignOut().then(function () { load(); });
+};
+$('recOpen').onclick = function () { widgetAPI.recOpenSheet(); };
+$('roSave').onclick = function () {
+  widgetAPI.setUi({ rosterSheet: $('roSheet').value });
+  $('roSave').textContent = '저장됨';
+  setTimeout(function () { $('roSave').textContent = '저장'; }, 900);
+};
+$('roGet').onclick = function () {
+  $('roGet').textContent = '받는 중…';
+  widgetAPI.rosterFetch().then(function () { $('roGet').textContent = '다시 받기'; load(); });
+};
+
 $('updBtn').onclick = function () { widgetAPI.checkUpdate(); };
 $('logBtn').onclick = function () { widgetAPI.openLog(); };
 
-widgetAPI.getSettings().then(function (s) {
-  if (!s) return;
-  CFG = Object.assign(CFG, s.comci || {});
-  UI = Object.assign(UI, s.ui || {});
-  TIMETABLE = s.timetable || null;
-  paint();
-});
+function load() {
+  widgetAPI.getSettings().then(function (s) {
+    if (!s) return;
+    CFG = Object.assign(CFG, s.comci || {});
+    UI = Object.assign(UI, s.ui || {});
+    TIMETABLE = s.timetable || null;
+    paint();
+  });
+}
+load();
 </script>
 </body>
 </html>

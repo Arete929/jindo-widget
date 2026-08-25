@@ -31,7 +31,16 @@ const DOCS = {
 
 const DAY_RE = /^\s*(\d{1,2})\s*\(\s*([월화수목금토일])\s*\)\s*$/;
 const RANGE_RE = /20\d\d\s*\.\s*\d{1,2}\s*\.\s*\d{1,2}\s*\.?\s*\([월화수목금토일]\)\s*[~〜～]/;
-const DEPT_RE = /^\s*(\d{1,2})\s*\.\s*([가-힣0-9 ]{2,20}(?:부|실|과))\s*$/;
+// ★ 부서 이름에는 «띄어쓰기가 없다»(교무기획부·1학년부·행정실).
+//   띄어쓰기를 허용하면 «1. 청소도구 배부» 같은 보통 글이 부서로 잘못 잡힌다.
+const DEPT_RE = /^\s*(\d{1,2})\s*[.．]\s*([가-힣0-9]{2,10}(?:부|실))\s*$/;
+/* ★ 표 첫 칸에서 부서 이름을 알아볼 때는 조금 너그럽게 본다.
+   문서에 따라 «1. 교무기획부» 가 번호 목록(<li>)으로 들어가 있어서 번호가 사라지고
+   «· 교무기획부» 처럼 오는 일이 있다. 그것 때문에 어떤 주차에서는 교무기획부·연구정보부가
+   통째로 빠져 보이지 않았다(2026. 3. 3. 주간 등).
+   ★ 다만 «청소도구 배부» 처럼 끝이 «부» 인 보통 글이 부서로 잘못 잡히면 안 되므로,
+   앞에 번호나 목록 표식(«· » 또는 «1. »)이 붙은 것만 받아들인다. */
+const DEPT_CELL_RE = /^\s*(?:[·•]\s*|\d{1,2}\s*[.．]\s*)([가-힣0-9]{2,10}(?:부|실))\s*$/;
 const ETC_RE = /^\s*기타\s*$/;
 
 /* ── 글자 되살리기 ─────────────────────────────────────────────
@@ -146,15 +155,46 @@ function pushParas(out, html) {
     }
     const li = /^<li\b/i.test(part);
     const al = alignOf(part);
+    const lks = linksIn(part);
     textOf(part).split('\n').forEach((ln) => {
       if (!hasInk(ln)) return;
       const p = { k: 'p', t: (li ? '  · ' : '') + trimEnd(ln) };
       if (al) p.al = al;
+      // 이 줄에 실제로 들어 있는 링크만 붙인다 (<br> 로 한 문단이 여러 줄이 되기도 한다)
+      const mine = lks.filter((x) => ln.indexOf(x.t) >= 0);
+      if (mine.length) p.links = mine;
       out.push(p);
     });
   });
 }
 function trimEnd(s) { return String(s).replace(/[\s ]+$/, ''); }
+
+/* ── 원문에 걸린 링크 살리기 ────────────────────────────────────
+   주간업무에는 «계획(수정본).pdf» 처럼 파일·시트로 가는 링크가 꽤 걸려 있다.
+   태그를 걷어내면 글자만 남고 주소가 사라져서, 위젯에서는 눌러도 아무 일이 없었다.
+   그래서 문단마다 «글자 → 주소» 를 따로 담아 둔다.
+
+   ★ 구글 문서는 링크를 자기네 되돌림 주소로 감싼다.
+       https://www.google.com/url?q=<진짜주소>&sa=D&...
+     그대로 두면 구글을 한 번 거쳐 가므로 q= 안의 것을 꺼내 쓴다. */
+function realUrl(href) {
+  const u = decode(String(href || ''));
+  const m = u.match(/[?&]q=([^&]+)/);
+  let out = m ? decodeURIComponent(m[1]) : u;
+  if (!/^https?:/i.test(out)) return '';
+  return out;
+}
+function linksIn(html) {
+  const out = [];
+  const re = /<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = re.exec(String(html || '')))) {
+    const t = decode(m[2].replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
+    const url = realUrl(m[1]);
+    if (t && url) out.push({ t: t, url: url });
+  }
+  return out;
+}
 
 /* ── 가운데 정렬 같은 «줄 맞춤» 살리기 ────────────────────────────
    구글 문서는 맞춤을 글자에 직접 쓰지 않고 «.c9 { text-align:center }» 처럼
@@ -243,11 +283,25 @@ function parseWork(html) {
     let usedAsDept = false;
     rows.forEach((row) => {
       const first = cellText(row[0]);
-      const dm = first.match(DEPT_RE);
-      if (dm) { newDept(dm[2].trim()); usedAsDept = true; return; }
+      const dm = first.match(DEPT_RE) || first.match(DEPT_CELL_RE);
+      if (dm) { newDept((dm[2] || dm[1]).trim()); usedAsDept = true; return; }
       if (ETC_RE.test(first)) { newDept('기타'); usedAsDept = true; return; }
+      // 이름 같은데 못 알아본 것은 적어 둔다 — 통째로 빠지면 알아채기 어렵다
+      if (/[부실과]\s*$/.test(first) && first.length < 24) wk.warn.push(first.trim());
       if (!dept) return;
-      row.forEach((c) => { (c.blocks || []).forEach((x) => { if (blockInk(x)) dept.blocks.push(x); }); });
+      row.forEach((c) => {
+        (c.blocks || []).forEach((x) => {
+          // ★ 부서 머리가 «앞 부서의 표 안쪽 글»로 들어가 있는 주차가 있다.
+          //   («2.연구정보부» 가 교무기획부 표 안에 한 줄로 들어가 있는 식)
+          //   그대로 두면 그 부서가 통째로 사라지므로, 여기서도 부서 머리인지 본다.
+          if (x.k === 'p') {
+            const dm2 = x.t.match(DEPT_RE);
+            if (dm2) { newDept(dm2[2].trim()); return; }
+            if (ETC_RE.test(x.t)) { newDept('기타'); return; }
+          }
+          if (blockInk(x)) dept.blocks.push(x);
+        });
+      });
     });
     // 부서 표가 아니었다면(본문 한가운데 놓인 표) 지금 부서의 내용으로 붙인다
     if (!usedAsDept && !dept && weeks.length) { /* 부서가 없으면 버린다 */ }

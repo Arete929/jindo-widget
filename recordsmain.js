@@ -1,0 +1,163 @@
+// 파일명: recordsmain.js | @version 1.0.0
+// 학생기록의 «뒤쪽 일» — 구글 연결, 시트 만들기·지우기, 기록 읽고 쓰기, 명렬표 받기.
+//
+// main.js 가 너무 길어져서 학생기록만 따로 뺐다. main.js 는 register() 한 번만 부른다.
+//
+// 저장해 두는 것 (widget-state.json)
+//   gclient    { clientId, clientSecret }   구글 클라우드에서 만든 «데스크톱 앱» 정보
+//   gauth      { refreshToken, email }      로그인해서 받은 것
+//   recSheet   { id, url, createdAt, trashedAt }
+//   recClasses ['3-1','3-2', …]             설정에서 고른 학급
+//   rosterSheet '…'                          명렬표 시트 주소(기본값은 roster.js 에)
+
+const path = require('path');
+const fs = require('fs');
+const gauth = require('./googleauth.js');
+const rec = require('./records.js');
+const roster = require('./roster.js');
+
+let S = null;   // main 이 넣어 주는 도우미 모음
+
+/* ── 토큰 ── 액세스 토큰은 한 시간이면 만료되므로 필요할 때마다 새로 받아 쓴다 ── */
+let access = { token: '', until: 0 };
+async function token() {
+  const now = Date.now();
+  if (access.token && access.until > now + 60000) return access.token;
+  const a = S.load().gauth || {};
+  const c = S.load().gclient || {};
+  if (!a.refreshToken) throw new Error('아직 구글에 연결되어 있지 않습니다');
+  const t = await gauth.refresh(c, a.refreshToken);
+  access = { token: t.access_token, until: now + (Number(t.expires_in || 3600) * 1000) };
+  return access.token;
+}
+
+/* ── 명렬표 ── 자주 바뀌지 않으니 파일에 받아 둔다 ── */
+function rosterFile() { return path.join(S.userDataPath, 'roster.json'); }
+function loadRoster() {
+  try { return JSON.parse(fs.readFileSync(rosterFile(), 'utf-8')); } catch (e) { return null; }
+}
+async function refreshRoster() {
+  const r = await roster.fetchRoster(S.load().rosterSheet);
+  try { fs.writeFileSync(rosterFile(), JSON.stringify(r)); } catch (e) { /* 무시 */ }
+  S.log(`명렬표 받기 — ${r.count}명 / ${r.classes.length}개 반` + (r.error ? ' · ' + r.error : ''));
+  return r;
+}
+
+/* ── 화면이 알아야 할 상태 한 덩어리 ── */
+function recState() {
+  const st = S.load();
+  const r = loadRoster();
+  return {
+    hasClient: !!(st.gclient && st.gclient.clientId && st.gclient.clientSecret),
+    linked: !!(st.gauth && st.gauth.refreshToken),
+    email: (st.gauth && st.gauth.email) || '',
+    sheet: st.recSheet || null,
+    classes: st.recClasses || [],
+    rosterSheet: st.rosterSheet || roster.DEFAULT_SHEET,
+    roster: r ? { classes: r.classes, count: r.count, error: r.error || '' } : null
+  };
+}
+
+function register(helpers) {
+  S = helpers;
+  const { ipcMain } = S;
+
+  ipcMain.handle('rec-state', () => recState());
+
+  /* 구글 연결 */
+  ipcMain.handle('rec-signin', async () => {
+    const c = S.load().gclient || {};
+    const t = await gauth.signIn(c, S.openInBrowser, S.log);
+    let email = '';
+    try {
+      const { json } = require('./httpx.js');
+      const me = await json({ url: 'https://www.googleapis.com/oauth2/v3/userinfo', token: t.access_token });
+      email = (me && me.email) || '';
+    } catch (e) { /* 이메일은 없어도 그만이다 */ }
+    S.save({ gauth: { refreshToken: t.refresh_token, email: email } });
+    access = { token: t.access_token, until: Date.now() + (Number(t.expires_in || 3600) * 1000) };
+    S.log('학생기록 — 구글 연결됨 ' + (email || ''));
+    S.send();
+    return recState();
+  });
+
+  ipcMain.handle('rec-signout', async () => {
+    const a = S.load().gauth || {};
+    if (access.token) await gauth.revoke(access.token);
+    access = { token: '', until: 0 };
+    S.save({ gauth: null });
+    S.log('학생기록 — 구글 연결 끊음');
+    S.send();
+    return recState();
+  });
+
+  /* 시트 만들기 / 휴지통으로 */
+  ipcMain.handle('rec-create', async () => {
+    const t = await token();
+    const made = await rec.createSheet(t, '[혜원 데스크] 학생기록');
+    S.save({ recSheet: { id: made.id, url: made.url, createdAt: made.createdAt, trashedAt: '' } });
+    S.log('학생기록 시트 만듦 — ' + made.id);
+    S.send();
+    return recState();
+  });
+
+  ipcMain.handle('rec-trash', async () => {
+    const st = S.load().recSheet;
+    if (!st || !st.id) throw new Error('지울 시트가 없습니다');
+    const t = await token();
+    const when = await rec.trashSheet(t, st.id);
+    S.save({ recSheet: Object.assign({}, st, { trashedAt: when }), recTrashLog: (S.load().recTrashLog || []).concat([{ id: st.id, at: when }]) });
+    S.log('학생기록 시트를 휴지통으로 — ' + st.id);
+    S.send();
+    return recState();
+  });
+
+  /* 이미 있는 시트에 연결 (사본을 받았거나 시트를 옮겼을 때) */
+  ipcMain.handle('rec-attach', (_e, url) => {
+    const id = roster.sheetId(url);
+    if (!id) throw new Error('시트 주소를 알아볼 수 없습니다');
+    S.save({ recSheet: { id: id, url: `https://docs.google.com/spreadsheets/d/${id}/edit`, createdAt: '', trashedAt: '' } });
+    S.send();
+    return recState();
+  });
+
+  /* 기록 읽고 쓰기 */
+  ipcMain.handle('rec-load', async () => {
+    const st = S.load().recSheet;
+    if (!st || !st.id) return { need: 'sheet' };
+    const t = await token();
+    const d = await rec.loadAll(t, st.id);
+    d.sheet = st;
+    return d;
+  });
+
+  ipcMain.handle('rec-save', async (_e, p) => {
+    const st = S.load().recSheet;
+    if (!st || !st.id) throw new Error('먼저 시트를 만들어 주세요');
+    const t = await token();
+    return rec.saveRecord(t, st.id, p.student, p.cat, p.text, p.row);
+  });
+
+  ipcMain.handle('rec-clear', async (_e, row) => {
+    const st = S.load().recSheet;
+    const t = await token();
+    return rec.clearRecord(t, st.id, Number(row));
+  });
+
+  ipcMain.handle('rec-cats', async (_e, cats) => {
+    const st = S.load().recSheet;
+    const t = await token();
+    return rec.saveCats(t, st.id, cats || []);
+  });
+
+  ipcMain.on('rec-open-sheet', () => {
+    const st = S.load().recSheet;
+    if (st && st.url) S.openInBrowser(st.url);
+  });
+
+  /* 명렬표 */
+  ipcMain.handle('roster-get', () => loadRoster());
+  ipcMain.handle('roster-fetch', async () => refreshRoster());
+}
+
+module.exports = { register, recState, loadRoster, refreshRoster };

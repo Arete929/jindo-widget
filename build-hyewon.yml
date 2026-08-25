@@ -24,6 +24,11 @@ files:
   - neis.js
   - academic.js
   - aiusage.js
+  - httpx.js
+  - googleauth.js
+  - records.js
+  - roster.js
+  - recordsmain.js
   - settings.html
   - assets/**
   - node_modules/**/*

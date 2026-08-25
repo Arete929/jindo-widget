@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.20.0
+// 파일명: main.js | @version 1.21.0
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
-// 수정요약: v1.20.0 급식 주간이동 / 테마 다섯·기본 고스트 / 글씨체 고르기 / 탭별 글자크기 저장 / 오늘 일정 띠(두 갈래) / 업데이트 내역 / 설정에 만든이
+// 수정요약: v1.21.0 학생기록 탭(구글 시트 연동·통계·카테고리) / 주간업무 링크 살림 / 부서 누락 수정
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -16,6 +16,8 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const aiusage = require('./aiusage.js');
+const recordsmain = require('./recordsmain.js');
+const roster = require('./roster.js');
 
 /* ── 갈래(flavor) ──────────────────────────────────────────────
    한 벌의 코드로 두 프로그램을 만든다. 빌드할 때 package.json 에 flavor 를 심어 두고
@@ -152,8 +154,8 @@ function getFontScale() {
 function getUsageShow() { const v = loadState().usageShow; return v === undefined ? false : !!v; }
 function getUsageStyle() { return loadState().usageStyle === 'bar' ? 'bar' : 'ring'; }
 const VIEWS = HAS_TT
-  ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal']
-  : ['work', 'comci', 'cal', 'meal'];
+  ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal', 'rec']
+  : ['work', 'comci', 'cal', 'meal', 'rec'];
 function getView() {
   const v = loadState().view;
   return VIEWS.includes(v) ? v : VIEWS[0];
@@ -324,6 +326,7 @@ function sendToWidget() {
     fontScale: getFontScale(),
     todayEvent: todayEventText(),
     notes: notesToShow(),
+    rec: recordsmain.recState(),
     flavor: FLAVOR,
     appName: APP_NAME,
     usage: { show: getUsageShow(), style: getUsageStyle(), data: aiusage.snapshot() },
@@ -872,6 +875,7 @@ ipcMain.handle('get-settings', () => ({
     font: getFont(),
     usageShow: getUsageShow(),
     usageStyle: getUsageStyle(),
+    rec: recordsmain.recState(),
     academicSheet: loadState().academicSheet || academic.DEFAULT_SHEET,
     neis: loadState().neis || null,
     meals: loadMeals(),
@@ -891,6 +895,15 @@ ipcMain.on('set-ui', (_e, v) => {
   }
   if (v.theme !== undefined) { saveState({ theme: String(v.theme || '') }); sendToWidget(); }
   if (v.font !== undefined) { saveState({ font: String(v.font || 'pretendard') }); sendToWidget(); }
+  if (v.gclient !== undefined) {
+    saveState({ gclient: { clientId: String(v.gclient.clientId || '').trim(), clientSecret: String(v.gclient.clientSecret || '').trim() } });
+    debugLog('학생기록 — 구글 클라이언트 정보 저장');
+  }
+  if (v.recClasses !== undefined) { saveState({ recClasses: v.recClasses || [] }); sendToWidget(); }
+  if (v.rosterSheet !== undefined) {
+    saveState({ rosterSheet: String(v.rosterSheet || '') });
+    debugLog('명렬표 시트 주소 변경');
+  }
   if (v.fontScale !== undefined) {
     saveState({ fontScale: Object.assign(getFontScale(), v.fontScale) });
     sendToWidget();
@@ -1109,6 +1122,13 @@ ipcMain.handle('get-week', async (_e, off) => {
   }
 });
 ipcMain.on('open-app', () => openInBrowser(APP_URL));
+// 주간업무 글 안에 걸린 링크 — 크롬으로 연다.
+// 어디로든 열어 주면 안 되므로 http(s) 인지 한 번 보고 연다.
+ipcMain.on('open-url', (_e, url) => {
+  const u = String(url || '');
+  if (!/^https?:\/\//i.test(u)) { debugLog('열 수 없는 주소: ' + u.slice(0, 60)); return; }
+  openInBrowser(u);
+});
 ipcMain.on('set-view', (_e, view) => {
   if (!['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal'].includes(view)) return;
   saveState({ view });
@@ -1159,6 +1179,21 @@ if (!gotLock) {
 
     // AI 사용량 — 값이 들어오면 그때그때 위젯에 밀어 준다.
     // 숨은 창으로 claude.ai · gemini.google.com 을 열어 읽는 것이라 시작 직후는 피한다.
+    // 학생기록 — 구글 연결·시트·명렬표는 이 모듈이 맡는다
+    recordsmain.register({
+      ipcMain: ipcMain,
+      userDataPath: userDataPath,
+      load: loadState,
+      save: saveState,
+      log: debugLog,
+      send: sendToWidget,
+      openInBrowser: openInBrowser
+    });
+    // 명렬표가 아직 없으면 조용히 한 번 받아 둔다
+    if (!recordsmain.loadRoster()) {
+      scheduleTask('roster', '명렬표', 5000, () => recordsmain.refreshRoster());
+    }
+
     aiusage.setLogger(debugLog);
     aiusage.onUpdate(() => sendToWidget());
     setTimeout(() => aiusage.pollAll(), 9000);
