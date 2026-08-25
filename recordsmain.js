@@ -45,6 +45,7 @@ async function token() {
   const c = clientInfo();
   if (!a.refreshToken) throw new Error('아직 구글에 연결되어 있지 않습니다');
   const t = await gauth.refresh(c, a.refreshToken);
+  if (!gauth.hasDrive(t)) throw new Error(gauth.NEED_DRIVE_MSG);
   access = { token: t.access_token, until: now + (Number(t.expires_in || 3600) * 1000) };
   return access.token;
 }
@@ -90,6 +91,9 @@ function register(helpers) {
   ipcMain.handle('rec-signin', async () => {
     const c = clientInfo();
     const t = await gauth.signIn(c, S.openInBrowser, S.log);
+    S.log('학생기록 — 받은 권한: ' + (t.scope || '(없음)'));
+    // 드라이브 권한을 안 켰으면 여기서 바로 알려 준다 — 나중에 조용히 실패하지 않게
+    if (!gauth.hasDrive(t)) throw new Error(gauth.NEED_DRIVE_MSG);
     let email = '';
     try {
       const { json } = require('./httpx.js');

@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.21.2 -->
+<!-- 파일명: widget.html | @version 1.21.3 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -1425,6 +1425,12 @@ function recSetup() {
     + '<div class="rp">학생기록 시트는 <b>지금 로그인한 구글 계정</b>에 만들어집니다.<br>'
     + '시트와 위젯에서 쓴 내용은 <b>서로 연동</b>되어 어느 쪽에서 고쳐도 함께 바뀝니다.</div>';
 
+  // ★ 오류를 이 화면에서도 보여준다. 전에는 시트 만들기가 실패해도 아무 말이 없어서
+  //   «눌리는데 안 만들어진다» 처럼 보였다.
+  if (recErr) {
+    h += '<div class="rw" style="white-space:pre-wrap;text-align:left">'
+      + '<b>안 됐습니다.</b>\n' + esc(recErr) + '</div>';
+  }
   if (!st.hasClient) {
     h += '<div class="rw">먼저 설정에서 <b>구글 연결 정보</b>를 넣어 주세요.<br>'
       + '설정 → 학생기록 에 넣는 방법이 적혀 있습니다.</div>'
@@ -1885,13 +1891,17 @@ function render() {
   var rin = app.querySelector('#recIn');
   if (rin) rin.addEventListener('click', function () {
     rin.textContent = '크롬에서 허용해 주세요…';
-    widgetAPI.recSignIn().then(function (st) { REC = st; render(); })
+    recErr = '';
+    widgetAPI.recSignIn().then(function (st) { REC = st; recErr = ''; render(); })
       .catch(function (e) { recErr = (e && e.message) || String(e); render(); });
   });
   var rnew = app.querySelector('#recNew');
   if (rnew) rnew.addEventListener('click', function () {
     rnew.textContent = '만드는 중…';
+    rnew.disabled = true;
+    recErr = '';
     widgetAPI.recCreate().then(function (st) { REC = st; RECDATA = null; render(); })
+      // 구글이 돌려준 말을 그대로 보여준다 — 무엇이 막혔는지 알아야 고칠 수 있다
       .catch(function (e) { recErr = (e && e.message) || String(e); render(); });
   });
   var rro = app.querySelector('#recRoster');

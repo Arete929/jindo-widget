@@ -146,4 +146,17 @@ async function revoke(token) {
   } catch (e) { /* 이미 지워졌으면 그만이다 */ }
 }
 
-module.exports = { signIn, refresh, revoke, SCOPES };
+/* ★ 구글은 드라이브 권한을 «꺼져 있는 체크박스» 로 보여준다.
+   그것을 안 켜고 «계속» 을 누르면 이메일 권한만 들어오고,
+   그 뒤로는 시트를 만들려 할 때마다 조용히 403 이 난다.
+   그래서 받아 온 토큰에 드라이브 권한이 들어 있는지 여기서 확인한다. */
+function hasDrive(tok) {
+  return String((tok && tok.scope) || '').indexOf('/auth/drive.file') >= 0;
+}
+const NEED_DRIVE_MSG = '드라이브 권한이 빠졌습니다.\n\n'
+  + '다시 «구글 연결하기» 를 누르고, 크롬 화면에서\n'
+  + '«Google Drive에서 이 앱으로 열거나 만든 파일 보기 및 관리»\n'
+  + '체크상자를 반드시 켠 뒤 «계속» 을 눌러 주세요.\n'
+  + '(«모두 선택» 을 눌러도 됩니다)';
+
+module.exports = { signIn, refresh, revoke, hasDrive, NEED_DRIVE_MSG, SCOPES };
