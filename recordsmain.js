@@ -18,13 +18,31 @@ const roster = require('./roster.js');
 
 let S = null;   // main 이 넣어 주는 도우미 모음
 
+/* ── 구글 클라이언트 ──────────────────────────────────────────
+   앱에 심어 둔 것(gclient.json)을 기본으로 쓴다. 그래서 받아 쓰는 사람은
+   아무 준비도 필요 없다. 다른 학교에서 자기 것을 쓰고 싶으면 설정에 넣으면 되고,
+   그때는 그것이 앞선다.
+   gclient.json 은 공개 저장소에 올리지 않는다(.gitignore). */
+function bundledClient() {
+  try {
+    const j = JSON.parse(fs.readFileSync(path.join(__dirname, 'gclient.json'), 'utf-8'));
+    if (j && j.clientId && j.clientSecret) return j;
+  } catch (e) { /* 없으면 없는 대로 */ }
+  return null;
+}
+function clientInfo() {
+  const own = (S.load().gclient) || {};
+  if (own.clientId && own.clientSecret) return own;
+  return bundledClient() || {};
+}
+
 /* ── 토큰 ── 액세스 토큰은 한 시간이면 만료되므로 필요할 때마다 새로 받아 쓴다 ── */
 let access = { token: '', until: 0 };
 async function token() {
   const now = Date.now();
   if (access.token && access.until > now + 60000) return access.token;
   const a = S.load().gauth || {};
-  const c = S.load().gclient || {};
+  const c = clientInfo();
   if (!a.refreshToken) throw new Error('아직 구글에 연결되어 있지 않습니다');
   const t = await gauth.refresh(c, a.refreshToken);
   access = { token: t.access_token, until: now + (Number(t.expires_in || 3600) * 1000) };
@@ -48,7 +66,8 @@ function recState() {
   const st = S.load();
   const r = loadRoster();
   return {
-    hasClient: !!(st.gclient && st.gclient.clientId && st.gclient.clientSecret),
+    hasClient: !!(clientInfo().clientId && clientInfo().clientSecret),
+    ownClient: !!(st.gclient && st.gclient.clientId),   // 자기 것을 넣어 뒀는가
     linked: !!(st.gauth && st.gauth.refreshToken),
     email: (st.gauth && st.gauth.email) || '',
     sheet: st.recSheet || null,
@@ -66,7 +85,7 @@ function register(helpers) {
 
   /* 구글 연결 */
   ipcMain.handle('rec-signin', async () => {
-    const c = S.load().gclient || {};
+    const c = clientInfo();
     const t = await gauth.signIn(c, S.openInBrowser, S.log);
     let email = '';
     try {

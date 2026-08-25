@@ -26,9 +26,13 @@ const { json, form } = require('./httpx.js');
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
+// ★ 권한은 «앱이 만든 파일» 하나로 충분하다.
+//   시트 API 도 drive.file 로 그 파일들을 읽고 쓸 수 있다.
+//   spreadsheets(전체) 는 구글이 «민감함» 으로 봐서 심사를 받아야 하지만,
+//   drive.file 은 «민감하지 않음» 이라 심사도, 경고 화면도 없다.
+//   userinfo.email 도 민감하지 않다 — 어느 계정에 연결됐는지 보여주려고 받는다.
 const SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/userinfo.email'
 ].join(' ');
 

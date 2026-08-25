@@ -29,6 +29,8 @@ files:
   - records.js
   - roster.js
   - recordsmain.js
+  # 앱에 심어 두는 구글 클라이언트. 없어도 빌드는 되고, 그때는 설정에 직접 넣어야 한다
+  - gclient.json
   - settings.html
   - assets/**
   - node_modules/**/*
