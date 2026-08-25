@@ -1,4 +1,4 @@
-// 파일명: worknotice.js | @version 2.0.0
+// 파일명: worknotice.js | @version 2.1.0
 // 주간업무계획 구글 문서를 위젯이 직접 받아 «원문 모양 그대로» 정리한다.
 //
 // ★ 드라이브 권한이 필요 없다.
@@ -145,13 +145,38 @@ function pushParas(out, html) {
       return;
     }
     const li = /^<li\b/i.test(part);
+    const al = alignOf(part);
     textOf(part).split('\n').forEach((ln) => {
       if (!hasInk(ln)) return;
-      out.push({ k: 'p', t: (li ? '  · ' : '') + trimEnd(ln) });
+      const p = { k: 'p', t: (li ? '  · ' : '') + trimEnd(ln) };
+      if (al) p.al = al;
+      out.push(p);
     });
   });
 }
 function trimEnd(s) { return String(s).replace(/[\s ]+$/, ''); }
+
+/* ── 가운데 정렬 같은 «줄 맞춤» 살리기 ────────────────────────────
+   구글 문서는 맞춤을 글자에 직접 쓰지 않고 «.c9 { text-align:center }» 처럼
+   맨 위 <style> 에 모아 두고 <p class="c9"> 로 가리킨다.
+   그래서 클래스 → 맞춤 표를 먼저 만들어 두고, 문단마다 찾아 붙인다.
+   급식지도 안내표의 이름이 왼쪽으로 붙어 나오던 것이 이것 때문이었다. */
+let ALIGN = {};
+function readAligns(html) {
+  ALIGN = {};
+  const css = (String(html).match(/<style[^>]*>([\s\S]*?)<\/style>/i) || [])[1] || '';
+  const re = /\.([a-zA-Z][\w-]*)\s*\{([^}]*)\}/g;
+  let m;
+  while ((m = re.exec(css))) {
+    const a = (m[2].match(/text-align\s*:\s*(center|right)/i) || [])[1];
+    if (a) ALIGN[m[1]] = a.toLowerCase();
+  }
+}
+function alignOf(tagHtml) {
+  const cls = (String(tagHtml).match(/^<(?:p|li)\b[^>]*class="([^"]*)"/i) || [])[1] || '';
+  for (const c of cls.split(/\s+/)) { if (ALIGN[c]) return ALIGN[c]; }
+  return '';
+}
 
 /* ── 요일 일정표에서 «며칠에 무엇» 을 뽑아낸다 ──────────────────
    화면 위쪽 «오늘 일정» 띠를 만들기 위한 것이다. 표 자체는 따로 그대로 그린다. */
@@ -185,6 +210,7 @@ function blockText(blocks) {
 
 /* ── 문서 전체를 주차 목록으로 ─────────────────────────────── */
 function parseWork(html) {
+  readAligns(html);
   const body = String(html || '').slice(Math.max(0, String(html || '').indexOf('<body')));
   const blocks = blocksOf(body);
 

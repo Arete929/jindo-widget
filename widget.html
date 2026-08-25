@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.16.0 -->
+<!-- 파일명: widget.html | @version 1.17.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -7,15 +7,16 @@
 <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <style>
-  /* ── 테마 네 가지 ─────────────────────────────────────────────
-       블랙(기본) · 고스트 · 칠화이트 · 나이트
+  /* ── 테마 일곱 ────────────────────────────────────────────────
+       블랙(기본) + 전역 여섯: 페르시안·고스트·트루핑크·칠화이트·나이트·키위
 
-     블랙은 위젯을 처음 만들었을 때의 색 그대로다 — 그래서 섞어 만들지 않고
-     그때 쓰던 값을 그대로 적어 둔다.
-     나머지 셋은 «바탕색·글자색» 두 가지만 정하면 카드·선·흐린 글자가
-     저절로 만들어진다(:root[data-theme] 블록). 그래서 밝은 바탕에서도 글자가 묻히지 않는다. */
+     ★ 색이 «또렷하게» 나와야 한다. 바탕은 바탕색 그대로, 글자·강조는 짝 색 그대로다.
+       (전에 카드·선을 바탕색에 너무 옅게 섞어 만들어서 화면 전체가 한 색으로
+        뿌옇게 깔렸다 — 사용자가 그 점을 지적했다. 섞는 비율을 넉넉히 잡는다.)
+     ★ 강조색(--accent)은 따로 지어내지 않고 «짝 색» 을 그대로 쓴다.
+       그래야 고른 탭·단추가 시안의 타일처럼 색이 꽉 찬 덩어리로 보인다. */
   :root {
-    /* 기본 = 블랙 (처음 위젯 색) */
+    /* 기본 = 블랙. 위젯을 처음 만들었을 때 색 그대로라 섞어 만들지 않고 그때 값을 적는다 */
     --bg: #15181d; --fg: #eef1f5; --accent: #ff8b3d; --now: #35c98b; --on: #1a1206;
     --card: #1c2027; --card2: #262c35; --line: #2b313a;
     --dim: #97a1ae; --fg2: #c3cbd6;
@@ -27,25 +28,34 @@
   /* 테마를 고르면 나머지 색은 바탕·글자를 섞어 만든다.
      :root[data-theme] 가 :root 보다 세서, 위의 블랙 전용 값을 알아서 덮는다. */
   :root[data-theme] {
-    --card:  color-mix(in srgb, var(--fg)  7%, var(--bg));
-    --card2: color-mix(in srgb, var(--fg) 13%, var(--bg));
-    --line:  color-mix(in srgb, var(--fg) 22%, var(--bg));
-    --dim:   color-mix(in srgb, var(--fg) 58%, var(--bg));
-    --fg2:   color-mix(in srgb, var(--fg) 84%, var(--bg));
-    --warnbg: color-mix(in srgb, var(--accent) 20%, var(--bg));
-    --warnfg: color-mix(in srgb, var(--accent) 78%, var(--fg));
-    --holbg: color-mix(in srgb, #ff5a5a 20%, var(--bg));
-    --holfg: color-mix(in srgb, #ff5a5a 72%, var(--fg));
+    --card:  color-mix(in srgb, var(--fg) 10%, var(--bg));
+    --card2: color-mix(in srgb, var(--fg) 18%, var(--bg));
+    --line:  color-mix(in srgb, var(--fg) 30%, var(--bg));
+    --dim:   color-mix(in srgb, var(--fg) 65%, var(--bg));
+    --fg2:   color-mix(in srgb, var(--fg) 88%, var(--bg));
+    --warnbg: color-mix(in srgb, var(--now) 22%, var(--bg));
+    --warnfg: color-mix(in srgb, var(--now) 80%, var(--fg));
+    --holbg: color-mix(in srgb, #ff5a5a 24%, var(--bg));
+    --holfg: color-mix(in srgb, #ff5a5a 76%, var(--fg));
+  }
+  :root[data-theme="persian"] {
+    --bg: #27187E; --fg: #F7F7FF; --accent: #F7F7FF; --on: #27187E; --now: #7BE3C0;
   }
   :root[data-theme="ghost"] {
-    --bg: #F7F7FF; --fg: #27187E; --accent: #4433B0; --now: #0E7C58; --on: #F7F7FF;
+    --bg: #F7F7FF; --fg: #27187E; --accent: #27187E; --on: #F7F7FF; --now: #0E7C58;
+  }
+  :root[data-theme="truepink"] {
+    --bg: #FD1843; --fg: #FFF9FA; --accent: #FFF9FA; --on: #FD1843; --now: #FFE04A;
   }
   :root[data-theme="chillwhite"] {
-    --bg: #FFF9FA; --fg: #FD1843; --accent: #FD1843; --now: #0E7C58; --on: #FFF9FA;
+    --bg: #FFF9FA; --fg: #FD1843; --accent: #FD1843; --on: #FFF9FA; --now: #0E7C58;
   }
   /* 나이트 — 검은 바탕에 키위색 글자 */
   :root[data-theme="night"] {
-    --bg: #222222; --fg: #89E900; --accent: #89E900; --now: #C6FF6B; --on: #142100;
+    --bg: #222222; --fg: #89E900; --accent: #89E900; --on: #222222; --now: #C6FF6B;
+  }
+  :root[data-theme="kiwi"] {
+    --bg: #89E900; --fg: #222222; --accent: #222222; --on: #89E900; --now: #0B4D00;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -71,11 +81,11 @@
     position: sticky; top: 0; z-index: 6;
     background: var(--bg); padding: 10px 0 2px;
   }
-  /* 머리 «바로 아래»에 한 겹 더 붙는 줄 (주간업무 검색줄, 학사일정 월 단추) */
-  .top2 {
-    position: sticky; top: var(--toph); z-index: 5;
-    background: var(--bg); padding-top: 4px; margin-bottom: 2px;
-  }
+  /* 머리에 함께 붙는 줄 (주간업무 검색·주차·날짜, 학사일정 월 단추).
+     ★ 예전에는 이것만 따로 «두 번째 고정 층»으로 뒀는데, 머리 높이를 잘못 재면
+       첫 층 밑으로 숨어 버려서 «헤더가 사라진» 것처럼 보였다.
+       지금은 그릴 때마다 이 덩어리를 머리(.top) 안으로 옮겨 넣어 통째로 고정한다. */
+  .top2 { background: var(--bg); padding-top: 4px; margin-bottom: 2px; }
 
   /* ── 머리 ── */
   .head { display: flex; align-items: center; gap: 6px; -webkit-app-region: drag; }
@@ -323,6 +333,8 @@
     white-space: pre-wrap; word-break: break-word;
   }
   .wtb tr:first-child td { background: var(--card2); font-weight: 800; color: var(--fg); text-align: center; }
+  .wkp.a-center { text-align: center; }
+  .wkp.a-right { text-align: right; }
   .wtb .wkp { margin: 0; font-size: inherit; }
   .wtb .wtbw { margin: 2px 0; }
   /* 찾은 자리 */
@@ -645,7 +657,8 @@ function countWeek(w, q) {
 /* 덩어리 그리기 — 글은 원문 공백 그대로, 표는 표 그대로 */
 function wblocks(bs) { return (bs || []).map(wblock).join(''); }
 function wblock(b) {
-  if (b.k === 'p') return '<div class="wkp">' + mk(b.t) + '</div>';
+  // 원문이 가운데(또는 오른쪽) 정렬이면 그대로 따라간다 — 급식지도 안내표의 이름 등
+  if (b.k === 'p') return '<div class="wkp' + (b.al ? ' a-' + b.al : '') + '">' + mk(b.t) + '</div>';
   return '<div class="wtbw"><table class="wtb">'
     + (b.rows || []).map(function (r) {
         return '<tr>' + r.map(function (c) {
@@ -1220,7 +1233,11 @@ function render() {
   app.innerHTML = html;
   // 두 번째 고정 줄이 머리 «바로 아래»에 붙도록, 머리 높이를 재서 알려 준다.
   // 머리는 업데이트 띠·사용량 띠가 있고 없고에 따라 높이가 달라져서 고정값을 쓸 수 없다.
+  // 검색줄·주차 단추·날짜 줄을 머리 안으로 옮겨 «날짜까지» 통째로 고정한다.
+  // (따로 두 번째 고정 층으로 두면 머리 높이를 한 픽셀만 잘못 재도 밑으로 숨는다)
   var topEl = app.querySelector('.top');
+  var t2 = app.querySelector('.top2');
+  if (topEl && t2) topEl.appendChild(t2);
   app.style.setProperty('--toph', (topEl ? topEl.offsetHeight : 46) + 'px');
 
   app.querySelectorAll('.wkb').forEach(function (b) {
