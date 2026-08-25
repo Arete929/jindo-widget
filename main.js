@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.21.3
+// 파일명: main.js | @version 1.22.0
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
-// 수정요약: v1.21.3 드라이브 권한 체크를 안 켰을 때 바로 알려 줌 + 학생기록 오류를 화면에 표시
+// 수정요약: v1.22.0 학생기록 탭이 저절로 넘어가던 것 수정 / 컴시간 학급 기억 / 학생기록을 아코디언으로(쌓아 두고 펼쳐 보기) / 드라이브 권한 안내
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -330,6 +330,7 @@ function sendToWidget() {
     flavor: FLAVOR,
     appName: APP_NAME,
     usage: { show: getUsageShow(), style: getUsageStyle(), data: aiusage.snapshot() },
+    comciPick: loadState().comciPick || null,
     update: { state: updateState, version: updateVersion }
   };
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
@@ -704,6 +705,9 @@ ipcMain.handle('comci-fetch', async () => {
 });
 
 ipcMain.handle('comci-get', () => ({ config: getComciConfig(), data: loadComci() }));
+ipcMain.on('comci-pick', (_e, p) => {   // 마지막으로 본 학년·반
+  saveState({ comciPick: { grade: Number(p && p.grade) || 1, cls: Number(p && p.cls) || 1 } });
+});
 ipcMain.on('comci-config', (_e, cfg) => {
   if (!cfg || typeof cfg !== 'object') return;
   saveState({ comci: {
@@ -1130,7 +1134,9 @@ ipcMain.on('open-url', (_e, url) => {
   openInBrowser(u);
 });
 ipcMain.on('set-view', (_e, view) => {
-  if (!['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal'].includes(view)) return;
+  // ★ 여기 목록이 VIEWS 와 어긋나면, 새 탭(학생기록)에 있어도 저장이 안 돼서
+  //   다음 갱신 때 «마지막으로 저장된 탭»으로 되돌아가 버린다. 목록을 한 곳에서 쓴다.
+  if (!VIEWS.includes(view)) return;
   saveState({ view });
   applyWidgetWidth(view);
 });

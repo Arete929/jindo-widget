@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   comciGet: () => ipcRenderer.invoke('comci-get'),
   onComciChanged: (cb) => ipcRenderer.on('comci-changed', () => cb()),
   setComciConfig: (cfg) => ipcRenderer.send('comci-config', cfg),
+  setComciPick: (p) => ipcRenderer.send('comci-pick', p),
 
   /* 학생기록 */
   recState: () => ipcRenderer.invoke('rec-state'),

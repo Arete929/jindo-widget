@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.21.3 -->
+<!-- 파일명: widget.html | @version 1.22.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -509,6 +509,24 @@
   .rch { display: flex; align-items: center; gap: 5px; font-size: 10.5px;
          font-weight: 800; color: var(--accent); margin-bottom: 4px; }
   .rcb { font-size: calc(11px * var(--wf)); color: var(--fg2); line-height: 1.6; white-space: pre-wrap; }
+  /* 지난 기록 — 접힌 타일로 쌓고, 누르면 펼쳐진다 */
+  .racs { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .rac { background: var(--card); border-radius: 8px; overflow: hidden; }
+  .rac.on { box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .rach {
+    -webkit-app-region: no-drag;
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    background: none; border: 0; cursor: pointer; padding: 7px 9px;
+    font-family: inherit; font-size: calc(11px * var(--wf)); color: var(--fg2); text-align: left;
+  }
+  .rach:hover { background: var(--card2); }
+  .rach i { font-style: normal; color: var(--accent); font-size: 10px; }
+  .rach .racd { font-weight: 800; color: var(--dim); font-size: 10px; flex: 0 0 auto; }
+  .rach .racs1 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rach em { font-style: normal; font-size: 9px; font-weight: 800; color: var(--dim); flex: 0 0 auto; }
+  .racb { padding: 0 9px 9px; }
+  .rnew { font-size: 11px; font-weight: 800; color: var(--accent); margin: 4px 0 5px; }
+
   /* 카테고리 편집 */
   .crow { display: flex; gap: 4px; margin-bottom: 4px; }
 
@@ -941,7 +959,7 @@ function moveHit(step) {
 
 /* ── 컴시간 ──
    설정 창에서 한 번 불러온 학교 시간표를 보여준다. 교사·학급 중 불러온 것만 나온다. */
-var CM = null, cmBusy = false, cmMode = '', cmGrade = 1, cmCls = 1;
+var CM = null, cmBusy = false, cmMode = '', cmGrade = 1, cmCls = 1, cmPicked = false;
 
 function loadComci() {
   if (cmBusy) return;
@@ -1360,7 +1378,7 @@ var RECDATA = null;      // 시트에서 읽어 온 기록·카테고리
 var recBusy = false, recErr = '';
 var recMode = 'write';   // write | stat | cats
 var recCls = '', recSid = '', recCat = '';
-var recDraft = '', recSavedAt = '';
+var recDraft = '', recSavedAt = '', recOpen = 0;   // recOpen = 펼쳐 놓은 기록의 줄 번호
 var statStu = [], statCat = [], statMon = [];   // 통계에서 고른 것들 (여러 개)
 var catEdit = null;      // 카테고리 편집 중인 목록
 
@@ -1394,13 +1412,13 @@ function recStudents() {
   var c = recClassList().filter(function (x) { return x.key === recCls; })[0];
   return (c && c.students) || [];
 }
-function recFind(sid, cat) {
+/* 한 학생·한 분류에 쌓인 기록을 모두 (새것이 위로) */
+function recList(sid, cat) {
   var rs = (RECDATA && RECDATA.records) || [];
-  for (var i = 0; i < rs.length; i++) {
-    if (rs[i].id === sid && rs[i].cat === cat && rs[i].text) return rs[i];
-  }
-  return null;
+  return rs.filter(function (r) { return r.id === sid && r.cat === cat && r.text; })
+    .sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
 }
+function recFind(sid, cat) { return recList(sid, cat)[0] || null; }
 /* 나이스 글자 수 — 한글3 · 영숫1 · 엔터1 바이트 */
 function neisBytes(t) {
   var n = 0;
@@ -1494,17 +1512,43 @@ function recWrite() {
     + '<span class="spacer"></span>'
     + '<button class="wkb" id="recCatEdit" title="카테고리 편집">⚙</button></div>';
 
-  var cur = recFind(me.id, recCat);
-  var text = recDraft !== null && recDraft !== '' ? recDraft : (cur ? cur.text : '');
+  // ── 이미 저장한 것들 — 접힌 타일로 쌓아 두고, 누르면 펼쳐진다
+  var list = recList(me.id, recCat);
+  if (list.length) {
+    h += '<div class="racs">' + list.map(function (r) {
+      var open = recOpen === r.row;
+      var one = String(r.text).split('\n')[0];
+      return '<div class="rac' + (open ? ' on' : '') + '">'
+        + '<button class="rach" data-ro="' + r.row + '">'
+        + '<i>' + (open ? '▾' : '▸') + '</i>'
+        + '<span class="racd">' + esc(String(r.at).slice(0, 10)) + '</span>'
+        + '<span class="racs1">' + esc(one.slice(0, 60)) + (one.length > 60 ? '…' : '') + '</span>'
+        + '<em>' + neisBytes(r.text) + 'B</em></button>'
+        + (open
+          ? '<div class="racb">'
+            + '<textarea class="rta" id="recEdit" data-row="' + r.row + '">' + esc(r.text) + '</textarea>'
+            + '<div class="wknav">'
+            + '<button class="wkb go" data-rup="' + r.row + '">고쳐 저장</button>'
+            + '<span class="rbyte">' + neisBytes(r.text) + ' Byte · ' + r.text.length + '자</span>'
+            + '<span class="spacer"></span>'
+            + '<button class="wkb" data-rcp="' + r.row + '" title="복사">⧉</button>'
+            + '<button class="wkb" data-rdel="' + r.row + '">지우기</button>'
+            + '</div>'
+            + (r.edited ? '<div class="rsaved">마지막 저장 · ' + esc(r.edited) + '</div>' : '')
+            + '</div>'
+          : '')
+        + '</div>';
+    }).join('') + '</div>';
+  }
+
+  // ── 새로 쓰는 칸 (지난 기록은 위에 그대로 남는다)
+  h += '<div class="rnew">새로 쓰기</div>';
   h += '<textarea class="rta" id="recText" placeholder="' + esc(recCat) + ' 내용을 적어 주세요">'
-    + esc(text) + '</textarea>';
+    + esc(recDraft || '') + '</textarea>';
   h += '<div class="wknav"><button class="wkb go" id="recSave">저장</button>'
-    + '<span class="rbyte">' + neisBytes(text) + ' Byte · ' + text.length + '자</span>'
-    + '<span class="spacer"></span>'
-    + (cur ? '<button class="wkb" id="recDel" title="이 기록 지우기">지우기</button>' : '')
+    + '<span class="rbyte">' + neisBytes(recDraft || '') + ' Byte · ' + (recDraft || '').length + '자</span>'
     + '</div>';
   if (recSavedAt) h += '<div class="rsaved">✅ 저장됨 · ' + esc(recSavedAt) + '</div>';
-  else if (cur && cur.edited) h += '<div class="rsaved">마지막 저장 · ' + esc(cur.edited) + '</div>';
   return h;
 }
 
@@ -1733,6 +1777,34 @@ function render() {
       if (b.dataset.rm) { recMode = b.dataset.rm; render(); return; }
       if (b.dataset.rc) { recCls = b.dataset.rc; recSid = ''; recDraft = ''; recSavedAt = ''; render(); return; }
       if (b.dataset.rk) { recCat = b.dataset.rk; recDraft = ''; recSavedAt = ''; render(); return; }
+      if (b.dataset.ro !== undefined) {          // 타일 펼치기·접기
+        var row = Number(b.dataset.ro);
+        recOpen = (recOpen === row) ? 0 : row;
+        render(); return;
+      }
+      if (b.dataset.rup !== undefined) {         // 펼친 것을 고쳐 저장
+        var te = app.querySelector('#recEdit');
+        if (!te) return;
+        recBusy = true;
+        widgetAPI.recSave({ student: {}, cat: recCat, text: te.value, row: Number(b.dataset.rup) })
+          .then(function (r) {
+            recBusy = false; recSavedAt = (r && r.at) || ''; RECDATA = null; recLoad(true);
+          })
+          .catch(function (e) { recBusy = false; recErr = (e && e.message) || String(e); render(); });
+        return;
+      }
+      if (b.dataset.rcp !== undefined) {         // 나이스에 붙여넣기용 복사
+        var te2 = app.querySelector('#recEdit');
+        if (te2) { navigator.clipboard.writeText(te2.value); b.textContent = '✓'; }
+        return;
+      }
+      if (b.dataset.rdel !== undefined) {
+        if (!confirm('이 기록을 지울까요?')) return;
+        widgetAPI.recClear(Number(b.dataset.rdel)).then(function () {
+          recOpen = 0; RECDATA = null; recLoad(true);
+        });
+        return;
+      }
       if (b.id === 'recCatEdit') { catEdit = null; recMode = 'cats'; render(); return; }
       if (b.id === 'recReload') { RECDATA = null; recLoad(true); return; }
       if (b.id === 'recRetry') { recErr = ''; RECDATA = null; recLoad(true); return; }
@@ -1787,10 +1859,10 @@ function render() {
         var txt = ta ? ta.value : '';
         var studs = recStudents();
         var me = studs.filter(function (x) { return x.id === recSid; })[0];
-        if (!me) return;
-        var cur = recFind(recSid, recCat);
+        if (!me || !txt.trim()) return;
         recBusy = true;
-        widgetAPI.recSave({ student: me, cat: recCat, text: txt, row: cur ? cur.row : 0 })
+        // 늘 «새 줄»로 쌓는다 — 지난 기록은 위쪽 아코디언에 그대로 남는다
+        widgetAPI.recSave({ student: me, cat: recCat, text: txt, row: 0 })
           .then(function (r) {
             recBusy = false; recSavedAt = (r && r.at) || ''; recDraft = '';
             RECDATA = null; recLoad(true);
@@ -1820,8 +1892,16 @@ function render() {
       if (b.id === 'wkNext') { moveHit(1); return; }
       if (b.id === 'wkPrev') { moveHit(-1); return; }
       if (b.dataset.cm) { cmMode = b.dataset.cm; render(); return; }
-      if (b.dataset.cg) { cmGrade = Number(b.dataset.cg); cmCls = 1; render(); return; }
-      if (b.dataset.cc) { cmCls = Number(b.dataset.cc); render(); return; }
+      if (b.dataset.cg) {
+        cmGrade = Number(b.dataset.cg); cmCls = 1;
+        widgetAPI.setComciPick({ grade: cmGrade, cls: cmCls });   // 마지막으로 본 반을 기억
+        render(); return;
+      }
+      if (b.dataset.cc) {
+        cmCls = Number(b.dataset.cc);
+        widgetAPI.setComciPick({ grade: cmGrade, cls: cmCls });
+        render(); return;
+      }
     });
   });
   var wq = app.querySelector('.wq');
@@ -1909,6 +1989,13 @@ function render() {
     rro.textContent = '받는 중…';
     widgetAPI.rosterFetch().then(function () { widgetAPI.recState().then(function (st) { REC = st; render(); }); });
   });
+  var rte = app.querySelector('#recEdit');
+  if (rte) {
+    rte.addEventListener('keyup', function () {
+      var by = rte.parentNode.querySelector('.rbyte');
+      if (by) by.textContent = neisBytes(rte.value) + ' Byte · ' + rte.value.length + '자';
+    });
+  }
   var rta = app.querySelector('#recText');
   if (rta) {
     rta.addEventListener('input', function () { recDraft = rta.value; });
@@ -1982,6 +2069,10 @@ widgetAPI.onData(function (p) {
     else document.documentElement.dataset.font = FONT;
   }
   if (p.fontScale) FS = Object.assign(FS, p.fontScale);
+  // 껐다 켜도 마지막으로 보던 학급이 그대로이게
+  if (p.comciPick && !cmPicked) {
+    cmGrade = p.comciPick.grade; cmCls = p.comciPick.cls; cmPicked = true;
+  }
   if (p.todayEvent !== undefined) TODAYEV = p.todayEvent;
   if (p.notes !== undefined) NOTES = p.notes;
   if (p.rec) {
