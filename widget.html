@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.17.0 -->
+<!-- 파일명: widget.html | @version 1.18.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -111,6 +111,7 @@
     -webkit-app-region: drag; cursor: move;
     padding: 2px 2px 8px;
   }
+  .tlogo { width: 18px; height: 18px; object-fit: contain; flex: 0 0 auto; }
   .ttl { font-size: 15px; font-weight: 800; letter-spacing: -.3px; color: var(--fg); }
   .grip { margin-left: auto; font-size: 11px; letter-spacing: 2px; color: var(--dim); opacity: .55; }
 
@@ -356,7 +357,8 @@
   .acr { display: flex; align-items: center; gap: 8px; padding: 4px 7px; border-radius: 6px;
          background: var(--card); font-size: 11px; }
   .acr.wknd { opacity: .5; }
-  .acr.wk { background: color-mix(in srgb, var(--accent) 14%, var(--card)); opacity: 1; }
+  /* 이번주 — 칠하지 않고 테두리로만 표시한다 (오늘만 크게 강조) */
+  .acr.acwk { box-shadow: inset 0 0 0 1.5px var(--accent); opacity: 1; }
   .acr.tdy {
     box-shadow: inset 0 0 0 2px var(--now); background: color-mix(in srgb, var(--now) 14%, var(--card));
     padding: 9px; font-size: 13px; opacity: 1;
@@ -366,12 +368,22 @@
   .ace { flex: 1; color: var(--fg2); line-height: 1.35; }
   .acr.tdy .acd { font-size: 16px; min-width: 42px; }
   .acr.tdy .ace { font-weight: 700; color: var(--fg); }
-  .acc { display: flex; gap: 2px; }
+  .acc { display: flex; flex-wrap: wrap; gap: 3px 8px; justify-content: flex-end; }
+  .acg { display: flex; align-items: center; gap: 2px; }
+  .gl { font-style: normal; font-size: 8px; font-weight: 800; color: var(--dim);
+        margin-right: 2px; white-space: nowrap; }
   .acc .cd { display: inline-flex; width: 15px; height: 15px; border-radius: 3px;
              align-items: center; justify-content: center; font-style: normal;
              font-size: 8.5px; font-weight: 800; background: var(--card2); color: var(--dim); }
   .acc .cd.off { background: transparent; }
   .acr.tdy .acc .cd { width: 18px; height: 18px; font-size: 10px; }
+
+  /* 컴시간에서 교사표·학급표를 가르는 작은 머리글 */
+  .cmh {
+    font-size: 11.5px; font-weight: 800; color: var(--accent);
+    margin: 9px 0 5px; letter-spacing: -.2px;
+  }
+  .cmh small { font-weight: 600; color: var(--dim); margin-left: 6px; letter-spacing: 0; }
 
   /* ── 급식 ── */
   .ml { background: var(--card); border-radius: 8px; padding: 7px 9px; margin-bottom: 5px; }
@@ -403,6 +415,9 @@
 
 <script>
 var STATE = null, VIEW = 'today', SCALE = 1, VER = '', UPD = null, LASTTT = 'today', THEME = '';
+/* 갈래 — jinho(진호알리미, 시간표 있음) / hyewon(혜원 데스크, 시간표 없음).
+   메인이 그릴 때마다 알려 준다. 시간표에 딸린 것만 가리고 나머지는 둘 다 같다. */
+var FLAVOR = 'jinho', HAS_TT = true, APPNAME = '진호알리미';
 
 function esc(s) {
   return String(s == null ? '' : s)
@@ -808,50 +823,46 @@ function viewComci() {
     return '<div class="empty">받아둔 시간표에 교사·학급 자료가 없습니다.<br>'
       + '<button class="btn" onclick="widgetAPI.openSettings()">설정에서 다시 불러오기</button></div>';
   }
-  if (!cmMode) cmMode = hasT ? 'teacher' : 'class';
-  if (cmMode === 'teacher' && !hasT) cmMode = 'class';
-  if (cmMode === 'class' && !hasC) cmMode = 'teacher';
-
-  var h = '<div class="wknav">';
-  if (hasT) h += '<button class="wkb' + (cmMode === 'teacher' ? ' now' : '') + '" data-cm="teacher">교사</button>';
-  if (hasC) h += '<button class="wkb' + (cmMode === 'class' ? ' now' : '') + '" data-cm="class">학급</button>';
-  h += '<span class="wklab">' + esc(d.schoolName || d.school || '')
+  var h = '<div class="wknav"><span class="wklab" style="text-align:left">'
+    + esc(d.schoolName || d.school || '')
     + '<small>' + esc((d.updatedAt || '').slice(0, 10)) + ' 기준</small></span>'
     + '<button class="wkb" id="cmGet" title="설정에서 다시 불러오기">⚙</button></div>';
 
-  if (cmMode === 'teacher') {
-    // 저장은 번호로 한다 — 가려진 이름은 겹칠 수 있다(김진호·김민호 -> 둘 다 김*호)
+  // ★ 둘 다 골라 두었으면 둘 다 내려 보여준다 (전에는 하나만 골라 볼 수 있었다)
+  if (hasT) {
+    // 저장은 번호로 한다 — 가려진 이름은 겹칠 수 있다(김진호·김민호 → 둘 다 김*호)
     var me = d.byTeacher.filter(function (t) { return t.i === cfg.teacherIdx; })[0]
       || d.byTeacher.filter(function (t) { return t.name === cfg.teacher; })[0]
       || d.byTeacher[0];
-    h += '<div class="wknav" style="margin-bottom:5px"><span class="wklab" style="text-align:left">'
-      + me.i + ' ' + esc(me.name) + ' 선생님<small>설정에서 내 이름을 바꿀 수 있어요</small></span></div>';
+    h += '<div class="cmh">' + me.i + ' ' + esc(me.name) + ' 선생님'
+      + (hasC ? '' : '<small>설정에서 내 이름을 바꿀 수 있어요</small>') + '</div>';
     h += cmTable(me.days, function (x) {
       return '<td class="c u1" title="' + esc(x.grade + '-' + x.cls + ' ' + x.subject) + '">'
         + '<b>' + x.grade + '-' + x.cls + '</b><u>' + esc(x.subject) + '</u></td>';
     });
-    return h;
   }
 
-  // 학급 — 학년·반 고르기
-  var gsel = d.classes.filter(function (g) { return g.grade === cmGrade; })[0] || d.classes[0];
-  cmGrade = gsel.grade;
-  h += '<div class="wknav">'
-    + d.classes.map(function (g) {
-      return '<button class="wkb' + (g.grade === cmGrade ? ' now' : '') + '" data-cg="' + g.grade + '">'
-        + g.grade + '학년</button>';
-    }).join('')
-    + '<span style="flex:1"></span>'
-    + gsel.classes.map(function (c) {
-      return '<button class="wkb' + (c.cls === cmCls ? ' now' : '') + '" data-cc="' + c.cls + '">'
-        + c.cls + '반</button>';
-    }).join('') + '</div>';
-  var cl = gsel.classes.filter(function (c) { return c.cls === cmCls; })[0] || gsel.classes[0];
-  cmCls = cl.cls;
-  h += cmTable(cl.days, function (x) {
-    return '<td class="c u0" title="' + esc(x.subject + ' / ' + x.teacher) + '">'
-      + '<b>' + esc(x.subject) + '</b><u>' + esc(x.teacher) + '</u></td>';
-  });
+  if (hasC) {
+    var gsel = d.classes.filter(function (g) { return g.grade === cmGrade; })[0] || d.classes[0];
+    cmGrade = gsel.grade;
+    h += '<div class="cmh">학급 시간표</div>';
+    h += '<div class="wknav">'
+      + d.classes.map(function (g) {
+          return '<button class="wkb' + (g.grade === cmGrade ? ' now' : '') + '" data-cg="' + g.grade + '">'
+            + g.grade + '학년</button>';
+        }).join('')
+      + '<span class="spacer"></span>'
+      + gsel.classes.map(function (c) {
+          return '<button class="wkb' + (c.cls === cmCls ? ' now' : '') + '" data-cc="' + c.cls + '">'
+            + c.cls + '반</button>';
+        }).join('') + '</div>';
+    var cl = gsel.classes.filter(function (c) { return c.cls === cmCls; })[0] || gsel.classes[0];
+    cmCls = cl.cls;
+    h += cmTable(cl.days, function (x) {
+      return '<td class="c u0" title="' + esc(x.subject + ' / ' + x.teacher) + '">'
+        + '<b>' + esc(x.subject) + '</b><u>' + esc(x.teacher) + '</u></td>';
+    });
+  }
   return h;
 }
 
@@ -916,13 +927,20 @@ function viewAcademic() {
       var weekend = (d.dow === '토' || d.dow === '일');
       var dt = new Date(year, Number(m.month) - 1, d.day);
       var inWeek = dt >= wr.from && dt <= wr.to;
-      var codes = d.grades && d.grades[3] ? d.grades[3] : null;
-      var lit = codes ? codes.map(function (c, i) {
-        return c ? '<i class="cd" title="' + (i + 1) + '교시">' + esc(c) + '</i>' : '<i class="cd off"></i>';
-      }).join('') : '';
+      // 학년마다 수업 일정이 다를 수 있다 — 1·2·3학년을 각각 줄지어 보여준다
+      var gs = d.grades || {};
+      var lit = [1, 2, 3].map(function (g) {
+        var codes = gs[g];
+        if (!codes || !codes.some(Boolean)) return '';
+        return '<span class="acg"><i class="gl">' + g + '학년</i>'
+          + codes.map(function (c, i) {
+              return c ? '<i class="cd" title="' + g + '학년 ' + (i + 1) + '교시">' + esc(c) + '</i>'
+                : '<i class="cd off"></i>';
+            }).join('') + '</span>';
+      }).join('');
       // ★ 같은 달이 8-1·8-2 로 나뉘어 있으면 «오늘»이 여러 군데 생긴다.
       //   id 는 달마다 다르게 주고, 어디로 갈지는 goToday() 가 고른다.
-      return '<div class="acr' + (isToday ? ' tdy' : '') + (inWeek && !isToday ? ' wk' : '')
+      return '<div class="acr' + (isToday ? ' tdy' : '') + (inWeek && !isToday ? ' acwk' : '')
         + (weekend ? ' wknd' : '') + '"'
         + (isToday ? ' data-today="1" id="actoday-' + esc(m.tab) + '"' : '') + '>'
         + '<span class="acd">' + d.day + '<small>' + esc(d.dow) + '</small></span>'
@@ -1158,7 +1176,9 @@ function taskBar() {
 
 /* 맨 위 제목 줄 — 여기를 잡고 끌면 위젯이 움직인다 */
 function titleBar() {
-  return '<div class="tbar"><span class="ttl">혜원 데스크</span>'
+  return '<div class="tbar">'
+    + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
+    + '<span class="ttl">' + esc(APPNAME) + '</span>'
     + '<span class="grip" title="여기를 잡고 끌면 위젯이 움직입니다">⠿⠿</span></div>';
 }
 function updBar() {
@@ -1191,12 +1211,18 @@ function render() {
   }
 
   var d = STATE, html = '<div class="top">' + titleBar() + usageBar() + updBar() + taskBar();
-  html += '<div class="head"><span class="date">' + esc(d.date.slice(5).replace('-', '월 ')) + '일</span>'
-    + '<span class="dow">' + esc(d.dow) + '요일</span><span class="spacer"></span>'
-    + '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>'
+  // 혜원 데스크는 수업진도 자료를 안 받으므로 날짜·요일을 스스로 만든다
+  var nd = new Date();
+  var dText = d.date ? d.date.slice(5).replace('-', '월 ') + '일'
+    : pad(nd.getMonth() + 1) + '월 ' + pad(nd.getDate()) + '일';
+  var dowText = (d.dow || ['일', '월', '화', '수', '목', '금', '토'][nd.getDay()]) + '요일';
+  html += '<div class="head"><span class="date">' + esc(dText) + '</span>'
+    + '<span class="dow">' + esc(dowText) + '</span><span class="spacer"></span>'
+    + (HAS_TT ? '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>' : '')
     + '<button class="ico" title="설정" onclick="widgetAPI.openSettings()">⚙</button>'
     + '<button class="ico" title="지금 새로고침" onclick="widgetAPI.refreshNow()">⟳</button>'
-    + '<button class="ico" title="수업진도 앱 열기(크롬)" onclick="widgetAPI.openApp()">↗</button></div>';
+    + (HAS_TT ? '<button class="ico" title="수업진도 앱 열기(크롬)" onclick="widgetAPI.openApp()">↗</button>' : '')
+    + '</div>';
 
   if (d.note || d.holiday) {
     html += '<div class="note' + (d.holiday ? ' hol' : '') + '">'
@@ -1207,7 +1233,8 @@ function render() {
   var TT_SUB = ['today', 'week', 'progress'];
   var tab = TT_SUB.indexOf(VIEW) >= 0 ? 'tt' : VIEW;
   html += '<div class="chips">'
-    + ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식'].map(function (s) {
+    + (HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식']
+              : ['work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식']).map(function (s) {
         var p = s.split(',');
         return '<button class="chip' + (tab === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">' + p[1] + '</button>';
       }).join('') + '</div>';
@@ -1361,6 +1388,12 @@ widgetAPI.onData(function (p) {
   VIEW = p.view || VIEW;
   VER = p.version || '';
   UPD = p.update || null;
+  if (p.flavor) {
+    FLAVOR = p.flavor;
+    HAS_TT = FLAVOR !== 'hyewon';
+    APPNAME = p.appName || (HAS_TT ? '진호알리미' : '혜원 데스크');
+    if (!HAS_TT && ['today', 'week', 'progress'].indexOf(VIEW) >= 0) VIEW = 'work';
+  }
   if (p.usage) {
     USG = p.usage.data || null;
     USGSHOW = p.usage.show !== false;

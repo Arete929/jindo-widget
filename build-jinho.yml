@@ -1,0 +1,43 @@
+# 진호알리미 — 지금까지 쓰던 것 그대로 (시간표 있음)
+#
+# ★ 설치 이름(JindoWidget)과 appId 를 «일부러» 안 바꾼다.
+#   바꾸면 설치 경로가 달라져서, 이미 깔려 있는 것이 자동 업데이트를 못 받고
+#   옛 버전 그대로 남는다. 사람이 보는 이름만 진호알리미로 바꿨다(main.js 의 APP_NAME).
+appId: kr.hyewon.jindowidget
+productName: JindoWidget
+extraMetadata:
+  flavor: jinho          # main.js 가 이걸 읽어 시간표를 켠다
+  # 설정 폴더(%APPDATA%\JindoWidget)를 그대로 지키려고 일부러 못박아 둔다 —
+  # 이걸 바꾸면 지금까지 저장해 둔 설정·시간표·기록을 못 찾는다.
+  name: jindo-widget
+  productName: JindoWidget
+files:
+  - main.js
+  - preload.js
+  - widget.html
+  - timetable.html
+  - comcigan.js
+  - fetchtext.js
+  - worknotice.js
+  - neis.js
+  - academic.js
+  - aiusage.js
+  - settings.html
+  - assets/**
+  - node_modules/**/*
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: assets/icon.png
+  artifactName: JindoWidget-Setup-${version}.${ext}
+nsis:
+  oneClick: true
+  perMachine: false
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  shortcutName: 진호알리미
+publish:
+  - provider: github
+    owner: Arete929
+    repo: jindo-widget

@@ -1,4 +1,4 @@
-<!-- 파일명: settings.html | @version 1.17.0 -->
+<!-- 파일명: settings.html | @version 1.18.0 -->
 <!-- 위젯 설정 창 — 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기 등)을 여기서 한다. -->
 <!doctype html>
 <html lang="ko">
@@ -62,11 +62,29 @@
   .tname .dot { margin-left: auto; width: 15px; height: 15px; border-radius: 999px;
                 border: 2px solid #cfcae6; }
   .tname .tr.sel .dot { border-color: var(--energy1); background: radial-gradient(var(--energy1) 42%, #fff 46%); }
+  /* 켬·끔 스위치 — 단추 두 개보다 «지금 켜져 있나»가 한눈에 들어온다 */
+  .sw {
+    display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    border: 0; background: none; padding: 2px 0; font-family: inherit;
+    font-size: 12px; font-weight: 700; color: var(--sub);
+  }
+  .sw .track {
+    width: 40px; height: 22px; border-radius: 999px; background: #d9d5ec;
+    position: relative; transition: background .15s;
+  }
+  .sw .knob {
+    position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+    border-radius: 999px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    transition: left .15s;
+  }
+  .sw.on .track { background: var(--energy1); }
+  .sw.on .knob { left: 21px; }
+  .sw.on { color: var(--ink); }
   .foot { font-size: 11.5px; color: var(--sub); text-align: center; margin-top: 4px; }
 </style>
 </head>
 <body>
-<h1>⚙️ 혜원 데스크 설정</h1>
+<h1 id="h1">⚙️ 설정</h1>
 
 <section>
   <h2>컴시간알리미</h2>
@@ -157,7 +175,8 @@
   <div class="row">
     <label class="lb">AI 사용량</label>
     <div class="chips" id="usgRow">
-      <button data-usg="on">보이기</button><button data-usg="off">숨기기</button>
+      <button class="sw" id="usgSw"><span class="track"><span class="knob"></span></span><span id="usgSwTxt">보이기</span></button>
+      <span style="width:8px"></span>
       <button data-usgstyle="ring">원형</button><button data-usgstyle="bar">막대</button>
     </div>
   </div>
@@ -277,15 +296,25 @@ function paint() {
   $('thRow').querySelectorAll('button').forEach(function (b) {
     b.className = (b.dataset.th === (UI.theme || '')) ? 'on' : '';
   });
-  $('usgRow').querySelectorAll('button').forEach(function (b) {
-    if (b.dataset.usg) b.className = ((b.dataset.usg === 'on') === (UI.usageShow !== false)) ? 'on' : '';
-    else b.className = (b.dataset.usgstyle === (UI.usageStyle || 'ring')) ? 'on' : '';
+  var usgOn = UI.usageShow !== false;
+  $('usgSw').className = 'sw' + (usgOn ? ' on' : '');
+  $('usgSwTxt').textContent = usgOn ? '보이기' : '숨기기';
+  $('usgRow').querySelectorAll('button[data-usgstyle]').forEach(function (b) {
+    b.className = (b.dataset.usgstyle === (UI.usageStyle || 'ring')) ? 'on' : '';
+    b.disabled = !usgOn;
   });
+  // 시간표가 없는 판(혜원 데스크)에서는 구글 로그인 줄을 숨긴다
+  if (UI.flavor === 'hyewon') {
+    var lr = $('loginState').closest('.row');
+    if (lr) lr.style.display = 'none';
+    document.title = '혜원 데스크 설정';
+  }
   $('aotBtn').className = UI.alwaysOnTop ? 'on' : '';
   $('autoBtn').className = UI.autoLaunch ? 'on' : '';
   $('loginState').innerHTML = UI.loggedIn
     ? '<span class="ok">로그인됨</span>' : '<span class="warn">로그인 필요</span>';
   $('verText').textContent = 'v' + UI.version;
+  $('h1').textContent = '⚙️ ' + (UI.appName || '위젯') + ' 설정';
   if (UI.academicSheet && !$('acSheet').value) $('acSheet').value = UI.academicSheet;
   paintNeis();
 }
@@ -347,10 +376,15 @@ $('autoSizeBtn').onclick = function () { widgetAPI.setUi({ autoSize: true }); };
 $('thRow').querySelectorAll('button').forEach(function (b) {
   b.onclick = function () { UI.theme = b.dataset.th; widgetAPI.setUi({ theme: UI.theme }); paint(); };
 });
-$('usgRow').querySelectorAll('button').forEach(function (b) {
+$('usgSw').onclick = function () {
+  UI.usageShow = !(UI.usageShow !== false);
+  widgetAPI.setUi({ usageShow: UI.usageShow });
+  paint();
+};
+$('usgRow').querySelectorAll('button[data-usgstyle]').forEach(function (b) {
   b.onclick = function () {
-    if (b.dataset.usg) { UI.usageShow = (b.dataset.usg === 'on'); widgetAPI.setUi({ usageShow: UI.usageShow }); }
-    else { UI.usageStyle = b.dataset.usgstyle; widgetAPI.setUi({ usageStyle: UI.usageStyle }); }
+    UI.usageStyle = b.dataset.usgstyle;
+    widgetAPI.setUi({ usageStyle: UI.usageStyle });
     paint();
   };
 });

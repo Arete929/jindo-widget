@@ -1,14 +1,17 @@
 {
   "name": "jindo-widget",
   "productName": "JindoWidget",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "description": "체육 수업진도 — 오늘 수업·이번주·반별 진도를 항상 위에 띄워 보여주는 위젯",
   "main": "main.js",
   "author": "Arete929",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win",
+    "build:jinho": "electron-builder --win --config build-jinho.yml --publish never",
+    "build:hyewon": "electron-builder --win --config build-hyewon.yml --publish never",
+    "build:both": "npm run build:jinho && npm run build:hyewon"
   },
   "devDependencies": {
     "electron": "^35.0.0",
@@ -16,54 +19,6 @@
   },
   "dependencies": {
     "electron-updater": "^6.8.9"
-  },
-  "build": {
-    "appId": "kr.hyewon.jindowidget",
-    "productName": "JindoWidget",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "main.js",
-      "preload.js",
-      "widget.html",
-      "timetable.html",
-      "comcigan.js",
-      "fetchtext.js",
-      "worknotice.js",
-      "neis.js",
-      "academic.js",
-      "aiusage.js",
-      "settings.html",
-      "assets/**",
-      "node_modules/**/*"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "assets/icon.png",
-      "artifactName": "JindoWidget-Setup-${version}.${ext}"
-    },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": false,
-      "runAfterFinish": true,
-      "deleteAppDataOnUninstall": false,
-      "shortcutName": "수업진도 위젯"
-    },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "Arete929",
-        "repo": "jindo-widget"
-      }
-    ]
   },
   "allowScripts": {
     "electron@35.7.5": true

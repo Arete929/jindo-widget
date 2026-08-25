@@ -1,0 +1,46 @@
+# 혜원 데스크 — 시간표만 뺀 «나눠 주기용» (구글 로그인도 필요 없다)
+#
+# ★ appId·설치 이름을 진호알리미와 따로 둔다.
+#   그래야 한 PC에 둘 다 깔아도 설정·기록·자동 업데이트가 서로 섞이지 않는다.
+# ★ 같은 저장소에 올리므로 업데이트 안내 파일 이름이 겹치면 안 된다.
+#   channel 을 주면 latest.yml 대신 hyewon.yml 을 만들고, 이 앱은 그것만 본다.
+appId: kr.hyewon.hyewondesk
+productName: HyewonDesk
+extraMetadata:
+  flavor: hyewon         # main.js 가 이걸 읽어 시간표를 끈다
+  # ★ 설정·기록이 저장되는 폴더는 «포장된 package.json 의 productName» 으로 정해진다.
+  #   위쪽 productName 만 바꾸면 설치 파일 이름만 바뀌고 폴더는 그대로라,
+  #   두 프로그램이 %APPDATA%\JindoWidget 을 함께 써서 설정이 섞인다. 여기서도 바꿔 준다.
+  name: hyewon-desk
+  productName: HyewonDesk
+files:
+  - main.js
+  - preload.js
+  - widget.html
+  - timetable.html
+  - comcigan.js
+  - fetchtext.js
+  - worknotice.js
+  - neis.js
+  - academic.js
+  - aiusage.js
+  - settings.html
+  - assets/**
+  - node_modules/**/*
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: assets/hyewon-icon.png
+  artifactName: HyewonDesk-Setup-${version}.${ext}
+nsis:
+  oneClick: true
+  perMachine: false
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  shortcutName: 혜원 데스크
+publish:
+  - provider: github
+    owner: Arete929
+    repo: jindo-widget
+    channel: hyewon

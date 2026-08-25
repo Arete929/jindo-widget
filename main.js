@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.17.0
-// 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (체육 수업진도·주간업무·학사일정·급식·AI 사용량)
-// 수정요약: v1.17.0 테마 일곱(블랙+전역 여섯)·색 또렷하게 / 주간업무 헤더를 날짜까지 통째로 고정 / 원문 가운데 정렬 살림(급식지도표)
+// 파일명: main.js | @version 1.18.0
+// 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
+// 수정요약: v1.18.0 진호알리미·혜원 데스크로 갈래 나눔 / 사용량 스위치 / 컴시간 교사+학급 동시 표시 / 학사일정 학년별 교시·이번주 테두리
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -16,6 +16,24 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const aiusage = require('./aiusage.js');
+
+/* ── 갈래(flavor) ──────────────────────────────────────────────
+   한 벌의 코드로 두 프로그램을 만든다. 빌드할 때 package.json 에 flavor 를 심어 두고
+   (electron-builder 의 extraMetadata), 여기서 읽어 화면과 동작을 가른다.
+
+     jinho  진호알리미  — 지금까지 쓰던 것 그대로. 시간표(오늘·이번주·진도)가 있다.
+     hyewon 혜원 데스크 — 시간표만 뺀 것. 시간표는 수업진도 앱에서 오는 «내» 자료라
+                          나눠 줄 판에는 넣지 않는다. 덕분에 구글 로그인도 필요 없다.
+
+   ★ 앞으로 고칠 때: 시간표에 딸린 것만 jinho 에, 나머지는 둘 다에 넣는다. */
+const FLAVOR = (() => {
+  try { return require('./package.json').flavor === 'hyewon' ? 'hyewon' : 'jinho'; }
+  catch (e) { return 'jinho'; }
+})();
+const HAS_TT = FLAVOR === 'jinho';              // 시간표를 쓰는가
+const APP_NAME = HAS_TT ? '진호알리미' : '혜원 데스크';
+const ICON = HAS_TT ? 'icon.png' : 'hyewon-icon.png';
+const TRAY_ICON = HAS_TT ? 'tray.png' : 'hyewon-tray.png';
 
 const APP_URL = 'https://jindo-dashboard.web.app/';
 const APP_ORIGIN = 'https://jindo-dashboard.web.app';
@@ -111,7 +129,13 @@ function getTheme() {
 }
 function getUsageShow() { const v = loadState().usageShow; return v === undefined ? true : !!v; }
 function getUsageStyle() { return loadState().usageStyle === 'bar' ? 'bar' : 'ring'; }
-function getView() { const v = loadState().view; return ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal'].includes(v) ? v : 'today'; }
+const VIEWS = HAS_TT
+  ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal']
+  : ['work', 'comci', 'cal', 'meal'];
+function getView() {
+  const v = loadState().view;
+  return VIEWS.includes(v) ? v : VIEWS[0];
+}
 
 /* ===================== 자동 업데이트 ===================== */
 // 새 버전이 나오면 알아서 내려받고, 다 받으면 알림을 띄운다. 누르면 재시작하며 설치.
@@ -148,7 +172,7 @@ autoUpdater.on('update-available', (info) => {
 });
 autoUpdater.on('update-not-available', () => {
   debugLog(`업데이트 없음 (현재 v${app.getVersion()}이 최신)`);
-  if (manualUpdateCheck) { manualUpdateCheck = false; notify('혜원 데스크', `이미 최신 버전이에요 (v${app.getVersion()}).`); }
+  if (manualUpdateCheck) { manualUpdateCheck = false; notify(APP_NAME, `이미 최신 버전이에요 (v${app.getVersion()}).`); }
 });
 let lastLoggedPercent = -1;
 autoUpdater.on('download-progress', (p) => {
@@ -159,7 +183,7 @@ autoUpdater.on('update-downloaded', (info) => {
   lastLoggedPercent = -1;
   manualUpdateCheck = false;
   setUpdateState('ready', info.version);
-  notify('혜원 데스크 업데이트 준비됨',
+  notify(`${APP_NAME} 업데이트 준비됨`,
     `새 버전 v${info.version}을(를) 다 받았어요. 클릭하면 재시작하며 설치합니다.`,
     () => installUpdateNow());
 });
@@ -168,7 +192,7 @@ autoUpdater.on('error', (err) => {
   debugLog(`업데이트 오류: ${err && err.message ? err.message : err}`);
   if (manualUpdateCheck) {
     manualUpdateCheck = false;
-    notify('혜원 데스크', '업데이트 확인에 실패했어요. 클릭하면 릴리스 페이지를 엽니다.',
+    notify(APP_NAME, '업데이트 확인에 실패했어요. 클릭하면 릴리스 페이지를 엽니다.',
       () => shell.openExternal(RELEASES_PAGE_URL));
   }
 });
@@ -183,11 +207,11 @@ function installUpdateNow() {
 function checkForUpdates(manual) {
   if (!app.isPackaged) {
     debugLog('개발 모드라 업데이트 확인을 건너뜀');
-    if (manual) notify('혜원 데스크', '개발 모드에서는 업데이트를 확인하지 않아요.');
+    if (manual) notify(APP_NAME, '개발 모드에서는 업데이트를 확인하지 않아요.');
     return;
   }
   if (updateState === 'ready') {
-    if (manual) notify('혜원 데스크 업데이트 준비됨',
+    if (manual) notify(`${APP_NAME} 업데이트 준비됨`,
       `v${updateVersion} 설치 준비가 끝났어요. 클릭하면 재시작하며 설치합니다.`, () => installUpdateNow());
     return;
   }
@@ -245,6 +269,8 @@ function sendToWidget() {
     scale: SIZES[getScale()],
     version: app.getVersion(),
     theme: getTheme(),
+    flavor: FLAVOR,
+    appName: APP_NAME,
     usage: { show: getUsageShow(), style: getUsageStyle(), data: aiusage.snapshot() },
     update: { state: updateState, version: updateVersion }
   };
@@ -255,9 +281,9 @@ function sendToWidget() {
 
 function updateTrayTooltip() {
   if (!tray) return;
-  if (!lastData || lastData.needLogin) { tray.setToolTip('혜원 데스크 — 로그인이 필요합니다'); return; }
+  if (!lastData || lastData.needLogin) { tray.setToolTip(`${APP_NAME} — 로그인이 필요합니다`); return; }
   const ls = lastData.lessons || [];
-  if (!ls.length) { tray.setToolTip(`혜원 데스크 — 오늘(${lastData.dow}) 수업 없음`); return; }
+  if (!ls.length) { tray.setToolTip(`${APP_NAME} — 오늘(${lastData.dow}) 수업 없음`); return; }
   const lines = ls.map((l) => `${l.period}교시 ${l.cls} ${l.unit}${l.n ? ' ' + l.n + '차시' : ''}`);
   tray.setToolTip(`오늘 수업 ${ls.length}개\n` + lines.join('\n'));
 }
@@ -366,7 +392,7 @@ function startLogin() {
 
   handoffServer.on('error', (e) => {
     debugLog(`로그인 서버를 못 열었습니다: ${e.message}`);
-    notify('혜원 데스크', '로그인 창을 여는 데 실패했어요. 잠시 뒤 다시 시도해 주세요.');
+    notify(APP_NAME, '로그인 창을 여는 데 실패했어요. 잠시 뒤 다시 시도해 주세요.');
     stopHandoffServer();
   });
 
@@ -374,7 +400,7 @@ function startLogin() {
     const port = handoffServer.address().port;
     debugLog(`로그인 대기 시작 (127.0.0.1:${port}) — 크롬을 엽니다`);
     openInBrowser(`${APP_URL}?widget=${port}&nonce=${nonce}`);
-    notify('혜원 데스크', '크롬 탭을 열었어요. 거기서 구글 로그인해 주세요.');
+    notify(APP_NAME, '크롬 탭을 열었어요. 거기서 구글 로그인해 주세요.');
   });
 
   // 5분 안에 안 끝나면 서버를 닫는다 (열어둔 채로 두지 않는다)
@@ -399,11 +425,11 @@ async function finishLogin(idToken, retried) {
       return;
     }
     debugLog('로그인 완료');
-    notify('혜원 데스크', '로그인됐어요. 이제 위젯에 오늘 수업이 표시됩니다.');
+    notify(APP_NAME, '로그인됐어요. 이제 위젯에 오늘 수업이 표시됩니다.');
     setTimeout(pollOnce, 2500);
   } catch (e) {
     debugLog(`로그인 마무리 실패: ${e && e.message ? e.message : e}`);
-    notify('혜원 데스크', '로그인을 마무리하지 못했어요. 트레이 메뉴에서 다시 시도해 주세요.');
+    notify(APP_NAME, '로그인을 마무리하지 못했어요. 트레이 메뉴에서 다시 시도해 주세요.');
   }
 }
 
@@ -472,7 +498,7 @@ function createWidgetWindow() {
     skipTaskbar: true,
     opacity: getOpacity(),
     title: '',
-    icon: path.join(__dirname, 'assets', 'icon.png'),
+    icon: path.join(__dirname, 'assets', ICON),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -550,7 +576,7 @@ function openTimetableWindow() {
     title: '주간 시간표',
     backgroundColor: '#F7F7FF',
     autoHideMenuBar: true,
-    icon: path.join(__dirname, 'assets', 'icon.png'),
+    icon: path.join(__dirname, 'assets', ICON),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -741,7 +767,7 @@ function openSettingsWindow() {
   settingsWin = new BrowserWindow({
     width: 620, height: 760, title: '혜원 데스크 설정',
     backgroundColor: '#F7F7FF', autoHideMenuBar: true, resizable: true,
-    icon: path.join(__dirname, 'assets', 'icon.png'),
+    icon: path.join(__dirname, 'assets', ICON),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true, nodeIntegration: false
@@ -759,6 +785,8 @@ ipcMain.handle('get-settings', () => ({
     size: getScale(), opacity: getOpacity(), alwaysOnTop: getAlwaysOnTop(),
     autoLaunch: app.getLoginItemSettings().openAtLogin,
     version: app.getVersion(),
+    flavor: FLAVOR,
+    appName: APP_NAME,
     theme: getTheme(),
     usageShow: getUsageShow(),
     usageStyle: getUsageStyle(),
@@ -808,7 +836,7 @@ ipcMain.on('install-update', () => installUpdateNow());
 
 /* ===================== 트레이 ===================== */
 function createTray() {
-  tray = new Tray(path.join(__dirname, 'assets', 'tray.png'));
+  tray = new Tray(path.join(__dirname, 'assets', TRAY_ICON));
   const buildMenu = () => {
     let updateItems = [];
     if (updateState === 'ready') {
@@ -843,15 +871,20 @@ function createTray() {
       { label: '위젯 투명도', submenu: opacityMenu },
       { label: '위젯 크기', submenu: sizeMenu },
       { type: 'separator' },
-      { label: '🗓️ 주간 시간표 크게 보기', click: () => openTimetableWindow() },
-      { label: '지금 새로고침', click: () => pollOnce() },
+      // 시간표에 딸린 것들은 진호알리미에만 넣는다
+      ...(HAS_TT ? [
+        { label: '🗓️ 주간 시간표 크게 보기', click: () => openTimetableWindow() },
+        { label: '지금 새로고침', click: () => pollOnce() }
+      ] : []),
       {
         // 다른 모니터를 뽑았거나 위젯을 어디 뒀는지 못 찾을 때 쓰는 탈출구
         label: '위젯 위치 초기화 (화면 가운데로)',
         click: () => resetWidgetPosition()
       },
-      { label: '수업진도 앱 열기 (크롬)', click: () => openInBrowser(APP_URL) },
-      { label: '크롬으로 로그인', click: () => startLogin() },
+      ...(HAS_TT ? [
+        { label: '수업진도 앱 열기 (크롬)', click: () => openInBrowser(APP_URL) },
+        { label: '크롬으로 로그인', click: () => startLogin() }
+      ] : []),
       {
         label: 'Windows 시작 시 자동 실행', type: 'checkbox',
         checked: app.getLoginItemSettings().openAtLogin,
@@ -1011,10 +1044,18 @@ if (!gotLock) {
     debugLog(`=== 시작 === v${app.getVersion()} · 로그: ${debugLogFile}`);
     createWidgetWindow();
     createTray();
-    getWorkerWindow();
-    // 앱이 로그인·자료 불러오기를 끝낼 시간을 조금 준 뒤 첫 조회
-    setTimeout(pollOnce, 6000);
-    pollTimer = setInterval(pollOnce, POLL_INTERVAL_MS);
+    if (HAS_TT) {
+      getWorkerWindow();
+      // 앱이 로그인·자료 불러오기를 끝낼 시간을 조금 준 뒤 첫 조회
+      setTimeout(pollOnce, 6000);
+      pollTimer = setInterval(pollOnce, POLL_INTERVAL_MS);
+    } else {
+      // 혜원 데스크는 시간표를 안 쓴다 — 수업진도 앱을 띄우지도, 로그인하지도 않는다.
+      // 화면 쪽은 «자료가 준비됐다»는 표시만 있으면 되므로 빈 껍데기를 넣어 둔다.
+      lastData = { ready: true, needLogin: false, lessons: [], dow: '', date: '' };
+      debugLog('혜원 데스크 — 시간표 없이 시작합니다 (구글 로그인 불필요)');
+      sendToWidget();
+    }
 
     checkForUpdates();
     setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
