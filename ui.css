@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.1.0
+/* 파일명: ui.css | @version 1.1.1
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -405,14 +405,14 @@
   /* 글머리 단계마다 «위 여백»을 달리 줘서 덩어리가 눈에 갈리게 한다.
      1. 2. 3. 이 최상위, 그 아래 가. 나., 1) 2), 가) 나) 순이다.
      ★글자는 원문 그대로다 — 간격만 손댄다. 단계는 views.js 의 wlevel() 이 정한다. */
-  .wkp.lv1 { margin-top: 11px; }
+  .wkp.lv1 { margin-top: 16px; }
   .wkp.lv2 { margin-top: 6px; }
   .wkp.lv3 { margin-top: 3px; }
   .wkp.lv4 { margin-top: 1px; }
   /* 부서 제목 «바로 아래» 첫 줄은 이미 제목이 띄워 줬으니 겹쳐 벌리지 않는다 */
   .wkdt > b + .wkp.lv1 { margin-top: 0; }
   /* 표 칸 안에서는 칸이 좁으므로 절반만 준다 */
-  .wtb .wkp.lv1 { margin-top: 6px; }
+  .wtb .wkp.lv1 { margin-top: 9px; }
   .wtb .wkp.lv2 { margin-top: 3px; }
   .wtb .wkp.lv3, .wtb .wkp.lv4 { margin-top: 1px; }
   .wtb td > .wkp:first-child { margin-top: 0; }
