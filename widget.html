@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.19.0 -->
+<!-- 파일명: widget.html | @version 1.19.1 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -127,6 +127,11 @@
   :root[data-theme="chillwhite"] .gear,
   :root[data-theme="kiwi"] .gear { background-image: url('assets/setting_bk.png'); }
   :root[data-theme="truepink"] .gear { background-image: url('assets/setting_bluebk.png'); }
+  /* 제목 줄 오른쪽 끝 — 지금 쓰는 버전 */
+  .tver {
+    margin-left: 7px; font-size: 9.5px; font-weight: 700;
+    color: var(--dim); opacity: .85; font-variant-numeric: tabular-nums;
+  }
   .grip { margin-left: 7px; font-size: 11px; letter-spacing: 2px; color: var(--dim); opacity: .55; }
 
   /* 사용량 띠의 빈 곳으로도 끌 수 있게 — 단, 단추는 눌려야 한다 */
@@ -1217,6 +1222,7 @@ function titleBar() {
     + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
     + '<span class="ttl">' + esc(APPNAME) + '</span>'
     + '<button class="gear" title="설정" onclick="widgetAPI.openSettings()"></button>'
+    + (VER ? '<span class="tver">v' + esc(VER) + '</span>' : '')
     + '<span class="grip" title="여기를 잡고 끌면 위젯이 움직입니다">⠿⠿</span></div>';
 }
 function updBar() {
@@ -1292,7 +1298,7 @@ function render() {
     : VIEW === 'cal' ? viewAcademic()
     : VIEW === 'meal' ? viewMeals()
     : viewToday(d);
-  html += '<div class="foot">@JINHOKIM · v' + esc(VER) + '</div>';
+  html += '<div class="foot">@JINHOKIM</div>';   // 버전은 제목 줄 오른쪽 끝에 있다
   app.style.setProperty('--wf', String(workFont));
   app.innerHTML = html;
   // 두 번째 고정 줄이 머리 «바로 아래»에 붙도록, 머리 높이를 재서 알려 준다.
