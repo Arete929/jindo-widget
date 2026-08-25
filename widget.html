@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.19.2 -->
+<!-- 파일명: widget.html | @version 1.19.3 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -77,10 +77,18 @@
   #app::-webkit-scrollbar-track { background: transparent; }
 
   /* 머리 고정 — 내용이 길어도 날짜·탭은 늘 보이게 */
+  /* 머리는 통째로 «잡고 끄는» 자리다 — 단추·입력칸만 빼놓는다.
+     예전에는 제목 줄·날짜 줄에만 끌기를 줘서 잡을 데가 좁았다. */
   .top {
     position: sticky; top: 0; z-index: 6;
     background: var(--bg); padding: 10px 0 2px;
+    -webkit-app-region: drag;
   }
+  /* 단추·입력칸은 눌려야 하고, 두 번째 줄(검색·주차·월 단추)은 «휠로 넘길» 수 있어야 한다.
+     끌기 영역 위에서는 휠이 창 이동으로 가로채여 스크롤이 안 되기 때문이다. */
+  .top button, .top input, .top a, .top select, .top textarea,
+  .top .chip, .top .wkb, .top .upd, .top .gear,
+  .top .top2 { -webkit-app-region: no-drag; }
   /* 머리에 함께 붙는 줄 (주간업무 검색·주차·날짜, 학사일정 월 단추).
      ★ 예전에는 이것만 따로 «두 번째 고정 층»으로 뒀는데, 머리 높이를 잘못 재면
        첫 층 밑으로 숨어 버려서 «헤더가 사라진» 것처럼 보였다.
@@ -111,7 +119,13 @@
     -webkit-app-region: drag; cursor: move;
     padding: 2px 2px 8px;
   }
-  .tlogo { width: 18px; height: 18px; object-fit: contain; flex: 0 0 auto; }
+  /* ★ 로고를 잡고 끌면 창이 안 움직이던 문제.
+     그림은 브라우저가 «그림 끌어다 놓기» 로 먼저 채가서 창 이동이 막힌다.
+     그림 자체의 끌기를 끄고, 마우스를 아예 통과시켜 뒤의 제목 줄이 받게 한다. */
+  .tlogo {
+    width: 18px; height: 18px; object-fit: contain; flex: 0 0 auto;
+    -webkit-user-drag: none; user-select: none; pointer-events: none;
+  }
   .ttl { font-size: 15px; font-weight: 800; letter-spacing: -.3px; color: var(--fg); }
   /* 설정 톱니 — 제목 옆에 둔다. 테마 바탕색에 따라 그림을 갈아 끼운다.
      밝은 바탕에는 검정, 어두운 바탕에는 하늘색, 강렬한 빨강 바탕에는 테두리가 있는 것. */
