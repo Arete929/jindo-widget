@@ -1,4 +1,4 @@
-// 파일명: records.js | @version 1.0.0
+// 파일명: records.js | @version 1.1.0
 // 학생기록 — 구글 시트를 만들고 읽고 쓴다.
 //
 // 시트 짜임
@@ -29,6 +29,29 @@ function stamp(d) {
     + `${p(t.getHours())}:${p(t.getMinutes())}:${p(t.getSeconds())}`;
 }
 function esc(name) { return encodeURIComponent(name); }
+
+/* ── 이미 있는 것 찾기 ──
+   ★ 두 PC 에서 쓸 때를 위한 것이다. 두 번째 PC 는 «시트 기록» 이 비어 있어서
+     그냥 두면 «시트 만들기» 를 눌러 시트가 하나 더 생기고, 기록이 두 곳으로 갈린다.
+     drive.file 권한은 «이 앱이 만든 파일» 을 볼 수 있으니, 만들기 전에 먼저 찾아본다. */
+async function findSheet(token, title) {
+  const name = String(title || '[혜원 데스크] 학생기록').replace(/'/g, "\\'");
+  const q = "mimeType='application/vnd.google-apps.spreadsheet'"
+    + " and trashed=false and name='" + name + "'";
+  const r = await json({
+    url: DRIVE + '?q=' + esc(q)
+      + '&fields=' + esc('files(id,name,createdTime,modifiedTime)')
+      + '&orderBy=createdTime&pageSize=10',
+    token: token
+  });
+  const f = ((r && r.files) || [])[0];
+  if (!f) return null;
+  return {
+    id: f.id,
+    url: 'https://docs.google.com/spreadsheets/d/' + f.id + '/edit',
+    createdAt: f.createdTime ? stamp(new Date(f.createdTime)) : ''
+  };
+}
 
 /* ── 만들기 ── */
 async function createSheet(token, title) {
@@ -148,6 +171,6 @@ async function putConf(token, id, key, value) {
 }
 
 module.exports = {
-  createSheet, trashSheet, loadAll, saveRecord, clearRecord, saveCats, putConf,
+  findSheet, createSheet, trashSheet, loadAll, saveRecord, clearRecord, saveCats, putConf,
   readRange, writeRange, stamp, DEFAULT_CATS, TAB_REC, TAB_CAT, TAB_CFG
 };

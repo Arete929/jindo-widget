@@ -852,6 +852,8 @@ var recDraft = '', recSavedAt = '', recOpen = 0;   // recOpen = 펼쳐 놓은 �
 var statStu = [], statCat = [], statMon = [], statCls = [];   // 통계에서 고른 것들 (여러 개)
 var statMore = false;    // 학생 줄을 펼쳐 놓았는가
 var catEdit = null;      // 카테고리 편집 중인 목록
+// 다른 PC 에서 만들어 둔 시트가 드라이브에 있는지 — null=아직 안 봄, false=없음, {…}=있음
+var recFound = null, recFinding = false;
 
 function recLoad(force) {
   if (recBusy) return;
@@ -859,7 +861,16 @@ function recLoad(force) {
   recBusy = true; recErr = '';
   widgetAPI.recLoad().then(function (d) {
     recBusy = false;
-    if (d && d.need === 'sheet') { RECDATA = null; render(); return; }
+    if (d && d.need === 'sheet') {
+      RECDATA = null;
+      recFound = null;                 // 드라이브를 다시 훑어본다
+      if (d.lost) {
+        recErr = '지난 시트를 이 계정에서는 볼 수 없습니다.\n'
+          + (d.lost.email ? '그 시트는 ' + d.lost.email + ' 계정에 있습니다.\n' : '')
+          + '\n그 계정으로 다시 연결하시거나, 여기서 새로 만드시면 됩니다.';
+      }
+      render(); return;
+    }
     RECDATA = d || null; render();
   }).catch(function (e) {
     recBusy = false; RECDATA = null;
@@ -867,6 +878,15 @@ function recLoad(force) {
     render();
   });
 }
+/* 드라이브에 이미 만들어 둔 시트가 있는지 한 번만 훑어본다 (두 PC 로 쓸 때를 위한 것) */
+function recFindSheet() {
+  if (recFinding) return;
+  recFinding = true;
+  widgetAPI.recFind().then(function (f) {
+    recFinding = false; recFound = f || false; render();
+  }).catch(function () { recFinding = false; recFound = false; render(); });
+}
+
 function recCats() {
   var c = (RECDATA && RECDATA.cats) || [];
   var on = c.filter(function (x) { return x.on !== false; });
@@ -945,8 +965,19 @@ function recSetup() {
     if (st.sheet && st.sheet.trashedAt) {
       h += '<div class="rw">지난 시트는 ' + esc(st.sheet.trashedAt) + ' 에 휴지통으로 보냈습니다.</div>';
     }
-    h += '<button class="btn" id="recNew">시트 만들기</button>'
-      + '<div class="rp" style="margin-top:10px">이미 만들어 둔 시트가 있으면 주소를 붙여 넣으세요.</div>'
+    if (recFound === null) { recFindSheet(); }   // 드라이브를 한 번 훑어본다
+    if (recFinding) {
+      h += '<div class="rp">이미 만들어 둔 시트가 있는지 찾아보는 중…</div>';
+    } else if (recFound) {
+      // ★ 다른 PC 에서 이미 만들었다. 새로 만들면 기록이 두 곳으로 갈린다.
+      h += '<div class="rok">이미 만들어 둔 시트를 찾았습니다'
+        + (recFound.createdAt ? ' · 만든날 ' + esc(recFound.createdAt) : '') + '</div>'
+        + '<div class="rp">다른 PC 에서 만드신 것입니다. 그대로 <b>이어서</b> 쓰시면 됩니다.</div>'
+        + '<button class="btn" id="recNew">이 시트 이어 쓰기</button>';
+    } else {
+      h += '<button class="btn" id="recNew">시트 만들기</button>';
+    }
+    h += '<div class="rp" style="margin-top:10px">다른 시트를 쓰시려면 주소를 붙여 넣으세요.</div>'
       + '<div class="wknav"><input class="wq" id="recUrl" type="text" placeholder="구글 시트 주소">'
       + '<button class="wkb" id="recAt">연결</button></div>';
   }
@@ -1635,7 +1666,7 @@ function wireViews(app) {
   });
   var rnew = app.querySelector('#recNew');
   if (rnew) rnew.addEventListener('click', function () {
-    rnew.textContent = '만드는 중…';
+    rnew.textContent = recFound ? '이어 붙이는 중…' : '만드는 중…';
     rnew.disabled = true;
     recErr = '';
     widgetAPI.recCreate().then(function (st) { REC = st; RECDATA = null; render(); })

@@ -103,6 +103,14 @@ function register(helpers) {
     S.save({ gauth: { refreshToken: t.refresh_token, email: email } });
     access = { token: t.access_token, until: Date.now() + (Number(t.expires_in || 3600) * 1000) };
     S.log('학생기록 — 구글 연결됨 ' + (email || ''));
+    // ★ 다른 계정으로 들어왔다면 옛 시트는 이 계정에서 보이지 않는다.
+    //   들고 있어 봤자 «File not found» 로 조용히 막히므로 여기서 놓아 준다.
+    //   (시트 자체는 지워지지 않는다. 원래 계정으로 다시 연결하면 그대로 있다)
+    const old = S.load().recSheet;
+    if (old && old.id && old.email && email && old.email !== email) {
+      S.log('학생기록 — 계정이 바뀌어 옛 시트를 놓음 (' + old.email + ' → ' + email + ')');
+      S.save({ recSheet: null });
+    }
     S.send();
     return recState();
   });
@@ -118,10 +126,29 @@ function register(helpers) {
   });
 
   /* 시트 만들기 / 휴지통으로 */
+  const SHEET_TITLE = '[혜원 데스크] 학생기록';
+
+  /* 다른 PC 에서 이미 만들어 둔 것이 있는지 본다 (없으면 null) */
+  ipcMain.handle('rec-find', async () => {
+    const t = await token();
+    const found = await rec.findSheet(t, SHEET_TITLE);
+    if (found) S.log('학생기록 — 드라이브에 이미 있는 시트를 찾음: ' + found.id);
+    return found;
+  });
+
   ipcMain.handle('rec-create', async () => {
     const t = await token();
-    const made = await rec.createSheet(t, '[혜원 데스크] 학생기록');
-    S.save({ recSheet: { id: made.id, url: made.url, createdAt: made.createdAt, trashedAt: '' } });
+    // ★ 먼저 찾아본다. 다른 PC 에서 만들어 둔 것이 있으면 새로 만들지 않고 이어 쓴다.
+    //   (안 그러면 PC 마다 시트가 하나씩 생겨 기록이 갈린다)
+    const found = await rec.findSheet(t, SHEET_TITLE);
+    if (found) {
+      S.save({ recSheet: { id: found.id, url: found.url, createdAt: found.createdAt, trashedAt: '', email: (S.load().gauth || {}).email || '' } });
+      S.log('학생기록 — 이미 있는 시트에 이어 붙임: ' + found.id);
+      S.send();
+      return recState();
+    }
+    const made = await rec.createSheet(t, SHEET_TITLE);
+    S.save({ recSheet: { id: made.id, url: made.url, createdAt: made.createdAt, trashedAt: '', email: (S.load().gauth || {}).email || '' } });
     S.log('학생기록 시트 만듦 — ' + made.id);
     S.send();
     return recState();
@@ -142,7 +169,7 @@ function register(helpers) {
   ipcMain.handle('rec-attach', (_e, url) => {
     const id = roster.sheetId(url);
     if (!id) throw new Error('시트 주소를 알아볼 수 없습니다');
-    S.save({ recSheet: { id: id, url: `https://docs.google.com/spreadsheets/d/${id}/edit`, createdAt: '', trashedAt: '' } });
+    S.save({ recSheet: { id: id, url: `https://docs.google.com/spreadsheets/d/${id}/edit`, createdAt: '', trashedAt: '', email: (S.load().gauth || {}).email || '' } });
     S.send();
     return recState();
   });
@@ -152,7 +179,24 @@ function register(helpers) {
     const st = S.load().recSheet;
     if (!st || !st.id) return { need: 'sheet' };
     const t = await token();
-    const d = await rec.loadAll(t, st.id);
+    let d;
+    try {
+      d = await rec.loadAll(t, st.id);
+    } catch (e) {
+      // 이 계정에서 안 보이는 시트다 (대개 다른 계정에서 만든 것).
+      // 붙들고 있으면 계속 막히므로 놓아 주고, 다시 고르는 화면으로 보낸다.
+      const msg = (e && e.message) || String(e);
+      // ★ 실제로 오는 말은 두 가지다 — 직접 확인했다.
+      //   드라이브 목록에서는 「File not found」, 시트 API 로 읽을 때는
+      //   「The caller does not have permission」. 둘 다 «이 계정 것이 아니다» 라는 뜻이다.
+      if (/not found|404|permission|찾을 수 없|권한/i.test(msg)) {
+        S.log('학생기록 — 시트를 못 찾음(' + st.id + '). 계정이 다를 수 있어 기록을 놓는다');
+        S.save({ recSheet: null });
+        S.send();
+        return { need: 'sheet', lost: st };
+      }
+      throw e;
+    }
     d.sheet = st;
     return d;
   });

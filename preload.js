@@ -43,6 +43,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   recState: () => ipcRenderer.invoke('rec-state'),
   recSignIn: () => ipcRenderer.invoke('rec-signin'),
   recSignOut: () => ipcRenderer.invoke('rec-signout'),
+  recFind: () => ipcRenderer.invoke('rec-find'),
   recCreate: () => ipcRenderer.invoke('rec-create'),
   recTrash: () => ipcRenderer.invoke('rec-trash'),
   recAttach: (url) => ipcRenderer.invoke('rec-attach', url),
