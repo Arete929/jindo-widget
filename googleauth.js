@@ -109,6 +109,11 @@ function signIn(cfg, openBrowser, log) {
         scope: SCOPES,
         access_type: 'offline',
         prompt: 'consent',
+        // ★ 구글의 «권한 나눠 주기» 를 끈다.
+        //   켜져 있으면 드라이브 권한이 «꺼진 체크상자» 로 나오는데, 그걸 놓치면
+        //   이메일 권한만 들어와서 시트 만들기가 403 으로 조용히 실패한다.
+        //   꺼 두면 예전처럼 권한이 통째로 한 번에 들어와 놓칠 수가 없다.
+        enable_granular_consent: 'false',
         state: state,
         code_challenge: challenge,
         code_challenge_method: 'S256'
@@ -156,7 +161,11 @@ function hasDrive(tok) {
 const NEED_DRIVE_MSG = '드라이브 권한이 빠졌습니다.\n\n'
   + '다시 «구글 연결하기» 를 누르고, 크롬 화면에서\n'
   + '«Google Drive에서 이 앱으로 열거나 만든 파일 보기 및 관리»\n'
-  + '체크상자를 반드시 켠 뒤 «계속» 을 눌러 주세요.\n'
-  + '(«모두 선택» 을 눌러도 됩니다)';
+  + '를 반드시 허용한 뒤 «계속» 을 눌러 주세요.\n'
+  + '(체크상자가 보이면 켜야 하고, «모두 선택» 을 눌러도 됩니다)\n\n'
+  + '그래도 같은 말이 나오면, 구글 계정에 남은 옛 허락 기록 때문입니다.\n'
+  + '아래 «구글 계정에서 이 앱 지우기» 를 눌러 지운 뒤 다시 연결해 주세요.';
+// 옛 허락 기록을 지우는 곳 — 화면에서 바로 열어 준다
+const PERMISSIONS_URL = 'https://myaccount.google.com/permissions';
 
-module.exports = { signIn, refresh, revoke, hasDrive, NEED_DRIVE_MSG, SCOPES };
+module.exports = { signIn, refresh, revoke, hasDrive, NEED_DRIVE_MSG, PERMISSIONS_URL, SCOPES };

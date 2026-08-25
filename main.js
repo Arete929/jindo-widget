@@ -145,7 +145,7 @@ function getFont() {
 // 탭마다 글자 크기 배율을 따로 기억한다 (주간업무·컴시간·학사일정·급식)
 function getFontScale() {
   const v = loadState().fontScale;
-  const out = { work: 1, comci: 1, cal: 1, meal: 1 };
+  const out = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1 };
   if (v && typeof v === 'object') {
     Object.keys(out).forEach((k) => {
       const n = Number(v[k]);
@@ -294,6 +294,10 @@ function getWorkerWindow() {
 }
 
 async function pollOnce() {
+  // ★ 시간표가 없는 판(혜원 데스크·혜원이지)은 수업진도를 아예 안 쓴다.
+  //   예전에는 화면의 ⟳ 단추가 이걸 불러서, 로그인이 없으니 needLogin 이 되고
+  //   위젯 전체가 「수업진도에 로그인해 주세요」 한 장으로 덮여 탭이 사라졌다.
+  if (!HAS_TT) return;
   const win = getWorkerWindow();
   try {
     const data = await win.webContents.executeJavaScript(
@@ -902,7 +906,7 @@ ipcMain.handle('meals-fetch', async (_e, off) => {
 function openSettingsWindow() {
   if (settingsWin && !settingsWin.isDestroyed()) { settingsWin.show(); settingsWin.focus(); return; }
   settingsWin = new BrowserWindow({
-    width: 620, height: 760, title: '혜원 데스크 설정',
+    width: 620, height: 760, title: APP_NAME + ' 설정',
     backgroundColor: '#F7F7FF', autoHideMenuBar: true, resizable: true,
     icon: path.join(__dirname, 'assets', ICON),
     webPreferences: {

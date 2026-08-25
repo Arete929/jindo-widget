@@ -304,10 +304,25 @@ function withLinks(html, links) {
   return out;
 }
 function wblocks(bs) { return (bs || []).map(wblock).join(''); }
+
+/* 글머리 단계를 앞머리표로 알아본다.
+   학교 문서는 «1. → 가. → 1) → 가)» 네 단계를 쓴다. 단계마다 위 여백을 달리 주면
+   덩어리가 눈에 갈려서 훨씬 읽기 좋다. ★글자는 원문 그대로 두고 «간격만» 손댄다. */
+function wlevel(t) {
+  var x = String(t || '').replace(/^[\s\u00a0]+/, '');
+  if (!x) return 0;
+  if (/^\d{1,2}\s*[.．]/.test(x)) return 1;          // 1.  2.  3.
+  if (/^[가-힣]\s*[.．]/.test(x)) return 2;     // 가.  나.
+  if (/^\d{1,2}\s*[)）]/.test(x)) return 3;          // 1)  2)
+  if (/^[가-힣]\s*[)）]/.test(x)) return 4;     // 가)  나)
+  return 0;
+}
 function wblock(b) {
   // 원문이 가운데(또는 오른쪽) 정렬이면 그대로 따라간다 — 급식지도 안내표의 이름 등
   if (b.k === 'p') {
-    return '<div class="wkp' + (b.al ? ' a-' + b.al : '') + '">' + withLinks(mk(b.t), b.links) + '</div>';
+    var lv = wlevel(b.t);
+    return '<div class="wkp' + (b.al ? ' a-' + b.al : '') + (lv ? ' lv' + lv : '')
+      + '">' + withLinks(mk(b.t), b.links) + '</div>';
   }
   return '<div class="wtbw"><table class="wtb">'
     + (b.rows || []).map(function (r) {
@@ -905,6 +920,13 @@ function recSetup() {
   if (recErr) {
     h += '<div class="rw" style="white-space:pre-wrap;text-align:left">'
       + '<b>안 됐습니다.</b>\n' + esc(recErr) + '</div>';
+    // 드라이브 권한이 빠졌을 때는 «옛 허락 기록» 이 원인인 경우가 많다.
+    // 말로만 설명하면 찾아가기 어려워서, 그 페이지로 가는 단추를 바로 놓는다.
+    if (recErr.indexOf('드라이브 권한') >= 0) {
+      h += '<div class="wknav" style="justify-content:center;margin-bottom:10px">'
+        + '<button class="wkb" id="recPerm">구글 계정에서 이 앱 지우기</button>'
+        + '<button class="wkb" id="recIn2">다시 연결하기</button></div>';
+    }
   }
   if (!st.hasClient) {
     h += '<div class="rw">먼저 설정에서 <b>구글 연결 정보</b>를 넣어 주세요.<br>'
@@ -1152,7 +1174,7 @@ function render() {
   var app = document.getElementById('app');
   if (!STATE) { app.innerHTML = titleBar() + updBar() + taskBar() + '<div class="empty">불러오는 중…</div>'; return report(); }
 
-  if (STATE.needLogin) {
+  if (STATE.needLogin && HAS_TT) {
     // 구글이 앱 안 브라우저 로그인을 막기 때문에, 크롬을 열어 거기서 로그인하고
     // 결과만 위젯이 넘겨받는다 (main.js 의 startLogin 참고).
     app.innerHTML = titleBar() + updBar() + taskBar() + '<div class="empty">수업진도에 로그인해 주세요.'
@@ -1172,7 +1194,11 @@ function render() {
   html += '<div class="head"><span class="date">' + esc(dText) + '</span>'
     + '<span class="dow">' + esc(dowText) + '</span><span class="spacer"></span>'
     + (HAS_TT ? '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>' : '')
-    + '<button class="ico" title="지금 새로고침" onclick="widgetAPI.refreshNow()">⟳</button>'
+    // ★ 혜원 데스크·혜원이지는 수업진도를 안 쓴다. 예전에는 여기서도 refreshNow() 를
+    //   불러서 위젯이 통째로 「수업진도에 로그인해 주세요」로 덮였다.
+    + (HAS_TT
+        ? '<button class="ico" title="지금 새로고침" onclick="widgetAPI.refreshNow()">⟳</button>'
+        : '<button class="ico" id="reGet" title="보고 있는 탭을 다시 읽기">⟳</button>')
     + (HAS_TT ? '<button class="ico" title="수업진도 앱 열기(크롬)" onclick="widgetAPI.openApp()">↗</button>' : '')
     + '</div>';
 
@@ -1311,6 +1337,8 @@ widgetAPI.onData(function (p) {
     document.body.style.zoom = SCALE;
   }
   if (VIEW === 'week' && STATE && STATE.ready) { WK = null; loadWeek(WEEKOFF); }
+  // 창 제목 — 세 갈래가 각자 제 이름을 단다 (html 의 <title> 은 갈래를 모른다)
+  if (APPNAME && document.title !== APPNAME) document.title = APPNAME;
   render();
 });
 
@@ -1548,6 +1576,18 @@ function wireViews(app) {
     widgetAPI.recSignIn().then(function (st) { REC = st; recErr = ''; render(); })
       .catch(function (e) { recErr = (e && e.message) || String(e); render(); });
   });
+  var rpm = app.querySelector('#recPerm');
+  if (rpm) rpm.addEventListener('click', function () {
+    widgetAPI.openUrl('https://myaccount.google.com/permissions');
+    rpm.textContent = '크롬에서 «혜원데스크2026» 을 지워 주세요';
+  });
+  var rin2 = app.querySelector('#recIn2');
+  if (rin2) rin2.addEventListener('click', function () {
+    rin2.textContent = '크롬에서 허용해 주세요…';
+    recErr = '';
+    widgetAPI.recSignIn().then(function (st) { REC = st; recErr = ''; render(); })
+      .catch(function (e) { recErr = (e && e.message) || String(e); render(); });
+  });
   var rnew = app.querySelector('#recNew');
   if (rnew) rnew.addEventListener('click', function () {
     rnew.textContent = '만드는 중…';
@@ -1583,6 +1623,26 @@ function wireViews(app) {
   });
   var nx = app.querySelector('#notesX');
   if (nx) nx.addEventListener('click', function () { NOTES = null; widgetAPI.notesSeen(); render(); });
+  // ⟳ — 보고 있는 탭의 자료를 다시 받는다 (혜원 데스크·혜원이지)
+  var reB = app.querySelector('#reGet');
+  if (reB) reB.addEventListener('click', function () {
+    reB.textContent = '…';
+    if (VIEW === 'work') {
+      WORK = null; workBusy = true; render();
+      widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
+    } else if (VIEW === 'cal') {
+      acBusy = true; AC = { months: [], error: '' }; render();
+      widgetAPI.academicFetch().then(function (d) { acBusy = false; AC = d || { empty: true }; render(); });
+    } else if (VIEW === 'meal') {
+      mlBusy = true; render();
+      widgetAPI.mealsFetch().then(function (d) { mlBusy = false; ML = d || { empty: true }; render(); });
+    } else if (VIEW === 'comci') {
+      cmBusy = true; render();
+      widgetAPI.comciFetch().then(function (d) { cmBusy = false; CM = d || null; render(); });
+    } else if (VIEW === 'rec') {
+      RECDATA = null; recLoad(true);
+    } else { render(); }
+  });
   var ug = app.querySelector('#usgGet');
   if (ug) ug.addEventListener('click', function () { widgetAPI.usageRefresh(); });
 

@@ -4,7 +4,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8" />
-<title>혜원 데스크 설정</title>
+<title>설정</title>
 <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <style>
@@ -319,6 +319,14 @@ function esc(s) {
 function save() { widgetAPI.setComciConfig(CFG); }
 
 function paint() {
+  // ★ 무엇을 고르든 위쪽 덩어리(선택된 학교·교사 목록)를 통째로 갈아 끼우기 때문에,
+  //   문서가 잠깐 짧아지면서 브라우저가 스크롤을 맨 위로 당겨 버렸다.
+  //   그리기 전에 자리를 적어 두었다가 그린 뒤 그대로 돌려놓는다.
+  var __y = window.scrollY;
+  __paint();
+  if (window.scrollY !== __y) window.scrollTo(0, __y);
+}
+function __paint() {
   // 학교
   if (CFG.school) {
     $('schoolPicked').style.display = '';
@@ -576,6 +584,11 @@ function paintRec() {
     : (sh.trashedAt
       ? '<span class="warn">휴지통으로 보냄 · ' + sh.trashedAt + '</span> (30일 안에 되살릴 수 있습니다)'
       : '<span class="ok">있음</span>' + (sh.createdAt ? ' · 만든날 ' + sh.createdAt : ''));
+  // 연결은 끊겼는데 시트 기록은 남아 있는 경우 — 어긋난 게 아니라고 알려 준다
+  if (!r.linked && sh && sh.id && !sh.trashedAt) {
+    $('recSheet').innerHTML += '<br><span class="hint" style="margin:0">'
+      + '시트는 구글 드라이브에 그대로 있습니다. 다시 연결하면 이 시트를 이어서 씁니다.</span>';
+  }
   $('recOpen').disabled = !(sh && sh.id && !sh.trashedAt);
 
   // 맡은 학급 — 명렬표에서 읽은 반을 그대로 늘어놓는다
@@ -614,7 +627,7 @@ $('gcLink').onclick = function (e) {
   widgetAPI.openUrl('https://console.cloud.google.com/apis/credentials');
 };
 $('recOut').onclick = function () {
-  if (!confirm('구글 연결을 끊을까요?\n\n시트와 기록은 그대로 남습니다.')) return;
+  if (!confirm('구글 연결을 끊을까요?\n\n시트와 기록은 구글 드라이브에 그대로 남습니다.\n다시 «구글 연결하기» 를 누르면 그 시트를 이어서 씁니다.')) return;
   widgetAPI.recSignOut().then(function () { load(); });
 };
 $('recOpen').onclick = function () { widgetAPI.recOpenSheet(); };
