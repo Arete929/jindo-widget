@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.21.1
+// 파일명: main.js | @version 1.21.2
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
-// 수정요약: v1.21.1 구글 클라이언트를 앱에 심어 받아 쓰는 사람은 준비 없이 «구글 연결하기»만 / 권한을 drive.file 하나로 줄임
+// 수정요약: v1.21.2 시작하자마자 나던 예외 수정 / 학생기록 오류를 화면에 보여줌 / 업데이트 내역의 HTML 태그 제거
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -1159,6 +1159,23 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     debugLog(`=== 시작 === v${app.getVersion()} · 로그: ${debugLogFile}`);
+    // ★ 창보다 «먼저» 등록한다 — 창이 뜨자마자 sendToWidget() 이 불리는데
+    //   그때 학생기록 준비가 안 돼 있으면 예외가 났다
+    // 학생기록 — 구글 연결·시트·명렬표는 이 모듈이 맡는다
+    recordsmain.register({
+      ipcMain: ipcMain,
+      userDataPath: userDataPath,
+      load: loadState,
+      save: saveState,
+      log: debugLog,
+      send: sendToWidget,
+      openInBrowser: openInBrowser
+    });
+    // 명렬표가 아직 없으면 조용히 한 번 받아 둔다
+    if (!recordsmain.loadRoster()) {
+      scheduleTask('roster', '명렬표', 5000, () => recordsmain.refreshRoster());
+    }
+
     createWidgetWindow();
     createTray();
     if (HAS_TT) {
@@ -1179,22 +1196,7 @@ if (!gotLock) {
 
     // AI 사용량 — 값이 들어오면 그때그때 위젯에 밀어 준다.
     // 숨은 창으로 claude.ai · gemini.google.com 을 열어 읽는 것이라 시작 직후는 피한다.
-    // 학생기록 — 구글 연결·시트·명렬표는 이 모듈이 맡는다
-    recordsmain.register({
-      ipcMain: ipcMain,
-      userDataPath: userDataPath,
-      load: loadState,
-      save: saveState,
-      log: debugLog,
-      send: sendToWidget,
-      openInBrowser: openInBrowser
-    });
-    // 명렬표가 아직 없으면 조용히 한 번 받아 둔다
-    if (!recordsmain.loadRoster()) {
-      scheduleTask('roster', '명렬표', 5000, () => recordsmain.refreshRoster());
-    }
-
-    aiusage.setLogger(debugLog);
+aiusage.setLogger(debugLog);
     aiusage.onUpdate(() => sendToWidget());
     setTimeout(() => aiusage.pollAll(), 9000);
     setInterval(() => aiusage.pollAll(), USAGE_INTERVAL_MS);

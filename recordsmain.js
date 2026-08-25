@@ -63,6 +63,9 @@ async function refreshRoster() {
 
 /* ── 화면이 알아야 할 상태 한 덩어리 ── */
 function recState() {
+  // ★ 위젯 창이 뜨자마자 sendToWidget() 이 불리는데, 그때는 아직 register() 전이라
+  //   S 가 없다. 예전에는 여기서 터져서 시작 직후 한 번씩 예외가 났다.
+  if (!S) return { hasClient: false, linked: false, notReady: true, classes: [], roster: null };
   const st = S.load();
   const r = loadRoster();
   return {

@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.21.1 -->
+<!-- 파일명: widget.html | @version 1.21.2 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -1606,7 +1606,13 @@ function taskBar() {
 /* 업데이트 내역 카드 — 무엇이 바뀌었는지 릴리스에 적어 둔 글이 그대로 온다 */
 function notesCard() {
   if (!NOTES || !NOTES.text) return '';
-  var lines = String(NOTES.text).split('\n').filter(function (t) { return t.trim(); });
+  // ★ 깃허브가 내역을 HTML 로 내려준다 — 태그를 걷어내고 글자만 남긴다
+  var plain = String(NOTES.text)
+    .replace(/<\/(p|div|li|h\d)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ');
+  var lines = plain.split('\n').filter(function (t) { return t.trim(); });
   return '<div class="notes"><div class="nh">🆕 v' + esc(NOTES.version) + ' 에서 바뀐 것'
     + '<button class="nx" id="notesX" title="닫기">✕</button></div>'
     + lines.map(function (t) { return '<div class="nl">' + esc(t) + '</div>'; }).join('')
