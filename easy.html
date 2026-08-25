@@ -1,0 +1,102 @@
+<!-- 파일명: easy.html | @version 1.0.0 -->
+<!-- 혜원이지 (HYEWON EASY) — 위젯과 달리 «열어서 일하는» 넓은 창.
+     색·모양은 위젯과 같은 ui.css 를 함께 쓴다(테마 일곱). 자료를 읽어 오는 부분은
+     위젯이 쓰던 그대로다 — 여기서는 화면만 넓게 다시 그린다. -->
+<!doctype html>
+<html lang="ko" data-theme="slate">
+<head>
+<meta charset="utf-8" />
+<title>혜원이지</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Nanum+Gothic:wght@400;700;800&display=swap" />
+<link rel="stylesheet" href="ui.css" />
+<style>
+  /* ── 창 짜임 — 왼쪽 메뉴 + 오른쪽 내용 ── */
+  html, body { overflow: hidden; height: 100%; }
+  body { display: flex; font-size: 14px; }
+
+  .side {
+    flex: 0 0 210px; height: 100vh; overflow-y: auto;
+    background: var(--card); border-right: 1px solid var(--line);
+    padding: 16px 12px; display: flex; flex-direction: column; gap: 3px;
+  }
+  .brand { display: flex; align-items: center; gap: 8px; padding: 2px 6px 14px; }
+  .brand img { width: 26px; height: 26px; object-fit: contain; -webkit-user-drag: none; }
+  .brand b { font-size: 17px; font-weight: 800; letter-spacing: -.4px; }
+  .brand small { display: block; font-size: 9px; font-weight: 700; color: var(--dim);
+                 letter-spacing: 1.4px; margin-top: -2px; }
+
+  .nav {
+    display: flex; align-items: center; gap: 9px; width: 100%;
+    background: none; border: 0; border-radius: 9px; cursor: pointer;
+    padding: 9px 11px; font-family: inherit; font-size: 13.5px; font-weight: 700;
+    color: var(--dim); text-align: left;
+  }
+  .nav:hover { background: var(--card2); color: var(--fg); }
+  .nav.on { background: var(--accent); color: var(--on); }
+  .nav i { font-style: normal; font-size: 15px; width: 18px; text-align: center; }
+  .navgap { height: 10px; }
+  .sfoot { margin-top: auto; padding: 10px 8px 0; font-size: 10px; color: var(--dim); opacity: .75; }
+
+  .main { flex: 1; min-width: 0; height: 100vh; overflow-y: auto; padding: 20px 24px 40px; }
+  .main::-webkit-scrollbar { width: 9px; }
+  .main::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; }
+
+  .ph { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .ph h1 { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
+  .ph .sub { font-size: 12.5px; color: var(--dim); }
+  .ph .sp { flex: 1; }
+
+  /* 오늘 한 줄 요약 */
+  .today {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px;
+    background: var(--card); border-radius: 12px; padding: 14px 18px; margin: 14px 0 22px;
+  }
+  .today .big { font-size: 17px; font-weight: 800; }
+  .today .it { font-size: 13px; color: var(--fg2); }
+  .today .it b { color: var(--accent); font-weight: 800; margin-right: 5px; }
+
+  /* 타일 */
+  .grp { font-size: 12px; font-weight: 800; color: var(--dim); margin: 20px 0 9px;
+         display: flex; align-items: center; gap: 7px; }
+  .grp::before { content: ''; width: 7px; height: 7px; border-radius: 999px; background: var(--accent); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 11px; }
+  .tile {
+    position: relative; text-align: left; cursor: pointer;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 15px 16px; font-family: inherit; color: var(--fg);
+    transition: transform .12s, border-color .12s;
+  }
+  .tile:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .tile .ic {
+    width: 34px; height: 34px; border-radius: 9px; display: flex;
+    align-items: center; justify-content: center; font-size: 17px; margin-bottom: 11px;
+    background: color-mix(in srgb, var(--accent) 20%, var(--card));
+  }
+  .tile .tt { font-size: 14px; font-weight: 800; margin-bottom: 3px; }
+  .tile .td { font-size: 11.5px; color: var(--dim); line-height: 1.5; }
+  .tile .fav {
+    position: absolute; top: 11px; right: 11px; border: 0; background: none;
+    color: var(--dim); font-size: 14px; cursor: pointer; padding: 2px; line-height: 1;
+  }
+  .tile .fav.on { color: var(--accent); }
+  .tile .fav:hover { color: var(--accent); }
+
+  /* 안쪽 화면은 위젯 것을 그대로 쓰되 넓게 */
+  #view { max-width: 1100px; }
+  #view .top, #view .top2 { position: static; background: none; padding: 0; }
+  #view .wkp, #view .rcb { font-size: calc(12.5px * var(--wf)); }
+  #view .stile { font-size: calc(12.5px * var(--wf)); }
+  .loading { padding: 40px 0; text-align: center; color: var(--dim); }
+</style>
+</head>
+<body>
+<nav class="side" id="side"></nav>
+<main class="main" id="main"><div class="loading">불러오는 중…</div></main>
+<script src="views.js"></script>
+<script src="easy.js"></script>
+</body>
+</html>

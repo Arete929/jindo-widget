@@ -1,7 +1,7 @@
 {
   "name": "jindo-widget",
   "productName": "JindoWidget",
-  "version": "1.23.0",
+  "version": "1.24.0",
   "description": "체육 수업진도 — 오늘 수업·이번주·반별 진도를 항상 위에 띄워 보여주는 위젯",
   "main": "main.js",
   "author": "Arete929",
@@ -11,7 +11,9 @@
     "dist": "electron-builder --win",
     "build:jinho": "electron-builder --win --config build-jinho.yml --publish never",
     "build:hyewon": "electron-builder --win --config build-hyewon.yml --publish never",
-    "build:both": "npm run build:jinho && npm run build:hyewon"
+    "build:easy": "electron-builder --win --config build-easy.yml --publish never",
+    "build:both": "npm run build:jinho && npm run build:hyewon",
+    "build:all": "npm run build:jinho && npm run build:hyewon && npm run build:easy"
   },
   "devDependencies": {
     "electron": "^35.0.0",

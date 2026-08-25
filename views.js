@@ -1,0 +1,1600 @@
+/* 파일명: views.js | @version 1.0.0
+   위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
+   자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
+   ★ 창의 뼈대는 각자 다르다 — 혜원이지는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
+
+var STATE = null, VIEW = 'today', SCALE = 1, VER = '', UPD = null, LASTTT = 'today', THEME = '';
+var FONT = 'pretendard';
+/* 오늘 일정 — 수업진도 앱이 주는 note 가 없을 때 학사일정에서 뽑아 온 것.
+   혜원 데스크에는 수업진도 자료가 아예 없으므로 이것이 유일한 길이다. */
+var TODAYEV = '';
+/* 업데이트 내역 — 새 버전으로 켜졌을 때 한 번 보여주고, 닫으면 다시 안 뜬다 */
+var NOTES = null;
+/* 탭마다 글자 크기 배율을 따로 둔다. 메인이 저장해 두므로 껐다 켜도 그대로다. */
+var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1 };
+function fsKey() { return ({ work: 'work', comci: 'comci', cal: 'cal', meal: 'meal', rec: 'rec' })[VIEW] || ''; }
+function fontBtns(key) {
+  return '<span class="wfs">'
+    + '<button class="wkb" data-fs="' + key + ',-1" title="글자 작게">A−</button>'
+    + '<button class="wkb" data-fs="' + key + ',1" title="글자 크게">A+</button></span>';
+}
+function bumpFont(key, dir) {
+  var v = Math.round((Math.min(1.8, Math.max(0.8, (FS[key] || 1) + dir * 0.1))) * 100) / 100;
+  FS[key] = v;
+  var patch = {}; patch[key] = v;
+  widgetAPI.setUi({ fontScale: patch });
+  render();
+}
+/* 갈래 — jinho(진호알리미, 시간표 있음) / hyewon(혜원 데스크, 시간표 없음).
+   메인이 그릴 때마다 알려 준다. 시간표에 딸린 것만 가리고 나머지는 둘 다 같다. */
+var FLAVOR = 'jinho', HAS_TT = true, APPNAME = '진호알리미';
+var IS_EASY = false;      // 혜원이지(넓은 창)인가 — 위젯이면 false
+var EASYFAV = [];         // 혜원이지 대시보드 즐겨찾기
+
+/* 화면이 담기는 통. 위젯은 #app, 혜원이지는 #main 이다.
+   스크롤·자리 재기를 하는 곳이 서로 다르므로 여기서 한 번에 가른다. */
+function appEl() {
+  return document.getElementById('app') || document.getElementById('main');
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function pad(n) { return String(n).padStart(2, '0'); }
+function nowMin() { var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+/* "11:00~11:45" 또는 "11:00" 을 분 단위로 */
+function parseTime(t) {
+  if (!t) return null;
+  var m = String(t).match(/^(\d{1,2}):(\d{2})(?:~(\d{1,2}):(\d{2}))?/);
+  if (!m) return null;
+  var s = Number(m[1]) * 60 + Number(m[2]);
+  var e = m[3] ? Number(m[3]) * 60 + Number(m[4]) : s + 45;
+  return { s: s, e: e };
+}
+function human(min) {
+  if (min >= 60) return Math.floor(min / 60) + '시간 ' + (min % 60) + '분';
+  return min + '분';
+}
+
+/* ── 오늘 ── */
+function viewToday(d) {
+  var ls = d.lessons || [];
+  if (d.holiday) return '<div class="empty">휴업일이라 수업이 없습니다.</div>';
+  if (!d.weekday) return '<div class="empty">주말입니다. 푹 쉬세요.</div>';
+  if (!ls.length) return '<div class="empty">오늘은 배정된 수업이 없습니다.</div>';
+
+  var n = nowMin(), html = '';
+  // 지금 진행 중인 수업 / 아직 안 한 첫 수업 찾기
+  var curIdx = -1, nextIdx = -1;
+  ls.forEach(function (l, i) {
+    var t = parseTime(l.time);
+    if (!t) return;
+    if (n >= t.s && n < t.e) curIdx = i;
+    else if (n < t.s && nextIdx < 0) nextIdx = i;
+  });
+
+  ls.forEach(function (l, i) {
+    var t = parseTime(l.time);
+    var past = t && n >= t.e;
+    var cls = 'lesson' + (i === curIdx ? ' now' : past ? ' past' : '');
+    var badges = '';
+    if (l.type && l.type !== '수업') badges += '<span class="badge b-' + esc(l.type) + '">' + esc(l.type) + '</span>';
+    if (l.shifted) badges += '<span class="badge b-순연">↷순연</span>';
+    if (l.movedIn) badges += '<span class="badge b-이동">이동</span>';
+
+    var what = l.n
+      ? '<b>' + esc(l.unit) + ' ' + l.n + '차시</b>' + (l.topic ? ' · ' + esc(l.topic) : '')
+      : '차시 미지정';
+
+    var when = '';
+    if (i === curIdx && t) when = '<div class="when">지금 수업 중 · ' + human(t.e - n) + ' 남음</div>';
+    else if (i === nextIdx && t) when = '<div class="when soon">' + human(t.s - n) + ' 뒤 시작</div>';
+
+    html += '<div class="' + cls + '">'
+      + '<div class="per">' + l.period + '<small>' + esc((l.time || '').split('~')[0]) + '</small></div>'
+      + '<div class="body"><div class="who">' + esc(l.grade) + ' ' + esc(l.cls) + badges + '</div>'
+      + '<div class="what">' + what + '</div>' + when + '</div></div>';
+  });
+  return html;
+}
+
+/* ── 이번 주 : 압축 격자 (교시 × 요일) ──
+   앱의 표를 좁은 카드에 맞게 줄인 것. 자세히 볼 때는 ⤢ 로 큰 창을 연다.
+   ◀ ▶ 로 다른 주도 볼 수 있다 (그 주 자료는 앱에게 그때 물어본다). */
+var WEEKOFF = 0, WK = null, wkBusy = false;
+
+function loadWeek(off) {
+  if (wkBusy) return;
+  wkBusy = true;
+  WEEKOFF = off;
+  widgetAPI.getWeek(off).then(function (d) {
+    wkBusy = false;
+    WK = d || null;
+    render();
+  }).catch(function () { wkBusy = false; WK = null; render(); });
+}
+function whenTxt(date, period) {
+  var p = String(date || '').split('-');
+  var md = p.length === 3 ? Number(p[1]) + '/' + Number(p[2]) : '';
+  return md + (period ? ' ' + period + '교시' : '');
+}
+function cellTip(c, l) {
+  if (l.blocked) {
+    return l.cls + ' · ' + ((c.cellCal && c.cellCal.lbl) || '수업 없음')
+      + ((c.cellCal && c.cellCal.note) ? ' · ' + c.cellCal.note : '')
+      + (c.pushedTo ? '\n→ ' + whenTxt(c.pushedTo.date, c.pushedTo.period) + '로 밀림' : '')
+      + (l.orig ? '\n원래 ' + l.orig + '교시' : '')
+      + (c.time ? '\n' + c.time : '');
+  }
+  return l.cls + ' · ' + (l.unit || '') + (l.n ? ' ' + l.n + '차시' : ' 차시미정')
+    + (l.topic ? ' · ' + l.topic : '') + (l.detail ? '\n' + l.detail : '')
+    + (l.orig ? '\n원래 ' + l.orig + '교시' : '')
+    + (l.movedIn ? '\n(수업이동)' : '') + (l.assigned ? '\n(직접 배정)' : '')
+    + (l.shifted ? '\n(순연)' : '') + (c.time ? '\n' + c.time : '');
+}
+
+/* 학사일정 메모는 콤마로 나뉜 여러 건이다 — 한 줄에 하나씩 보여준다 */
+function noteLines(note) {
+  if (!note) return '';
+  var parts = String(note).split(',').map(function (t) { return t.trim(); })
+    .filter(function (t) { return t; });
+  if (!parts.length) return '';
+  return '<i title="' + esc(parts.join(' / ')) + '">'
+    + parts.map(function (t) { return '<em>' + esc(t) + '</em>'; }).join('') + '</i>';
+}
+
+function viewWeek(d) {
+  if (!WK) {
+    if (!wkBusy) loadWeek(WEEKOFF);
+    return '<div class="empty">시간표를 불러오는 중…</div>';
+  }
+  var days = WK.days || [];
+  if (!days.length) return '<div class="empty">시간표가 없습니다.</div>';
+
+  // 주 이동 줄
+  var nav = '<div class="wknav">'
+    + '<button class="wkb" data-off="' + (WEEKOFF - 1) + '" title="이전 주">◀</button>'
+    + '<span class="wklab">' + esc(WK.label || '') + '<small>' + esc(WK.range || '') + '</small></span>'
+    + '<button class="wkb" data-off="' + (WEEKOFF + 1) + '" title="다음 주">▶</button>'
+    + (WEEKOFF !== 0 ? '<button class="wkb now" data-off="0">이번주</button>' : '')
+    + '</div>';
+
+  // ★ 자정을 넘겨 켜 두면 서버가 붙여 준 today 표시가 «어제»에 머문다 — 지금 날짜로 다시 본다
+  var nowD = new Date(), tMD = (nowD.getMonth() + 1) + '/' + nowD.getDate();
+  var isTdy = function (x) { return String(x.md || '') === tMD; };
+  var h = nav + '<table class="gr"><thead><tr><th class="pc"></th>';
+  days.forEach(function (w) {
+    h += '<th class="' + (isTdy(w) ? 'tdy' : '') + '">' + esc(w.dow)
+      + '<small>' + esc(w.md) + '</small>'
+      + noteLines(w.note)
+      + '</th>';
+  });
+  h += '</tr></thead><tbody>';
+
+  for (var p = 1; p <= 7; p++) {
+    h += '<tr><td class="pc">' + p + '</td>';
+    days.forEach(function (w) {
+      var c = (w.cells || [])[p - 1] || {};
+      var klass = isTdy(w) ? ' tdy' : '';
+      if (w.holiday) { h += '<td class="hol' + klass + '"></td>'; return; }
+      if (c.lesson) {
+        var l = c.lesson;
+        // 학사일정(동아리 등)으로 수업이 없어진 칸 — 수업처럼 그리면 안 된다
+        if (l.blocked) {
+          h += '<td class="c blk' + klass + '" title="' + esc(cellTip(c, l)) + '">'
+            + '<b>' + esc(l.cls) + '</b><u>'
+            + esc((c.cellCal && c.cellCal.lbl) || '수업 없음') + '</u></td>';
+          return;
+        }
+        // 차시 번호 뒤에 주제(또는 상세)를 함께 — "1 개학 후 측정" 처럼
+        var what = l.n ? String(l.n) : '';
+        var extra = l.topic || l.detail || '';
+        if (extra) what += (what ? ' ' : '') + extra;
+        if (!what) what = '차시미정';
+        h += '<td class="c u' + (l.u % 6) + klass + '" title="' + esc(cellTip(c, l)) + '">'
+          + '<b>' + esc(l.cls) + '</b><u>' + esc(what) + '</u>'
+          + (l.movedIn || l.assigned || l.shifted ? '<s></s>' : '') + '</td>';
+        return;
+      }
+      if (c.movedOut) {
+        h += '<td class="c out' + klass + '" title="' + esc(c.movedOut.cls + ' → 다른 날로 옮김') + '">'
+          + '<b>' + esc(c.movedOut.cls) + '</b></td>';
+        return;
+      }
+      if (c.cal) {
+        h += '<td class="c cal' + klass + '" title="' + esc(c.cal.lbl + (c.cal.note ? ' · ' + c.cal.note : '')) + '">'
+          + esc(c.cal.lbl) + (c.cal.note ? '<u>' + esc(c.cal.note) + '</u>' : '') + '</td>';
+        return;
+      }
+      h += '<td class="' + (klass || '') + '"></td>';
+    });
+    h += '</tr>';
+  }
+  h += '</tbody></table>';
+  return h;
+}
+
+/* ── 주간업무 ──
+   구글 문서를 «원문 모양 그대로» 그린다 — 표는 표로, 들여쓰기·띄어쓰기는 그대로.
+   검색은 목록을 따로 보여주지 않고 그 자리로 데려간다. 여럿이면 ▲▼ 로 옮겨 다닌다.
+   합본은 주차 단추를 늘어놓고, 누르면 그 주로 간다. */
+var WORK = null, workBusy = false, workDoc = 'input', workOff = 0, workQ = '';
+var workHits = 0, workHitIdx = 0, wantScrollHit = false;   // 글자 크기는 FS 로 옮겼다
+var composing = false, renderTimer = null;
+var HITN = 0;          // 그리는 동안 찾은 자리에 번호를 매긴다
+var followHit = true;  // 찾은 자리를 따라갈 것인가 (주차 단추를 누르면 잠시 꺼진다)
+var HITBASE = 0;       // 지금 보고 있는 주차 «앞»에 있는 찾은 자리 개수
+
+function laterRender() {
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(function () { if (!composing) render(); }, 250);
+}
+function loadWork() {
+  if (workBusy) return;
+  workBusy = true;
+  widgetAPI.getWork().then(function (d) {
+    workBusy = false; WORK = d || { empty: true }; render();
+  }).catch(function () { workBusy = false; WORK = { empty: true }; render(); });
+}
+
+/* 찾은 글자에 표시를 하면서 번호를 매긴다.
+   번호가 지금 고른 것과 같으면 «여기»라고 테두리를 두른다. */
+function mk(t) {
+  var s = esc(t);
+  if (!workQ) return s;
+  var q = esc(workQ).toLowerCase();
+  if (!q) return s;
+  var low = s.toLowerCase(), out = '', i = 0;
+  for (;;) {
+    var j = low.indexOf(q, i);
+    if (j < 0) { out += s.slice(i); break; }
+    var no = HITBASE + HITN;
+    out += s.slice(i, j)
+      + '<mark id="hit-' + no + '"' + (no === workHitIdx ? ' class="cur"' : '') + '>'
+      + s.slice(j, j + q.length) + '</mark>';
+    HITN++;
+    i = j + q.length;
+  }
+  return out;
+}
+/* 그리지 않고 개수만 센다 — 어느 주차에 몇 개가 있는지 알아야 ▲▼ 가 주를 넘나든다.
+   반드시 그리는 차례와 «같은 차례»로 세야 번호가 어긋나지 않는다. */
+function countQ(t, q) {
+  var s = esc(t).toLowerCase();
+  if (!q) return 0;
+  var n = 0, i = 0;
+  for (;;) { var j = s.indexOf(q, i); if (j < 0) break; n++; i = j + q.length; }
+  return n;
+}
+function countBlocks(bs, q) {
+  return (bs || []).reduce(function (n, b) {
+    if (b.k === 'p') return n + countQ(b.t, q);
+    return n + (b.rows || []).reduce(function (m, r) {
+      return m + r.reduce(function (k, c) { return k + countBlocks(c.blocks, q); }, 0);
+    }, 0);
+  }, 0);
+}
+function countWeek(w, q) {
+  var n = w.cal ? countBlocks([w.cal], q) : 0;
+  w.depts.forEach(function (p) {
+    n += countQ(p.name, q);
+    n += p.blocks ? countBlocks(p.blocks, q)
+      : (p.lines || []).reduce(function (a, l) {
+          return a + countQ(l && l.t !== undefined ? l.t : l, q);
+        }, 0);
+  });
+  return n;
+}
+
+/* 덩어리 그리기 — 글은 원문 공백 그대로, 표는 표 그대로 */
+/* 원문에 걸려 있던 링크를 눌리는 글자로 바꾼다.
+   찾기 표시(<mark>)가 이미 들어간 뒤라, 태그 밖의 글자에서만 자리를 찾는다. */
+function withLinks(html, links) {
+  if (!links || !links.length) return html;
+  var out = html;
+  links.forEach(function (lk) {
+    var t = esc(lk.t);
+    var i = out.indexOf(t);
+    if (i < 0) return;
+    out = out.slice(0, i)
+      + '<a class="wlink" data-url="' + esc(lk.url) + '" title="' + esc(lk.url) + '">' + t + '</a>'
+      + out.slice(i + t.length);
+  });
+  return out;
+}
+function wblocks(bs) { return (bs || []).map(wblock).join(''); }
+function wblock(b) {
+  // 원문이 가운데(또는 오른쪽) 정렬이면 그대로 따라간다 — 급식지도 안내표의 이름 등
+  if (b.k === 'p') {
+    return '<div class="wkp' + (b.al ? ' a-' + b.al : '') + '">' + withLinks(mk(b.t), b.links) + '</div>';
+  }
+  return '<div class="wtbw"><table class="wtb">'
+    + (b.rows || []).map(function (r) {
+        return '<tr>' + r.map(function (c) {
+          return '<td' + (c.cs > 1 ? ' colspan="' + c.cs + '"' : '')
+            + (c.rs > 1 ? ' rowspan="' + c.rs + '"' : '') + '>'
+            + wblocks(c.blocks) + '</td>';
+        }).join('') + '</tr>';
+      }).join('')
+    + '</table></div>';
+}
+
+function viewWork() {
+  if (!WORK) { loadWork(); return '<div class="empty">주간업무를 불러오는 중…</div>'; }
+  var weeks = (workDoc === 'input' ? WORK.input : WORK.merged) || [];
+  var q = esc(workQ).toLowerCase();
+
+  // 주차별로 찾은 개수를 세어 두면, 어느 주차의 몇 번째인지 바로 알 수 있다
+  var per = weeks.map(function (w) { return countWeek(w, q); });
+  workHits = per.reduce(function (a, b) { return a + b; }, 0);
+  if (workHitIdx >= workHits) workHitIdx = 0;
+
+  // 지금 고른 찾은 자리가 들어 있는 주차로 저절로 옮겨 간다
+  var i = Math.min(Math.max(workOff, 0), Math.max(0, weeks.length - 1));
+  if (workQ && workHits && followHit) {
+    var acc = 0;
+    for (var k = 0; k < per.length; k++) {
+      if (workHitIdx < acc + per[k]) { i = k; break; }
+      acc += per[k];
+    }
+    HITBASE = acc;
+  } else {
+    // 주차 단추로 직접 옮겨 온 경우 — 그 주차 앞까지의 개수를 세어 번호를 이어 준다
+    HITBASE = per.slice(0, i).reduce(function (a, b) { return a + b; }, 0);
+  }
+  HITN = 0;
+
+  var w = weeks[i];
+
+  /* ── 고정되는 머리: 문서 고르기 · 검색 · 글자 크기 · 주차 단추 · 날짜 ── */
+  var h = '<div class="top2">';
+  h += '<div class="wknav">'
+    + '<button class="wkb' + (workDoc === 'input' ? ' now' : '') + '" data-doc="input">입력본</button>'
+    + '<button class="wkb' + (workDoc === 'merged' ? ' now' : '') + '" data-doc="merged">합본</button>'
+    + '<input class="wq" type="text" placeholder="검색" value="' + esc(workQ) + '">';
+  if (workQ) {
+    h += '<span class="wkfind">'
+      + (workHits ? '<em>' + (workHitIdx + 1) + '</em>/' + workHits : '0') + '</span>'
+      + '<button class="wkb" id="wkPrev" title="이전 (Shift+Enter)">▲</button>'
+      + '<button class="wkb" id="wkNext" title="다음 (Enter)">▼</button>';
+  }
+  h += fontBtns('work')
+    + '<button class="wkb" id="workGet" title="다시 가져오기">⟳</button></div>';
+
+  if (!weeks.length && WORK.refreshing) {
+    return h + '</div><div class="empty">주간업무를 새 모양(표·들여쓰기까지)으로 다시 받는 중…'
+      + '<div style="margin-top:8px;font-size:10.5px;opacity:.8">'
+      + '십몇 초쯤 걸립니다. 다 받으면 저절로 나타납니다.</div></div>';
+  }
+  if (!weeks.length) {
+    return h + '</div><div class="empty">아직 가져온 주간업무가 없습니다.<br>'
+      + '<button class="btn" id="workGetBig">지금 가져오기</button>'
+      + '<div style="margin-top:8px;font-size:10.5px;opacity:.8">'
+      + '구글 문서에서 바로 받아옵니다. 로그인은 필요 없습니다.'
+      + (WORK.error ? '<br>' + esc(WORK.error) : '') + '</div></div>';
+  }
+
+  // 합본은 주차를 단추로 늘어놓는다 — 누르면 그 주로 간다
+  if (weeks.length > 1) {
+    h += '<div class="wkwk">' + weeks.map(function (x, n) {
+      return '<button class="wkb' + (n === i ? ' now' : '') + '" data-woff="' + n + '">'
+        + esc(shortRange(x.range)) + (per[n] ? '<small>' + per[n] + '</small>' : '') + '</button>';
+    }).join('') + '</div>';
+  }
+  h += '<div class="wkhead">' + esc(w.range) + '</div>';
+  h += '</div>';   // 고정 머리 끝
+
+  if (w.cal) h += wblock(w.cal);
+  h += w.depts.map(function (p) {
+    // 예전에 받아 둔 자료는 blocks 대신 lines(글줄만)를 들고 있다 — 그것도 그려는 준다
+    var inner = p.blocks ? wblocks(p.blocks)
+      : (p.lines || []).map(function (l) {
+          return '<div class="wkp">' + mk(l && l.t !== undefined ? l.t : l) + '</div>';
+        }).join('');
+    return '<div class="wkdt"><b>' + mk(p.name) + '</b>' + inner + '</div>';
+  }).join('') || '<div class="empty">이 주차에는 등록된 업무가 없습니다.</div>';
+  return h;
+}
+function shortRange(r) {
+  var m = String(r || '').match(/(\d{1,2})\s*\.\s*(\d{1,2})\s*\.?\s*\([월화수목금토일]\)\s*[~〜～]\s*20\d\d\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})/);
+  if (!m) return String(r || '').slice(0, 22);
+  return m[1] + '/' + m[2] + '~' + m[3] + '/' + m[4];
+}
+function moveHit(step) {
+  if (!workHits) return;
+  followHit = true;
+  workHitIdx = (workHitIdx + step + workHits) % workHits;
+  wantScrollHit = true;
+  render();
+}
+
+/* ── 컴시간 ──
+   설정 창에서 한 번 불러온 학교 시간표를 보여준다. 교사·학급 중 불러온 것만 나온다. */
+var CM = null, cmBusy = false, cmMode = '', cmGrade = 1, cmCls = 1, cmPicked = false;
+
+function loadComci() {
+  if (cmBusy) return;
+  cmBusy = true;
+  widgetAPI.comciGet().then(function (r) {
+    cmBusy = false; CM = r || { empty: true }; render();
+  }).catch(function () { cmBusy = false; CM = { empty: true }; render(); });
+}
+
+function cmTable(days, cell) {
+  var maxP = 1;
+  days.forEach(function (d) { maxP = Math.max(maxP, (d.periods || []).length); });
+  var h = '<table class="gr"><thead><tr><th class="pc"></th>'
+    + days.map(function (d) { return '<th>' + esc(d.dow) + '</th>'; }).join('') + '</tr></thead><tbody>';
+  for (var p = 0; p < maxP; p++) {
+    h += '<tr><td class="pc">' + (p + 1) + '</td>';
+    days.forEach(function (d) {
+      var x = (d.periods || [])[p];
+      h += x ? cell(x) : '<td></td>';
+    });
+    h += '</tr>';
+  }
+  return h + '</tbody></table>';
+}
+
+function viewComci() {
+  if (!CM) { loadComci(); return '<div class="empty">컴시간 자료를 불러오는 중…</div>'; }
+  var cfg = CM.config || {}, d = CM.data;
+  if (!d) {
+    return '<div class="empty">아직 불러온 컴시간 시간표가 없습니다.<br>'
+      + '<button class="btn" onclick="widgetAPI.openSettings()">설정에서 불러오기</button>'
+      + '<div style="margin-top:8px;font-size:10.5px;color:#6f7885">'
+      + '학교를 고르고 «지금 불러오기» 를 누르면 됩니다.</div></div>';
+  }
+  // 자료는 둘 다 받아 두고, 설정의 «볼 것» 으로 무엇을 보여줄지 고른다
+  var hasT = !!(d.byTeacher && d.byTeacher.length) && cfg.wantTeacher !== false;
+  var hasC = !!(d.classes && d.classes.length) && cfg.wantClasses !== false;
+  if (!hasT && !hasC) {
+    hasT = !!(d.byTeacher && d.byTeacher.length);
+    hasC = !!(d.classes && d.classes.length);
+  }
+  if (!hasT && !hasC) {
+    return '<div class="empty">받아둔 시간표에 교사·학급 자료가 없습니다.<br>'
+      + '<button class="btn" onclick="widgetAPI.openSettings()">설정에서 다시 불러오기</button></div>';
+  }
+  var h = '<div class="wknav"><span class="wklab" style="text-align:left">'
+    + esc(d.schoolName || d.school || '')
+    + '<small>' + esc((d.updatedAt || '').slice(0, 10)) + ' 기준</small></span>'
+    + fontBtns('comci')
+    + '<button class="wkb" id="cmGet" title="설정에서 다시 불러오기">⚙</button></div>';
+
+  // ★ 둘 다 골라 두었으면 둘 다 내려 보여준다 (전에는 하나만 골라 볼 수 있었다)
+  if (hasT) {
+    // 저장은 번호로 한다 — 가려진 이름은 겹칠 수 있다(김진호·김민호 → 둘 다 김*호)
+    var me = d.byTeacher.filter(function (t) { return t.i === cfg.teacherIdx; })[0]
+      || d.byTeacher.filter(function (t) { return t.name === cfg.teacher; })[0]
+      || d.byTeacher[0];
+    h += '<div class="cmh">' + me.i + ' ' + esc(me.name) + ' 선생님'
+      + (hasC ? '' : '<small>설정에서 내 이름을 바꿀 수 있어요</small>') + '</div>';
+    h += cmTable(me.days, function (x) {
+      return '<td class="c u1" title="' + esc(x.grade + '-' + x.cls + ' ' + x.subject) + '">'
+        + '<b>' + x.grade + '-' + x.cls + '</b><u>' + esc(x.subject) + '</u></td>';
+    });
+  }
+
+  if (hasC) {
+    var gsel = d.classes.filter(function (g) { return g.grade === cmGrade; })[0] || d.classes[0];
+    cmGrade = gsel.grade;
+    h += '<div class="cmh">학급 시간표</div>';
+    h += '<div class="wknav">'
+      + d.classes.map(function (g) {
+          return '<button class="wkb' + (g.grade === cmGrade ? ' now' : '') + '" data-cg="' + g.grade + '">'
+            + g.grade + '학년</button>';
+        }).join('')
+      + '<span class="spacer"></span>'
+      + gsel.classes.map(function (c) {
+          return '<button class="wkb' + (c.cls === cmCls ? ' now' : '') + '" data-cc="' + c.cls + '">'
+            + c.cls + '반</button>';
+        }).join('') + '</div>';
+    var cl = gsel.classes.filter(function (c) { return c.cls === cmCls; })[0] || gsel.classes[0];
+    cmCls = cl.cls;
+    h += cmTable(cl.days, function (x) {
+      return '<td class="c u0" title="' + esc(x.subject + ' / ' + x.teacher) + '">'
+        + '<b>' + esc(x.subject) + '</b><u>' + esc(x.teacher) + '</u></td>';
+    });
+  }
+  return h;
+}
+
+/* ── 학사일정 ── */
+/* ── 학사일정 ──
+   한 달씩 갈아끼우지 않고 3월부터 2월까지 쭉 이어 놓는다.
+   월 단추는 «그 자리로 데려가는» 역할이고, 스크롤을 하면 단추도 따라 움직인다.
+   «오늘» 단추를 누르면 오늘 날짜로 간다 — 탭을 처음 열 때도 저절로 오늘로 간다. */
+var AC = null, acBusy = false, acScrolled = false, acSpy = '';
+
+function loadAcademic() {
+  if (acBusy) return;
+  acBusy = true;
+  widgetAPI.getAcademic().then(function (d) {
+    acBusy = false; AC = d || { empty: true }; render();
+  }).catch(function () { acBusy = false; AC = { empty: true }; render(); });
+}
+/* 오늘이 낀 주(월~일) — 그 주를 은은하게 칠한다 */
+function weekRange() {
+  var d = new Date(), day = d.getDay();
+  var mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (day === 0 ? -6 : 1 - day));
+  var sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
+  return { from: mon, to: sun };
+}
+/* 학년도라 3~12월은 올해, 1~2월은 다음 해로 본다 */
+function acYear(month) {
+  var now = new Date(), m = Number(month);
+  if (now.getMonth() + 1 >= 3) return m <= 2 ? now.getFullYear() + 1 : now.getFullYear();
+  return m <= 2 ? now.getFullYear() : now.getFullYear() - 1;
+}
+function viewAcademic() {
+  if (!AC) { loadAcademic(); return '<div class="empty">학사일정을 불러오는 중…</div>'; }
+  var ms = (AC.months) || [];
+  if (!ms.length) {
+    return '<div class="empty">아직 가져온 학사일정이 없습니다.'
+      + (acBusy ? '<div style="margin-top:8px">받는 중…</div>' : '')
+      + '<br><button class="btn" id="acGetBig">지금 가져오기</button>'
+      + '<div style="margin-top:8px;font-size:10.5px;opacity:.8">'
+      + '학교 «연간 수업일수 계획표» 시트에서 받아옵니다. 한 해치라 20초쯤 걸립니다.'
+      + (AC.error ? '<br>' + esc(AC.error) : '') + '</div></div>';
+  }
+
+  var now = new Date(), todayD = now.getDate(), todayM = String(now.getMonth() + 1);
+  var wr = weekRange();
+  // 8월처럼 한 달이 «8-1·8-2» 로 나뉘면 뒤쪽이 지금 쓰는 달이다
+  var mine = ms.filter(function (x) { return x.month === todayM; });
+  if (!acSpy) acSpy = (mine.length ? mine[mine.length - 1] : ms[0]).tab;
+
+  var h = '<div class="top2"><div class="wknav">'
+    + ms.map(function (x) {
+        return '<button class="wkb' + (x.tab === acSpy ? ' now' : '') + '" data-ac="' + esc(x.tab) + '">'
+          + esc(x.month) + '월' + (/-/.test(x.tab) ? '<small>' + esc(x.tab) + '</small>' : '') + '</button>';
+      }).join('')
+    + '<span class="spacer"></span>'
+    + fontBtns('cal')
+    + '<button class="wkb go" id="acToday" title="오늘 날짜로">오늘로</button>'
+    + '<button class="wkb" id="acGet" title="다시 가져오기">⟳</button></div></div>';
+
+  h += ms.map(function (m) {
+    var year = acYear(m.month);
+    var rowObjs = m.days.map(function (d) {
+      var isToday = (m.month === todayM && d.day === todayD);
+      var weekend = (d.dow === '토' || d.dow === '일');
+      var dt = new Date(year, Number(m.month) - 1, d.day);
+      var inWeek = dt >= wr.from && dt <= wr.to;
+      // 학년마다 수업 일정이 다를 수 있다 — 1·2·3학년을 각각 줄지어 보여준다
+      var gs = d.grades || {};
+      var lit = [1, 2, 3].map(function (g) {
+        var codes = gs[g];
+        if (!codes || !codes.some(Boolean)) return '';
+        return '<span class="acg"><i class="gl">' + g + '학년</i>'
+          + codes.map(function (c, i) {
+              return c ? '<i class="cd" title="' + g + '학년 ' + (i + 1) + '교시">' + esc(c) + '</i>'
+                : '<i class="cd off"></i>';
+            }).join('') + '</span>';
+      }).join('');
+      // ★ 같은 달이 8-1·8-2 로 나뉘어 있으면 «오늘»이 여러 군데 생긴다.
+      //   id 는 달마다 다르게 주고, 어디로 갈지는 goToday() 가 고른다.
+      return {
+        inWeek: inWeek,
+        html: '<div class="acr' + (isToday ? ' tdy' : '') + (weekend ? ' wknd' : '') + '"'
+          + (isToday ? ' data-today="1" id="actoday-' + esc(m.tab) + '"' : '') + '>'
+          + '<span class="acd">' + d.day + '<small>' + esc(d.dow) + '</small></span>'
+          + '<span class="ace">' + esc(d.event || '') + '</span>'
+          + (lit ? '<span class="acc">' + lit + '</span>' : '') + '</div>'
+      };
+    });
+    // 이번 주는 «날짜마다» 가 아니라 «한 주를 통째로» 테두리로 묶는다.
+    // 오늘 칸은 그 안에서 다른 색 테두리로 한 번 더 구분한다.
+    var pack = [], run = [];
+    var flush = function () {
+      if (!run.length) return;
+      pack.push('<div class="acweek">' + run.join('') + '</div>');
+      run = [];
+    };
+    rowObjs.forEach(function (r) {
+      if (r.inWeek) { run.push(r.html); return; }
+      flush();
+      pack.push(r.html);
+    });
+    flush();
+    var rows = pack.join('');
+    return '<div class="acmon" id="acm-' + esc(m.tab) + '" data-mon="' + esc(m.tab) + '">'
+      + esc(m.month) + '월' + (/-/.test(m.tab) ? ' (' + esc(m.tab) + ')' : '') + '</div>'
+      + '<div class="acl">' + rows + '</div>';
+  }).join('');
+  return h;
+}
+/* 스크롤한 만큼 «지금 보고 있는 달»을 골라 단추에 표시한다.
+   다시 그리면 입력·스크롤이 튀므로, 여기서는 단추의 표시만 갈아 끼운다. */
+function acSpyScroll() {
+  if (VIEW !== 'cal') return;
+  var app = appEl();
+  if (!app) return;
+  var heads = app.querySelectorAll('.acmon');
+  if (!heads.length) return;
+  var line = app.getBoundingClientRect().top + (parseFloat(
+    getComputedStyle(app).getPropertyValue('--toph')) || 46) + 34;
+  var pick = heads[0].dataset.mon;
+  heads.forEach(function (el) { if (el.getBoundingClientRect().top <= line) pick = el.dataset.mon; });
+  if (pick === acSpy) return;
+  acSpy = pick;
+  app.querySelectorAll('[data-ac]').forEach(function (b) {
+    b.classList.toggle('now', b.dataset.ac === acSpy);
+  });
+}
+/* 고정된 머리(날짜·탭 줄 + 월 단추 줄) 아래로 오도록 손수 자리를 잡는다.
+   scrollIntoView 는 그 머리에 가려서 «오늘»이 위쪽에 숨어 버린다. */
+function scrollToEl(el, gap) {
+  var app = appEl();
+  if (!el || !app) return false;
+  var top = el.getBoundingClientRect().top - app.getBoundingClientRect().top + app.scrollTop;
+  var head = parseFloat(getComputedStyle(app).getPropertyValue('--toph')) || 46;
+  // 머리에 «붙어 있는» 줄만 빼 준다. 혜원이지는 이 줄이 같이 흘러가므로 뺄 것이 없다.
+  var nav = app.querySelector('.top2');
+  var stuck = nav && getComputedStyle(nav).position !== 'static';
+  app.scrollTop = Math.max(0, top - head - (stuck ? nav.offsetHeight : 0) - (gap || 6));
+  return true;
+}
+/* 8-1·8-2 처럼 같은 달이 둘로 나뉘면 «오늘»이 두 군데다.
+   일정이 적혀 있는 쪽이 지금 쓰는 달이고, 그것도 없으면 뒤쪽을 쓴다. */
+function todayEl() {
+  var app = appEl();
+  var list = app ? app.querySelectorAll('[data-today]') : [];
+  if (!list.length) return null;
+  for (var i = list.length - 1; i >= 0; i--) {
+    var e = list[i].querySelector('.ace');
+    if (e && e.textContent.trim()) return list[i];
+  }
+  return list[list.length - 1];
+}
+function goToday() {
+  var el = todayEl();
+  if (!el) return false;
+  scrollToEl(el, 6);
+  // 글꼴이 늦게 오거나 창 높이가 맞춰지면 자리가 밀린다 — 조금 뒤 한 번 더 맞춘다
+  setTimeout(function () { var e2 = todayEl(); if (e2) scrollToEl(e2, 6); }, 280);
+  return true;
+}
+
+/* ── 급식 ── */
+var ML = null, mlBusy = false;
+
+function loadMeals() {
+  if (mlBusy) return;
+  mlBusy = true;
+  widgetAPI.getMeals().then(function (d) {
+    mlBusy = false; ML = d || { empty: true }; render();
+  }).catch(function () { mlBusy = false; ML = { empty: true }; render(); });
+}
+function viewMeals() {
+  if (!ML) { loadMeals(); return '<div class="empty">급식을 불러오는 중…</div>'; }
+  var list = (ML.meals) || [];
+  var off = Number(ML.weekOff) || 0;
+  var head = '<div class="top2"><div class="wknav">'
+    + '<button class="wkb" data-ml="' + (off - 1) + '" title="지난 주">◀</button>'
+    + '<span class="wklab">' + esc(ML.school || '급식')
+    + '<small>' + (ML.from ? esc(fmtYmd(ML.from)) + ' ~ ' + esc(fmtYmd(ML.to)) : '') + '</small></span>'
+    + '<button class="wkb" data-ml="' + (off + 1) + '" title="다음 주">▶</button>'
+    + (off !== 0 ? '<button class="wkb go" data-ml="0">이번주</button>' : '')
+    + fontBtns('meal')
+    + '<button class="wkb" id="mlGet" title="다시 가져오기">⟳</button></div></div>';
+  if (!list.length) {
+    return head + '<div class="empty">' + (ML.error ? esc(ML.error) : '이 주에는 급식이 없습니다.')
+      + '<br><button class="btn" id="mlGetBig">지금 가져오기</button></div>';
+  }
+  var todayStr = todayYmd();
+  return head + list.map(function (x) {
+    var on = (x.date === todayStr);
+    return '<div class="ml' + (on ? ' tdy' : '') + '">'
+      + '<div class="mlh">' + esc(mdDow(x.date)) + (on ? ' <em>오늘</em>' : '')
+      + '<span>' + esc(x.kcal) + '</span></div>'
+      + '<div class="mld">' + x.dishes.map(function (t) {
+          return '<span>' + esc(t) + '</span>';
+        }).join('') + '</div></div>';
+  }).join('');
+}
+function fmtYmd(s) {
+  var m = String(s || '').match(/^(\d{4})(\d{2})(\d{2})$/);
+  return m ? Number(m[2]) + '/' + Number(m[3]) : String(s || '');
+}
+function todayYmd() {
+  var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+function mdDow(iso) {
+  var p = String(iso || '').split('-');
+  if (p.length !== 3) return String(iso || '');
+  var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  return Number(p[1]) + '/' + Number(p[2]) + ' (' + ['일', '월', '화', '수', '목', '금', '토'][d.getDay()] + ')';
+}
+
+/* ── 반별 진도 ── */
+function viewProgress(d) {
+  var ps = (d.progress || []).filter(function (p) { return p.total > 0; });
+  if (!ps.length) return '<div class="empty">진도 자료가 아직 없습니다.</div>';
+  var max = Math.max.apply(null, ps.map(function (p) { return p.total; }));
+  return ps.map(function (p) {
+    var w = max ? Math.round(p.done / max * 100) : 0;
+    var gap = p.gap < 0 ? '<span class="gap"> ' + p.gap + '</span>' : '';
+    return '<div class="pg"><div class="pgc">' + esc(p.cls) + '</div>'
+      + '<div class="bar"><i style="width:' + w + '%"></i></div>'
+      + '<div class="pgn"><em>' + p.done + '</em>/' + p.total + '차시' + gap + '</div></div>';
+  }).join('');
+}
+
+/* 업데이트가 준비되면 맨 위에 눌러서 설치할 수 있는 띠를 띄운다.
+   윈도우 알림과 트레이 메뉴만으로는 계속 놓치기 쉬워서 화면에 직접 둔다. */
+/* 무엇을 언제 받는지 보여준다 — 조용히 실패하면 «안 된다»고만 알게 되니까 */
+var TASKS = [];
+/* ── AI 사용량 (클로드·제미나이) ──────────────────────────────
+   위젯이 보이지 않는 창으로 직접 읽어 온다. 원형과 막대 중에 고를 수 있고,
+   «얼마나 남았는지»와 «언제 초기화되는지»를 함께 보여준다. */
+var USG = null, USGSHOW = true, USGSTYLE = 'ring';
+
+function pctOf(m) { return m && m.pct !== null && m.pct !== undefined ? Number(m.pct) : null; }
+/* 남은 시간은 창을 켜 둔 채로도 계속 줄어야 한다 — 그래서 «초기화 시각»에서 매번 다시 센다 */
+function leftOf(m) {
+  if (!m || !m.resetAt) return '';
+  var ms = m.resetAt - Date.now();
+  if (ms <= 0) return '';
+  var mi = Math.floor(ms / 60000), hh = Math.floor(mi / 60), dd = Math.floor(hh / 24);
+  if (dd >= 1) return dd + '일 ' + (hh % 24) + '시간';
+  if (hh >= 1) return hh + '시간 ' + (mi % 60) + '분';
+  return mi + '분';
+}
+function atOf(m) {
+  if (!m) return '';
+  if (m.resetAt) {
+    var d = new Date(m.resetAt);
+    var dow = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+    var ap = d.getHours() < 12 ? '오전' : '오후';
+    var h12 = d.getHours() % 12 || 12;
+    return (d.getMonth() + 1) + '/' + d.getDate() + '(' + dow + ') ' + ap + ' ' + h12 + ':' + pad(d.getMinutes());
+  }
+  return String(m.reset || '');
+}
+/* «1시간 39분 남음 · 8/25(화) 오후 3:20 초기화» */
+function resetTxt(m) {
+  var bits = [];
+  var l = leftOf(m);
+  if (l) bits.push('<em>' + esc(l) + ' 남음</em>');
+  var a = atOf(m);
+  if (a) bits.push(esc(a) + ' 초기화');
+  return bits.join(' · ');
+}
+function ringSvg(pct) {
+  var r = 15, c = 2 * Math.PI * r, off = c * (1 - Math.min(100, Math.max(0, pct)) / 100);
+  return '<svg width="42" height="42" viewBox="0 0 42 42">'
+    + '<circle cx="21" cy="21" r="' + r + '" fill="none" stroke="var(--card2)" stroke-width="5"/>'
+    + '<circle cx="21" cy="21" r="' + r + '" fill="none" stroke="var(--accent)" stroke-width="5"'
+    + ' stroke-linecap="round" stroke-dasharray="' + c.toFixed(1) + '"'
+    + ' stroke-dashoffset="' + off.toFixed(1) + '" transform="rotate(-90 21 21)"/>'
+    + '<text x="21" y="25" text-anchor="middle">' + pct + '</text></svg>';
+}
+function usgMetrics(u) {
+  var list = [];
+  if (pctOf(u.session) !== null) list.push({ lb: '5시간', m: u.session });
+  if (pctOf(u.weekly) !== null) list.push({ lb: '주간', m: u.weekly });
+  if (u.fable && pctOf(u.fable) !== null) list.push({ lb: 'Fable', m: u.fable });
+  return list;
+}
+function usgBox(key, u) {
+  var h = '<div class="box"><div class="nm">' + esc(u.label || key)
+    + (u.account ? '<i>' + esc(u.account) + '</i>' : '') + '</div>';
+  if (u.needsLogin || (!u.ok && !usgMetrics(u).length)) {
+    h += '<button class="lg" data-usglogin="' + key + '">'
+      + (u.needsLogin ? '로그인하기' : '불러오는 중… 다시 시도') + '</button>';
+    return h + '</div>';
+  }
+  var ms = usgMetrics(u);
+  if (USGSTYLE === 'ring') {
+    h += '<div class="rings">' + ms.map(function (x) {
+      return '<div class="ring">' + ringSvg(pctOf(x.m))
+        + '<div class="lb">' + esc(x.lb) + '</div>'
+        + '<div class="rs" title="' + esc(atOf(x.m)) + '">' + (leftOf(x.m) ? esc(leftOf(x.m)) + ' 남음' : esc(atOf(x.m))) + '</div>'
+        + '</div>';
+    }).join('') + '</div>';
+    // 원형은 좁아서 초기화 시각을 아래에 한 줄로 따로 적는다
+    if (ms.length) h += '<div class="rs" style="font-size:8.5px;color:var(--dim);margin-top:3px">'
+      + esc(atOf(ms[0].m)) + ' 초기화</div>';
+  } else {
+    h += '<div class="bars">' + ms.map(function (x) {
+      var p = pctOf(x.m);
+      return '<div class="brow"><div class="bt">' + esc(x.lb) + '<b>' + p + '%</b></div>'
+        + '<div class="bk"><i style="width:' + Math.min(100, p) + '%"></i></div>'
+        + '<div class="rs">' + resetTxt(x.m) + '</div></div>';
+    }).join('') + '</div>';
+  }
+  return h + '</div>';
+}
+function usageBar() {
+  if (!USGSHOW || !USG) return '';
+  var keys = Object.keys(USG);
+  if (!keys.length) return '';
+  return '<div class="usg">'
+    + keys.map(function (k) { return usgBox(k, USG[k] || {}); }).join('')
+    + '<div class="usgset">'
+    + '<button class="wkb' + (USGSTYLE === 'ring' ? ' now' : '') + '" data-usgstyle="ring" title="원형">◍</button>'
+    + '<button class="wkb' + (USGSTYLE === 'bar' ? ' now' : '') + '" data-usgstyle="bar" title="막대">▤</button>'
+    + '<button class="wkb" id="usgGet" title="지금 다시 읽기">⟳</button>'
+    + '</div></div>';
+}
+
+/* ── 학생기록 ──────────────────────────────────────────────────
+   학급 → 학생 타일 → 카테고리 → 작성. «통계» 로 넘기면 학생·카테고리·날짜를
+   각각 여러 개 골라 걸러 볼 수 있다.
+
+   기록은 구글 시트에 쌓인다. 시트에서 직접 고쳐도 여기에 반영되고,
+   여기서 쓴 것도 시트에 그대로 남는다. */
+var REC = null;          // 메인이 알려 주는 상태(연결·시트·학급·명렬표)
+var RECDATA = null;      // 시트에서 읽어 온 기록·카테고리
+var recBusy = false, recErr = '';
+var recMode = 'write';   // write | stat | cats
+var recCls = '', recSid = '', recCat = '';
+var recDraft = '', recSavedAt = '', recOpen = 0;   // recOpen = 펼쳐 놓은 기록의 줄 번호
+var statStu = [], statCat = [], statMon = [];   // 통계에서 고른 것들 (여러 개)
+var catEdit = null;      // 카테고리 편집 중인 목록
+
+function recLoad(force) {
+  if (recBusy) return;
+  if (RECDATA && !force) return;
+  recBusy = true; recErr = '';
+  widgetAPI.recLoad().then(function (d) {
+    recBusy = false;
+    if (d && d.need === 'sheet') { RECDATA = null; render(); return; }
+    RECDATA = d || null; render();
+  }).catch(function (e) {
+    recBusy = false; RECDATA = null;
+    recErr = (e && e.message) || String(e);
+    render();
+  });
+}
+function recCats() {
+  var c = (RECDATA && RECDATA.cats) || [];
+  var on = c.filter(function (x) { return x.on !== false; });
+  return on.length ? on : [{ name: '행발' }, { name: '세특' }, { name: '자율' },
+    { name: '동아리' }, { name: '진로' }, { name: '자유학기' }];
+}
+function recClassList() {
+  var all = (REC && REC.roster && REC.roster.classes) || [];
+  var pick = (REC && REC.classes) || [];
+  if (!pick.length) return all;                      // 아직 안 골랐으면 전부
+  return all.filter(function (c) { return pick.indexOf(c.key) >= 0; });
+}
+function recStudents() {
+  var c = recClassList().filter(function (x) { return x.key === recCls; })[0];
+  return (c && c.students) || [];
+}
+/* 한 학생에게 쌓인 기록 (새것이 위로).
+   cat 을 주면 그 분류만, 안 주면 전부 — 타일에 분류를 함께 보여주므로 기본은 전부다. */
+function recList(sid, cat) {
+  var rs = (RECDATA && RECDATA.records) || [];
+  return rs.filter(function (r) {
+    return r.id === sid && r.text && (!cat || r.cat === cat);
+  }).sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
+}
+function recFind(sid, cat) { return recList(sid, cat)[0] || null; }
+/* 나이스 글자 수 — 한글3 · 영숫1 · 엔터1 바이트 */
+function neisBytes(t) {
+  var n = 0;
+  String(t || '').split('').forEach(function (ch) {
+    if (ch === '\n') n += 1;
+    else if (ch.charCodeAt(0) > 127) n += 3;
+    else n += 1;
+  });
+  return n;
+}
+function sheetBtn() {
+  if (!(REC && REC.sheet && REC.sheet.id)) return '';
+  return '<button class="shbtn" title="연결된 구글 시트 열기" onclick="widgetAPI.recOpenSheet()">'
+    + '<img src="assets/sheet.png" alt=""></button>';
+}
+
+/* ── 아직 준비가 안 됐을 때 보여주는 안내 ── */
+function recSetup() {
+  var st = REC || {};
+  var h = '<div class="recintro">'
+    + '<div class="rt">학생기록</div>'
+    + '<div class="rp">학생기록 시트는 <b>지금 로그인한 구글 계정</b>에 만들어집니다.<br>'
+    + '시트와 위젯에서 쓴 내용은 <b>서로 연동</b>되어 어느 쪽에서 고쳐도 함께 바뀝니다.</div>';
+
+  // ★ 오류를 이 화면에서도 보여준다. 전에는 시트 만들기가 실패해도 아무 말이 없어서
+  //   «눌리는데 안 만들어진다» 처럼 보였다.
+  if (recErr) {
+    h += '<div class="rw" style="white-space:pre-wrap;text-align:left">'
+      + '<b>안 됐습니다.</b>\n' + esc(recErr) + '</div>';
+  }
+  if (!st.hasClient) {
+    h += '<div class="rw">먼저 설정에서 <b>구글 연결 정보</b>를 넣어 주세요.<br>'
+      + '설정 → 학생기록 에 넣는 방법이 적혀 있습니다.</div>'
+      + '<button class="btn" onclick="widgetAPI.openSettings()">설정 열기</button>';
+    return h + '</div>';
+  }
+  if (!st.linked) {
+    h += '<div class="rw">구글에 한 번 연결해 주세요. 크롬이 열리고, 허용하면 끝납니다.</div>'
+      + '<button class="btn" id="recIn">구글 연결하기</button>';
+    return h + '</div>';
+  }
+  h += '<div class="rok">연결됨 · ' + esc(st.email || '') + '</div>';
+  if (!st.sheet || !st.sheet.id || st.sheet.trashedAt) {
+    if (st.sheet && st.sheet.trashedAt) {
+      h += '<div class="rw">지난 시트는 ' + esc(st.sheet.trashedAt) + ' 에 휴지통으로 보냈습니다.</div>';
+    }
+    h += '<button class="btn" id="recNew">시트 만들기</button>'
+      + '<div class="rp" style="margin-top:10px">이미 만들어 둔 시트가 있으면 주소를 붙여 넣으세요.</div>'
+      + '<div class="wknav"><input class="wq" id="recUrl" type="text" placeholder="구글 시트 주소">'
+      + '<button class="wkb" id="recAt">연결</button></div>';
+  }
+  return h + '</div>';
+}
+
+/* ── 쓰기 ── */
+function recWrite() {
+  var classes = recClassList();
+  if (!classes.length) {
+    return '<div class="empty">명렬표를 아직 못 읽었습니다.<br>'
+      + '<button class="btn" id="recRoster">지금 받아오기</button></div>';
+  }
+  if (!recCls) recCls = classes[0].key;
+
+  var h = '<div class="wknav">' + classes.map(function (c) {
+    return '<button class="wkb' + (c.key === recCls ? ' now' : '') + '" data-rc="' + esc(c.key) + '">'
+      + c.grade + '-' + c.cls + '</button>';
+  }).join('') + '</div>';
+
+  var studs = recStudents();
+  h += '<div class="stiles">' + studs.map(function (s) {
+    var n = ((RECDATA && RECDATA.records) || []).filter(function (r) {
+      return r.id === s.id && r.text;
+    }).length;
+    return '<button class="stile' + (s.id === recSid ? ' on' : '') + '" data-rs="' + s.id + '">'
+      + '<b>' + esc(s.id) + '</b> ' + esc(s.name)
+      + (n ? '<i>' + n + '</i>' : '') + '</button>';
+  }).join('') + '</div>';
+
+  if (!recSid) return h;
+  var me = studs.filter(function (s) { return s.id === recSid; })[0];
+  if (!me) return h;
+
+  var cats = recCats();
+  if (!recCat) recCat = cats[0].name;
+  h += '<div class="rhead">' + esc(me.id) + ' ' + esc(me.name) + '</div>';
+  h += '<div class="wknav">' + cats.map(function (c) {
+    var n = recList(me.id, c.name).length;
+    return '<button class="wkb' + (c.name === recCat ? ' now' : '') + '" data-rk="' + esc(c.name) + '">'
+      + esc(c.name) + (n ? '<small>' + n + '</small>' : '') + '</button>';
+  }).join('')
+    + '<span class="spacer"></span>'
+    + '<button class="wkb" id="recCatEdit" title="카테고리 편집">⚙</button></div>';
+
+  // ── 이미 저장한 것들 — 접힌 타일로 쌓아 두고, 누르면 펼쳐진다
+  var list = recList(me.id);   // 분류를 가리지 않고 모두
+  if (list.length) {
+    h += '<div class="racs">' + list.map(function (r) {
+      var open = recOpen === r.row;
+      var one = String(r.text).split('\n')[0];
+      return '<div class="rac' + (open ? ' on' : '') + '">'
+        + '<button class="rach" data-ro="' + r.row + '">'
+        + '<i>' + (open ? '▾' : '▸') + '</i>'
+        + '<span class="racd">' + esc(String(r.at).slice(2, 10)) + '</span>'
+        + '<span class="racc">' + esc(r.cat) + '</span>'
+        + '<span class="racs1">' + esc(one.slice(0, 60)) + (one.length > 60 ? '…' : '') + '</span>'
+        + '<em>' + neisBytes(r.text) + 'B</em></button>'
+        + (open
+          ? '<div class="racb">'
+            + '<textarea class="rta" id="recEdit" data-row="' + r.row + '">' + esc(r.text) + '</textarea>'
+            + '<div class="wknav">'
+            + '<button class="wkb go" data-rup="' + r.row + '">고쳐 저장</button>'
+            + '<span class="rbyte">' + neisBytes(r.text) + ' Byte · ' + r.text.length + '자</span>'
+            + '<span class="spacer"></span>'
+            + '<button class="wkb" data-rcp="' + r.row + '" title="복사">⧉</button>'
+            + '<button class="wkb" data-rdel="' + r.row + '">지우기</button>'
+            + '</div>'
+            + (r.edited ? '<div class="rsaved">마지막 저장 · ' + esc(r.edited) + '</div>' : '')
+            + '</div>'
+          : '')
+        + '</div>';
+    }).join('') + '</div>';
+  }
+
+  // ── 새로 쓰는 칸 (지난 기록은 위에 그대로 남는다)
+  h += '<div class="rnew">새로 쓰기</div>';
+  h += '<textarea class="rta" id="recText" placeholder="' + esc(recCat) + ' 내용을 적어 주세요">'
+    + esc(recDraft || '') + '</textarea>';
+  h += '<div class="wknav"><button class="wkb go" id="recSave">저장</button>'
+    + '<span class="rbyte">' + neisBytes(recDraft || '') + ' Byte · ' + (recDraft || '').length + '자</span>'
+    + '</div>';
+  if (recSavedAt) h += '<div class="rsaved">✅ 저장됨 · ' + esc(recSavedAt) + '</div>';
+  return h;
+}
+
+/* ── 통계 ── */
+function recStat() {
+  var rs = ((RECDATA && RECDATA.records) || []).filter(function (r) { return r.text; });
+  var studs = [];
+  recClassList().forEach(function (c) { studs = studs.concat(c.students); });
+  var cats = recCats();
+  var months = [];
+  rs.forEach(function (r) {
+    var m = String(r.at || '').slice(0, 7);          // 2026.08
+    if (m && months.indexOf(m) < 0) months.push(m);
+  });
+  months.sort().reverse();
+
+  function chips(list, chosen, key, label) {
+    return '<div class="wknav"><span class="slab">' + label + '</span>'
+      + '<button class="wkb' + (chosen.length ? '' : ' now') + '" data-sa="' + key + '">전체</button>'
+      + list.map(function (v) {
+          return '<button class="wkb' + (chosen.indexOf(v.v) >= 0 ? ' now' : '') + '" data-s' + key + '="' + esc(v.v) + '">'
+            + esc(v.t) + '</button>';
+        }).join('') + '</div>';
+  }
+  var h = '<div class="top2">'
+    + chips(studs.map(function (s) { return { v: s.id, t: s.id + ' ' + s.name }; }), statStu, 'u', '학생')
+    + chips(cats.map(function (c) { return { v: c.name, t: c.name }; }), statCat, 'c', '분류')
+    + chips(months.map(function (m) { return { v: m, t: m.replace('.', '년 ') + '월' }; }), statMon, 'm', '날짜')
+    + '</div>';
+
+  var out = rs.filter(function (r) {
+    if (statStu.length && statStu.indexOf(r.id) < 0) return false;
+    if (statCat.length && statCat.indexOf(r.cat) < 0) return false;
+    if (statMon.length && statMon.indexOf(String(r.at).slice(0, 7)) < 0) return false;
+    return true;
+  });
+  h += '<div class="rsum">모두 ' + out.length + '건'
+    + (statStu.length || statCat.length || statMon.length ? ' (걸러 봄)' : '') + '</div>';
+  if (!out.length) return h + '<div class="empty">해당하는 기록이 없습니다.</div>';
+
+  h += out.map(function (r, i) {
+    return '<div class="rcard"><div class="rch">' + esc(r.id) + ' ' + esc(r.name)
+      + ' · ' + esc(r.cat) + ' · ' + esc(String(r.at).slice(0, 10))
+      + '<span class="spacer"></span><span class="rbyte">' + neisBytes(r.text) + ' Byte</span>'
+      + '<button class="wkb" data-cp="' + i + '" title="복사">⧉</button></div>'
+      + '<div class="rcb" id="rcb-' + i + '">' + esc(r.text) + '</div></div>';
+  }).join('');
+  return h;
+}
+
+/* ── 카테고리 편집 ── */
+function recCatsEdit() {
+  var list = catEdit || recCats().map(function (c) { return { name: c.name, on: c.on !== false }; });
+  var h = '<div class="rhead">카테고리 편집</div>';
+  h += list.map(function (c, i) {
+    return '<div class="crow">'
+      + '<input class="wq" data-ci="' + i + '" value="' + esc(c.name) + '">'
+      + '<button class="wkb" data-cu="' + i + '" title="위로">▲</button>'
+      + '<button class="wkb" data-cd="' + i + '" title="아래로">▼</button>'
+      + '<button class="wkb" data-cx="' + i + '" title="지우기">✕</button></div>';
+  }).join('');
+  h += '<div class="wknav"><button class="wkb" id="cAdd">+ 추가</button>'
+    + '<span class="spacer"></span>'
+    + '<button class="wkb go" id="cSave">저장</button>'
+    + '<button class="wkb" id="cCancel">그만두기</button></div>';
+  return h;
+}
+
+function viewRec() {
+  if (!REC) return '<div class="empty">준비 중…</div>';
+  if (!REC.hasClient || !REC.linked || !REC.sheet || !REC.sheet.id || REC.sheet.trashedAt) {
+    return recSetup();
+  }
+  if (!RECDATA && !recErr) { recLoad(); return '<div class="empty">학생기록을 불러오는 중…</div>'; }
+  if (recErr) {
+    return '<div class="empty">기록을 읽지 못했습니다.<br><span style="font-size:10.5px">'
+      + esc(recErr) + '</span><br><button class="btn" id="recRetry">다시 시도</button></div>';
+  }
+
+  var h = '<div class="wknav">'
+    + '<button class="wkb' + (recMode === 'write' ? ' now' : '') + '" data-rm="write">쓰기</button>'
+    + '<button class="wkb' + (recMode === 'stat' ? ' now' : '') + '" data-rm="stat">통계</button>'
+    + '<span class="spacer"></span>' + sheetBtn()
+    + fontBtns('rec')
+    + '<button class="wkb" id="recReload" title="다시 읽기">⟳</button></div>';
+
+  if (recMode === 'cats') return h + recCatsEdit();
+  return h + (recMode === 'stat' ? recStat() : recWrite());
+}
+
+function taskBar() {
+  if (!TASKS.length) return '';
+  var now = Date.now();
+  return TASKS.map(function (t) {
+    if (t.state === 'busy') {
+      return '<div class="task">⏳ <b>' + esc(t.label) + '</b> 받는 중<span class="dots"></span></div>';
+    }
+    var left = Math.max(0, Math.ceil(((t.at || 0) - now) / 1000));
+    return '<div class="task">⏳ <b>' + esc(t.label) + '</b><span class="sp"></span>'
+      + '<span class="cnt">' + left + '초</span> 뒤 받아옵니다</div>';
+  }).join('');
+}
+
+/* 맨 위 제목 줄 — 여기를 잡고 끌면 위젯이 움직인다 */
+/* 업데이트 내역 카드 — 무엇이 바뀌었는지 릴리스에 적어 둔 글이 그대로 온다 */
+function notesCard() {
+  if (!NOTES || !NOTES.text) return '';
+  // ★ 깃허브가 내역을 HTML 로 내려준다 — 태그를 걷어내고 글자만 남긴다
+  var plain = String(NOTES.text)
+    .replace(/<\/(p|div|li|h\d)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ');
+  var lines = plain.split('\n').filter(function (t) { return t.trim(); });
+  return '<div class="notes"><div class="nh">🆕 v' + esc(NOTES.version) + ' 에서 바뀐 것'
+    + '<button class="nx" id="notesX" title="닫기">✕</button></div>'
+    + lines.map(function (t) { return '<div class="nl">' + esc(t) + '</div>'; }).join('')
+    + '</div>';
+}
+function titleBar() {
+  return '<div class="tbar">'
+    + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
+    + '<span class="ttl">' + esc(APPNAME) + '</span>'
+    + '<button class="gear" title="설정" onclick="widgetAPI.openSettings()"></button>'
+    + (VER ? '<span class="tver">v' + esc(VER) + '</span>' : '')
+    + '<span class="grip" title="여기를 잡고 끌면 위젯이 움직입니다">⠿⠿</span></div>';
+}
+function updBar() {
+  if (!UPD || !UPD.state) return '';
+  if (UPD.state === 'ready') {
+    return '<button class="upd ready" onclick="widgetAPI.installUpdate()">'
+      + '🆕 v' + esc(UPD.version || '') + ' 준비됨 · 눌러서 설치'
+      + '</button>';
+  }
+  if (UPD.state === 'available') {
+    return '<div class="upd busy">⬇ 새 버전 v' + esc(UPD.version || '') + ' 내려받는 중…</div>';
+  }
+  return '';
+}
+
+function render() {
+  if (composing) return;   // 한글 조합 중에는 화면을 건드리지 않는다
+  var app = document.getElementById('app');
+  if (!STATE) { app.innerHTML = titleBar() + updBar() + taskBar() + '<div class="empty">불러오는 중…</div>'; return report(); }
+
+  if (STATE.needLogin) {
+    // 구글이 앱 안 브라우저 로그인을 막기 때문에, 크롬을 열어 거기서 로그인하고
+    // 결과만 위젯이 넘겨받는다 (main.js 의 startLogin 참고).
+    app.innerHTML = titleBar() + updBar() + taskBar() + '<div class="empty">수업진도에 로그인해 주세요.'
+      + '<br><button class="btn" onclick="widgetAPI.openLogin()">크롬으로 로그인</button>'
+      + '<div style="margin-top:9px;font-size:10.5px;line-height:1.5;color:#6f7885">'
+      + '크롬 탭이 열립니다. 거기서 구글 로그인하면<br>'
+      + '위젯이 자동으로 이어받아요.</div></div>';
+    return report();
+  }
+
+  var d = STATE, html = '<div class="top">' + titleBar() + notesCard() + usageBar() + updBar() + taskBar();
+  // 혜원 데스크는 수업진도 자료를 안 받으므로 날짜·요일을 스스로 만든다
+  var nd = new Date();
+  var dText = d.date ? d.date.slice(5).replace('-', '월 ') + '일'
+    : pad(nd.getMonth() + 1) + '월 ' + pad(nd.getDate()) + '일';
+  var dowText = (d.dow || ['일', '월', '화', '수', '목', '금', '토'][nd.getDay()]) + '요일';
+  html += '<div class="head"><span class="date">' + esc(dText) + '</span>'
+    + '<span class="dow">' + esc(dowText) + '</span><span class="spacer"></span>'
+    + (HAS_TT ? '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>' : '')
+    + '<button class="ico" title="지금 새로고침" onclick="widgetAPI.refreshNow()">⟳</button>'
+    + (HAS_TT ? '<button class="ico" title="수업진도 앱 열기(크롬)" onclick="widgetAPI.openApp()">↗</button>' : '')
+    + '</div>';
+
+  var noteTxt = d.note || TODAYEV || '';
+  if (noteTxt || d.holiday) {
+    html += '<div class="note' + (d.holiday ? ' hol' : '') + '">'
+      + (d.holiday ? '🚫 휴업일' : '📌 오늘 일정')
+      + (noteTxt ? ' · ' + esc(noteTxt) : '') + '</div>';
+  }
+
+  // 큰 탭 5개. «시간표» 안에서 오늘·이번주·진도를 다시 고른다.
+  var TT_SUB = ['today', 'week', 'progress'];
+  var tab = TT_SUB.indexOf(VIEW) >= 0 ? 'tt' : VIEW;
+  html += '<div class="chips">'
+    + (HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록']
+              : ['work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록']).map(function (s) {
+        var p = s.split(',');
+        return '<button class="chip' + (tab === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">' + p[1] + '</button>';
+      }).join('') + '</div>';
+
+  if (tab === 'tt') {
+    html += '<div class="chips sub">'
+      + ['today,오늘', 'week,이번주', 'progress,진도'].map(function (s) {
+          var p = s.split(',');
+          return '<button class="chip' + (VIEW === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">' + p[1] + '</button>';
+        }).join('') + '</div>';
+  }
+
+  html += '</div>';   // 머리 끝 — 여기부터는 스크롤된다
+  html += VIEW === 'week' ? viewWeek(d)
+    : VIEW === 'progress' ? viewProgress(d)
+    : VIEW === 'work' ? viewWork()
+    : VIEW === 'comci' ? viewComci()
+    : VIEW === 'cal' ? viewAcademic()
+    : VIEW === 'meal' ? viewMeals()
+    : VIEW === 'rec' ? viewRec()
+    : viewToday(d);
+  html += '<div class="foot">@JINHOKIM</div>';   // 버전은 제목 줄 오른쪽 끝에 있다
+  app.style.setProperty('--wf', String(FS[fsKey()] || 1));
+  app.innerHTML = html;
+  // 두 번째 고정 줄이 머리 «바로 아래»에 붙도록, 머리 높이를 재서 알려 준다.
+  // 머리는 업데이트 띠·사용량 띠가 있고 없고에 따라 높이가 달라져서 고정값을 쓸 수 없다.
+  // 검색줄·주차 단추·날짜 줄을 머리 안으로 옮겨 «날짜까지» 통째로 고정한다.
+  // (따로 두 번째 고정 층으로 두면 머리 높이를 한 픽셀만 잘못 재도 밑으로 숨는다)
+  var topEl = app.querySelector('.top');
+  var t2 = app.querySelector('.top2');
+  if (topEl && t2) topEl.appendChild(t2);
+  app.style.setProperty('--toph', (topEl ? topEl.offsetHeight : 46) + 'px');
+
+  wireViews(app);
+  report();
+}
+
+/* 스크롤을 하면 «지금 보고 있는 달»로 월 단추 표시를 옮긴다 */
+var __appEl = document.getElementById('app');
+if (__appEl) __appEl.addEventListener('scroll', function () {
+  if (acSpyTimer) return;
+  acSpyTimer = setTimeout(function () { acSpyTimer = null; acSpyScroll(); }, 90);
+}, { passive: true });
+var acSpyTimer = null;
+
+/* 내용 높이를 알려주면 메인이 카드 높이를 맞춰준다 */
+/* 카테고리 편집 화면에 적힌 것을 그대로 읽어 온다 */
+function readCatEdit(app) {
+  var out = [];
+  app.querySelectorAll('input[data-ci]').forEach(function (el) {
+    out.push({ name: String(el.value || '').trim(), on: true });
+  });
+  return out.length ? out : (catEdit || []);
+}
+
+function report() {
+  requestAnimationFrame(function () {
+    var app = appEl();
+    if (app) widgetAPI.reportHeight(app.scrollHeight + 4);
+  });
+}
+
+// 설정에서 컴시간을 바꾸거나 다시 불러오면, 들고 있던 자료를 버리고 새로 읽는다
+widgetAPI.onTasks(function (list) { TASKS = list || []; render(); });
+setInterval(function () { if (TASKS.some(function (t) { return t.state === 'wait'; })) render(); }, 1000);
+widgetAPI.onComciChanged(function () { CM = null; if (VIEW === 'comci') render(); });
+widgetAPI.onWorkChanged(function () { WORK = null; if (VIEW === 'work') render(); });
+widgetAPI.onAcademicChanged(function () { AC = null; if (VIEW === 'cal') render(); });
+widgetAPI.onMealsChanged(function () { ML = null; if (VIEW === 'meal') render(); });
+
+widgetAPI.onData(function (p) {
+  if (p.flavor) FLAVOR = p.flavor;
+  IS_EASY = FLAVOR === 'easy';
+  STATE = p.data;
+  // 혜원이지는 대시보드라는 «위젯에 없는» 화면이 있어서, 보던 화면을 스스로 챙긴다
+  if (!IS_EASY) VIEW = p.view || VIEW;
+  VER = p.version || '';
+  UPD = p.update || null;
+  if (p.font && p.font !== FONT) {
+    FONT = p.font;
+    if (FONT === 'pretendard') delete document.documentElement.dataset.font;
+    else document.documentElement.dataset.font = FONT;
+  }
+  if (p.fontScale) FS = Object.assign(FS, p.fontScale);
+  // 껐다 켜도 마지막으로 보던 학급이 그대로이게
+  if (p.comciPick && !cmPicked) {
+    cmGrade = p.comciPick.grade; cmCls = p.comciPick.cls; cmPicked = true;
+  }
+  if (p.todayEvent !== undefined) TODAYEV = p.todayEvent;
+  if (p.notes !== undefined) NOTES = p.notes;
+  if (p.rec) {
+    var wasSheet = REC && REC.sheet && REC.sheet.id;
+    REC = p.rec;
+    // 시트가 바뀌었으면 들고 있던 기록은 버린다
+    if ((REC.sheet && REC.sheet.id) !== wasSheet) RECDATA = null;
+  }
+  if (p.flavor) {
+    HAS_TT = FLAVOR === 'jinho';
+    APPNAME = p.appName || (HAS_TT ? '진호알리미' : (IS_EASY ? '혜원이지' : '혜원 데스크'));
+    if (!HAS_TT && ['today', 'week', 'progress'].indexOf(VIEW) >= 0) VIEW = IS_EASY ? 'home' : 'work';
+  }
+  if (p.easyFav) EASYFAV = p.easyFav;
+  if (p.usage) {
+    USG = p.usage.data || null;
+    USGSHOW = p.usage.show !== false;
+    USGSTYLE = p.usage.style === 'bar' ? 'bar' : 'ring';
+  }
+  if (p.theme !== undefined && p.theme !== THEME) {
+    THEME = p.theme || '';
+    if (THEME) document.documentElement.dataset.theme = THEME;
+    else if (IS_EASY) document.documentElement.dataset.theme = 'slate';
+    else delete document.documentElement.dataset.theme;
+  }
+  // 혜원이지의 기본 옷은 슬레이트다 — 처음 켤 때 비어 있으면 채워 준다
+  if (IS_EASY && !document.documentElement.dataset.theme) {
+    document.documentElement.dataset.theme = 'slate';
+  }
+  if (!IS_EASY && p.scale && p.scale !== SCALE) {
+    SCALE = p.scale;
+    document.body.style.zoom = SCALE;
+  }
+  if (VIEW === 'week' && STATE && STATE.ready) { WK = null; loadWeek(WEEKOFF); }
+  render();
+});
+
+// 남은 시간·지금 수업 표시는 30초마다 다시 그린다 (자료는 그대로, 시계만 흐른다).
+// 사용량의 «몇 분 남음»도 같이 줄어들어야 해서, 사용량 띠가 보이면 늘 다시 그린다.
+setInterval(function () {
+  if (!STATE || STATE.needLogin) return;
+  if (VIEW === 'today' || (USGSHOW && USG)) render();
+}, 30 * 1000);
+
+// 날짜가 바뀌면(자정을 넘기면) 오늘 표시가 어제에 머물지 않도록 자료를 새로 읽는다
+var lastDay = new Date().getDate();
+setInterval(function () {
+  var d = new Date().getDate();
+  if (d === lastDay) return;
+  lastDay = d;
+  WK = null; ML = null; acScrolled = false;
+  widgetAPI.refreshNow();
+  render();
+}, 60 * 1000);
+
+
+/* ── 화면 안의 단추·입력칸 연결 ──
+   위젯(#app)과 혜원이지(#main)가 «같은 연결»을 쓴다. 화면 조각이 같으니
+   단추도 같아야 한다 — 한 군데만 고치면 두 프로그램이 같이 고쳐진다. */
+function wireViews(app) {
+  app.querySelectorAll('.wkb').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (b.dataset.off !== undefined) { WK = null; loadWeek(Number(b.dataset.off)); return; }
+      if (b.dataset.doc) { workDoc = b.dataset.doc; workOff = 0; render(); return; }
+      if (b.dataset.woff !== undefined) { workOff = Number(b.dataset.woff); followHit = false; render(); return; }
+      if (b.id === 'workGet') { WORK = null; workBusy = true; render();
+        widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
+        return; }
+      if (b.id === 'cmGet') { widgetAPI.openSettings(); return; }
+      // 학생기록
+      if (b.dataset.rm) { recMode = b.dataset.rm; render(); return; }
+      if (b.dataset.rc) { recCls = b.dataset.rc; recSid = ''; recDraft = ''; recSavedAt = ''; render(); return; }
+      if (b.dataset.rk) { recCat = b.dataset.rk; recDraft = ''; recSavedAt = ''; render(); return; }
+      if (b.dataset.ro !== undefined) {          // 타일 펼치기·접기
+        var row = Number(b.dataset.ro);
+        recOpen = (recOpen === row) ? 0 : row;
+        render(); return;
+      }
+      if (b.dataset.rup !== undefined) {         // 펼친 것을 고쳐 저장
+        var te = app.querySelector('#recEdit');
+        if (!te) return;
+        recBusy = true;
+        widgetAPI.recSave({ student: {}, cat: recCat, text: te.value, row: Number(b.dataset.rup) })
+          .then(function (r) {
+            recBusy = false; recSavedAt = (r && r.at) || ''; RECDATA = null; recLoad(true);
+          })
+          .catch(function (e) { recBusy = false; recErr = (e && e.message) || String(e); render(); });
+        return;
+      }
+      if (b.dataset.rcp !== undefined) {         // 나이스에 붙여넣기용 복사
+        var te2 = app.querySelector('#recEdit');
+        if (te2) { navigator.clipboard.writeText(te2.value); b.textContent = '✓'; }
+        return;
+      }
+      if (b.dataset.rdel !== undefined) {
+        if (!confirm('이 기록을 지울까요?')) return;
+        widgetAPI.recClear(Number(b.dataset.rdel)).then(function () {
+          recOpen = 0; RECDATA = null; recLoad(true);
+        });
+        return;
+      }
+      if (b.id === 'recCatEdit') { catEdit = null; recMode = 'cats'; render(); return; }
+      if (b.id === 'recReload') { RECDATA = null; recLoad(true); return; }
+      if (b.id === 'recRetry') { recErr = ''; RECDATA = null; recLoad(true); return; }
+      if (b.id === 'recAt') {
+        var u = (app.querySelector('#recUrl') || {}).value || '';
+        widgetAPI.recAttach(u).then(function (st) { REC = st; RECDATA = null; render(); });
+        return;
+      }
+      if (b.dataset.sa !== undefined) {          // 통계 «전체»
+        if (b.dataset.sa === 'u') statStu = [];
+        if (b.dataset.sa === 'c') statCat = [];
+        if (b.dataset.sa === 'm') statMon = [];
+        render(); return;
+      }
+      if (b.dataset.su || b.dataset.sc || b.dataset.sm) {
+        var arr = b.dataset.su ? statStu : (b.dataset.sc ? statCat : statMon);
+        var v = b.dataset.su || b.dataset.sc || b.dataset.sm;
+        var k = arr.indexOf(v);
+        if (k >= 0) arr.splice(k, 1); else arr.push(v);
+        render(); return;
+      }
+      if (b.dataset.cp !== undefined) {          // 통계 — 내용 복사
+        var el = document.getElementById('rcb-' + b.dataset.cp);
+        if (el) { navigator.clipboard.writeText(el.textContent || ''); b.textContent = '✓'; }
+        return;
+      }
+      if (b.dataset.cu !== undefined || b.dataset.cd !== undefined || b.dataset.cx !== undefined) {
+        catEdit = readCatEdit(app);
+        var i = Number(b.dataset.cu !== undefined ? b.dataset.cu
+          : (b.dataset.cd !== undefined ? b.dataset.cd : b.dataset.cx));
+        if (b.dataset.cx !== undefined) catEdit.splice(i, 1);
+        else {
+          var j = b.dataset.cu !== undefined ? i - 1 : i + 1;
+          if (j >= 0 && j < catEdit.length) {
+            var tmp = catEdit[i]; catEdit[i] = catEdit[j]; catEdit[j] = tmp;
+          }
+        }
+        render(); return;
+      }
+      if (b.id === 'cAdd') { catEdit = readCatEdit(app).concat([{ name: '새 항목', on: true }]); render(); return; }
+      if (b.id === 'cCancel') { catEdit = null; recMode = 'write'; render(); return; }
+      if (b.id === 'cSave') {
+        var list = readCatEdit(app).filter(function (c) { return c.name; });
+        recBusy = true; render();
+        widgetAPI.recCats(list).then(function () {
+          catEdit = null; recMode = 'write'; recBusy = false; RECDATA = null; recLoad(true);
+        }).catch(function (e) { recBusy = false; recErr = (e && e.message) || String(e); render(); });
+        return;
+      }
+      if (b.id === 'recSave') {
+        var ta = app.querySelector('#recText');
+        var txt = ta ? ta.value : '';
+        var studs = recStudents();
+        var me = studs.filter(function (x) { return x.id === recSid; })[0];
+        if (!me || !txt.trim()) return;
+        recBusy = true;
+        // 늘 «새 줄»로 쌓는다 — 지난 기록은 위쪽 아코디언에 그대로 남는다
+        widgetAPI.recSave({ student: me, cat: recCat, text: txt, row: 0 })
+          .then(function (r) {
+            recBusy = false; recSavedAt = (r && r.at) || ''; recDraft = '';
+            RECDATA = null; recLoad(true);
+          })
+          .catch(function (e) { recBusy = false; recErr = (e && e.message) || String(e); render(); });
+        return;
+      }
+      if (b.id === 'recDel') {
+        var cur2 = recFind(recSid, recCat);
+        if (!cur2) return;
+        if (!confirm('이 기록을 지울까요?\n\n' + recCat + ' — ' + recSid)) return;
+        widgetAPI.recClear(cur2.row).then(function () { recDraft = ''; RECDATA = null; recLoad(true); });
+        return;
+      }
+      if (b.dataset.fs) {
+        var fp = b.dataset.fs.split(',');
+        bumpFont(fp[0], Number(fp[1]));
+        return;
+      }
+      if (b.dataset.ml !== undefined) {
+        mlBusy = true; render();
+        widgetAPI.mealsFetch(Number(b.dataset.ml)).then(function (d) {
+          mlBusy = false; ML = d || { empty: true }; render();
+        });
+        return;
+      }
+      if (b.id === 'wkNext') { moveHit(1); return; }
+      if (b.id === 'wkPrev') { moveHit(-1); return; }
+      if (b.dataset.cm) { cmMode = b.dataset.cm; render(); return; }
+      if (b.dataset.cg) {
+        cmGrade = Number(b.dataset.cg); cmCls = 1;
+        widgetAPI.setComciPick({ grade: cmGrade, cls: cmCls });   // 마지막으로 본 반을 기억
+        render(); return;
+      }
+      if (b.dataset.cc) {
+        cmCls = Number(b.dataset.cc);
+        widgetAPI.setComciPick({ grade: cmGrade, cls: cmCls });
+        render(); return;
+      }
+    });
+  });
+  var wq = app.querySelector('.wq');
+  if (wq) {
+    // ★한글은 여러 번의 입력이 모여 한 글자가 된다(조합). 그 도중에 화면을 다시 그리면
+    //   입력칸이 통째로 새로 만들어져서 «ㅊㅊㅐㅐㄹㄹ» 처럼 깨진다.
+    //   그래서 조합 중에는 그리지 않고, 조합이 끝난 뒤 잠깐 기다렸다가 그린다.
+    wq.addEventListener('compositionstart', function () { composing = true; });
+    wq.addEventListener('compositionend', function () {
+      composing = false; workQ = wq.value.trim(); workOff = 0; workHitIdx = 0; followHit = true; laterRender();
+    });
+    wq.addEventListener('input', function () {
+      if (composing) return;
+      workQ = wq.value.trim(); workOff = 0; workHitIdx = 0; followHit = true; laterRender();
+    });
+    wq.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      moveHit(e.shiftKey ? -1 : 1);
+    });
+    if (workQ) { wq.focus(); wq.setSelectionRange(wq.value.length, wq.value.length); }
+  }
+
+  app.querySelectorAll('.chip').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var v = b.dataset.v;
+      if (v === 'tt') v = (['today', 'week', 'progress'].indexOf(LASTTT) >= 0) ? LASTTT : 'today';
+      if (['today', 'week', 'progress'].indexOf(v) >= 0) LASTTT = v;
+      VIEW = v;
+      widgetAPI.setView(VIEW);
+      render();
+    });
+  });
+  var acB = app.querySelector('#acGet') || app.querySelector('#acGetBig');
+  if (acB) acB.addEventListener('click', function () {
+    acBusy = true; AC = { months: [], error: '' }; render();
+    widgetAPI.academicFetch().then(function (d) { acBusy = false; AC = d || { empty: true }; render(); });
+  });
+  var mlB = app.querySelector('#mlGet') || app.querySelector('#mlGetBig');
+  if (mlB) mlB.addEventListener('click', function () {
+    mlBusy = true; render();
+    widgetAPI.mealsFetch().then(function (d) { mlBusy = false; ML = d || { empty: true }; render(); });
+  });
+  // 월 단추 — 그 달 자리로 데려간다
+  app.querySelectorAll('[data-ac]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      scrollToEl(document.getElementById('acm-' + b.dataset.ac), 2);
+    });
+  });
+  var acT = app.querySelector('#acToday');
+  if (acT) acT.addEventListener('click', goToday);
+
+  // AI 사용량 — 로그인·모양 고르기·다시 읽기
+  app.querySelectorAll('[data-usglogin]').forEach(function (b) {
+    b.addEventListener('click', function () { widgetAPI.usageLogin(b.dataset.usglogin); });
+  });
+  app.querySelectorAll('[data-usgstyle]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      USGSTYLE = b.dataset.usgstyle; widgetAPI.setUsageStyle(USGSTYLE); render();
+    });
+  });
+  app.querySelectorAll('[data-rs]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      recSid = b.dataset.rs; recDraft = ''; recSavedAt = ''; render();
+    });
+  });
+  var rin = app.querySelector('#recIn');
+  if (rin) rin.addEventListener('click', function () {
+    rin.textContent = '크롬에서 허용해 주세요…';
+    recErr = '';
+    widgetAPI.recSignIn().then(function (st) { REC = st; recErr = ''; render(); })
+      .catch(function (e) { recErr = (e && e.message) || String(e); render(); });
+  });
+  var rnew = app.querySelector('#recNew');
+  if (rnew) rnew.addEventListener('click', function () {
+    rnew.textContent = '만드는 중…';
+    rnew.disabled = true;
+    recErr = '';
+    widgetAPI.recCreate().then(function (st) { REC = st; RECDATA = null; render(); })
+      // 구글이 돌려준 말을 그대로 보여준다 — 무엇이 막혔는지 알아야 고칠 수 있다
+      .catch(function (e) { recErr = (e && e.message) || String(e); render(); });
+  });
+  var rro = app.querySelector('#recRoster');
+  if (rro) rro.addEventListener('click', function () {
+    rro.textContent = '받는 중…';
+    widgetAPI.rosterFetch().then(function () { widgetAPI.recState().then(function (st) { REC = st; render(); }); });
+  });
+  var rte = app.querySelector('#recEdit');
+  if (rte) {
+    rte.addEventListener('keyup', function () {
+      var by = rte.parentNode.querySelector('.rbyte');
+      if (by) by.textContent = neisBytes(rte.value) + ' Byte · ' + rte.value.length + '자';
+    });
+  }
+  var rta = app.querySelector('#recText');
+  if (rta) {
+    rta.addEventListener('input', function () { recDraft = rta.value; });
+    // 글자 수만 다시 그린다 (통째로 그리면 쓰던 글이 튄다)
+    rta.addEventListener('keyup', function () {
+      var by = app.querySelector('.rbyte');
+      if (by) by.textContent = neisBytes(rta.value) + ' Byte · ' + rta.value.length + '자';
+    });
+  }
+  app.querySelectorAll('.wlink').forEach(function (a) {
+    a.addEventListener('click', function () { widgetAPI.openUrl(a.dataset.url); });
+  });
+  var nx = app.querySelector('#notesX');
+  if (nx) nx.addEventListener('click', function () { NOTES = null; widgetAPI.notesSeen(); render(); });
+  var ug = app.querySelector('#usgGet');
+  if (ug) ug.addEventListener('click', function () { widgetAPI.usageRefresh(); });
+
+  // 찾은 자리로 데려간다
+  if (wantScrollHit) {
+    wantScrollHit = false;
+    var hit = document.getElementById('hit-' + workHitIdx);
+    if (hit && hit.scrollIntoView) hit.scrollIntoView({ block: 'center' });
+  }
+  // 학사일정을 처음 열면 오늘 자리에서 시작한다
+  if (VIEW === 'cal' && !acScrolled) {
+    if (goToday()) acScrolled = true;
+  }
+  if (VIEW !== 'cal') acScrolled = false;
+}

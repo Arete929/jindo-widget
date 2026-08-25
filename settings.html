@@ -257,7 +257,7 @@
       <button data-usgstyle="ring">원형</button><button data-usgstyle="bar">막대</button>
     </div>
   </div>
-  <div class="row">
+  <div class="row" id="usgHint">
     <label class="lb"></label>
     <div class="hint">클로드·제미나이 사용량을 위젯 맨 위에 보여줍니다.
       처음 한 번은 위젯의 «로그인하기» 를 눌러 각각 로그인해야 합니다.</div>
@@ -384,11 +384,22 @@ function paint() {
     b.className = (b.dataset.usgstyle === (UI.usageStyle || 'ring')) ? 'on' : '';
     b.disabled = !usgOn;
   });
-  // 시간표가 없는 판(혜원 데스크)에서는 구글 로그인 줄을 숨긴다
-  if (UI.flavor === 'hyewon') {
+  // 시간표가 없는 판(혜원 데스크·혜원이지)에서는 구글 로그인 줄을 숨긴다
+  if (UI.flavor !== 'jinho') {
     var lr = $('loginState').closest('.row');
     if (lr) lr.style.display = 'none';
-    document.title = '혜원 데스크 설정';
+    document.title = (UI.appName || '위젯') + ' 설정';
+  }
+  // 혜원이지는 «떠 있는 위젯»이 아니다 — 위젯에만 뜻이 있는 항목을 감춘다
+  if (UI.flavor === 'easy') {
+    ['sizeRow', 'opRow', 'usgRow'].forEach(function (k) {
+      var r = $(k) && $(k).closest('.row');
+      if (r) r.style.display = 'none';
+    });
+    if ($('usgHint')) $('usgHint').style.display = 'none';
+    ['aotBtn', 'posBtn', 'autoSizeBtn'].forEach(function (k) {
+      if ($(k)) $(k).style.display = 'none';
+    });
   }
   $('aotBtn').className = UI.alwaysOnTop ? 'on' : '';
   $('autoBtn').className = UI.autoLaunch ? 'on' : '';

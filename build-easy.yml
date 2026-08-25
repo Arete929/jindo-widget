@@ -1,0 +1,56 @@
+# 혜원이지 (HYEWON EASY) — 떠 있는 위젯이 아니라 «열어서 일하는» 넓은 창.
+# 담긴 것은 혜원 데스크와 같다(시간표 없음). 보는 방식만 다르다.
+#
+# ★ appId·설치 이름을 앞의 둘과 또 따로 둔다. 한 PC에 셋을 다 깔아도
+#   설정·기록·자동 업데이트가 섞이지 않아야 한다.
+# ★ 같은 저장소에 올리므로 안내 파일 이름도 겹치면 안 된다.
+#   channel 을 주면 latest.yml 대신 easy.yml 을 만들고, 이 앱은 그것만 본다.
+appId: kr.hyewon.hyewoneasy
+productName: HyewonEasy
+extraMetadata:
+  flavor: easy           # main.js 가 이걸 읽어 넓은 창으로 연다
+  # 설정·기록이 저장되는 폴더 이름 — 여기까지 바꿔야 %APPDATA% 가 갈린다
+  name: hyewon-easy
+  productName: HyewonEasy
+files:
+  - main.js
+  - preload.js
+  - widget.html
+  - ui.css        # 색·모양 (위젯과 혜원이지가 함께 쓴다)
+  - views.js      # 화면을 만드는 코드 (마찬가지)
+  - easy.html     # 혜원이지 창 (왼쪽 메뉴 + 대시보드)
+  - easy.js
+  - timetable.html
+  - comcigan.js
+  - fetchtext.js
+  - worknotice.js
+  - neis.js
+  - academic.js
+  - aiusage.js
+  - httpx.js
+  - googleauth.js
+  - records.js
+  - roster.js
+  - recordsmain.js
+  # 앱에 심어 두는 구글 클라이언트. 없어도 빌드는 되고, 그때는 설정에 직접 넣어야 한다
+  - gclient.json
+  - settings.html
+  - assets/**
+  - node_modules/**/*
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: assets/hyewon-icon.png
+  artifactName: HyewonEasy-Setup-${version}.${ext}
+nsis:
+  oneClick: true
+  perMachine: false
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  shortcutName: 혜원이지
+publish:
+  - provider: github
+    owner: Arete929
+    repo: jindo-widget
+    channel: easy
