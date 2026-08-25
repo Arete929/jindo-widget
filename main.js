@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.19.1
+// 파일명: main.js | @version 1.19.2
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
-// 수정요약: v1.19.1 제목 줄 오른쪽 끝에 버전 표시(아래 꼬리표에서는 뺌)
+// 수정요약: v1.19.2 좁은 폭에서 학사일정 글자가 한 자씩 끊기던 것 수정 / 사용량은 처음엔 꺼둠 / 설정 스위치 글자 잘림 수정
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -127,7 +127,9 @@ function getTheme() {
   const t = loadState().theme || '';
   return THEMES.includes(t) ? t : '';
 }
-function getUsageShow() { const v = loadState().usageShow; return v === undefined ? true : !!v; }
+// 처음 설치했을 때는 AI 사용량을 꺼 둔다 — 켜면 클로드·제미나이에 로그인해야 해서,
+// 받자마자 쓰는 사람에게는 «로그인하기» 단추만 두 칸 보이는 셈이 된다.
+function getUsageShow() { const v = loadState().usageShow; return v === undefined ? false : !!v; }
 function getUsageStyle() { return loadState().usageStyle === 'bar' ? 'bar' : 'ring'; }
 const VIEWS = HAS_TT
   ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal']

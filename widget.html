@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.19.1 -->
+<!-- 파일명: widget.html | @version 1.19.2 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -373,7 +373,11 @@
     padding: 8px 0 4px; letter-spacing: -.2px;
   }
   .acl { display: flex; flex-direction: column; gap: 2px; }
-  .acr { display: flex; align-items: center; gap: 8px; padding: 4px 7px; border-radius: 6px;
+  /* ★ 창을 좁히면 «일정 글자»가 한 자씩 끊겨 세로로 늘어서던 문제.
+     원인은 오른쪽 교시 칸이 폭을 다 가져가고 글자 칸이 0 가까이 눌린 것이다.
+     줄을 통째로 넘길 수 있게 하고(flex-wrap), 글자 칸에 최소 폭을 준다. */
+  .acr { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
+         padding: 4px 7px; border-radius: 6px;
          background: var(--card); font-size: 11px; }
   .acr.wknd { opacity: .5; }
   /* 이번 주 — 날짜마다가 아니라 «한 주를 통째로» 테두리로 묶는다 */
@@ -388,12 +392,13 @@
     box-shadow: inset 0 0 0 2px var(--now); background: color-mix(in srgb, var(--now) 14%, var(--card));
     padding: 9px; font-size: 13px; opacity: 1;
   }
-  .acd { min-width: 34px; font-weight: 800; font-size: 12px; }
+  .acd { flex: 0 0 auto; min-width: 34px; font-weight: 800; font-size: 12px; }
   .acd small { font-size: 9.5px; font-weight: 600; color: var(--dim); margin-left: 3px; }
-  .ace { flex: 1; color: var(--fg2); line-height: 1.35; }
+  .ace { flex: 1 1 150px; min-width: 0; color: var(--fg2); line-height: 1.35; word-break: break-word; }
   .acr.tdy .acd { font-size: 16px; min-width: 42px; }
   .acr.tdy .ace { font-weight: 700; color: var(--fg); }
-  .acc { display: flex; flex-wrap: wrap; gap: 3px 8px; justify-content: flex-end; }
+  .acc { flex: 0 1 auto; margin-left: auto; display: flex; flex-wrap: wrap;
+         gap: 3px 8px; justify-content: flex-end; }
   .acg { display: flex; align-items: center; gap: 2px; }
   .gl { font-style: normal; font-size: 8px; font-weight: 800; color: var(--dim);
         margin-right: 2px; white-space: nowrap; }
