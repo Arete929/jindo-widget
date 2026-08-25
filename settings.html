@@ -1,4 +1,4 @@
-<!-- 파일명: settings.html | @version 1.19.3 -->
+<!-- 파일명: settings.html | @version 1.20.0 -->
 <!-- 위젯 설정 창 — 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기 등)을 여기서 한다. -->
 <!doctype html>
 <html lang="ko">
@@ -88,6 +88,8 @@
   button.sw.on .track { background: var(--energy1); }
   button.sw.on .knob { left: 19px; }
   .foot { font-size: 11.5px; color: var(--sub); text-align: center; margin-top: 4px; }
+  .maker { display: inline-block; margin-top: 5px; font-size: 10px; font-weight: 800;
+           letter-spacing: 1px; color: var(--sub); opacity: .65; }
 </style>
 </head>
 <body>
@@ -173,10 +175,17 @@
   <div class="row">
     <label class="lb">테마</label>
     <div class="chips" id="thRow">
-      <button data-th="">블랙</button><button data-th="persian">페르시안</button>
-      <button data-th="ghost">고스트</button><button data-th="truepink">트루핑크</button>
-      <button data-th="chillwhite">칠화이트</button><button data-th="night">나이트</button>
-      <button data-th="kiwi">키위</button>
+      <button data-th="">고스트</button><button data-th="black">블랙</button>
+      <button data-th="persian">페르시안</button><button data-th="chillwhite">칠화이트</button>
+      <button data-th="night">나이트</button>
+    </div>
+  </div>
+  <div class="row">
+    <label class="lb">글씨체</label>
+    <div class="chips" id="fontRow">
+      <button data-fo="pretendard">프리텐다드</button><button data-fo="nanum">나눔글꼴</button>
+      <button data-fo="gowunbatang">고운바탕</button><button data-fo="gowundodum">고운돋움</button>
+      <button data-fo="system">시스템 기본</button>
     </div>
   </div>
   <div class="row">
@@ -229,11 +238,12 @@
   <div class="row">
     <label class="lb">버전</label>
     <span id="verText" class="hint" style="margin:0;flex:1"></span>
+    <button id="notesBtn">업데이트 내역 보기</button>
     <button id="updBtn">업데이트 확인</button>
     <button id="logBtn">디버그 로그</button>
   </div>
 </section>
-<div class="foot">설정은 바로 저장됩니다.</div>
+<div class="foot">설정은 바로 저장됩니다.<br><span class="maker">made by KIMJINHO</span></div>
 
 <script>
 var CFG = { school: null, wantTeacher: true, wantClasses: false, teacher: '', teacherIdx: 0 };
@@ -306,6 +316,9 @@ function paint() {
   var usgOn = UI.usageShow !== false;
   $('usgSw').className = 'sw' + (usgOn ? ' on' : '');
   $('usgSwTxt').textContent = usgOn ? '보이기' : '숨기기';
+  $('fontRow').querySelectorAll('button').forEach(function (b) {
+    b.className = (b.dataset.fo === (UI.font || 'pretendard')) ? 'on' : '';
+  });
   $('usgRow').querySelectorAll('button[data-usgstyle]').forEach(function (b) {
     b.className = (b.dataset.usgstyle === (UI.usageStyle || 'ring')) ? 'on' : '';
     b.disabled = !usgOn;
@@ -383,6 +396,10 @@ $('autoSizeBtn').onclick = function () { widgetAPI.setUi({ autoSize: true }); };
 $('thRow').querySelectorAll('button').forEach(function (b) {
   b.onclick = function () { UI.theme = b.dataset.th; widgetAPI.setUi({ theme: UI.theme }); paint(); };
 });
+$('fontRow').querySelectorAll('button').forEach(function (b) {
+  b.onclick = function () { UI.font = b.dataset.fo; widgetAPI.setUi({ font: UI.font }); paint(); };
+});
+$('notesBtn').onclick = function () { widgetAPI.notesShow(); };
 $('usgSw').onclick = function () {
   UI.usageShow = !(UI.usageShow !== false);
   widgetAPI.setUi({ usageShow: UI.usageShow });

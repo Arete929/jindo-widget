@@ -26,6 +26,8 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   setUi: (v) => ipcRenderer.send('set-ui', v),
   checkUpdate: () => ipcRenderer.send('check-update'),
   installUpdate: () => ipcRenderer.send('install-update'),
+  notesSeen: () => ipcRenderer.send('notes-seen'),
+  notesShow: () => ipcRenderer.send('notes-show'),
   openLog: () => ipcRenderer.send('open-log'),
 
   /* 컴시간알리미 */
@@ -41,6 +43,6 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   onAcademicChanged: (cb) => ipcRenderer.on('academic-changed', () => cb()),
   neisSearch: (name) => ipcRenderer.invoke('neis-search', name),
   getMeals: () => ipcRenderer.invoke('get-meals'),
-  mealsFetch: () => ipcRenderer.invoke('meals-fetch'),
+  mealsFetch: (off) => ipcRenderer.invoke('meals-fetch', off),
   onMealsChanged: (cb) => ipcRenderer.on('meals-changed', () => cb())
 });

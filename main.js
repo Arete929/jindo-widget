@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.19.3
+// 파일명: main.js | @version 1.20.0
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
-// 수정요약: v1.19.3 제목 로고를 잡으면 창이 안 끌리던 것 수정(그림 끌기가 가로챔) + 머리 전체를 끌 수 있게
+// 수정요약: v1.20.0 급식 주간이동 / 테마 다섯·기본 고스트 / 글씨체 고르기 / 탭별 글자크기 저장 / 오늘 일정 띠(두 갈래) / 업데이트 내역 / 설정에 만든이
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -120,12 +120,32 @@ const SIZES = { small: 0.85, medium: 1, large: 1.2 };
 function getScale() { const s = loadState().size; return SIZES[s] ? s : 'medium'; }
 function getOpacity() { const o = loadState().opacity; return typeof o === 'number' ? o : 1; }
 function getAlwaysOnTop() { const v = loadState().alwaysOnTop; return v === undefined ? true : !!v; }
-// 테마는 일곱 — 블랙(기본, 빈 값) + 전역 여섯(페르시안·고스트·트루핑크·칠화이트·나이트·키위).
-// 모르는 이름이 저장돼 있으면 기본(블랙)으로 되돌린다.
-const THEMES = ['', 'persian', 'ghost', 'truepink', 'chillwhite', 'night', 'kiwi'];
+// 테마는 다섯 — 고스트(기본, 빈 값) · 블랙 · 페르시안 · 칠화이트 · 나이트.
+// 트루핑크·키위는 뺐다. 모르는 이름이 저장돼 있으면 기본(고스트)으로 되돌린다.
+const THEMES = ['', 'black', 'persian', 'chillwhite', 'night'];
 function getTheme() {
-  const t = loadState().theme || '';
+  let t = loadState().theme || '';
+  if (t === 'ghost') t = '';        // 고스트가 곧 기본이다
   return THEMES.includes(t) ? t : '';
+}
+
+// 글씨체 — 고른 즉시 바뀐다. 화면 쪽에서 이 이름으로 글꼴을 가른다.
+const FONTS = ['pretendard', 'nanum', 'gowunbatang', 'gowundodum', 'system'];
+function getFont() {
+  const f = loadState().font || 'pretendard';
+  return FONTS.includes(f) ? f : 'pretendard';
+}
+// 탭마다 글자 크기 배율을 따로 기억한다 (주간업무·컴시간·학사일정·급식)
+function getFontScale() {
+  const v = loadState().fontScale;
+  const out = { work: 1, comci: 1, cal: 1, meal: 1 };
+  if (v && typeof v === 'object') {
+    Object.keys(out).forEach((k) => {
+      const n = Number(v[k]);
+      if (n >= 0.7 && n <= 2) out[k] = n;
+    });
+  }
+  return out;
 }
 // 처음 설치했을 때는 AI 사용량을 꺼 둔다 — 켜면 클로드·제미나이에 로그인해야 해서,
 // 받자마자 쓰는 사람에게는 «로그인하기» 단추만 두 칸 보이는 셈이 된다.
@@ -145,6 +165,34 @@ function getView() {
 let updateState = 'idle';   // idle | available | ready
 let updateVersion = null;
 let manualUpdateCheck = false;
+
+/* ── 업데이트 내역 ──────────────────────────────────────────────
+   새 버전을 다 받으면 릴리스에 적어 둔 «무엇이 바뀌었는지» 가 같이 온다
+   (electron-updater 의 releaseNotes). 그것을 파일에 적어 두었다가,
+   새 버전으로 켜졌을 때 한 번 보여준다. 닫으면 다시 안 뜨고,
+   그 뒤로는 설정의 «업데이트 내역 보기» 로만 다시 볼 수 있다. */
+const notesFile = path.join(userDataPath, 'release-notes.json');
+let showNotes = false;      // 지금 띄워야 하는가
+
+function saveNotes(version, notes) {
+  let text = '';
+  if (typeof notes === 'string') text = notes;
+  else if (Array.isArray(notes)) text = notes.map((n) => (n && n.note) || '').join('\n\n');
+  text = String(text).replace(/\r/g, '').trim();
+  try { fs.writeFileSync(notesFile, JSON.stringify({ version: version, text: text })); }
+  catch (e) { debugLog('업데이트 내역 저장 실패: ' + e.message); }
+}
+function loadNotes() {
+  try { return JSON.parse(fs.readFileSync(notesFile, 'utf-8')); } catch (e) { return null; }
+}
+/* 이 버전 것을 아직 안 봤으면 띄운다 */
+function notesToShow() {
+  const n = loadNotes();
+  if (!n || !n.text) return null;
+  if (n.version !== app.getVersion()) return null;
+  if (!showNotes && loadState().seenNotesVersion === app.getVersion()) return null;
+  return n;
+}
 
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
@@ -183,6 +231,7 @@ autoUpdater.on('download-progress', (p) => {
 });
 autoUpdater.on('update-downloaded', (info) => {
   lastLoggedPercent = -1;
+  saveNotes(info.version, info.releaseNotes);
   manualUpdateCheck = false;
   setUpdateState('ready', info.version);
   notify(`${APP_NAME} 업데이트 준비됨`,
@@ -271,6 +320,10 @@ function sendToWidget() {
     scale: SIZES[getScale()],
     version: app.getVersion(),
     theme: getTheme(),
+    font: getFont(),
+    fontScale: getFontScale(),
+    todayEvent: todayEventText(),
+    notes: notesToShow(),
     flavor: FLAVOR,
     appName: APP_NAME,
     usage: { show: getUsageShow(), style: getUsageStyle(), data: aiusage.snapshot() },
@@ -696,6 +749,27 @@ function academicIsOld(a) {
     return fromTab && String(m.month) !== fromTab;
   });
 }
+/* 오늘이 며칠인지로 학사일정에서 오늘 일정을 뽑는다.
+   한 달이 8-1·8-2 로 나뉜 시트가 있어서, 일정이 적혀 있는 쪽을 고른다. */
+function todayEventText() {
+  try {
+    const a = loadAcademic();
+    if (!a || !(a.months || []).length) return '';
+    const now = new Date();
+    const mm = String(now.getMonth() + 1), dd = now.getDate();
+    let found = '';
+    a.months.forEach((m) => {
+      if (String(m.month) !== mm) return;
+      (m.days || []).forEach((d) => {
+        if (d.day !== dd) return;
+        const t = String(d.event || '').trim();
+        if (t) found = t;              // 뒤쪽(8-2 등)에 적힌 것이 지금 쓰는 달이다
+      });
+    });
+    return found;
+  } catch (e) { return ''; }
+}
+
 ipcMain.handle('get-academic', () => {
   const a = loadAcademic();
   if (academicIsOld(a)) {
@@ -730,13 +804,14 @@ async function neisSchool() {
   return picked;
 }
 let mealFetching = false;
-async function refreshMeals(baseDate) {
+async function refreshMeals(baseDate, weekOff) {
   if (mealFetching) return loadMeals();
   mealFetching = true;
   try {
     const school = await neisSchool();
     const w = await neis.fetchWeekMeals(school, baseDate);
     w.school = school.name;
+    w.weekOff = Number(weekOff) || 0;   // 몇 주 옮겨 본 것인지 화면이 알아야 한다
     try { fs.writeFileSync(mealFile, JSON.stringify(w)); } catch (e) { /* 무시 */ }
     debugLog(`급식 받기 완료 — ${w.meals.length}건 (${w.from}~${w.to})`);
     if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('meals-changed');
@@ -757,9 +832,13 @@ ipcMain.handle('neis-search', async (_e, name) => {
   }
 });
 ipcMain.handle('get-meals', () => loadMeals());
-ipcMain.handle('meals-fetch', async () => {
+// off = 0 이번주, 1 다음주, -1 지난주 …
+ipcMain.handle('meals-fetch', async (_e, off) => {
+  const n = Number(off) || 0;
+  const base = new Date();
+  base.setDate(base.getDate() + n * 7);
   setTask('meal', '급식', 'busy');
-  try { return await refreshMeals(); } finally { setTask('meal', null, null); }
+  try { return await refreshMeals(n === 0 ? null : base, n); } finally { setTask('meal', null, null); }
 });
 
 /* ===================== 설정 창 ===================== */
@@ -790,6 +869,7 @@ ipcMain.handle('get-settings', () => ({
     flavor: FLAVOR,
     appName: APP_NAME,
     theme: getTheme(),
+    font: getFont(),
     usageShow: getUsageShow(),
     usageStyle: getUsageStyle(),
     academicSheet: loadState().academicSheet || academic.DEFAULT_SHEET,
@@ -810,6 +890,11 @@ ipcMain.on('set-ui', (_e, v) => {
     debugLog(`급식 학교 지정: ${v.neis.name} (${v.neis.atpt}/${v.neis.code})`);
   }
   if (v.theme !== undefined) { saveState({ theme: String(v.theme || '') }); sendToWidget(); }
+  if (v.font !== undefined) { saveState({ font: String(v.font || 'pretendard') }); sendToWidget(); }
+  if (v.fontScale !== undefined) {
+    saveState({ fontScale: Object.assign(getFontScale(), v.fontScale) });
+    sendToWidget();
+  }
   if (v.usageShow !== undefined) { saveState({ usageShow: !!v.usageShow }); sendToWidget(); }
   if (v.usageStyle !== undefined) {
     saveState({ usageStyle: v.usageStyle === 'bar' ? 'bar' : 'ring' });
@@ -835,6 +920,16 @@ ipcMain.on('check-update', () => checkForUpdates(true));
 ipcMain.on('open-log', () => shell.openPath(debugLogFile));
 ipcMain.on('open-settings', () => openSettingsWindow());
 ipcMain.on('install-update', () => installUpdateNow());
+ipcMain.on('notes-seen', () => {              // 닫으면 이 버전은 다시 안 띄운다
+  showNotes = false;
+  saveState({ seenNotesVersion: app.getVersion() });
+  sendToWidget();
+});
+ipcMain.on('notes-show', () => {              // 설정의 «업데이트 내역 보기»
+  showNotes = true;
+  sendToWidget();
+  if (widgetWin && !widgetWin.isDestroyed()) { widgetWin.show(); widgetWin.focus(); }
+});
 
 /* ===================== 트레이 ===================== */
 function createTray() {

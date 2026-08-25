@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.19.3 -->
+<!-- 파일명: widget.html | @version 1.20.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -6,9 +6,12 @@
 <title>혜원 데스크</title>
 <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Nanum+Gothic:wght@400;700;800&display=swap" />
 <style>
-  /* ── 테마 일곱 ────────────────────────────────────────────────
-       블랙(기본) + 전역 여섯: 페르시안·고스트·트루핑크·칠화이트·나이트·키위
+  /* ── 테마 다섯 ────────────────────────────────────────────────
+       고스트(기본) · 블랙 · 페르시안 · 칠화이트 · 나이트
 
      ★ 색이 «또렷하게» 나와야 한다. 바탕은 바탕색 그대로, 글자·강조는 짝 색 그대로다.
        (전에 카드·선을 바탕색에 너무 옅게 섞어 만들어서 화면 전체가 한 색으로
@@ -16,13 +19,18 @@
      ★ 강조색(--accent)은 따로 지어내지 않고 «짝 색» 을 그대로 쓴다.
        그래야 고른 탭·단추가 시안의 타일처럼 색이 꽉 찬 덩어리로 보인다. */
   :root {
-    /* 기본 = 블랙. 위젯을 처음 만들었을 때 색 그대로라 섞어 만들지 않고 그때 값을 적는다 */
-    --bg: #15181d; --fg: #eef1f5; --accent: #ff8b3d; --now: #35c98b; --on: #1a1206;
-    --card: #1c2027; --card2: #262c35; --line: #2b313a;
-    --dim: #97a1ae; --fg2: #c3cbd6;
-    --warnbg: #2a2419; --warnfg: #f0c98a;
-    --holbg: #331d1d; --holfg: #f0928a;
-    --wf: 1;      /* 주간업무 글자 크기 배수 */
+    /* 기본 = 고스트 */
+    --bg: #F7F7FF; --fg: #27187E; --accent: #27187E; --on: #F7F7FF; --now: #0E7C58;
+    --card:  color-mix(in srgb, var(--fg) 10%, var(--bg));
+    --card2: color-mix(in srgb, var(--fg) 18%, var(--bg));
+    --line:  color-mix(in srgb, var(--fg) 30%, var(--bg));
+    --dim:   color-mix(in srgb, var(--fg) 65%, var(--bg));
+    --fg2:   color-mix(in srgb, var(--fg) 88%, var(--bg));
+    --warnbg: color-mix(in srgb, var(--now) 22%, var(--bg));
+    --warnfg: color-mix(in srgb, var(--now) 80%, var(--fg));
+    --holbg: color-mix(in srgb, #ff5a5a 24%, var(--bg));
+    --holfg: color-mix(in srgb, #ff5a5a 76%, var(--fg));
+    --wf: 1;      /* 글자 크기 배수 — 보고 있는 탭의 값이 들어온다 */
     --toph: 46px; /* 고정된 머리 높이 — 그릴 때마다 재서 채워 넣는다 */
   }
   /* 테마를 고르면 나머지 색은 바탕·글자를 섞어 만든다.
@@ -38,14 +46,16 @@
     --holbg: color-mix(in srgb, #ff5a5a 24%, var(--bg));
     --holfg: color-mix(in srgb, #ff5a5a 76%, var(--fg));
   }
+  /* 블랙 — 위젯을 처음 만들었을 때 색 그대로라 섞어 만들지 않고 그때 값을 적는다 */
+  :root[data-theme="black"] {
+    --bg: #15181d; --fg: #eef1f5; --accent: #ff8b3d; --now: #35c98b; --on: #1a1206;
+    --card: #1c2027; --card2: #262c35; --line: #2b313a;
+    --dim: #97a1ae; --fg2: #c3cbd6;
+    --warnbg: #2a2419; --warnfg: #f0c98a;
+    --holbg: #331d1d; --holfg: #f0928a;
+  }
   :root[data-theme="persian"] {
     --bg: #27187E; --fg: #F7F7FF; --accent: #F7F7FF; --on: #27187E; --now: #7BE3C0;
-  }
-  :root[data-theme="ghost"] {
-    --bg: #F7F7FF; --fg: #27187E; --accent: #27187E; --on: #F7F7FF; --now: #0E7C58;
-  }
-  :root[data-theme="truepink"] {
-    --bg: #FD1843; --fg: #FFF9FA; --accent: #FFF9FA; --on: #FD1843; --now: #FFE04A;
   }
   :root[data-theme="chillwhite"] {
     --bg: #FFF9FA; --fg: #FD1843; --accent: #FD1843; --on: #FFF9FA; --now: #0E7C58;
@@ -54,16 +64,17 @@
   :root[data-theme="night"] {
     --bg: #222222; --fg: #89E900; --accent: #89E900; --on: #222222; --now: #C6FF6B;
   }
-  :root[data-theme="kiwi"] {
-    --bg: #89E900; --fg: #222222; --accent: #222222; --on: #89E900; --now: #0B4D00;
-  }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* 글씨체 — 설정에서 고르면 바로 바뀐다. 못 받아 왔으면 맑은 고딕으로 내려간다. */
+  :root { --ff: "Pretendard Variable", Pretendard, "Segoe UI", "Malgun Gothic", sans-serif; }
+  :root[data-font="nanum"]       { --ff: "Nanum Gothic", "나눔고딕", "Malgun Gothic", sans-serif; }
+  :root[data-font="gowunbatang"] { --ff: "Gowun Batang", "고운바탕", "Batang", serif; }
+  :root[data-font="gowundodum"]  { --ff: "Gowun Dodum", "고운돋움", "Malgun Gothic", sans-serif; }
+  :root[data-font="system"]      { --ff: "Malgun Gothic", "맑은 고딕", sans-serif; }
   html, body {
     background: var(--bg);
     color: var(--fg);
-    font-family: "Pretendard Variable", Pretendard, "Pretendard JP",
-                 -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+    font-family: var(--ff);
     font-size: 13px;
     overflow: hidden;
     user-select: none;
@@ -137,10 +148,11 @@
     transition: transform .15s, opacity .15s;
   }
   .gear:hover { opacity: 1; transform: rotate(45deg); }
-  :root[data-theme="ghost"] .gear,
-  :root[data-theme="chillwhite"] .gear,
-  :root[data-theme="kiwi"] .gear { background-image: url('assets/setting_bk.png'); }
-  :root[data-theme="truepink"] .gear { background-image: url('assets/setting_bluebk.png'); }
+  /* 밝은 바탕(기본 고스트·칠화이트)에는 검정 톱니 */
+  :root .gear, :root[data-theme="chillwhite"] .gear { background-image: url('assets/setting_bk.png'); }
+  :root[data-theme="black"] .gear,
+  :root[data-theme="persian"] .gear,
+  :root[data-theme="night"] .gear { background-image: url('assets/setting_blue.png'); }
   /* 제목 줄 오른쪽 끝 — 지금 쓰는 버전 */
   .tver {
     margin-left: 7px; font-size: 9.5px; font-weight: 700;
@@ -183,6 +195,23 @@
   .brow .bk i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
   .brow .rs { font-size: 8.5px; color: var(--dim); line-height: 1.3; }
   .usg .rs em { font-style: normal; color: var(--now); font-weight: 700; }
+
+  /* 업데이트 내역 카드 */
+  .notes {
+    background: var(--card); border-radius: 9px; padding: 8px 10px; margin-bottom: 8px;
+    box-shadow: inset 0 0 0 1.5px var(--accent);
+  }
+  .nh {
+    display: flex; align-items: center; font-size: 11.5px; font-weight: 800;
+    color: var(--accent); margin-bottom: 5px;
+  }
+  .nx {
+    -webkit-app-region: no-drag;
+    margin-left: auto; border: 0; background: none; color: var(--dim);
+    font-size: 12px; cursor: pointer; padding: 0 2px; font-family: inherit;
+  }
+  .nx:hover { color: var(--fg); }
+  .nl { font-size: 10.5px; color: var(--fg2); line-height: 1.5; margin-bottom: 2px; }
 
   /* ── 업데이트 띠 ── */
   .upd {
@@ -459,6 +488,27 @@
 
 <script>
 var STATE = null, VIEW = 'today', SCALE = 1, VER = '', UPD = null, LASTTT = 'today', THEME = '';
+var FONT = 'pretendard';
+/* 오늘 일정 — 수업진도 앱이 주는 note 가 없을 때 학사일정에서 뽑아 온 것.
+   혜원 데스크에는 수업진도 자료가 아예 없으므로 이것이 유일한 길이다. */
+var TODAYEV = '';
+/* 업데이트 내역 — 새 버전으로 켜졌을 때 한 번 보여주고, 닫으면 다시 안 뜬다 */
+var NOTES = null;
+/* 탭마다 글자 크기 배율을 따로 둔다. 메인이 저장해 두므로 껐다 켜도 그대로다. */
+var FS = { work: 1, comci: 1, cal: 1, meal: 1 };
+function fsKey() { return ({ work: 'work', comci: 'comci', cal: 'cal', meal: 'meal' })[VIEW] || ''; }
+function fontBtns(key) {
+  return '<span class="wfs">'
+    + '<button class="wkb" data-fs="' + key + ',-1" title="글자 작게">A−</button>'
+    + '<button class="wkb" data-fs="' + key + ',1" title="글자 크게">A+</button></span>';
+}
+function bumpFont(key, dir) {
+  var v = Math.round((Math.min(1.8, Math.max(0.8, (FS[key] || 1) + dir * 0.1))) * 100) / 100;
+  FS[key] = v;
+  var patch = {}; patch[key] = v;
+  widgetAPI.setUi({ fontScale: patch });
+  render();
+}
 /* 갈래 — jinho(진호알리미, 시간표 있음) / hyewon(혜원 데스크, 시간표 없음).
    메인이 그릴 때마다 알려 준다. 시간표에 딸린 것만 가리고 나머지는 둘 다 같다. */
 var FLAVOR = 'jinho', HAS_TT = true, APPNAME = '진호알리미';
@@ -646,7 +696,7 @@ function viewWeek(d) {
    검색은 목록을 따로 보여주지 않고 그 자리로 데려간다. 여럿이면 ▲▼ 로 옮겨 다닌다.
    합본은 주차 단추를 늘어놓고, 누르면 그 주로 간다. */
 var WORK = null, workBusy = false, workDoc = 'input', workOff = 0, workQ = '';
-var workHits = 0, workHitIdx = 0, workFont = 1, wantScrollHit = false;
+var workHits = 0, workHitIdx = 0, wantScrollHit = false;   // 글자 크기는 FS 로 옮겼다
 var composing = false, renderTimer = null;
 var HITN = 0;          // 그리는 동안 찾은 자리에 번호를 매긴다
 var followHit = true;  // 찾은 자리를 따라갈 것인가 (주차 단추를 누르면 잠시 꺼진다)
@@ -768,8 +818,7 @@ function viewWork() {
       + '<button class="wkb" id="wkPrev" title="이전 (Shift+Enter)">▲</button>'
       + '<button class="wkb" id="wkNext" title="다음 (Enter)">▼</button>';
   }
-  h += '<span class="wfs"><button class="wkb" id="wkFontDn" title="글자 작게">A−</button>'
-    + '<button class="wkb" id="wkFontUp" title="글자 크게">A+</button></span>'
+  h += fontBtns('work')
     + '<button class="wkb" id="workGet" title="다시 가져오기">⟳</button></div>';
 
   if (!weeks.length && WORK.refreshing) {
@@ -870,6 +919,7 @@ function viewComci() {
   var h = '<div class="wknav"><span class="wklab" style="text-align:left">'
     + esc(d.schoolName || d.school || '')
     + '<small>' + esc((d.updatedAt || '').slice(0, 10)) + ' 기준</small></span>'
+    + fontBtns('comci')
     + '<button class="wkb" id="cmGet" title="설정에서 다시 불러오기">⚙</button></div>';
 
   // ★ 둘 다 골라 두었으면 둘 다 내려 보여준다 (전에는 하나만 골라 볼 수 있었다)
@@ -961,6 +1011,7 @@ function viewAcademic() {
           + esc(x.month) + '월' + (/-/.test(x.tab) ? '<small>' + esc(x.tab) + '</small>' : '') + '</button>';
       }).join('')
     + '<span class="spacer"></span>'
+    + fontBtns('cal')
     + '<button class="wkb go" id="acToday" title="오늘 날짜로">오늘로</button>'
     + '<button class="wkb" id="acGet" title="다시 가져오기">⟳</button></div></div>';
 
@@ -1076,10 +1127,15 @@ function loadMeals() {
 function viewMeals() {
   if (!ML) { loadMeals(); return '<div class="empty">급식을 불러오는 중…</div>'; }
   var list = (ML.meals) || [];
-  var head = '<div class="wknav"><span class="wklab" style="text-align:left">'
-    + esc(ML.school || '급식')
+  var off = Number(ML.weekOff) || 0;
+  var head = '<div class="top2"><div class="wknav">'
+    + '<button class="wkb" data-ml="' + (off - 1) + '" title="지난 주">◀</button>'
+    + '<span class="wklab">' + esc(ML.school || '급식')
     + '<small>' + (ML.from ? esc(fmtYmd(ML.from)) + ' ~ ' + esc(fmtYmd(ML.to)) : '') + '</small></span>'
-    + '<button class="wkb" id="mlGet" title="다시 가져오기">⟳</button></div>';
+    + '<button class="wkb" data-ml="' + (off + 1) + '" title="다음 주">▶</button>'
+    + (off !== 0 ? '<button class="wkb go" data-ml="0">이번주</button>' : '')
+    + fontBtns('meal')
+    + '<button class="wkb" id="mlGet" title="다시 가져오기">⟳</button></div></div>';
   if (!list.length) {
     return head + '<div class="empty">' + (ML.error ? esc(ML.error) : '이 주에는 급식이 없습니다.')
       + '<br><button class="btn" id="mlGetBig">지금 가져오기</button></div>';
@@ -1236,6 +1292,15 @@ function taskBar() {
 }
 
 /* 맨 위 제목 줄 — 여기를 잡고 끌면 위젯이 움직인다 */
+/* 업데이트 내역 카드 — 무엇이 바뀌었는지 릴리스에 적어 둔 글이 그대로 온다 */
+function notesCard() {
+  if (!NOTES || !NOTES.text) return '';
+  var lines = String(NOTES.text).split('\n').filter(function (t) { return t.trim(); });
+  return '<div class="notes"><div class="nh">🆕 v' + esc(NOTES.version) + ' 에서 바뀐 것'
+    + '<button class="nx" id="notesX" title="닫기">✕</button></div>'
+    + lines.map(function (t) { return '<div class="nl">' + esc(t) + '</div>'; }).join('')
+    + '</div>';
+}
 function titleBar() {
   return '<div class="tbar">'
     + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
@@ -1273,7 +1338,7 @@ function render() {
     return report();
   }
 
-  var d = STATE, html = '<div class="top">' + titleBar() + usageBar() + updBar() + taskBar();
+  var d = STATE, html = '<div class="top">' + titleBar() + notesCard() + usageBar() + updBar() + taskBar();
   // 혜원 데스크는 수업진도 자료를 안 받으므로 날짜·요일을 스스로 만든다
   var nd = new Date();
   var dText = d.date ? d.date.slice(5).replace('-', '월 ') + '일'
@@ -1286,9 +1351,11 @@ function render() {
     + (HAS_TT ? '<button class="ico" title="수업진도 앱 열기(크롬)" onclick="widgetAPI.openApp()">↗</button>' : '')
     + '</div>';
 
-  if (d.note || d.holiday) {
+  var noteTxt = d.note || TODAYEV || '';
+  if (noteTxt || d.holiday) {
     html += '<div class="note' + (d.holiday ? ' hol' : '') + '">'
-      + (d.holiday ? '🚫 휴업일' : '📌 오늘 일정') + (d.note ? ' · ' + esc(d.note) : '') + '</div>';
+      + (d.holiday ? '🚫 휴업일' : '📌 오늘 일정')
+      + (noteTxt ? ' · ' + esc(noteTxt) : '') + '</div>';
   }
 
   // 큰 탭 5개. «시간표» 안에서 오늘·이번주·진도를 다시 고른다.
@@ -1318,7 +1385,7 @@ function render() {
     : VIEW === 'meal' ? viewMeals()
     : viewToday(d);
   html += '<div class="foot">@JINHOKIM</div>';   // 버전은 제목 줄 오른쪽 끝에 있다
-  app.style.setProperty('--wf', String(workFont));
+  app.style.setProperty('--wf', String(FS[fsKey()] || 1));
   app.innerHTML = html;
   // 두 번째 고정 줄이 머리 «바로 아래»에 붙도록, 머리 높이를 재서 알려 준다.
   // 머리는 업데이트 띠·사용량 띠가 있고 없고에 따라 높이가 달라져서 고정값을 쓸 수 없다.
@@ -1338,8 +1405,18 @@ function render() {
         widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
         return; }
       if (b.id === 'cmGet') { widgetAPI.openSettings(); return; }
-      if (b.id === 'wkFontUp') { workFont = Math.min(1.6, workFont + 0.1); render(); return; }
-      if (b.id === 'wkFontDn') { workFont = Math.max(0.8, workFont - 0.1); render(); return; }
+      if (b.dataset.fs) {
+        var fp = b.dataset.fs.split(',');
+        bumpFont(fp[0], Number(fp[1]));
+        return;
+      }
+      if (b.dataset.ml !== undefined) {
+        mlBusy = true; render();
+        widgetAPI.mealsFetch(Number(b.dataset.ml)).then(function (d) {
+          mlBusy = false; ML = d || { empty: true }; render();
+        });
+        return;
+      }
       if (b.id === 'wkNext') { moveHit(1); return; }
       if (b.id === 'wkPrev') { moveHit(-1); return; }
       if (b.dataset.cm) { cmMode = b.dataset.cm; render(); return; }
@@ -1406,6 +1483,8 @@ function render() {
       USGSTYLE = b.dataset.usgstyle; widgetAPI.setUsageStyle(USGSTYLE); render();
     });
   });
+  var nx = app.querySelector('#notesX');
+  if (nx) nx.addEventListener('click', function () { NOTES = null; widgetAPI.notesSeen(); render(); });
   var ug = app.querySelector('#usgGet');
   if (ug) ug.addEventListener('click', function () { widgetAPI.usageRefresh(); });
 
@@ -1450,6 +1529,14 @@ widgetAPI.onData(function (p) {
   VIEW = p.view || VIEW;
   VER = p.version || '';
   UPD = p.update || null;
+  if (p.font && p.font !== FONT) {
+    FONT = p.font;
+    if (FONT === 'pretendard') delete document.documentElement.dataset.font;
+    else document.documentElement.dataset.font = FONT;
+  }
+  if (p.fontScale) FS = Object.assign(FS, p.fontScale);
+  if (p.todayEvent !== undefined) TODAYEV = p.todayEvent;
+  if (p.notes !== undefined) NOTES = p.notes;
   if (p.flavor) {
     FLAVOR = p.flavor;
     HAS_TT = FLAVOR !== 'hyewon';
