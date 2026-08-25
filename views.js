@@ -849,7 +849,8 @@ var recBusy = false, recErr = '';
 var recMode = 'write';   // write | stat | cats
 var recCls = '', recSid = '', recCat = '';
 var recDraft = '', recSavedAt = '', recOpen = 0;   // recOpen = 펼쳐 놓은 기록의 줄 번호
-var statStu = [], statCat = [], statMon = [];   // 통계에서 고른 것들 (여러 개)
+var statStu = [], statCat = [], statMon = [], statCls = [];   // 통계에서 고른 것들 (여러 개)
+var statMore = false;    // 학생 줄을 펼쳐 놓았는가
 var catEdit = null;      // 카테고리 편집 중인 목록
 
 function recLoad(force) {
@@ -1035,38 +1036,72 @@ function recWrite() {
 /* ── 통계 ── */
 function recStat() {
   var rs = ((RECDATA && RECDATA.records) || []).filter(function (r) { return r.text; });
-  var studs = [];
-  recClassList().forEach(function (c) { studs = studs.concat(c.students); });
-  var cats = recCats();
-  var months = [];
-  rs.forEach(function (r) {
-    var m = String(r.at || '').slice(0, 7);          // 2026.08
-    if (m && months.indexOf(m) < 0) months.push(m);
-  });
-  months.sort().reverse();
+  if (!rs.length) return '<div class="empty">아직 쌓인 기록이 없습니다.</div>';
 
-  function chips(list, chosen, key, label) {
+  function clsOf(r) { return (r.grade || 0) + '-' + (r.cls || 0); }
+
+  // ★ 기록이 «있는» 것만 모은다. 열 학급 중 셋만 썼으면 셋만 나온다.
+  function tally(list, keyOf, textOf) {
+    var seen = {}, out = [];
+    list.forEach(function (r) {
+      var k = keyOf(r);
+      if (!k) return;
+      if (!seen[k]) { seen[k] = { v: k, t: textOf(r), n: 0 }; out.push(seen[k]); }
+      seen[k].n++;
+    });
+    return out;
+  }
+  function chips(list, chosen, key, label, hint) {
+    if (!list.length) return '';
     return '<div class="wknav"><span class="slab">' + label + '</span>'
       + '<button class="wkb' + (chosen.length ? '' : ' now') + '" data-sa="' + key + '">전체</button>'
       + list.map(function (v) {
-          return '<button class="wkb' + (chosen.indexOf(v.v) >= 0 ? ' now' : '') + '" data-s' + key + '="' + esc(v.v) + '">'
-            + esc(v.t) + '</button>';
-        }).join('') + '</div>';
+          return '<button class="wkb' + (chosen.indexOf(v.v) >= 0 ? ' now' : '')
+            + '" data-s' + key + '="' + esc(v.v) + '">' + esc(v.t)
+            + '<em class="scnt">' + v.n + '</em></button>';
+        }).join('')
+      + (hint ? '<span class="shint">' + esc(hint) + '</span>' : '')
+      + '</div>';
   }
+
+  // ── 학급 : 기록이 있는 학급만, 번호 순
+  var clsList = tally(rs, clsOf, clsOf).sort(function (a, b) { return a.v.localeCompare(b.v); });
+  // ── 분류 : 고른 학급 안에서 실제로 쓰인 것만
+  var inCls = rs.filter(function (r) { return !statCls.length || statCls.indexOf(clsOf(r)) >= 0; });
+  var catList = tally(inCls, function (r) { return r.cat; }, function (r) { return r.cat; });
+  // ── 학생 : 학급·분류로 좁힌 뒤 «기록이 있는 사람»만. 명렬표를 늘어놓지 않는다.
+  var inCat = inCls.filter(function (r) { return !statCat.length || statCat.indexOf(r.cat) >= 0; });
+  var stuList = tally(inCat, function (r) { return r.id; },
+    function (r) { return r.id + ' ' + r.name; })
+    .sort(function (a, b) { return String(a.v).localeCompare(String(b.v)); });
+  // ── 날짜(달)
+  var monList = tally(inCat, function (r) { return String(r.at || '').slice(0, 7); },
+    function (r) { return String(r.at || '').slice(0, 7).replace('.', '년 ') + '월'; })
+    .sort(function (a, b) { return b.v.localeCompare(a.v); });
+
+  // 학생이 많으면 처음엔 한 줄만 보이고 «더 보기» 로 편다
+  var STU_FOLD = 12;
+  var stuShow = (statMore || stuList.length <= STU_FOLD) ? stuList : stuList.slice(0, STU_FOLD);
+
   var h = '<div class="top2">'
-    + chips(studs.map(function (s) { return { v: s.id, t: s.id + ' ' + s.name }; }), statStu, 'u', '학생')
-    + chips(cats.map(function (c) { return { v: c.name, t: c.name }; }), statCat, 'c', '분류')
-    + chips(months.map(function (m) { return { v: m, t: m.replace('.', '년 ') + '월' }; }), statMon, 'm', '날짜')
+    + chips(clsList, statCls, 'l', '학급')
+    + chips(catList, statCat, 'c', '분류')
+    + chips(stuShow, statStu, 'u', '학생')
+    + (stuList.length > STU_FOLD
+        ? '<div class="wknav"><span class="slab"></span><button class="wkb" id="stuMore">'
+          + (statMore ? '− 접기' : '+ 더 보기 (' + (stuList.length - STU_FOLD) + '명)') + '</button></div>'
+        : '')
+    + chips(monList, statMon, 'm', '날짜')
     + '</div>';
 
-  var out = rs.filter(function (r) {
+  var out = inCat.filter(function (r) {
     if (statStu.length && statStu.indexOf(r.id) < 0) return false;
-    if (statCat.length && statCat.indexOf(r.cat) < 0) return false;
     if (statMon.length && statMon.indexOf(String(r.at).slice(0, 7)) < 0) return false;
     return true;
   });
+  var picked = statCls.length || statCat.length || statStu.length || statMon.length;
   h += '<div class="rsum">모두 ' + out.length + '건'
-    + (statStu.length || statCat.length || statMon.length ? ' (걸러 봄)' : '') + '</div>';
+    + (picked ? ' (걸러 봄)' : ' · 학급 ' + clsList.length + '개') + '</div>';
   if (!out.length) return h + '<div class="empty">해당하는 기록이 없습니다.</div>';
 
   h += out.map(function (r, i) {
@@ -1078,6 +1113,7 @@ function recStat() {
   }).join('');
   return h;
 }
+
 
 /* ── 카테고리 편집 ── */
 function recCatsEdit() {
@@ -1418,8 +1454,17 @@ function wireViews(app) {
         if (b.dataset.sa === 'u') statStu = [];
         if (b.dataset.sa === 'c') statCat = [];
         if (b.dataset.sa === 'm') statMon = [];
+        if (b.dataset.sa === 'l') { statCls = []; statStu = []; }
         render(); return;
       }
+      if (b.dataset.sl) {
+        var k2 = statCls.indexOf(b.dataset.sl);
+        if (k2 >= 0) statCls.splice(k2, 1); else statCls.push(b.dataset.sl);
+        statStu = [];            // 학급이 바뀌면 학생 고름은 뜻을 잃는다
+        statMore = false;
+        render(); return;
+      }
+      if (b.id === 'stuMore') { statMore = !statMore; render(); return; }
       if (b.dataset.su || b.dataset.sc || b.dataset.sm) {
         var arr = b.dataset.su ? statStu : (b.dataset.sc ? statCat : statMon);
         var v = b.dataset.su || b.dataset.sc || b.dataset.sm;

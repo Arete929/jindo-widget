@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.1.1
+/* 파일명: ui.css | @version 1.2.0
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -539,6 +539,14 @@
   .rcard { background: var(--card); border-radius: 8px; padding: 7px 9px; margin-bottom: 5px; }
   .rch { display: flex; align-items: center; gap: 5px; font-size: 10.5px;
          font-weight: 800; color: var(--accent); margin-bottom: 4px; }
+  /* 통계 — 고르개 단추에 붙는 건수 뱃지 */
+  .scnt {
+    font-style: normal; margin-left: 4px; padding: 0 4px; border-radius: 999px;
+    font-size: 9px; font-weight: 800;
+    background: color-mix(in srgb, var(--fg) 16%, var(--bg)); color: var(--dim);
+  }
+  .wkb.now .scnt { background: color-mix(in srgb, var(--on) 30%, transparent); color: var(--on); }
+  .shint { font-size: 9.5px; color: var(--dim); margin-left: 4px; }
   .rcb { font-size: calc(11px * var(--wf)); color: var(--fg2); line-height: 1.6; white-space: pre-wrap; }
   /* 지난 기록 — 접힌 타일로 쌓고, 누르면 펼쳐진다 */
   .racs { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
