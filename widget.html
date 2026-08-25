@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.15.0 -->
+<!-- 파일명: widget.html | @version 1.15.1 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -58,15 +58,15 @@
   }
   /* 내용이 길면 세로로 넘긴다. 창 전체를 끌기 영역으로 두면 휠·스크롤이 창 이동으로
      가로채여서 아예 안 움직인다 — 그래서 끌기는 머리 줄에만 준다. */
-  #app { padding: 10px 11px 11px; max-height: 100vh; overflow-y: auto; overflow-x: hidden; }
+  #app { padding: 0 11px 11px; max-height: 100vh; overflow-y: auto; overflow-x: hidden; }
   #app::-webkit-scrollbar { width: 7px; }
   #app::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
   #app::-webkit-scrollbar-track { background: transparent; }
 
   /* 머리 고정 — 내용이 길어도 날짜·탭은 늘 보이게 */
   .top {
-    position: sticky; top: -10px; z-index: 6;
-    background: var(--bg); padding: 10px 0 2px; margin: -10px 0 0;
+    position: sticky; top: 0; z-index: 6;
+    background: var(--bg); padding: 10px 0 2px;
   }
   /* 머리 «바로 아래»에 한 겹 더 붙는 줄 (주간업무 검색줄, 학사일정 월 단추) */
   .top2 {
@@ -91,13 +91,15 @@
   /* ── 제목 줄 ──
      창틀이 없는 위젯이라 «잡고 끌 곳»이 꼭 있어야 한다.
      사용량 띠가 맨 위로 오면서 끌 자리가 사라져 위젯을 못 옮기게 됐었다. */
-  .bar {
+  /* ★ 이름을 .bar 로 뒀다가 아래쪽 «진도 막대»(.bar, 높이 7px)와 겹쳐서
+     제목 줄이 7px 로 눌려 글자가 잘렸다. 이름은 .tbar 로 따로 둔다. */
+  .tbar {
     display: flex; align-items: center; gap: 6px;
     -webkit-app-region: drag; cursor: move;
-    padding: 0 2px 6px;
+    padding: 2px 2px 8px;
   }
-  .ttl { font-size: 11px; font-weight: 800; letter-spacing: .4px; color: var(--dim); }
-  .grip { margin-left: auto; font-size: 10px; letter-spacing: 2px; color: var(--dim); opacity: .55; }
+  .ttl { font-size: 15px; font-weight: 800; letter-spacing: -.3px; color: var(--fg); }
+  .grip { margin-left: auto; font-size: 11px; letter-spacing: 2px; color: var(--dim); opacity: .55; }
 
   /* 사용량 띠의 빈 곳으로도 끌 수 있게 — 단, 단추는 눌려야 한다 */
   .usg { display: flex; gap: 6px; margin-bottom: 8px; -webkit-app-region: drag; }
@@ -1140,7 +1142,7 @@ function taskBar() {
 
 /* 맨 위 제목 줄 — 여기를 잡고 끌면 위젯이 움직인다 */
 function titleBar() {
-  return '<div class="bar"><span class="ttl">혜원 데스크</span>'
+  return '<div class="tbar"><span class="ttl">혜원 데스크</span>'
     + '<span class="grip" title="여기를 잡고 끌면 위젯이 움직입니다">⠿⠿</span></div>';
 }
 function updBar() {
@@ -1216,7 +1218,7 @@ function render() {
   // 두 번째 고정 줄이 머리 «바로 아래»에 붙도록, 머리 높이를 재서 알려 준다.
   // 머리는 업데이트 띠·사용량 띠가 있고 없고에 따라 높이가 달라져서 고정값을 쓸 수 없다.
   var topEl = app.querySelector('.top');
-  app.style.setProperty('--toph', (topEl ? topEl.offsetHeight - 10 : 46) + 'px');
+  app.style.setProperty('--toph', (topEl ? topEl.offsetHeight : 46) + 'px');
 
   app.querySelectorAll('.wkb').forEach(function (b) {
     b.addEventListener('click', function () {
