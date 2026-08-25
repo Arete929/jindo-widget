@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.22.1
+// 파일명: main.js | @version 1.23.0
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
-// 수정요약: v1.22.1 학생기록 타일에 날짜·카테고리·요약 표시, 한 학생의 모든 분류를 한자리에
+// 수정요약: v1.23.0 테마 «슬레이트»·«슬레이트 라이트» 추가 (남색/밝은 바탕 + 같은 보라 강조)
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -124,7 +124,7 @@ function getOpacity() { const o = loadState().opacity; return typeof o === 'numb
 function getAlwaysOnTop() { const v = loadState().alwaysOnTop; return v === undefined ? true : !!v; }
 // 테마는 다섯 — 고스트(기본, 빈 값) · 블랙 · 페르시안 · 칠화이트 · 나이트.
 // 트루핑크·키위는 뺐다. 모르는 이름이 저장돼 있으면 기본(고스트)으로 되돌린다.
-const THEMES = ['', 'black', 'persian', 'chillwhite', 'night'];
+const THEMES = ['', 'black', 'slate', 'slatelight', 'persian', 'chillwhite', 'night'];
 function getTheme() {
   let t = loadState().theme || '';
   if (t === 'ghost') t = '';        // 고스트가 곧 기본이다

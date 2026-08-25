@@ -1,4 +1,4 @@
-<!-- 파일명: widget.html | @version 1.22.1 -->
+<!-- 파일명: widget.html | @version 1.23.0 -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -59,6 +59,25 @@
   }
   :root[data-theme="chillwhite"] {
     --bg: #FFF9FA; --fg: #FD1843; --accent: #FD1843; --on: #FFF9FA; --now: #0E7C58;
+  }
+  /* 슬레이트 — 차분한 남색 바탕에 보라 강조.
+     학교업무도우미에서 눈여겨본 색을 그대로 가져왔다(테일윈드 slate + violet).
+     카드·선·흐린 글자는 섞어 만들지 않고 그쪽 값을 그대로 적는다 — 그래야 그 느낌이 난다. */
+  :root[data-theme="slate"] {
+    --bg: #0f172a; --fg: #f1f5f9; --accent: #8b5cf6; --on: #ffffff; --now: #10b981;
+    --card: #1e293b; --card2: #334155; --line: #334155;
+    --dim: #94a3b8; --fg2: #cbd5e1;
+    --warnbg: #2a2413; --warnfg: #fbbf24;
+    --holbg: #331a22; --holfg: #f43f5e;
+  }
+  /* 슬레이트 라이트 — 위 슬레이트의 밝은 짝.
+     바탕과 글자만 뒤집고 «보라 강조는 그대로» 둔다 — 그래야 두 벌이 한 앱처럼 보인다. */
+  :root[data-theme="slatelight"] {
+    --bg: #f8fafc; --fg: #0f172a; --accent: #8b5cf6; --on: #ffffff; --now: #059669;
+    --card: #ffffff; --card2: #f1f5f9; --line: #e2e8f0;
+    --dim: #475569; --fg2: #1e293b;
+    --warnbg: #fef6e7; --warnfg: #b45309;
+    --holbg: #fdeef0; --holfg: #be123c;
   }
   /* 나이트 — 검은 바탕에 키위색 글자 */
   :root[data-theme="night"] {
@@ -149,8 +168,11 @@
   }
   .gear:hover { opacity: 1; transform: rotate(45deg); }
   /* 밝은 바탕(기본 고스트·칠화이트)에는 검정 톱니 */
-  :root .gear, :root[data-theme="chillwhite"] .gear { background-image: url('assets/setting_bk.png'); }
+  :root .gear,
+  :root[data-theme="chillwhite"] .gear,
+  :root[data-theme="slatelight"] .gear { background-image: url('assets/setting_bk.png'); }
   :root[data-theme="black"] .gear,
+  :root[data-theme="slate"] .gear,
   :root[data-theme="persian"] .gear,
   :root[data-theme="night"] .gear { background-image: url('assets/setting_blue.png'); }
   /* 제목 줄 오른쪽 끝 — 지금 쓰는 버전 */
