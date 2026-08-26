@@ -14,7 +14,7 @@ var NOTES = null;
 var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1 };
 function fsKey() {
   return ({ work: 'work', comci: 'comci', cal: 'cal', meal: 'meal', rec: 'rec',
-    home: 'home', note: 'note', link: 'link' })[VIEW] || '';
+    home: 'home', note: 'note', link: 'link', grid: 'grid' })[VIEW] || '';
 }
 function fontBtns(key) {
   return '<span class="wfs">'
@@ -1592,6 +1592,8 @@ function brandHtml() {
    ★ 그림은 인터넷에서 받아 오지 않는다 — 첫 글자를 동그라미에 넣는다.
      (파비콘을 받아 오면 인터넷이 없을 때 빈칸이 되고, 켤 때마다 느려진다) */
 var LINKS = [];
+var TERMSTART = '';
+var FEED = null;
 /* 이름에서 한 글자 — 한글이면 첫 글자, 영문이면 대문자 한 자 */
 function linkLetter(t) {
   var s = String(t || '').replace(/^[\s\[({<]+/, '');
@@ -1604,14 +1606,27 @@ function linkColor(t) {
   for (var i = 0; i < s.length; i++) n = (n + s.charCodeAt(i)) % 9973;
   return LINKHUE[n % LINKHUE.length];
 }
+function linkTile(x, key) {
+  // 런처에서 온 것은 시트에 적어 둔 그림글자(이모지)를 쓴다
+  var ico = x.icon
+    ? '<span class="lico emo">' + esc(x.icon) + '</span>'
+    : '<span class="lico" style="background:' + linkColor(x.t) + '">'
+      + esc(linkLetter(x.t)) + '</span>';
+  return '<button class="lnk" data-' + key + '" title="' + esc(x.u) + '">'
+    + ico + '<span class="ltx"><b>' + esc(x.t) + '</b>'
+    + '<i>' + esc(x.d || linkHost(x.u)) + '</i></span></button>';
+}
 function linkTiles() {
   if (!LINKS.length) return '';
   return LINKS.map(function (x, i) {
-    return '<button class="lnk" data-lnk="' + i + '" title="' + esc(x.u) + '">'
-      + '<span class="lico" style="background:' + linkColor(x.t) + '">'
-      + esc(linkLetter(x.t)) + '</span>'
-      + '<span class="ltx"><b>' + esc(x.t) + '</b><i>' + esc(linkHost(x.u)) + '</i></span>'
-      + '</button>';
+    return linkTile(x, 'lnk="' + i);
+  }).join('');
+}
+/* 런처에서 온 것 — 내가 만든 것과 섞지 않고 따로 묶는다 */
+function feedTiles() {
+  if (!FEED || !FEED.apps || !FEED.apps.length) return '';
+  return FEED.apps.map(function (x, i) {
+    return linkTile(x, 'fd="' + i);
   }).join('');
 }
 /* 주소에서 «어디인지» 만 짧게 보여 준다 */
@@ -1621,11 +1636,21 @@ function linkHost(u) {
   return i > 0 ? s.slice(0, i) : s;
 }
 function viewLinks() {
-  if (!LINKS.length) {
+  var mine = linkTiles(), feed = feedTiles();
+  if (!mine && !feed) {
     return '<div class="empty">담아 둔 바로가기가 없습니다.<br>'
       + '<b>설정 → 바로가기</b> 에서 제목과 주소를 넣어 주세요.</div>';
   }
-  return '<div class="lnks">' + linkTiles() + '</div>';
+  var h = '';
+  if (mine) h += '<div class="lgrp">내 바로가기</div><div class="lnks">' + mine + '</div>';
+  if (feed) {
+    h += '<div class="lgrp">내 앱 <button class="wkb" id="fdGet" title="다시 읽기">⟳</button>'
+      + (FEED.at ? '<small>' + esc(FEED.at) + '</small>' : '') + '</div>'
+      + '<div class="lnks">' + feed + '</div>';
+  } else if (FEED && FEED.error) {
+    h += '<div class="lgrp">내 앱</div><div class="empty">' + esc(FEED.error) + '</div>';
+  }
+  return h;
 }
 
 /* ── 진도표 ────────────────────────────────────────────────
@@ -1748,6 +1773,213 @@ function viewNote() {
   return h;
 }
 
+
+/* ── 진도표 ────────────────────────────────────────────────
+   한 주를 «교시 × 요일» 격자로 짜고, 학기 전체를 주차별로 쌓는다.
+
+   재료는 셋 다 이미 있는 것이다 — 새로 받아 오는 자료가 없다.
+     · 컴시간 시간표 → 그 요일·교시에 내가 «어느 반» 에 들어가는가
+     · 학사일정     → 그 날의 행사, 휴업, 그리고 «학년별 창체 코드»
+     · 수업 메모    → 그 시간에 무엇을 했는가
+
+   ★ 차시는 «실제로 수업이 있었던 칸» 만 센다.
+     휴업일과 창체(자율·진로·동아리)가 걸린 교시는 세지 않는다 —
+     그래서 동아리가 든 주에는 차시가 안 올라간다.
+*/
+var GDOW = ['월', '화', '수', '목', '금'];
+var gAll = false;      // false = 이번 주만 · true = 학기 전체
+var gWeekOff = 0;      // 이번 주에서 몇 주 옮겨 보는가
+var GRIDW = 25;        // 한 학기 = 25주
+
+/* 휴업으로 볼 만한 말들. 학사일정 글에 이런 말이 있으면 그 날은 수업이 없다. */
+var OFFWORD = /휴업|방학|공휴일|개교기념|현충일|광복절|개천절|한글날|성탄|신정|설날|추석|어린이날|부처님|선거|재량/;
+function gOff(ev) { return OFFWORD.test(String(ev || '')); }
+
+function ymdOf(dt) {
+  var p = function (n) { return String(n).padStart(2, '0'); };
+  return dt.getFullYear() + '-' + p(dt.getMonth() + 1) + '-' + p(dt.getDate());
+}
+/* 그 날이 낀 주의 월요일 */
+function monOf(dt) {
+  var k = dt.getDay();
+  return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + (k === 0 ? -6 : 1 - k));
+}
+/* 내 시간표 — 요일별 교시별 { 학급, 학년, 과목 } */
+function gMine() {
+  var d = CM && CM.data;
+  if (!d || !d.byTeacher || !d.byTeacher.length) return null;
+  var cfg = (CM.config) || {};
+  var me = d.byTeacher.filter(function (t) { return t.i === cfg.teacherIdx; })[0]
+    || d.byTeacher.filter(function (t) { return t.name === cfg.teacher; })[0];
+  if (!me) return null;
+  var by = {}, maxP = 0;
+  (me.days || []).forEach(function (day) {
+    var one = {};
+    ((day && day.periods) || []).forEach(function (x) {
+      if (!x) return;
+      one[x.p] = { cls: x.grade + '-' + x.cls, g: x.grade, subject: x.subject || '' };
+      if (x.p > maxP) maxP = x.p;
+    });
+    by[day.dow] = one;
+  });
+  return { name: me.name, by: by, maxP: Math.max(maxP, 6) };
+}
+/* 그 날 그 교시의 «학년별 창체» — 학사일정 표에서 온다 */
+function gCodes(ac, p) {
+  if (!ac || !ac.grades) return [];
+  var out = [];
+  [1, 2, 3].forEach(function (g) {
+    var c = ac.grades[g] && ac.grades[g][p - 1];
+    if (c) out.push({ g: g, code: c });
+  });
+  return out;
+}
+
+/* 학기 전체를 한 번에 훑어 «차시» 까지 매겨 둔다.
+   ★ 차시는 앞에서부터 세야 나오는 값이라, 보는 주만 따로 계산할 수 없다. */
+function gridBuild() {
+  var me = gMine();
+  if (!me) return null;
+  var start = String(TERMSTART || '').trim();
+  if (!start) return { needStart: true };
+  var sp = start.split('-');
+  var mon0 = monOf(new Date(Number(sp[0]), Number(sp[1]) - 1, Number(sp[2])));
+  var notes = {};
+  (NT || []).forEach(function (x) { notes[x.date + '_' + x.p] = x; });
+
+  var counts = {}, weeks = [];
+  for (var w = 0; w < GRIDW; w++) {
+    var days = [];
+    for (var k = 0; k < 5; k++) {
+      var dt = new Date(mon0.getFullYear(), mon0.getMonth(), mon0.getDate() + w * 7 + k);
+      var iso = ymdOf(dt);
+      var ac = acDayOf(dt);
+      var ev = (ac && ac.event) || '';
+      var off = gOff(ev);
+      var cells = {};
+      for (var p = 1; p <= me.maxP; p++) {
+        var slot = (me.by[GDOW[k]] || {})[p];
+        var codes = gCodes(ac, p);
+        if (!slot) { cells[p] = codes.length ? { codes: codes } : null; continue; }
+        if (off) { cells[p] = { cls: slot.cls, off: true }; continue; }
+        // 내 학급의 학년에 창체가 걸리면 그 시간은 수업이 아니다
+        var mineCode = codes.filter(function (c) { return c.g === slot.g; })[0];
+        if (mineCode) {
+          cells[p] = { cls: slot.cls, none: true, code: mineCode.code, codes: codes };
+          continue;
+        }
+        counts[slot.cls] = (counts[slot.cls] || 0) + 1;
+        var got = notes[iso + '_' + p];
+        cells[p] = {
+          cls: slot.cls, n: counts[slot.cls], subject: slot.subject,
+          text: (got && got.text) || '', codes: codes
+        };
+      }
+      days.push({ dt: dt, iso: iso, dow: GDOW[k], event: ev, off: off, cells: cells });
+    }
+    weeks.push({ no: w + 1, mon: days[0].dt, days: days });
+  }
+  return { me: me, weeks: weeks, maxP: me.maxP, start: start };
+}
+/* 오늘이 몇 주차인가 (없으면 1) */
+function gThisWeek(G) {
+  var t = ymdOf(new Date());
+  for (var i = 0; i < G.weeks.length; i++) {
+    var d = G.weeks[i].days;
+    if (t >= d[0].iso && t <= d[4].iso) return i;
+    if (t < d[0].iso) return i;      // 주말이라 그 주에 안 걸리면 다음 주로
+  }
+  return G.weeks.length - 1;
+}
+
+function gWeekTable(G, wk) {
+  var todayIso = ymdOf(new Date());
+  var h = '<div class="gw" id="gw' + wk.no + '"'
+    + (wk.days.some(function (d) { return d.iso === todayIso; }) ? ' data-gnow="1"' : '') + '>';
+  h += '<div class="gwh"><b>' + wk.no + '주차</b>'
+    + '<span>' + (wk.days[0].dt.getMonth() + 1) + '/' + wk.days[0].dt.getDate() + '(월)'
+    + ' ~ ' + (wk.days[4].dt.getMonth() + 1) + '/' + wk.days[4].dt.getDate() + '(금)</span></div>';
+  h += '<table class="gt"><thead><tr><th class="gp">교시</th>'
+    + wk.days.map(function (d) {
+        return '<th class="' + (d.off ? 'goff' : '') + (d.iso === todayIso ? ' gtdy' : '') + '">'
+          + (d.event ? '<i>' + esc(d.event) + '</i>' : '')
+          + '<b>' + esc(d.dow) + '요일</b>'
+          + '<span>' + (d.dt.getMonth() + 1) + '/' + d.dt.getDate() + '</span>'
+          + (d.off ? '<em>휴업</em>' : '') + '</th>';
+      }).join('')
+    + '</tr></thead><tbody>';
+  for (var p = 1; p <= G.maxP; p++) {
+    h += '<tr><td class="gp">' + p + '교시</td>';
+    wk.days.forEach(function (d) {
+      var c = d.cells[p];
+      var tdy = (d.iso === todayIso ? ' gtdy' : '');
+      if (d.off) { h += '<td class="goff' + tdy + '">휴업</td>'; return; }
+      if (!c) { h += '<td class="' + tdy.replace(/^ /, '') + '"></td>'; return; }
+      if (c.off) { h += '<td class="goff' + tdy + '">휴업</td>'; return; }
+      if (c.none) {
+        h += '<td class="gnone' + tdy + '"><b>' + esc(c.cls) + '</b>'
+          + '<u>' + esc(c.code) + '</u>'
+          + '<i>수업 없음</i></td>';
+        return;
+      }
+      if (!c.cls) {
+        // 내 수업은 없지만 그 교시에 «다른 학년» 창체가 있는 칸 — 알려만 준다
+        h += '<td class="getc' + tdy + '">'
+          + (c.codes || []).map(function (x) { return x.g + ':' + esc(x.code); }).join(' ')
+          + '</td>';
+        return;
+      }
+      var cd = (c.codes || []).filter(function (x) { return x.g + '' !== (c.cls.split('-')[0]); });
+      h += '<td class="gon' + tdy + '" data-gcell="' + esc(d.iso + ',' + p) + '">'
+        + '<b>' + esc(c.cls) + '</b><em>' + c.n + '</em>'
+        + '<u' + (c.text ? '' : ' class="dimtx"') + '>' + esc(c.text || '차시 미지정') + '</u>'
+        + (cd.length ? '<i>' + cd.map(function (x) { return x.g + ':' + esc(x.code); }).join(' ') + '</i>' : '')
+        + '</td>';
+    });
+    h += '</tr>';
+  }
+  return h + '</tbody></table></div>';
+}
+
+function viewGrid() {
+  if (!CM) { loadComci(); return '<div class="empty">컴시간 시간표를 불러오는 중…</div>'; }
+  if (!AC) { loadAcademic(); return '<div class="empty">학사일정을 불러오는 중…</div>'; }
+  if (NT === null) ntLoad();
+  var G = gridBuild();
+  if (!G) {
+    return '<div class="empty">먼저 <b>설정 → 컴시간</b> 에서 학교와 <b>내 이름</b> 을 골라 주세요.<br>'
+      + '<button class="btn" onclick="widgetAPI.openSettings()">설정 열기</button></div>';
+  }
+  if (G.needStart) {
+    return '<div class="empty"><b>개학일</b> 을 넣어 주세요.<br>'
+      + '개학한 주가 1주차가 됩니다.<br>'
+      + '<button class="btn" onclick="widgetAPI.openSettings()">설정 → 진도표</button></div>';
+  }
+  var here = gThisWeek(G);
+  var h = '<div class="top2"><div class="wknav">'
+    + '<button class="wkb' + (gAll ? '' : ' now') + '" data-gv="0">이번 주</button>'
+    + '<button class="wkb' + (gAll ? ' now' : '') + '" data-gv="1">전체</button>'
+    + (gAll ? '' :
+        '<button class="wkb" data-gwk="-1" title="지난 주">◀</button>'
+        + '<span class="wklab">' + (here + gWeekOff + 1) + '주차'
+        + '<small>' + esc(G.me.name) + ' 선생님</small></span>'
+        + '<button class="wkb" data-gwk="1" title="다음 주">▶</button>')
+    + '<span class="spacer"></span>'
+    + '<button class="wkb go" id="gNow" title="이번 주로">이번주</button>'
+    + fontBtns('grid')
+    + '<button class="wkb" id="gGet" title="다시 읽기">⟳</button></div></div>';
+
+  if (gAll) {
+    h += '<div class="ghint">개학한 주가 <b>1주차</b> 입니다. 학급 옆 작은 숫자는 '
+      + '그 학급이 학기 들어 <b>몇 번째 수업</b> 인지입니다.</div>';
+    h += G.weeks.map(function (wk) { return gWeekTable(G, wk); }).join('');
+  } else {
+    var i = Math.max(0, Math.min(G.weeks.length - 1, here + gWeekOff));
+    h += gWeekTable(G, G.weeks[i]);
+  }
+  return h;
+}
+
 function titleBar() {
   return '<div class="tbar">'
     + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
@@ -1816,7 +2048,7 @@ function render() {
   var tab = TT_SUB.indexOf(VIEW) >= 0 ? 'tt' : VIEW;
   html += '<div class="chips">'
     + (HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']
-              : ['work,주간업무', 'comci,컴시간', 'note,수업메모', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']).map(function (s) {
+              : ['work,주간업무', 'comci,컴시간', 'note,수업메모', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']).map(function (s) {
         var p = s.split(',');
         return '<button class="chip' + (tab === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">' + p[1] + '</button>';
       }).join('') + '</div>';
@@ -1839,6 +2071,7 @@ function render() {
     : VIEW === 'rec' ? viewRec()
     : VIEW === 'link' ? viewLinks()
     : VIEW === 'note' ? viewNote()
+    : VIEW === 'grid' ? viewGrid()
     : viewToday(d);
   html += '<div class="foot">@JINHOKIM</div>';   // 버전은 제목 줄 오른쪽 끝에 있다
   app.style.setProperty('--wf', String(FS[fsKey()] || 1));
@@ -1854,6 +2087,15 @@ function render() {
 
   wireViews(app);
   report();
+}
+
+/* 전체 보기에서 «이번주» 를 누르면 그 주 표로 미끄러져 간다.
+   25주를 죽 늘어놓았으니 이 단추가 없으면 찾아 내려가야 한다. */
+function gGoNow() {
+  var el = (typeof appEl === 'function' ? appEl() : document.getElementById('app'));
+  if (!el) return;
+  var t = el.querySelector('[data-gnow]');
+  if (t && t.scrollIntoView) t.scrollIntoView({ block: 'start' });
 }
 
 /* 진도표 한 줄 담기 — 담고 나면 저장시각을 그 줄 밑에 보여 준다 */
@@ -1924,6 +2166,8 @@ widgetAPI.onData(function (p) {
   VER = p.version || '';
   UPD = p.update || null;
   LINKS = p.links || [];
+  TERMSTART = p.termStart || '';
+  FEED = (p.feed && p.feed.show && p.feed.data) ? p.feed.data : null;
   if (p.font && p.font !== FONT) {
     FONT = p.font;
     if (FONT === 'pretendard') delete document.documentElement.dataset.font;
@@ -2010,6 +2254,25 @@ setInterval(function () {
    위젯(#app)과 혜원이지(#main)가 «같은 연결»을 쓴다. 화면 조각이 같으니
    단추도 같아야 한다 — 한 군데만 고치면 두 프로그램이 같이 고쳐진다. */
 function wireViews(app) {
+  // 진도표 격자 — 이번 주 / 전체 · 주 넘기기 · 이번주로
+  app.querySelectorAll('[data-gv]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      gAll = b.dataset.gv === '1'; gWeekOff = 0; render();
+      if (gAll) setTimeout(gGoNow, 60);   // 전체로 바꾸면 이번 주가 보이게
+    });
+  });
+  app.querySelectorAll('[data-gwk]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      gWeekOff += Number(b.dataset.gwk) || 0; render();
+    });
+  });
+  var gn = app.querySelector('#gNow');
+  if (gn) gn.addEventListener('click', function () {
+    gWeekOff = 0;
+    if (gAll) gGoNow(); else render();
+  });
+  var gg = app.querySelector('#gGet');
+  if (gg) gg.addEventListener('click', function () { ntLoad(true); });
   // 진도표 — 저장·다시 읽기·학급 고르기
   var ntg = app.querySelector('#ntGet');
   if (ntg) ntg.addEventListener('click', function () { ntLoad(true); });
@@ -2034,6 +2297,16 @@ function wireViews(app) {
       var x = LINKS[Number(b.dataset.lnk)];
       if (x && x.u) widgetAPI.openUrl(x.u);
     });
+  });
+  app.querySelectorAll('[data-fd]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var x = (FEED && FEED.apps) ? FEED.apps[Number(b.dataset.fd)] : null;
+      if (x && x.u) widgetAPI.openUrl(x.u);
+    });
+  });
+  var fdb = app.querySelector('#fdGet');
+  if (fdb) fdb.addEventListener('click', function () {
+    fdb.textContent = '…'; widgetAPI.feedRefresh();
   });
   // ★ .rach 도 함께 훑는다 — 학생기록 아코디언의 «머리» 단추다.
   //   .wkb 만 훑던 때에는 눌러도 아무 일이 없어서 «펼쳐지지 않는다» 였다.

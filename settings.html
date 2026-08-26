@@ -159,6 +159,20 @@
 </section>
 
 <section>
+  <h2>진도표</h2>
+  <div class="row">
+    <label class="lb">개학일</label>
+    <input type="date" id="tsIn" style="flex:0 0 170px">
+    <button id="tsSave">저장</button>
+    <span id="tsMsg" class="hint" style="margin:0"></span>
+  </div>
+  <div class="hint">
+    <b>개학한 주가 1주차</b> 입니다. 진도표의 주차를 여기서부터 셉니다.<br>
+    학기마다 한 번만 바꾸시면 됩니다.
+  </div>
+</section>
+
+<section>
   <h2>바로가기</h2>
   <div class="row">
     <label class="lb">제목</label>
@@ -170,6 +184,18 @@
     <label class="lb">담은 것</label>
     <div id="lkList" style="flex:1;min-width:0"></div>
   </div>
+  <div class="row">
+    <label class="lb">내 앱</label>
+    <div class="chips">
+      <button class="sw" id="fdSw"><span class="track"><span class="knob"></span></span>런처 목록 함께 보기</button>
+    </div>
+  </div>
+  <div class="row">
+    <label class="lb">런처 주소</label>
+    <input type="text" id="fdUrl" placeholder="내 앱 대시보드 웹앱 주소">
+    <button id="fdSave">저장</button>
+  </div>
+  <div class="hint" id="fdMsg" style="margin-top:2px"></div>
   <div class="hint">
     자주 가는 곳을 담아 두면 <b>위젯 보기의 「바로가기」 탭</b>과
     <b>넓게 보기의 「바로가기」</b> 에 타일로 나옵니다.
@@ -609,6 +635,8 @@ function __paint() {
   paintNeis();
   LKS = null;   // 새 자료를 받았으니 들고 있던 것을 버린다
   paintLks();
+  paintFd();
+  paintTs();
   paintRec();
 }
 
@@ -742,6 +770,57 @@ function paintNeis() {
       + '</span> · 급식 ' + ((UI.meals.meals || []).length) + '건';
   }
 }
+
+/* ── 런처(내 앱 대시보드) 목록 ──────────────────────────────
+   내가 런처 시트에서 «공유» 로 켜 둔 앱들이 타일로 함께 나온다.
+   한 곳만 고치면 쓰는 사람 모두에게 반영된다. */
+function paintFd() {
+  var f = UI.feed || {};
+  $('fdSw').classList.toggle('on', f.show !== false);
+  $('fdUrl').value = f.url || '';
+  var d = f.data;
+  if (!d) $('fdMsg').textContent = '아직 안 받았습니다';
+  else if (d.error) $('fdMsg').innerHTML = '<span class="warn">' + esc(d.error) + '</span>';
+  else $('fdMsg').innerHTML = '<span class="ok">' + (d.apps || []).length + '개</span>'
+    + (d.at ? ' · 마지막 ' + esc(d.at) : '');
+}
+$('fdSw').onclick = function () {
+  var on = !$('fdSw').classList.contains('on');
+  $('fdSw').classList.toggle('on', on);
+  if (!UI.feed) UI.feed = {};
+  UI.feed.show = on;
+  widgetAPI.setUi({ feedShow: on });
+};
+$('fdSave').onclick = function () {
+  widgetAPI.setUi({ feedUrl: $('fdUrl').value.trim() });
+  $('fdMsg').textContent = '받는 중…';
+  setTimeout(function () {
+    widgetAPI.feedRefresh().then(function (d) {
+      if (!UI.feed) UI.feed = {};
+      UI.feed.data = d; paintFd();
+    });
+  }, 200);
+};
+
+/* ── 진도표 개학일 ── */
+function paintTs() {
+  $('tsIn').value = UI.termStart || '';
+  if (UI.termStart) {
+    $('tsMsg').innerHTML = '<span class="ok">' + esc(UI.termStart) + ' 부터 1주차</span>';
+  } else {
+    $('tsMsg').textContent = '아직 안 넣었습니다';
+  }
+}
+$('tsSave').onclick = function () {
+  var v = $('tsIn').value;
+  widgetAPI.setUi({ termStart: v });
+  UI.termStart = v;
+  var d = new Date();
+  var p = function (n) { return String(n).padStart(2, '0'); };
+  $('tsMsg').innerHTML = '<span class="ok">✅ 저장됨 · '
+    + d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate()) + ' '
+    + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + '</span>';
+};
 
 /* ── 바로가기 ──────────────────────────────────────────────
    급식 학교와 같은 얼개다 — 담고, ▲▼ 로 옮기고, ✕ 로 뺀다. */

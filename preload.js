@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   /* 수업 메모(진도표) */
   noteLoad: () => ipcRenderer.invoke('note-load'),
   noteSave: (o) => ipcRenderer.invoke('note-save', o),
+  feedRefresh: () => ipcRenderer.invoke('feed-refresh'),
   openEasy: () => ipcRenderer.send('open-easy'),
   showWidget: () => ipcRenderer.send('show-widget'),
 

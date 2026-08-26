@@ -257,6 +257,47 @@ function getGradeSheets() {
 function getGradePick() { const g = Number(loadState().gradePick); return [1, 2, 3].includes(g) ? g : 3; }
 /* 켜 놓은 학년들. 예전에는 스위치 하나 + 보고 있는 학년이었다 —
    그때 값이 남아 있으면 그대로 옮겨 준다. */
+/* ── 런처 목록 ─────────────────────────────────────────────
+   «내 앱 대시보드»(런처 GAS) 에서 공유로 켜 둔 앱들을 받아 온다.
+   ★ 이것 하나만 고치면 쓰는 사람 모두에게 반영된다 — 각자 넣을 필요가 없다.
+   ★ 로그인은 필요 없다. 화면(HTML)이 아니라 알맹이만 받는다(?view=json). */
+const { fetchText } = require('./fetchtext.js');
+const FEED_URL = 'https://script.google.com/macros/s/'
+  + 'AKfycbwot9uum8L5CUb6ouJdI03nwg6jS8WPJ0zu91y8EthdYWf0mVSMLws4zV2I6cEWry_0/exec';
+let feedData = null;   // { apps:[{t,u,d,icon,tab}], at, error }
+function getFeedShow() { return loadState().feedShow !== false; }
+function getFeedUrl() {
+  const v = loadState().feedUrl;
+  return v === undefined ? FEED_URL : String(v || '');
+}
+async function refreshFeed() {
+  const url = getFeedUrl();
+  if (!url || !getFeedShow()) { feedData = null; sendToWidget(); return; }
+  try {
+    const txt = await fetchText(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'view=json');
+    const j = JSON.parse(txt);
+    const apps = ((j && j.apps) || [])
+      .map((a) => ({ t: String(a.t || '').trim(), u: tidyUrl(a.u),
+                     d: String(a.d || '').trim(), icon: String(a.icon || '').trim(),
+                     tab: String(a.tab || '').trim() }))
+      .filter((a) => a.t && a.u);
+    feedData = { apps, at: (j && j.at) || '', error: '' };
+    debugLog(`런처 목록 ${apps.length}개`);
+  } catch (e) {
+    feedData = { apps: [], at: '', error: (e && e.message) || String(e) };
+    debugLog('런처 목록 못 받음 — ' + feedData.error);
+  }
+  sendToWidget();
+}
+
+/* 개학일 — 진도표의 «1주차» 를 여기서부터 센다.
+   학사일정에서 «개학» 이라 적힌 날을 찾는 방법도 있지만, 표현이 해마다 달라
+   놓치기 쉽다. 한 학기에 한 번 넣는 것이니 손으로 넣는 편이 확실하다. */
+function getTermStart() {
+  const s = String(loadState().termStart || '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+}
+
 /* ── 바로가기 ──────────────────────────────────────────────
    제목과 주소만 있으면 된다. 이 PC 에만 담긴다(남과 섞이지 않는다).
    공용 목록(런처 시트에서 오는 것)은 따로 온다 — 여기 것은 «내가 만든 것». */
@@ -310,7 +351,7 @@ async function refreshGradePlan(grade) {
 function getViewMode() { return loadState().viewMode === 'easy' ? 'easy' : 'widget'; }
 const VIEWS = HAS_TT
   ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal', 'rec', 'link']
-  : ['work', 'comci', 'note', 'cal', 'meal', 'rec', 'link'];
+  : ['work', 'comci', 'note', 'grid', 'cal', 'meal', 'rec', 'link'];
 function getView() {
   const v = loadState().view;
   return VIEWS.includes(v) ? v : VIEWS[0];
@@ -507,6 +548,8 @@ function sendToWidget() {
     sys: { show: getSysShow(), data: sysData },
     easyFav: loadState().easyFav || [],          // 혜원이지 대시보드 즐겨찾기
     links: getLinks(),                           // 바로가기 타일
+    termStart: getTermStart(),                   // 진도표 1주차 기준
+    feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },   // 런처 목록
     update: { state: updateState, version: updateVersion }
   };
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
@@ -1191,6 +1234,8 @@ ipcMain.handle('get-settings', () => ({
     neis: loadState().neis || null,
     neisList: getNeisList(),
     links: getLinks(),
+    termStart: getTermStart(),
+    feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },
     browsers: browserList().map((b) => ({ key: b.key, label: b.label })),
     browser: getBrowserPick(),
     meals: loadMeals(),
@@ -1257,6 +1302,21 @@ ipcMain.on('set-ui', (_e, v) => {
   }
   if (v.comciSide !== undefined) {
     saveState({ comciSide: v.comciSide === 'row' ? 'row' : 'col' });
+    sendToWidget();
+  }
+  if (v.feedShow !== undefined) {
+    saveState({ feedShow: !!v.feedShow });
+    refreshFeed();
+  }
+  if (v.feedUrl !== undefined) {
+    saveState({ feedUrl: String(v.feedUrl || '') });
+    debugLog('런처 주소 바꿈');
+    refreshFeed();
+  }
+  if (v.termStart !== undefined) {
+    const s = String(v.termStart || '').trim();
+    saveState({ termStart: /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '' });
+    debugLog('개학일: ' + (s || '(빔)'));
     sendToWidget();
   }
   if (v.links !== undefined) {
@@ -1397,6 +1457,7 @@ ipcMain.on('refresh-now', () => pollOnce());
 ipcMain.on('open-login', () => startLogin());
 ipcMain.on('open-timetable', () => openTimetableWindow());
 ipcMain.on('open-easy', () => openEasyWindow());
+ipcMain.handle('feed-refresh', async () => { await refreshFeed(); return feedData; });
 ipcMain.on('show-widget', () => showWidgetOnly());
 
 /* 학년부 일지 — 받아 둔 것 주기 / 새로 받기 */
@@ -1689,6 +1750,10 @@ if (!gotLock) {
     // 날씨 — 켜고 잠시 뒤 한 번, 그 뒤로는 30분마다
     scheduleTask('wx', '날씨', 3000, () => refreshWeather());
     setInterval(() => refreshWeather(), 30 * 60 * 1000);
+
+    // 런처 목록 — 자주 바뀌지 않으니 켤 때 한 번, 그 뒤로는 6시간마다
+    scheduleTask('feed', '내 앱 목록', 6000, () => refreshFeed());
+    setInterval(() => refreshFeed(), 6 * 60 * 60 * 1000);
 
     checkForUpdates();
     setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
