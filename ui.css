@@ -553,6 +553,10 @@
   }
   .wkb.now .scnt { background: color-mix(in srgb, var(--on) 30%, transparent); color: var(--on); }
   .shint { font-size: 9.5px; color: var(--dim); margin-left: 4px; }
+  /* 기록한 날 — 달력 칸은 좁게, 단추와 같은 키로 */
+  .rdates { flex-wrap: wrap; }
+  .wq.rwd { flex: 0 0 auto; min-width: 0; width: 118px; padding: 2px 5px; font-size: 10.5px; }
+  .wq.rwd::-webkit-calendar-picker-indicator { filter: invert(.5); cursor: pointer; }
   .rcb { font-size: calc(11px * var(--wf)); color: var(--fg2); line-height: 1.6; white-space: pre-wrap; }
   /* 지난 기록 — 접힌 타일로 쌓고, 누르면 펼쳐진다 */
   .racs { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }

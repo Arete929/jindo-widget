@@ -207,7 +207,7 @@ function register(helpers) {
     const st = S.load().recSheet;
     if (!st || !st.id) throw new Error('먼저 시트를 만들어 주세요');
     const t = await token();
-    return rec.saveRecord(t, st.id, p.student, p.cat, p.text, p.row);
+    return rec.saveRecord(t, st.id, p.student, p.cat, p.text, p.row, p.when);
   });
 
   ipcMain.handle('rec-clear', async (_e, row) => {

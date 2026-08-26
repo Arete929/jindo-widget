@@ -907,6 +907,7 @@ var recBusy = false, recErr = '';
 var recMode = 'write';   // write | stat | cats
 var recCls = '', recSid = '', recCat = '';
 var recDraft = '', recSavedAt = '', recOpen = 0;   // recOpen = 펼쳐 놓은 기록의 줄 번호
+var recWhen = '';        // 기록한 날 (yyyy.MM.dd). 비어 있으면 «오늘»
 var statStu = [], statCat = [], statMon = [], statCls = [];   // 통계에서 고른 것들 (여러 개)
 var statMore = false;    // 학생 줄을 펼쳐 놓았는가
 var catEdit = null;      // 카테고리 편집 중인 목록
@@ -971,6 +972,44 @@ function recList(sid, cat) {
 }
 function recFind(sid, cat) { return recList(sid, cat)[0] || null; }
 /* 나이스 글자 수 — 한글3 · 영숫1 · 엔터1 바이트 */
+/* ── 기록한 날 고르개 ──────────────────────────────────────────
+   며칠 지나 몰아 쓸 때 «그날» 로 남겨야 한다. 전에는 무조건 저장하는 순간이 박혔다.
+   이번 주 월요일부터 어제까지 날짜 단추를 늘어놓고, 맨 끝이 «오늘» 이다.
+   월요일이면 «오늘» 하나, 금요일이면 24월 25화 26수 27목 오늘 이 된다. */
+function ymd(d) {
+  var p = function (n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate());
+}
+function recDays() {
+  var DOWK = ['일', '월', '화', '수', '목', '금', '토'];
+  var now = new Date();
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // 이번 주 월요일 (일요일이면 지난 월요일부터 — 한 주가 끊기지 않게)
+  var back = (today.getDay() + 6) % 7;
+  var out = [];
+  for (var k = back; k >= 1; k--) {
+    var d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - k);
+    out.push({ v: ymd(d), t: d.getDate() + DOWK[d.getDay()] });
+  }
+  out.push({ v: ymd(today), t: '오늘', today: true });
+  return out;
+}
+function recDateBar() {
+  var days = recDays();
+  var pick = recWhen || days[days.length - 1].v;
+  var known = days.some(function (d) { return d.v === pick; });
+  var h = '<div class="wknav rdates"><span class="slab">기록한 날</span>'
+    + days.map(function (d) {
+        return '<button class="wkb' + (d.v === pick ? ' now' : '') + '" data-rw="' + d.v + '">'
+          + esc(d.t) + '</button>';
+      }).join('');
+  // 지난 주 것이나 아주 옛날 것은 달력으로 (드롭다운은 쓰지 않는다)
+  h += '<input class="wq rwd" type="date" id="recWhenIn" value="'
+    + esc(pick.replace(/\./g, '-')) + '" title="다른 날을 고르려면">';
+  if (!known) h += '<span class="shint">' + esc(pick) + '</span>';
+  return h + '</div>';
+}
+
 function neisBytes(t) {
   var n = 0;
   String(t || '').split('').forEach(function (ch) {
@@ -1113,6 +1152,7 @@ function recWrite() {
 
   // ── 새로 쓰는 칸 (지난 기록은 위에 그대로 남는다)
   h += '<div class="rnew">새로 쓰기</div>';
+  h += recDateBar();
   h += '<textarea class="rta" id="recText" placeholder="' + esc(recCat) + ' 내용을 적어 주세요">'
     + esc(recDraft || '') + '</textarea>';
   h += '<div class="wknav"><button class="wkb go" id="recSave">저장</button>'
@@ -1486,7 +1526,9 @@ setInterval(function () {
    위젯(#app)과 혜원이지(#main)가 «같은 연결»을 쓴다. 화면 조각이 같으니
    단추도 같아야 한다 — 한 군데만 고치면 두 프로그램이 같이 고쳐진다. */
 function wireViews(app) {
-  app.querySelectorAll('.wkb').forEach(function (b) {
+  // ★ .rach 도 함께 훑는다 — 학생기록 아코디언의 «머리» 단추다.
+  //   .wkb 만 훑던 때에는 눌러도 아무 일이 없어서 «펼쳐지지 않는다» 였다.
+  app.querySelectorAll('.wkb, .rach').forEach(function (b) {
     b.addEventListener('click', function () {
       if (b.dataset.off !== undefined) { WK = null; loadWeek(Number(b.dataset.off)); return; }
       if (b.dataset.doc) { workDoc = b.dataset.doc; workOff = 0; render(); return; }
@@ -1507,6 +1549,12 @@ function wireViews(app) {
       if (b.dataset.rm) { recMode = b.dataset.rm; render(); return; }
       if (b.dataset.rc) { recCls = b.dataset.rc; recSid = ''; recDraft = ''; recSavedAt = ''; render(); return; }
       if (b.dataset.rk) { recCat = b.dataset.rk; recDraft = ''; recSavedAt = ''; render(); return; }
+      if (b.dataset.rw) {          // 기록한 날 고르기
+        var ta0 = app.querySelector('#recText');
+        if (ta0) recDraft = ta0.value;      // 쓰던 글을 지키고 다시 그린다
+        recWhen = b.dataset.rw;
+        render(); return;
+      }
       if (b.dataset.ro !== undefined) {          // 타일 펼치기·접기
         var row = Number(b.dataset.ro);
         recOpen = (recOpen === row) ? 0 : row;
@@ -1601,9 +1649,10 @@ function wireViews(app) {
         if (!me || !txt.trim()) return;
         recBusy = true;
         // 늘 «새 줄»로 쌓는다 — 지난 기록은 위쪽 아코디언에 그대로 남는다
-        widgetAPI.recSave({ student: me, cat: recCat, text: txt, row: 0 })
+        widgetAPI.recSave({ student: me, cat: recCat, text: txt, row: 0, when: recWhen })
           .then(function (r) {
             recBusy = false; recSavedAt = (r && r.at) || ''; recDraft = '';
+            recWhen = '';                    // 다음 기록이 엉뚱한 날로 가지 않게 되돌린다
             RECDATA = null; recLoad(true);
           })
           .catch(function (e) { recBusy = false; recErr = (e && e.message) || String(e); render(); });
@@ -1751,6 +1800,15 @@ function wireViews(app) {
       if (by) by.textContent = neisBytes(rte.value) + ' Byte · ' + rte.value.length + '자';
     });
   }
+  var rwd = app.querySelector('#recWhenIn');
+  if (rwd) rwd.addEventListener('change', function () {
+    var v = String(rwd.value || '').replace(/-/g, '.');
+    if (!/^\d{4}\.\d{2}\.\d{2}$/.test(v)) return;
+    var ta1 = app.querySelector('#recText');
+    if (ta1) recDraft = ta1.value;
+    recWhen = v;
+    render();
+  });
   var rta = app.querySelector('#recText');
   if (rta) {
     rta.addEventListener('input', function () { recDraft = rta.value; });

@@ -1,4 +1,4 @@
-// 파일명: records.js | @version 1.1.0
+// 파일명: records.js | @version 1.2.0
 // 학생기록 — 구글 시트를 만들고 읽고 쓴다.
 //
 // 시트 짜임
@@ -134,8 +134,11 @@ async function loadAll(token, id) {
 }
 
 /* ── 한 건 저장 ── 같은 학생·같은 카테고리 것이 있으면 고쳐 쓴다 ── */
-async function saveRecord(token, id, s, cat, text, existingRow) {
+async function saveRecord(token, id, s, cat, text, existingRow, when) {
   const now = stamp();
+  // 고른 날짜가 있으면 «작성일시» 는 그 날로 적는다. 시각까지는 안 정하므로
+  // 그 날 09:00 으로 둔다 — 시트에서 날짜만 보고 줄을 세울 수 있으면 된다.
+  const at = /^\d{4}\.\d{2}\.\d{2}$/.test(String(when || '')) ? when + ' 09:00:00' : now;
   if (existingRow) {
     // 내용·수정일시만 바꾼다 (작성일시는 그대로 둔다)
     await writeRange(token, id, `${TAB_REC}!G${existingRow}:I${existingRow}`, [[text, '', now]]);
@@ -145,7 +148,7 @@ async function saveRecord(token, id, s, cat, text, existingRow) {
     return { at: now, row: existingRow };
   }
   await appendRow(token, id, `${TAB_REC}!A1`,
-    [s.id, s.name, s.grade, s.cls, s.no, cat, text, now, now]);
+    [s.id, s.name, s.grade, s.cls, s.no, cat, text, at, now]);
   return { at: now, row: 0 };
 }
 
