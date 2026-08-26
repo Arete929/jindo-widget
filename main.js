@@ -205,7 +205,15 @@ function getGradeSheets() {
   return out;
 }
 function getGradePick() { const g = Number(loadState().gradePick); return [1, 2, 3].includes(g) ? g : 3; }
-function getGradeShow() { return !!loadState().gradeShow; }
+/* 켜 놓은 학년들. 예전에는 스위치 하나 + 보고 있는 학년이었다 —
+   그때 값이 남아 있으면 그대로 옮겨 준다. */
+function getGradeOn() {
+  const st = loadState();
+  if (Array.isArray(st.gradeOn)) {
+    return st.gradeOn.map(Number).filter((g) => g >= 1 && g <= 3);
+  }
+  return st.gradeShow ? [Number(st.gradePick) || 3] : [];
+}
 const gradeFile = path.join(userDataPath, 'gradeplan.json');
 function loadGradePlans() {
   try { return JSON.parse(fs.readFileSync(gradeFile, 'utf-8')); } catch (e) { return {}; }
@@ -409,7 +417,7 @@ function sendToWidget() {
     usage: { show: getUsageShow(), style: getUsageStyle(), data: aiusage.snapshot() },
     comciPick: loadState().comciPick || null,
     comciSide: loadState().comciSide === 'row' ? 'row' : 'col',
-    grade: { show: getGradeShow(), pick: getGradePick(), sheets: getGradeSheets() },
+    grade: { on: getGradeOn(), sheets: getGradeSheets() },
     wx: { show: getWxShow(), spot: getWxSpot(), data: wxData },
     easyFav: loadState().easyFav || [],          // 혜원이지 대시보드 즐겨찾기
     update: { state: updateState, version: updateVersion }
@@ -1101,9 +1109,8 @@ ipcMain.on('set-ui', (_e, v) => {
     debugLog('학년부 일지 시트 주소 변경');
     sendToWidget();
   }
-  if (v.gradeShow !== undefined) { saveState({ gradeShow: !!v.gradeShow }); sendToWidget(); }
-  if (v.gradePick !== undefined) {
-    saveState({ gradePick: Number(v.gradePick) || 3 });
+  if (v.gradeOn !== undefined) {
+    saveState({ gradeOn: (v.gradeOn || []).map(Number).filter((g) => g >= 1 && g <= 3) });
     sendToWidget();
   }
   if (v.comciSide !== undefined) {
@@ -1243,11 +1250,11 @@ ipcMain.handle('wx-refresh', async () => { await refreshWeather(); return wxData
 ipcMain.handle('wx-spots', () => weather.SPOTS);
 
 ipcMain.handle('grade-get', (_e, grade) => {
-  const g = Number(grade) || getGradePick();
+  const g = Number(grade) || 3;
   return loadGradePlans()[g] || null;
 });
 ipcMain.handle('grade-fetch', async (_e, grade) => {
-  const g = Number(grade) || getGradePick();
+  const g = Number(grade) || 3;
   try {
     return await refreshGradePlan(g);
   } catch (e) {

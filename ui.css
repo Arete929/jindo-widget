@@ -568,6 +568,12 @@
     font-size: calc(10.5px * var(--wf));
   }
   .gph:hover { background: var(--card2); }
+  .gpg {
+    flex: 0 0 auto; font-style: normal; font-weight: 800;
+    width: 15px; height: 15px; border-radius: 999px; display: inline-flex;
+    align-items: center; justify-content: center; font-size: calc(8.5px * var(--wf));
+    background: var(--accent); color: var(--on);
+  }
   .gpk {
     flex: 0 0 auto; font-style: normal; font-weight: 800; border-radius: 999px;
     padding: 1px 7px; font-size: calc(9px * var(--wf)); white-space: nowrap;

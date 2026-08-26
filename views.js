@@ -582,40 +582,55 @@ function viewComci() {
    «오늘» 단추를 누르면 오늘 날짜로 간다 — 탭을 처음 열 때도 저절로 오늘로 간다. */
 var AC = null, acBusy = false, acScrolled = false, acSpy = '';
 /* ── 학년부 일지 ── 학사일정 위에 얹어 보는 «그 학년만의 할 일» ── */
-var GP = null;               // 받아 둔 일지 { items, cats }
-var gpShow = false;          // 스위치 — 켜야 보인다
-var gpGrade = 3;             // 보고 있는 학년
+var GPD = {};                // 학년별로 받아 둔 일지 { 1:{items,cats}, … }
+var gpOn = [];               // 켜 놓은 학년 (여러 학년을 함께 볼 수 있다)
 var gpSheets = {};           // 학년별 시트 주소 (설정에서 넣는다)
 var gpCat = [];              // 골라 놓은 구분 (비면 전체)
 var gpOpen = '';             // 세부사항을 펼쳐 놓은 항목
-var gpBusy = false, gpErr = '';
+var gpBusy = {}, gpErr = {}; // 학년마다 따로
 var gpTouched = false;       // 화면에서 스위치를 건드렸는가 (메인 값이 덮어쓰지 않게)
 var acAllYears = false;   // «다른 해» 탭까지 펼쳐 볼 것인가
 
 /* 학년부 일지를 받아 온다. 받아 둔 것이 있으면 그것부터 쓰고, 없으면 시트에서 */
-function gpLoad(force) {
-  if (gpBusy) return;
-  gpBusy = true; gpErr = '';
-  var call = force ? widgetAPI.gradeFetch(gpGrade) : widgetAPI.gradeGet(gpGrade);
+function gpLoad(g, force) {
+  if (gpBusy[g]) return;
+  gpBusy[g] = true; gpErr[g] = '';
+  var call = force ? widgetAPI.gradeFetch(g) : widgetAPI.gradeGet(g);
   call.then(function (d) {
-    gpBusy = false;
-    if (!d && !force) { gpLoad(true); return; }      // 받아 둔 것이 없으면 시트에서
-    GP = d || { items: [], cats: [] };
-    gpErr = (d && d.error) || '';
+    gpBusy[g] = false;
+    if (!d && !force) { gpLoad(g, true); return; }   // 받아 둔 것이 없으면 시트에서
+    GPD[g] = d || { items: [], cats: [] };
+    gpErr[g] = (d && d.error) || '';
     render();
   }).catch(function (e) {
-    gpBusy = false; GP = { items: [], cats: [] };
-    gpErr = (e && e.message) || String(e);
+    gpBusy[g] = false; GPD[g] = { items: [], cats: [] };
+    gpErr[g] = (e && e.message) || String(e);
     render();
   });
 }
-/* 그 날짜의 학년부 항목 (고른 구분만) */
-function gpOf(month, day) {
-  if (!gpShow || !GP) return [];
-  return (GP.items || []).filter(function (x) {
-    if (x.month !== Number(month) || x.day !== day) return false;
-    return !gpCat.length || gpCat.indexOf(x.cat) >= 0;
+/* 주소가 있는 학년만 스위치를 준다 */
+function gpGrades() {
+  return [1, 2, 3].filter(function (g) { return String(gpSheets[g] || '').trim(); });
+}
+/* 켜 놓은 학년들의 구분을 모은다 */
+function gpCats() {
+  var out = [];
+  gpOn.forEach(function (g) {
+    ((GPD[g] || {}).cats || []).forEach(function (c) { if (out.indexOf(c) < 0) out.push(c); });
   });
+  return out;
+}
+/* 그 날짜의 학년부 항목 — 켜 놓은 학년을 모두 모은다 (고른 구분만) */
+function gpOf(month, day) {
+  var out = [];
+  gpOn.forEach(function (g) {
+    ((GPD[g] || {}).items || []).forEach(function (x) {
+      if (x.month !== Number(month) || x.day !== day) return;
+      if (gpCat.length && gpCat.indexOf(x.cat) < 0) return;
+      out.push({ g: g, x: x });
+    });
+  });
+  return out;
 }
 /* 구분마다 색을 달리한다 — 이름을 숫자로 바꿔 여덟 색에 돌려 쓴다 */
 function gpHue(cat) {
@@ -684,42 +699,36 @@ function viewAcademic() {
           + (acAllYears ? '− 올해만' : '+ 다른 해 ' + other.length + '개') + '</button>'
         : '')
     + '<span class="spacer"></span>'
-    + '<button class="wkb sw' + (gpShow ? ' now' : '') + '" id="gpSw" '
-    + 'title="학년부 일지를 학사일정 위에 함께 보기">'
-    + '<span class="track"><span class="knob"></span></span>학년부</button>'
+    + gpGrades().map(function (g) {
+        return '<button class="wkb sw' + (gpOn.indexOf(g) >= 0 ? ' now' : '') + '" '
+          + 'data-gs="' + g + '" title="' + g + '학년부 일지를 학사일정 위에 함께 보기">'
+          + '<span class="track"><span class="knob"></span></span>' + g + '학년</button>';
+      }).join('')
     + fontBtns('cal')
     + '<button class="wkb go" id="acToday" title="오늘 날짜로">오늘로</button>'
     + '<button class="wkb" id="acGet" title="다시 가져오기">⟳</button></div></div>';
 
-  // 학년·구분 고르개 — 스위치를 켰을 때만 나온다
-  if (gpShow) {
-    var haveG = [1, 2, 3].filter(function (g) { return (gpSheets[g] || '').trim(); });
+  // 구분 고르개 — 학년을 하나라도 켰을 때만 나온다
+  if (gpOn.length) {
     h += '<div class="wknav gpbar">';
-    if (haveG.length > 1) {
-      h += haveG.map(function (g) {
-        return '<button class="wkb' + (g === gpGrade ? ' now' : '') + '" data-gg="' + g + '">'
-          + g + '학년</button>';
-      }).join('');
+    var errs = gpOn.filter(function (g) { return gpErr[g]; });
+    var wait = gpOn.filter(function (g) { return !GPD[g]; });
+    if (errs.length) {
+      h += '<span class="shint warnfg">' + errs[0] + '학년 — ' + esc(gpErr[errs[0]]) + '</span>';
+    } else if (wait.length) {
+      h += '<span class="shint">' + wait.join('·') + '학년 일지를 받는 중…</span>';
     }
-    if (!(gpSheets[gpGrade] || '').trim()) {
-      h += '<span class="shint">' + gpGrade + '학년 시트 주소를 설정에 넣어 주세요</span>'
-        + '<button class="wkb" onclick="widgetAPI.openSettings()">설정 열기</button>';
-    } else if (gpErr) {
-      h += '<span class="shint warnfg">' + esc(gpErr) + '</span>';
-    } else if (!GP) {
-      h += '<span class="shint">학년부 일지를 받는 중…</span>';
-    } else {
-      var cats = (GP.cats || []);
+    var cats = gpCats();
+    if (cats.length) {
       h += '<span class="slab">구분</span>'
         + '<button class="wkb' + (gpCat.length ? '' : ' now') + '" data-ga="1">전체</button>'
         + cats.map(function (c) {
             return '<button class="wkb gpc h' + gpHue(c) + (gpCat.indexOf(c) >= 0 ? ' now' : '')
               + '" data-gc="' + esc(c) + '">' + esc(c) + '</button>';
-          }).join('')
-        + '<span class="spacer"></span>'
-        + '<button class="wkb" id="gpGet" title="학년부 일지 다시 받기">⟳</button>';
+          }).join('');
     }
-    h += '</div>';
+    h += '<span class="spacer"></span>'
+      + '<button class="wkb" id="gpGet" title="학년부 일지 다시 받기">⟳</button></div>';
   }
 
   h += ms.map(function (m) {
@@ -777,11 +786,14 @@ function viewAcademic() {
 function gpRows(month, day) {
   var list = gpOf(month, day);
   if (!list.length) return '';
-  return '<div class="gpl">' + list.map(function (x, i) {
+  var many = gpOn.length > 1;   // 여러 학년을 켰으면 어느 학년 것인지 밝힌다
+  return '<div class="gpl">' + list.map(function (it, i) {
+    var x = it.x;
     var key = month + '-' + day + '-' + i;
     var open = gpOpen === key;
     return '<div class="gpi' + (open ? ' on' : '') + '">'
       + '<button class="gph" data-gp="' + esc(key) + '">'
+      + (many ? '<i class="gpg">' + it.g + '</i>' : '')
       + '<i class="gpk h' + gpHue(x.cat) + '">' + esc(x.cat || '·') + '</i>'
       + '<span class="gpt">' + esc(x.title || '') + '</span>'
       + (x.done ? '<em class="gpd" title="확인함">✔</em>' : '')
@@ -1625,7 +1637,10 @@ widgetAPI.onData(function (p) {
   }
   if (p.grade) {
     gpSheets = p.grade.sheets || {};
-    if (!gpTouched) { gpShow = !!p.grade.show; gpGrade = p.grade.pick || 3; }
+    if (!gpTouched) {
+      gpOn = (p.grade.on || []).map(Number).filter(function (g) { return g >= 1 && g <= 3; });
+      gpOn.forEach(function (g) { if (!GPD[g]) gpLoad(g, false); });
+    }
   }
   if (p.usage) {
     USG = p.usage.data || null;
@@ -1829,11 +1844,15 @@ function wireViews(app) {
       if (b.id === 'wkNext') { moveHit(1); return; }
       if (b.id === 'wkPrev') { moveHit(-1); return; }
       if (b.dataset.cm) { cmMode = b.dataset.cm; render(); return; }
-      if (b.dataset.gg) {                       // 학년 바꾸기
-        gpGrade = Number(b.dataset.gg) || 3;
-        GP = null; gpCat = []; gpOpen = '';
-        widgetAPI.setUi({ gradePick: gpGrade });
-        gpLoad(false); render(); return;
+      if (b.dataset.gs) {                       // 학년 스위치 켜고 끄기
+        var g = Number(b.dataset.gs);
+        var k = gpOn.indexOf(g);
+        if (k >= 0) gpOn.splice(k, 1); else gpOn.push(g);
+        gpOn.sort();
+        gpTouched = true; gpOpen = '';
+        widgetAPI.setUi({ gradeOn: gpOn });
+        if (k < 0 && !GPD[g]) gpLoad(g, false);
+        render(); return;
       }
       if (b.dataset.ga) { gpCat = []; render(); return; }
       if (b.dataset.gc) {                       // 구분 고르기
@@ -1905,15 +1924,11 @@ function wireViews(app) {
       scrollToEl(document.getElementById('acm-' + b.dataset.ac), 2);
     });
   });
-  var gsw = app.querySelector('#gpSw');
-  if (gsw) gsw.addEventListener('click', function () {
-    gpShow = !gpShow; gpTouched = true;
-    widgetAPI.setUi({ gradeShow: gpShow });
-    if (gpShow && !GP) gpLoad(false);
+  var gge = app.querySelector('#gpGet');
+  if (gge) gge.addEventListener('click', function () {
+    gpOn.forEach(function (g) { GPD[g] = null; gpLoad(g, true); });
     render();
   });
-  var gge = app.querySelector('#gpGet');
-  if (gge) gge.addEventListener('click', function () { GP = null; gpLoad(true); render(); });
   var acY = app.querySelector('#acYrs');
   if (acY) acY.addEventListener('click', function () {
     acAllYears = !acAllYears; acSpy = ''; acScrolled = false; render();
