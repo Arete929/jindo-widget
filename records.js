@@ -15,11 +15,15 @@ const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
 const DRIVE = 'https://www.googleapis.com/drive/v3/files';
 
 const TAB_REC = '기록';
+const TAB_NOTE = '수업메모';   // 컴시간 시간표로 적는 수업 메모(=진도표)
 const TAB_CAT = '카테고리';
 const TAB_CFG = '설정';
 
 const REC_HEAD = ['학번', '이름', '학년', '반', '번호', '카테고리', '내용', '작성일시', '수정일시'];
 const DEFAULT_CATS = ['행발', '세특', '자율', '동아리', '진로', '자유학기'];
+/* 수업메모 — 날짜와 교시가 «어느 수업인지» 를 가리키고, 메모 한 줄이 알맹이다.
+   차시는 그 학급에 적은 메모의 순번이다(시간표로 세면 휴업일까지 따져야 해서). */
+const NOTE_HEAD = ['날짜', '요일', '교시', '학급', '과목', '차시', '메모', '적은때'];
 
 /* 화면에 보여줄 «2026.08.25 10:42:03» 꼴 (KST 는 이 PC 시계를 그대로 쓴다) */
 function stamp(d) {
@@ -65,7 +69,8 @@ async function createSheet(token, title) {
       sheets: [
         { properties: { title: TAB_REC } },
         { properties: { title: TAB_CAT } },
-        { properties: { title: TAB_CFG } }
+        { properties: { title: TAB_CFG } },
+        { properties: { title: TAB_NOTE } }
       ]
     })
   });
@@ -75,6 +80,7 @@ async function createSheet(token, title) {
   await writeRange(token, id, TAB_CAT + '!A1',
     [['순서', '이름', '사용']].concat(DEFAULT_CATS.map((c, i) => [i + 1, c, 'Y'])));
   await writeRange(token, id, TAB_CFG + '!A1', [['항목', '값'], ['만든날짜', now]]);
+  await writeRange(token, id, TAB_NOTE + '!A1', [NOTE_HEAD]);
   return { id: id, url: made.spreadsheetUrl || (`https://docs.google.com/spreadsheets/d/${id}/edit`), createdAt: now };
 }
 
@@ -108,6 +114,53 @@ async function appendRow(token, id, range, row) {
     token: token, contentType: 'application/json',
     body: JSON.stringify({ values: [row] })
   });
+}
+
+/* ── 수업메모 ──────────────────────────────────────────────
+   ★ 옛 시트에는 「수업메모」 탭이 없다. 쓰기 전에 한 번 확인해서 없으면 만든다.
+     (없는 탭에 쓰면 «Unable to parse range» 로 조용히 실패한다) */
+async function tabNames(token, id) {
+  const r = await json({
+    url: `${SHEETS}/${id}?fields=` + esc('sheets(properties(title))'),
+    token: token
+  });
+  return ((r && r.sheets) || []).map((s) => (s.properties || {}).title || '');
+}
+async function ensureNoteTab(token, id) {
+  const names = await tabNames(token, id);
+  if (names.indexOf(TAB_NOTE) >= 0) return false;
+  await json({
+    method: 'POST', url: `${SHEETS}/${id}:batchUpdate`, token: token,
+    contentType: 'application/json',
+    body: JSON.stringify({ requests: [{ addSheet: { properties: { title: TAB_NOTE } } }] })
+  });
+  await writeRange(token, id, TAB_NOTE + '!A1', [NOTE_HEAD]);
+  return true;
+}
+async function loadNotes(token, id) {
+  let rows;
+  try { rows = await readRange(token, id, `${TAB_NOTE}!A2:H`); }
+  catch (e) { await ensureNoteTab(token, id); rows = []; }
+  return rows.map((r, i) => ({
+    row: i + 2,
+    date: String(r[0] || ''), dow: String(r[1] || ''),
+    p: Number(r[2]) || 0, cls: String(r[3] || ''), subject: String(r[4] || ''),
+    n: Number(r[5]) || 0, text: String(r[6] || ''), at: String(r[7] || '')
+  })).filter((x) => x.date && x.cls);
+}
+/* 한 줄 담기 — 같은 날·같은 교시가 이미 있으면 그 줄을 고친다 */
+async function saveNote(token, id, o) {
+  await ensureNoteTab(token, id);
+  const all = await loadNotes(token, id);
+  const mine = all.filter((x) => x.date === o.date && x.p === o.p);
+  // 차시 — 그 학급에 적은 «몇 번째» 메모인가. 고치는 것이면 본래 차시를 지킨다.
+  const n = mine.length ? mine[0].n
+    : all.filter((x) => x.cls === o.cls).length + 1;
+  const at = stamp();
+  const row = [o.date, o.dow, o.p, o.cls, o.subject || '', n, o.text || '', at];
+  if (mine.length) await writeRange(token, id, `${TAB_NOTE}!A${mine[0].row}`, [row]);
+  else await appendRow(token, id, `${TAB_NOTE}!A1`, row);
+  return { at: at, n: n };
 }
 
 /* ── 통째로 읽어 오기 ── */
@@ -177,5 +230,6 @@ async function putConf(token, id, key, value) {
 
 module.exports = {
   findSheet, createSheet, trashSheet, loadAll, saveRecord, clearRecord, saveCats, putConf,
-  readRange, writeRange, stamp, DEFAULT_CATS, TAB_REC, TAB_CAT, TAB_CFG
+  readRange, writeRange, stamp, DEFAULT_CATS, TAB_REC, TAB_CAT, TAB_CFG,
+  TAB_NOTE, NOTE_HEAD, ensureNoteTab, loadNotes, saveNote
 };

@@ -215,6 +215,39 @@
     background: var(--accent); color: var(--on); font-family: inherit;
     font-size: 10px; font-weight: 800; cursor: pointer;
   }
+  /* ── 진도표 ── */
+  .nts { display: flex; flex-direction: column; gap: 7px; padding: 2px 0 6px; }
+  .ntr { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+         padding: 8px 10px; }
+  .ntr.done { border-color: var(--accent); }
+  .ntt { display: flex; align-items: baseline; gap: 7px; margin-bottom: 5px; }
+  .ntt i { font-style: normal; font-size: calc(10.5px * var(--wf)); font-weight: 800;
+           color: var(--accent); flex: 0 0 auto; }
+  .ntcls { font-size: calc(13px * var(--wf)); font-weight: 900; color: var(--fg);
+           cursor: pointer; border-bottom: 1px dashed var(--line); }
+  .ntt u { text-decoration: none; font-size: calc(11px * var(--wf)); color: var(--dim); }
+  .ntt em { margin-left: auto; font-style: normal; font-size: calc(10px * var(--wf));
+            font-weight: 800; color: var(--accent); flex: 0 0 auto; }
+  .ntw { display: flex; gap: 6px; }
+  .nti { flex: 1; min-width: 0; background: var(--bg); color: var(--fg);
+         border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px;
+         font-family: inherit; font-size: calc(12.5px * var(--wf)); }
+  .nti:focus { outline: none; border-color: var(--accent); }
+  .ntb { flex: 0 0 auto; background: var(--accent); color: var(--on); border: 0;
+         border-radius: 7px; padding: 6px 12px; cursor: pointer; font-family: inherit;
+         font-size: calc(11.5px * var(--wf)); font-weight: 800; }
+  .ntb:disabled { opacity: .55; cursor: default; }
+  .ntat { margin-top: 4px; font-size: calc(9.5px * var(--wf)); color: var(--dim); }
+  .ntbar { margin-top: 6px; }
+  .ntl { display: flex; flex-direction: column; padding: 2px 0 8px; }
+  .ntlr { display: flex; align-items: baseline; gap: 8px; padding: 5px 2px;
+          font-size: calc(12px * var(--wf)); }
+  .ntlr + .ntlr { border-top: 1px solid var(--line); }
+  .ntlr i { font-style: normal; font-weight: 800; color: var(--dim); flex: 0 0 auto;
+            font-size: calc(10.5px * var(--wf)); }
+  .ntlr em { font-style: normal; font-weight: 800; color: var(--accent); flex: 0 0 auto;
+             font-size: calc(10px * var(--wf)); }
+  .ntlr span { color: var(--fg2); min-width: 0; }
   /* 바로가기 타일 — 위젯·넓은 창이 함께 쓴다 */
   .lnks { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
           gap: 7px; padding: 2px 0 8px; }

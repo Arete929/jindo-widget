@@ -13,7 +13,8 @@ var NOTES = null;
 /* 탭마다 글자 크기 배율을 따로 둔다. 메인이 저장해 두므로 껐다 켜도 그대로다. */
 var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1 };
 function fsKey() {
-  return ({ work: 'work', comci: 'comci', cal: 'cal', meal: 'meal', rec: 'rec', home: 'home' })[VIEW] || '';
+  return ({ work: 'work', comci: 'comci', cal: 'cal', meal: 'meal', rec: 'rec',
+    home: 'home', note: 'note', link: 'link' })[VIEW] || '';
 }
 function fontBtns(key) {
   return '<span class="wfs">'
@@ -1627,6 +1628,126 @@ function viewLinks() {
   return '<div class="lnks">' + linkTiles() + '</div>';
 }
 
+/* ── 진도표 ────────────────────────────────────────────────
+   컴시간이 «몇 교시 · 어느 반 · 무슨 과목» 을 이미 알려 준다.
+   사람이 넣을 것은 «이번 시간에 뭘 했나» 한 줄뿐이다.
+   차시는 그 학급에 적은 메모의 순번이라 저절로 붙는다.
+   ★ 혜원이지에만 있다 — 진호알리미에는 수업진도 대시보드가 따로 있다. */
+var NT = null, ntBusy = false, ntErr = '', ntCls = '', ntSaved = {};
+var NTDOW = ['일', '월', '화', '수', '목', '금', '토'];
+function ntLoad(force) {
+  if (ntBusy) return;
+  if (NT && !force) return;
+  ntBusy = true;
+  widgetAPI.noteLoad().then(function (r) {
+    ntBusy = false;
+    NT = (r && r.notes) || [];
+    ntErr = (r && (r.error || (r.noSheet ? 'nosheet' : ''))) || '';
+    render();
+  }).catch(function (e) {
+    ntBusy = false; NT = []; ntErr = (e && e.message) || String(e); render();
+  });
+}
+/* 오늘 내 수업 — 컴시간 교사 시간표에서 오늘 요일만 꺼낸다 */
+function ntToday() {
+  var d = CM && CM.data;
+  if (!d || !d.byTeacher || !d.byTeacher.length) return null;
+  var cfg = (CM.config) || {};
+  var me = d.byTeacher.filter(function (t) { return t.i === cfg.teacherIdx; })[0]
+    || d.byTeacher.filter(function (t) { return t.name === cfg.teacher; })[0];
+  if (!me) return null;
+  var dow = NTDOW[new Date().getDay()];
+  var day = (me.days || []).filter(function (x) { return x.dow === dow; })[0];
+  var out = [];
+  ((day && day.periods) || []).forEach(function (x) {
+    if (x) out.push({ p: x.p, cls: x.grade + '-' + x.cls, subject: x.subject || '' });
+  });
+  return { name: me.name, i: me.i, dow: dow, list: out };
+}
+function ntYmd() {
+  var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+function ntOf(date, p) {
+  return (NT || []).filter(function (x) { return x.date === date && x.p === p; })[0] || null;
+}
+function viewNote() {
+  if (!CM) { loadComci(); return '<div class="empty">컴시간 시간표를 불러오는 중…</div>'; }
+  if (NT === null) { ntLoad(); }
+  var me = ntToday();
+  if (!me) {
+    return '<div class="empty">먼저 <b>설정 → 컴시간</b> 에서 학교를 고르고<br>'
+      + '<b>내 이름</b> 을 골라 주세요.<br>'
+      + '<button class="btn" onclick="widgetAPI.openSettings()">설정 열기</button>'
+      + '<div style="margin-top:8px;font-size:10.5px;opacity:.8">'
+      + '내 시간표가 있어야 «몇 교시 어느 반» 을 저절로 채울 수 있습니다.</div></div>';
+  }
+  if (ntErr === 'nosheet') {
+    return '<div class="empty">메모를 담을 곳이 없습니다.<br>'
+      + '<b>설정 → 학생기록</b> 에서 시트를 만들어 주세요.<br>'
+      + '<button class="btn" onclick="widgetAPI.openSettings()">설정 열기</button>'
+      + '<div style="margin-top:8px;font-size:10.5px;opacity:.8">'
+      + '학생기록 시트 안에 「수업메모」 칸이 저절로 생깁니다.</div></div>';
+  }
+  var today = ntYmd(), now = new Date();
+  var h = '<div class="top2"><div class="wknav">'
+    + '<span class="wklab" style="text-align:left">' + (now.getMonth() + 1) + '월 '
+    + now.getDate() + '일 (' + me.dow + ')<small>' + esc(me.name) + ' 선생님</small></span>'
+    + fontBtns('note')
+    + '<button class="wkb" id="ntGet" title="다시 읽기">⟳</button></div></div>';
+  if (ntErr && ntErr !== 'nosheet') {
+    h += '<div class="note hol">' + esc(ntErr) + '</div>';
+  }
+  if (!me.list.length) {
+    h += '<div class="empty">오늘(' + esc(me.dow) + ')은 수업이 없습니다.</div>';
+  } else {
+    h += '<div class="nts">' + me.list.map(function (x) {
+      var had = ntOf(today, x.p);
+      var key = today + '_' + x.p;
+      var stamped = ntSaved[key] || (had && had.at) || '';
+      var fresh = !!ntSaved[key];
+      return '<div class="ntr' + (had ? ' done' : '') + '" data-ntc="' + esc(x.cls) + '">'
+        + '<div class="ntt"><i>' + x.p + '교시</i>'
+        + '<b class="ntcls" data-ntgo="' + esc(x.cls) + '" title="이 학급 지난 기록">'
+        + esc(x.cls) + '</b>'
+        + '<u>' + esc(x.subject) + '</u>'
+        + (had ? '<em>' + had.n + '차시</em>' : '') + '</div>'
+        + '<div class="ntw">'
+        + '<input class="nti" data-ntp="' + x.p + '" data-ntcls="' + esc(x.cls) + '" '
+        + 'data-ntsub="' + esc(x.subject) + '" maxlength="120" '
+        + 'placeholder="이번 시간에 한 것 한 줄" value="' + esc((had && had.text) || '') + '">'
+        + '<button class="ntb" data-ntsave="' + x.p + '">저장</button></div>'
+        + (stamped ? '<div class="ntat">' + (fresh ? '✅ 저장됨 · ' : '마지막 저장 · ')
+            + esc(stamped) + '</div>' : '')
+        + '</div>';
+    }).join('') + '</div>';
+  }
+  // 학급 하나를 고르면 그 학급 지난 기록 — 이것이 «진도표» 다
+  var classes = [];
+  (NT || []).forEach(function (x) { if (classes.indexOf(x.cls) < 0) classes.push(x.cls); });
+  me.list.forEach(function (x) { if (classes.indexOf(x.cls) < 0) classes.push(x.cls); });
+  classes.sort();
+  if (classes.length) {
+    h += '<div class="wknav ntbar"><span class="slab">지난 기록</span>'
+      + classes.map(function (c) {
+          return '<button class="wkb' + (ntCls === c ? ' now' : '') + '" data-ntgo="'
+            + esc(c) + '">' + esc(c) + '</button>';
+        }).join('') + '</div>';
+  }
+  if (ntCls) {
+    var mine = (NT || []).filter(function (x) { return x.cls === ntCls; })
+      .sort(function (a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : b.p - a.p); });
+    h += mine.length
+      ? '<div class="ntl">' + mine.map(function (x) {
+          return '<div class="ntlr"><i>' + esc(mdDow(x.date)) + '</i>'
+            + '<em>' + x.n + '차시</em>'
+            + '<span>' + esc(x.text || '') + '</span></div>';
+        }).join('') + '</div>'
+      : '<div class="empty">' + esc(ntCls) + ' 은 아직 적은 것이 없습니다.</div>';
+  }
+  return h;
+}
+
 function titleBar() {
   return '<div class="tbar">'
     + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
@@ -1695,7 +1816,7 @@ function render() {
   var tab = TT_SUB.indexOf(VIEW) >= 0 ? 'tt' : VIEW;
   html += '<div class="chips">'
     + (HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']
-              : ['work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']).map(function (s) {
+              : ['work,주간업무', 'comci,컴시간', 'note,수업메모', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']).map(function (s) {
         var p = s.split(',');
         return '<button class="chip' + (tab === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">' + p[1] + '</button>';
       }).join('') + '</div>';
@@ -1717,6 +1838,7 @@ function render() {
     : VIEW === 'meal' ? viewMeals()
     : VIEW === 'rec' ? viewRec()
     : VIEW === 'link' ? viewLinks()
+    : VIEW === 'note' ? viewNote()
     : viewToday(d);
   html += '<div class="foot">@JINHOKIM</div>';   // 버전은 제목 줄 오른쪽 끝에 있다
   app.style.setProperty('--wf', String(FS[fsKey()] || 1));
@@ -1732,6 +1854,33 @@ function render() {
 
   wireViews(app);
   report();
+}
+
+/* 진도표 한 줄 담기 — 담고 나면 저장시각을 그 줄 밑에 보여 준다 */
+function ntSave(app, p) {
+  var inp = app.querySelector('.nti[data-ntp="' + p + '"]');
+  if (!inp) return;
+  var btn = app.querySelector('[data-ntsave="' + p + '"]');
+  if (btn) { btn.disabled = true; btn.textContent = '담는 중…'; }
+  var o = {
+    date: ntYmd(), dow: NTDOW[new Date().getDay()], p: Number(p),
+    cls: inp.dataset.ntcls, subject: inp.dataset.ntsub, text: inp.value.trim()
+  };
+  widgetAPI.noteSave(o).then(function (r) {
+    if (r && r.ok) {
+      ntSaved[o.date + '_' + o.p] = r.at;
+      ntErr = '';
+      ntLoad(true);            // 담은 것을 다시 읽어 차시까지 맞춘다
+    } else {
+      ntErr = (r && r.error) || '담지 못했습니다';
+      if (btn) { btn.disabled = false; btn.textContent = '저장'; }
+      render();
+    }
+  }).catch(function (e) {
+    ntErr = (e && e.message) || String(e);
+    if (btn) { btn.disabled = false; btn.textContent = '저장'; }
+    render();
+  });
 }
 
 /* 스크롤을 하면 «지금 보고 있는 달»로 월 단추 표시를 옮긴다 */
@@ -1861,6 +2010,24 @@ setInterval(function () {
    위젯(#app)과 혜원이지(#main)가 «같은 연결»을 쓴다. 화면 조각이 같으니
    단추도 같아야 한다 — 한 군데만 고치면 두 프로그램이 같이 고쳐진다. */
 function wireViews(app) {
+  // 진도표 — 저장·다시 읽기·학급 고르기
+  var ntg = app.querySelector('#ntGet');
+  if (ntg) ntg.addEventListener('click', function () { ntLoad(true); });
+  app.querySelectorAll('[data-ntgo]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      ntCls = (ntCls === b.dataset.ntgo) ? '' : b.dataset.ntgo;
+      render();
+    });
+  });
+  app.querySelectorAll('[data-ntsave]').forEach(function (b) {
+    b.addEventListener('click', function () { ntSave(app, b.dataset.ntsave); });
+  });
+  app.querySelectorAll('.nti').forEach(function (i) {
+    // 엔터로도 담기게 — 수업 끝나고 빨리 적는 자리다
+    i.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') ntSave(app, i.dataset.ntp);
+    });
+  });
   // 바로가기 — 설정에서 고른 브라우저로 연다
   app.querySelectorAll('[data-lnk]').forEach(function (b) {
     b.addEventListener('click', function () {

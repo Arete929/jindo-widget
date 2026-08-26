@@ -176,7 +176,7 @@ function getFont() {
 // 탭마다 글자 크기 배율을 따로 기억한다 (주간업무·컴시간·학사일정·급식)
 function getFontScale() {
   const v = loadState().fontScale;
-  const out = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1 };
+  const out = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1, note: 1, link: 1 };
   if (v && typeof v === 'object') {
     Object.keys(out).forEach((k) => {
       const n = Number(v[k]);
@@ -310,7 +310,7 @@ async function refreshGradePlan(grade) {
 function getViewMode() { return loadState().viewMode === 'easy' ? 'easy' : 'widget'; }
 const VIEWS = HAS_TT
   ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal', 'rec', 'link']
-  : ['work', 'comci', 'cal', 'meal', 'rec', 'link'];
+  : ['work', 'comci', 'note', 'cal', 'meal', 'rec', 'link'];
 function getView() {
   const v = loadState().view;
   return VIEWS.includes(v) ? v : VIEWS[0];

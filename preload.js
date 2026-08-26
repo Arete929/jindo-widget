@@ -9,6 +9,9 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   openApp: () => ipcRenderer.send('open-app'),
   openUrl: (url) => ipcRenderer.send('open-url', url),
   openTimetable: () => ipcRenderer.send('open-timetable'),
+  /* 수업 메모(진도표) */
+  noteLoad: () => ipcRenderer.invoke('note-load'),
+  noteSave: (o) => ipcRenderer.invoke('note-save', o),
   openEasy: () => ipcRenderer.send('open-easy'),
   showWidget: () => ipcRenderer.send('show-widget'),
 

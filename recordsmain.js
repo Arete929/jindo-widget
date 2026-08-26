@@ -87,6 +87,34 @@ function register(helpers) {
 
   ipcMain.handle('rec-state', () => recState());
 
+  /* ── 수업 메모(진도표) ────────────────────────────────────
+     컴시간 시간표가 «어느 수업인지» 를 채워 주므로, 사람은 한 줄만 적는다. */
+  ipcMain.handle('note-load', async () => {
+    const st = S.load();
+    if (!st.recSheet || !st.recSheet.id) return { notes: [], noSheet: true };
+    try {
+      const t = await token();
+      return { notes: await rec.loadNotes(t, st.recSheet.id) };
+    } catch (e) {
+      S.log('수업 메모 읽기 실패 — ' + (e.message || e));
+      return { notes: [], error: e.message || String(e) };
+    }
+  });
+  ipcMain.handle('note-save', async (_e, o) => {
+    const st = S.load();
+    if (!st.recSheet || !st.recSheet.id) return { ok: false, error: '먼저 학생기록 시트를 만들어 주세요' };
+    if (!o || !o.date || !o.cls) return { ok: false, error: '어느 수업인지 알 수 없습니다' };
+    try {
+      const t = await token();
+      const r = await rec.saveNote(t, st.recSheet.id, o);
+      S.log(`수업 메모 — ${o.date} ${o.p}교시 ${o.cls} (${r.n}차시)`);
+      return { ok: true, at: r.at, n: r.n };
+    } catch (e) {
+      S.log('수업 메모 저장 실패 — ' + (e.message || e));
+      return { ok: false, error: e.message || String(e) };
+    }
+  });
+
   /* 구글 연결 */
   ipcMain.handle('rec-signin', async () => {
     const c = clientInfo();
