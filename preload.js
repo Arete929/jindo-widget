@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   getWeek: (off) => ipcRenderer.invoke('get-week', off),
   getWork: () => ipcRenderer.invoke('get-work'),
   workFetch: () => ipcRenderer.invoke('work-fetch'),
+  printWork: (p) => ipcRenderer.invoke('work-print', p),
   onWorkChanged: (cb) => ipcRenderer.on('work-changed', () => cb()),
   setView: (view) => ipcRenderer.send('set-view', view),
   reportHeight: (h) => ipcRenderer.send('content-height', h),

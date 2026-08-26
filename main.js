@@ -1086,6 +1086,100 @@ ipcMain.on('open-login', () => startLogin());
 ipcMain.on('open-timetable', () => openTimetableWindow());
 ipcMain.on('open-easy', () => openEasyWindow());
 
+/* ── 주간업무 인쇄 ──────────────────────────────────────────────
+   화면을 그대로 인쇄하면 탭·검색줄·어두운 바탕까지 나온다. 그래서 화면 쪽에서
+   «흰 종이» 용 조각을 따로 만들어 보내면, 여기서 숨은 창에 담아 인쇄한다.
+   silent:false 라서 윈도우 인쇄 대화상자가 뜬다 — 프린터를 고르거나
+   «Microsoft Print to PDF» 로 파일로 저장할 수 있다. */
+const PRINT_CSS = `
+  @page { size: A4; margin: 12mm 12mm 14mm; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #fff; color: #111;
+    font-family: "Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif;
+    font-size: 10.5pt; line-height: 1.55;
+  }
+  .head { border-bottom: 1.6pt solid #111; padding-bottom: 5pt; margin-bottom: 11pt; }
+  .head h1 { margin: 0; font-size: 15pt; letter-spacing: -.3pt; }
+  .head .sub { margin-top: 2pt; font-size: 9pt; color: #555; }
+  .dept { margin-bottom: 11pt; break-inside: avoid; page-break-inside: avoid; }
+  .dept h2 {
+    margin: 0 0 5pt; font-size: 11.5pt; letter-spacing: -.3pt; color: #000;
+    border-left: 3pt solid #111; padding-left: 6pt;
+  }
+  .wkp { margin: 0 0 1.5pt; color: #111; white-space: pre-wrap; word-break: break-word; }
+  .wkp.lv1 { margin-top: 7pt; }
+  .wkp.lv2 { margin-top: 4pt; }
+  .wkp.lv3 { margin-top: 2pt; }
+  .wkp.lv4 { margin-top: 1pt; }
+  .dept h2 + .wkp.lv1 { margin-top: 0; }
+  .wkp.a-center { text-align: center; }
+  .wkp.a-right { text-align: right; }
+  .wtbw { margin: 4pt 0 5pt; }
+  .wtb { border-collapse: collapse; width: 100%; break-inside: avoid; page-break-inside: avoid; }
+  .wtb td {
+    border: .6pt solid #999; padding: 2.5pt 4pt; vertical-align: top; color: #111;
+    font-size: 9.5pt; line-height: 1.45; white-space: pre-wrap; word-break: break-word;
+  }
+  .wtb tr:first-child td { background: #eee; color: #000; font-weight: 700; text-align: center; }
+  .wtb .wkp { margin: 0; font-size: inherit; }
+  .wtb .wkp.lv1 { margin-top: 3pt; }
+  .wtb .wkp.lv2, .wtb .wkp.lv3, .wtb .wkp.lv4 { margin-top: 1pt; }
+  .wtb td > .wkp:first-child { margin-top: 0; }
+  u { text-decoration: underline; }
+`;
+
+function printPaper(p) {
+  return new Promise((resolve) => {
+    const win = new BrowserWindow({
+      show: false,
+      webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
+    });
+    const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">'
+      + '<title>' + escHtml(p.title) + '</title>'
+      + '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9'
+      + '/dist/web/variable/pretendardvariable-dynamic-subset.min.css">'
+      + '<style>' + PRINT_CSS + '</style></head><body>'
+      + '<div class="head"><h1>' + escHtml(p.range || '주간업무') + '</h1>'
+      + '<div class="sub">' + escHtml(p.doc || '') + ' · ' + escHtml(APP_NAME)
+      + ' · 뽑은 날 ' + stampNow() + '</div></div>'
+      + (p.body || '')
+      + '</body></html>';
+
+    const done = (ok) => {
+      if (!win.isDestroyed()) win.destroy();
+      resolve(ok);
+    };
+    win.webContents.once('did-finish-load', () => {
+      // 글꼴이 늦게 올 수 있어 조금 기다렸다가 인쇄한다 (글자가 깨져 나오는 것을 막는다)
+      setTimeout(() => {
+        if (win.isDestroyed()) return resolve(false);
+        win.webContents.print({ silent: false, printBackground: true }, (ok, why) => {
+          if (!ok && why && why !== 'cancelled') debugLog('주간업무 인쇄 실패: ' + why);
+          else debugLog('주간업무 인쇄 — ' + (ok ? '보냄' : '취소'));
+          done(ok);
+        });
+      }, 600);
+    });
+    win.webContents.once('did-fail-load', () => { debugLog('인쇄용 종이를 못 그림'); done(false); });
+    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+  });
+}
+function escHtml(t) {
+  return String(t == null ? '' : t)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function stampNow() {
+  const d = new Date(), p = (n) => String(n).padStart(2, '0');
+  return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate())
+    + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+ipcMain.handle('work-print', async (_e, p) => {
+  if (!p || !p.body) return false;
+  return printPaper(p);
+});
+
 /* ── AI 사용량 ── */
 ipcMain.on('usage-login', (_e, key) => aiusage.openLogin(String(key || '')));
 ipcMain.on('usage-refresh', () => aiusage.pollAll());

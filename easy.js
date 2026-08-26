@@ -148,5 +148,3 @@ MAIN.addEventListener('scroll', function () {
 
 VIEW = 'home';
 render();
-// 위젯이 보내 주는 «보던 탭» 에 끌려가지 않도록, 값이 와도 대시보드를 지킨다
-widgetAPI.onData(function () { if (!known(VIEW)) VIEW = 'home'; });

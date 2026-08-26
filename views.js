@@ -377,6 +377,8 @@ function viewWork() {
       + '<button class="wkb" id="wkNext" title="다음 (Enter)">▼</button>';
   }
   h += fontBtns('work')
+    + '<button class="wkb prt" id="workPrint" title="이 주간업무를 인쇄합니다">'
+    + '<img src="assets/print.png" alt="">출력</button>'
     + '<button class="wkb" id="workGet" title="다시 가져오기">⟳</button></div>';
 
   if (!weeks.length && WORK.refreshing) {
@@ -413,6 +415,43 @@ function viewWork() {
   }).join('') || '<div class="empty">이 주차에는 등록된 업무가 없습니다.</div>';
   return h;
 }
+/* ── 인쇄용 종이 ──────────────────────────────────────────────
+   화면을 그대로 인쇄하면 탭·검색줄·어두운 바탕까지 따라 나온다.
+   여기서는 «흰 종이에 검은 글씨» 로 내용만 다시 짠다.
+   찾은 자리 표시(mark)와 단추는 빼고, 표·들여쓰기·글머리 단계는 그대로 살린다. */
+function workPrintHtml() {
+  if (!WORK) return null;
+  var weeks = (workDoc === 'input' ? WORK.input : WORK.merged) || [];
+  if (!weeks.length) return null;
+  var i = Math.min(Math.max(workOff, 0), weeks.length - 1);
+  var w = weeks[i];
+
+  // 찾기 표시가 섞이지 않게 잠시 꺼 두고 그린다
+  var keepQ = workQ, keepN = HITN;
+  workQ = ''; HITN = 0;
+  var body = '';
+  try {
+    if (w.cal) body += wblock(w.cal);
+    body += (w.depts || []).map(function (p) {
+      var inner = p.blocks ? wblocks(p.blocks)
+        : (p.lines || []).map(function (l) {
+            return '<div class="wkp">' + mk(l && l.t !== undefined ? l.t : l) + '</div>';
+          }).join('');
+      return '<section class="dept"><h2>' + mk(p.name) + '</h2>' + inner + '</section>';
+    }).join('');
+  } finally {
+    workQ = keepQ; HITN = keepN;
+  }
+  // 링크는 인쇄물에서 누를 수 없으니 밑줄만 남기고 글씨로 둔다
+  body = body.replace(/<a class="wlink"[^>]*>/g, '<u>').replace(/<\/a>/g, '</u>');
+  return {
+    title: (workDoc === 'input' ? '주간업무' : '주간업무(합본)') + ' ' + (w.range || ''),
+    range: w.range || '',
+    doc: workDoc === 'input' ? '입력본' : '합본',
+    body: body
+  };
+}
+
 function shortRange(r) {
   var m = String(r || '').match(/(\d{1,2})\s*\.\s*(\d{1,2})\s*\.?\s*\([월화수목금토일]\)\s*[~〜～]\s*20\d\d\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})/);
   if (!m) return String(r || '').slice(0, 22);
@@ -1452,6 +1491,14 @@ function wireViews(app) {
       if (b.dataset.off !== undefined) { WK = null; loadWeek(Number(b.dataset.off)); return; }
       if (b.dataset.doc) { workDoc = b.dataset.doc; workOff = 0; render(); return; }
       if (b.dataset.woff !== undefined) { workOff = Number(b.dataset.woff); followHit = false; render(); return; }
+      if (b.id === 'workPrint') {
+        var p = workPrintHtml();
+        if (!p) return;
+        b.disabled = true;
+        widgetAPI.printWork(p).then(function () { b.disabled = false; })
+          .catch(function () { b.disabled = false; });
+        return;
+      }
       if (b.id === 'workGet') { WORK = null; workBusy = true; render();
         widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
         return; }
