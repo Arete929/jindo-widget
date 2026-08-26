@@ -1508,8 +1508,11 @@ function notesCard() {
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ');
   var lines = plain.split('\n').filter(function (t) { return t.trim(); });
   return '<div class="notes"><div class="nh">🆕 v' + esc(NOTES.version) + ' 에서 바뀐 것'
-    + '<button class="nx" id="notesX" title="닫기">✕</button></div>'
+    // 오른쪽에 자리가 넉넉하니 닫기를 크게 — 그리고 닫으면 어떻게 되는지 미리 알린다
+    + '<button class="nx" id="notesX" title="이 안내를 닫습니다">✕ 닫기</button></div>'
     + lines.map(function (t) { return '<div class="nl">' + esc(t) + '</div>'; }).join('')
+    + '<div class="nfoot">닫으면 이 안내는 <b>다시 나오지 않습니다.</b> '
+    + '지난 내역은 <b>설정 → 정보 → «업데이트 내역 보기»</b> 에서 언제든 볼 수 있어요.</div>'
     + '</div>';
 }
 function titleBar() {
