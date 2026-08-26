@@ -177,6 +177,15 @@
     <button id="recOut">연결 끊기</button>
   </div>
 
+  <!-- ★ 구글 클라이언트는 앱에 심어 두었다(gclient.json). 보통은 넣을 것이 없어서
+       한 줄로 접어 둔다. «자기 것» 을 쓰는 사람만 펼치면 된다. -->
+  <div class="row">
+    <label class="lb">구글 클라이언트</label>
+    <span id="gcState" class="hint" style="margin:0;flex:1"></span>
+    <button id="gcMore">직접 넣기 ▸</button>
+  </div>
+
+  <div id="gcBox" style="display:none">
   <div class="row">
     <label class="lb">클라이언트 ID</label>
     <input type="text" id="gcId" placeholder="…apps.googleusercontent.com">
@@ -185,9 +194,10 @@
     <label class="lb">비밀값</label>
     <input type="text" id="gcSec" placeholder="GOCSPX-…">
     <button id="gcSave">저장</button>
+    <button id="gcClear">앱 것으로 되돌리기</button>
   </div>
   <div class="hint">
-    <b>보통은 비워 두시면 됩니다</b> — 앱에 이미 들어 있습니다.<br>
+    <b>보통은 여기를 건드릴 일이 없습니다</b> — 앱에 이미 들어 있습니다.<br>
     다른 학교에서 «자기 것»을 쓰고 싶을 때만 아래처럼 만들어 넣으세요.<br>
     <b>1.</b> <a href="#" id="gcLink">console.cloud.google.com</a> 에서 프로젝트를 하나 만듭니다<br>
     <b>2.</b> «API 및 서비스 → 사용자 인증 정보» 에서 <b>OAuth 클라이언트 ID</b> 를 만듭니다.
@@ -196,6 +206,7 @@
     <b>4.</b> 만들어진 <b>클라이언트 ID</b> 와 <b>비밀값</b> 을 위에 붙여 넣고 저장한 뒤,
     위젯의 학생기록 탭에서 «구글 연결하기» 를 누릅니다<br>
     쓰는 권한은 <b>«이 앱이 만든 파일»</b> 짜리라 다른 파일은 건드리지 못합니다.
+  </div>
   </div>
 
   <div class="row" style="margin-top:10px">
@@ -309,6 +320,8 @@
 <script>
 var CFG = { school: null, wantTeacher: true, wantClasses: false, teacher: '', teacherIdx: 0 };
 var UI = { size: 'medium', opacity: 1, alwaysOnTop: true, autoLaunch: false, version: '', loggedIn: false };
+// 구글 클라이언트 칸을 펼쳐 놓았는가. 앱에 심어 둔 것으로 충분해서 평소엔 접어 둔다.
+var gcOpen = false;
 var TIMETABLE = null, found = [];
 
 function $(id) { return document.getElementById(id); }
@@ -578,6 +591,17 @@ function paintRec() {
       : '<span class="warn">아래 클라이언트 정보를 먼저 넣어 주세요</span>');
   $('recOut').disabled = !r.linked;
 
+  // 구글 클라이언트 — 자기 것을 넣어 뒀으면 펼친 채로, 아니면 한 줄로
+  $('gcState').innerHTML = r.ownClient
+    ? '<span class="ok">자기 것을 쓰는 중</span> — 이 PC 에 넣어 둔 정보로 연결합니다'
+    : (r.hasClient
+      ? '<span class="ok">앱에 들어 있습니다</span> — 따로 넣을 것이 없습니다'
+      : '<span class="warn">앱에 클라이언트가 없습니다</span> — 아래에 직접 넣어 주세요');
+  if (r.ownClient || !r.hasClient) gcOpen = true;
+  $('gcBox').style.display = gcOpen ? '' : 'none';
+  $('gcMore').textContent = gcOpen ? '접기 ▾' : '직접 넣기 ▸';
+  $('gcClear').style.display = r.ownClient ? '' : 'none';
+
   var sh = r.sheet;
   $('recSheet').innerHTML = !sh || !sh.id
     ? '아직 없습니다 — 위젯의 학생기록 탭에서 «시트 만들기»'
@@ -625,6 +649,14 @@ $('gcSave').onclick = function () {
 $('gcLink').onclick = function (e) {
   e.preventDefault();
   widgetAPI.openUrl('https://console.cloud.google.com/apis/credentials');
+};
+$('gcMore').onclick = function () { gcOpen = !gcOpen; paint(); };
+$('gcClear').onclick = function () {
+  if (!confirm('넣어 두신 클라이언트 정보를 지우고 «앱에 들어 있는 것»으로 돌아갈까요?\n\n' +
+    '구글 연결은 한 번 다시 하셔야 합니다.')) return;
+  widgetAPI.setUi({ gclient: { clientId: '', clientSecret: '' } });
+  $('gcId').value = ''; $('gcSec').value = '';
+  setTimeout(load, 200);
 };
 $('recOut').onclick = function () {
   if (!confirm('구글 연결을 끊을까요?\n\n시트와 기록은 구글 드라이브에 그대로 남습니다.\n다시 «구글 연결하기» 를 누르면 그 시트를 이어서 씁니다.')) return;
