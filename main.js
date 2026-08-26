@@ -1586,7 +1586,14 @@ aiusage.setLogger(debugLog);
 
     // 학사일정 — 받아둔 것이 없거나 실패로 남아 있으면 한 번 받아 둔다
     const a0 = loadAcademic();
-    if (!a0 || a0.error || !((a0.months || []).length)) {
+    // ★ v1.28.0 이전에 받아 둔 것은 «어느 해인지»(year·ok)를 안 갖고 있다.
+    //   그러면 시트에 섞인 다른 해 탭을 못 걸러서, 오늘이 엉뚱한 요일로 나오고
+    //   「오늘 일정」에도 다른 해 것이 뜬다(2027년 8월 탭이 이겼던 일이 있다).
+    //   낡은 모양이면 조용히 다시 받는다 — 사람이 ⟳ 를 눌러야 하는 것은 고침이 아니다.
+    const acOld = a0 && (a0.months || []).length
+      && a0.months.some((m) => m.ok === undefined && m.year === undefined);
+    if (!a0 || a0.error || !((a0.months || []).length) || acOld) {
+      if (acOld) debugLog('학사일정 — 옛 모양(어느 해인지 모름)이라 새로 받습니다');
       scheduleTask('cal', '학사일정', 4000, () => refreshAcademic());
     }
 
