@@ -150,6 +150,32 @@
 </section>
 
 <section>
+  <h2>날씨 · 미세먼지</h2>
+  <div class="row">
+    <label class="lb">보이기</label>
+    <button class="sw" id="wxSw"><span class="track"><span class="knob"></span></span><span id="wxSwTxt">보이기</span></button>
+    <span id="wxNow" class="hint" style="margin:0;flex:1"></span>
+  </div>
+  <div class="row">
+    <label class="lb">지금 지역</label>
+    <span id="wxSpot" class="hint" style="margin:0;flex:1"></span>
+    <button id="wxGet2">지금 받기</button>
+  </div>
+  <div id="wxPal"></div>
+  <div class="row" style="margin-top:8px">
+    <label class="lb">직접 넣기</label>
+    <input type="text" id="wxLat" placeholder="위도 (예: 37.6063)" style="min-width:90px">
+    <input type="text" id="wxLon" placeholder="경도 (예: 127.0925)" style="min-width:90px">
+    <button id="wxSave">저장</button>
+  </div>
+  <div class="hint" id="wxMsg">
+    목록에 없는 곳은 <b>위도·경도</b>를 넣으세요 — 구글 지도에서 그 자리를 오른쪽 클릭하면 나옵니다.<br>
+    날씨는 <b>Open-Meteo</b> 에서 받아옵니다. 인증키가 필요 없고, 30분마다 저절로 새로 받습니다.<br>
+    미세먼지 등급은 <b>환경부 기준</b>(좋음·보통·나쁨·매우 나쁨)입니다.
+  </div>
+</section>
+
+<section>
   <h2>학사일정</h2>
   <div class="row">
     <label class="lb">시트 주소</label>
@@ -449,6 +475,20 @@ function __paint() {
   $('verText').textContent = 'v' + UI.version;
   $('h1').textContent = '⚙️ ' + (UI.appName || '위젯') + ' 설정';
   if (UI.academicSheet && !$('acSheet').value) $('acSheet').value = UI.academicSheet;
+  // ── 날씨
+  var wx = UI.wx || {};
+  var wxOn = wx.show !== false;
+  $('wxSw').className = 'sw' + (wxOn ? ' on' : '');
+  $('wxSwTxt').textContent = wxOn ? '보이기' : '숨기기';
+  $('wxSpot').innerHTML = '<b>' + esc((wx.spot && wx.spot.name) || '혜원여자중학교') + '</b>'
+    + (wx.spot ? ' <span style="opacity:.7">(' + wx.spot.lat + ', ' + wx.spot.lon + ')</span>' : '');
+  var wd = wx.data;
+  $('wxNow').innerHTML = (wd && wd.now)
+    ? wd.now.icon + ' ' + esc(wd.now.text) + ' <b>' + wd.now.temp + '°</b>'
+      + (wd.air && wd.air.pm10 ? ' · 미세 <b>' + esc(wd.air.pm10.t) + '</b>' : '')
+    : (wd && wd.error ? '<span class="warn">' + esc(wd.error) + '</span>' : '받는 중…');
+  paintWxPal(wx.spot && wx.spot.name);
+
   var gs = (UI.grade && UI.grade.sheets) || {};
   [1, 2, 3].forEach(function (g) {
     if (!$('gp' + g).value) $('gp' + g).value = gs[g] || '';
@@ -681,6 +721,53 @@ $('gcClear').onclick = function () {
   widgetAPI.setUi({ gclient: { clientId: '', clientSecret: '' } });
   $('gcId').value = ''; $('gcSec').value = '';
   setTimeout(load, 200);
+};
+/* 지역 팔레트 — 심어 둔 목록을 무리별 버튼으로 (드롭다운은 안 쓴다) */
+var WXSPOTS = null;
+function paintWxPal(cur) {
+  if (!WXSPOTS) {
+    widgetAPI.wxSpots().then(function (s) { WXSPOTS = s || []; paintWxPal(cur); });
+    return;
+  }
+  $('wxPal').innerHTML = WXSPOTS.map(function (g) {
+    return '<div class="row"><label class="lb">' + esc(g.g) + '</label>'
+      + '<div class="chips">' + g.list.map(function (x) {
+          return '<button data-wx="' + x[1] + ',' + x[2] + '" data-wxn="' + esc(x[0]) + '"'
+            + (x[0] === cur ? ' class="on"' : '') + '>' + esc(x[0]) + '</button>';
+        }).join('') + '</div></div>';
+  }).join('');
+  $('wxPal').querySelectorAll('[data-wx]').forEach(function (b) {
+    b.onclick = function () {
+      var p = b.dataset.wx.split(',');
+      widgetAPI.setUi({ wxSpot: { name: b.dataset.wxn, lat: Number(p[0]), lon: Number(p[1]) } });
+      setTimeout(load, 400);
+    };
+  });
+}
+$('wxSw').onclick = function () {
+  var on = !$('wxSw').classList.contains('on');
+  widgetAPI.setUi({ wxShow: on });
+  setTimeout(load, 200);
+};
+$('wxGet2').onclick = function () {
+  $('wxGet2').textContent = '받는 중…';
+  widgetAPI.wxRefresh().then(function () {
+    $('wxGet2').textContent = '지금 받기';
+    load();
+  });
+};
+$('wxSave').onclick = function () {
+  var la = Number($('wxLat').value), lo = Number($('wxLon').value);
+  if (!isFinite(la) || !isFinite(lo) || !la || !lo) {
+    $('wxMsg').insertAdjacentHTML('afterbegin', '<b class="warn">위도·경도를 숫자로 넣어 주세요</b><br>');
+    return;
+  }
+  widgetAPI.setUi({ wxSpot: { name: '직접 넣은 곳', lat: la, lon: lo } });
+  var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+  $('wxMsg').insertAdjacentHTML('afterbegin', '<b class="ok">✅ 저장됨 · '
+    + d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate()) + ' '
+    + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + '</b><br>');
+  setTimeout(load, 500);
 };
 $('gpSave').onclick = function () {
   widgetAPI.setUi({ gradeSheets: { 1: $('gp1').value, 2: $('gp2').value, 3: $('gp3').value } });

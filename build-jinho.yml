@@ -26,6 +26,7 @@ files:
   - neis.js
   - academic.js
   - gradeplan.js  # 학년부 일지 시트
+  - weather.js    # 날씨·미세먼지 (Open-Meteo)
   - aiusage.js
   - httpx.js
   - googleauth.js

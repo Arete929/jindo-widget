@@ -1,4 +1,4 @@
-/* 파일명: easy.js | @version 1.4.0
+/* 파일명: easy.js | @version 1.5.0
    혜원이지 — 넓은 창의 뼈대. 왼쪽 메뉴 · 대시보드 · 화면 갈아 끼우기.
 
    ★ 자료를 읽어 오고 화면 조각을 만드는 일은 views.js 가 그대로 한다.
@@ -21,10 +21,40 @@ var MENU = [
 function menuOf(v) { return MENU.filter(function (m) { return m.v === v; })[0] || MENU[0]; }
 function known(v) { return MENU.some(function (m) { return m.v === v; }); }
 
+/* AI 사용량 — 사이드바 맨 위 타일.
+   위젯은 머리에 띠로 붙이지만 넓은 창은 본문이 넓어야 하니 옆으로 뺀다.
+   좁은 자리라 «막대» 하나로만 보여준다(원형은 글씨가 뭉갠다). */
+function sideUsage() {
+  if (!USGSHOW || !USG) return '';
+  var keys = Object.keys(USG);
+  if (!keys.length) return '';
+  var h = '<div class="sgrp">AI 사용량</div><div class="sus">';
+  h += keys.map(function (k) {
+    var u = USG[k] || {};
+    var ms = usgMetrics(u);
+    if (u.needsLogin || (!u.ok && !ms.length)) {
+      return '<div class="sut"><div class="sun">' + esc(u.label || k) + '</div>'
+        + '<button class="sulg" data-usglogin="' + esc(k) + '">'
+        + (u.needsLogin ? '로그인하기' : '다시 시도') + '</button></div>';
+    }
+    return '<div class="sut"><div class="sun">' + esc(u.label || k) + '</div>'
+      + ms.map(function (x) {
+          var p = pctOf(x.m);
+          return '<div class="sub"><span class="subt">' + esc(x.lb) + '<b>' + p + '%</b></span>'
+            + '<span class="subk"><i style="width:' + Math.min(100, p) + '%"></i></span>'
+            + '<span class="subr">' + (leftOf(x.m) ? esc(leftOf(x.m)) + ' 남음' : esc(atOf(x.m))) + '</span>'
+            + '</div>';
+        }).join('')
+      + '</div>';
+  }).join('');
+  return h + '<button class="sulg wide" id="usgGet">⟳ 다시 읽기</button></div>';
+}
+
 /* ── 왼쪽 메뉴 ── */
 function drawSide() {
   var h = '<div class="brand"><img src="assets/hyewon-icon.png" alt="">'
     + '<span><b>혜원이지</b><small>HYEWON EASY</small></span></div>';
+  h += sideUsage();
   h += MENU.map(function (m) {
     return '<button class="nav' + (VIEW === m.v ? ' on' : '') + '" data-go="' + m.v + '">'
       + '<i>' + m.i + '</i>' + esc(m.t) + '</button>';
@@ -36,6 +66,15 @@ function drawSide() {
   SIDE.innerHTML = h;
   SIDE.querySelectorAll('[data-go]').forEach(function (b) {
     b.addEventListener('click', function () { go(b.dataset.go); });
+  });
+  // 사용량 타일의 단추 — 본문이 아니라 사이드바에 있으니 여기서 잇는다
+  SIDE.querySelectorAll('[data-usglogin]').forEach(function (b) {
+    b.addEventListener('click', function () { widgetAPI.usageLogin(b.dataset.usglogin); });
+  });
+  var ug = SIDE.querySelector('#usgGet');
+  if (ug) ug.addEventListener('click', function () {
+    ug.textContent = '읽는 중…';
+    widgetAPI.usageRefresh();
   });
   var gw = SIDE.querySelector('#goWid');
   if (gw) gw.addEventListener('click', function () { widgetAPI.showWidget(); });
@@ -78,6 +117,7 @@ function tile(m) {
 
 function viewHome() {
   var h = todayLine();
+  h += wxCard();   // 사용량은 사이드바에 있다
 
   var favs = EASYFAV.filter(known).map(menuOf).filter(function (m) { return m.v !== 'home'; });
   if (favs.length) {

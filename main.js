@@ -19,6 +19,7 @@ const aiusage = require('./aiusage.js');
 const recordsmain = require('./recordsmain.js');
 const roster = require('./roster.js');
 const gradeplan = require('./gradeplan.js');
+const weather = require('./weather.js');
 
 /* ── 갈래(flavor) ──────────────────────────────────────────────
    한 벌의 코드로 두 프로그램을 만든다. 빌드할 때 package.json 에 flavor 를 심어 두고
@@ -158,6 +159,34 @@ function getFontScale() {
 // 받자마자 쓰는 사람에게는 «로그인하기» 단추만 두 칸 보이는 셈이 된다.
 function getUsageShow() { const v = loadState().usageShow; return v === undefined ? false : !!v; }
 function getUsageStyle() { return loadState().usageStyle === 'bar' ? 'bar' : 'ring'; }
+
+/* ── 날씨·미세먼지 ────────────────────────────────────────────
+   Open-Meteo — 열쇠가 필요 없다. 학교망에서 막히면 조용히 안 보이게 둔다.
+   지역은 혜원여자중학교가 기본이고, 설정에서 고르거나 좌표를 직접 넣을 수 있다. */
+function getWxSpot() {
+  const v = loadState().wxSpot;
+  if (v && isFinite(Number(v.lat)) && isFinite(Number(v.lon))) {
+    return { name: String(v.name || '고른 곳'), lat: Number(v.lat), lon: Number(v.lon) };
+  }
+  return weather.DEFAULT_SPOT;
+}
+function getWxShow() { const v = loadState().wxShow; return v === undefined ? true : !!v; }
+let wxData = null;
+async function refreshWeather() {
+  const s = getWxSpot();
+  try {
+    const got = await weather.fetchWeather(s.lat, s.lon);
+    got.spot = s.name;
+    wxData = got;
+    debugLog(`날씨 — ${s.name} ${got.now.temp}℃ ${got.now.text}`
+      + (got.air ? ` · 미세 ${got.air.pm10.v}(${got.air.pm10.t})` : ' · 미세먼지 없음'));
+  } catch (e) {
+    // 인터넷이 막히면 지난 값을 그대로 둔다 — 갑자기 사라지는 것보다 낫다
+    debugLog('날씨 받기 실패: ' + ((e && e.message) || e));
+    if (!wxData) wxData = { error: (e && e.message) || String(e) };
+  }
+  sendToWidget();
+}
 
 /* ── 학년부 일지 ──────────────────────────────────────────────
    학년마다 시트가 따로 있다. 주소는 해마다 바뀌므로 설정에서 고칠 수 있게 둔다.
@@ -381,6 +410,7 @@ function sendToWidget() {
     comciPick: loadState().comciPick || null,
     comciSide: loadState().comciSide === 'row' ? 'row' : 'col',
     grade: { show: getGradeShow(), pick: getGradePick(), sheets: getGradeSheets() },
+    wx: { show: getWxShow(), spot: getWxSpot(), data: wxData },
     easyFav: loadState().easyFav || [],          // 혜원이지 대시보드 즐겨찾기
     update: { state: updateState, version: updateVersion }
   };
@@ -988,10 +1018,19 @@ function openSettingsWindow(from) {
   if (parent) {
     opts.parent = parent;
     opts.skipTaskbar = true;          // 부모에 딸린 창이라 따로 잡히지 않게
-    // 부모 한가운데에 놓는다 — 다른 모니터에서 열어도 눈앞에 뜬다
+    // ★ 부모가 «있는 모니터» 한가운데에 놓는다.
+    //   예전에는 y 를 Math.max(0, …) 로 잘랐는데, 위쪽·왼쪽에 놓인 모니터는
+    //   좌표가 음수라 0 으로 잘리면서 창이 주 모니터로 끌려갔다.
+    //   («듀얼 모니터인데 반대편에 뜬다» 가 이것이었다)
     const b = parent.getBounds();
-    opts.x = Math.round(b.x + (b.width - w) / 2);
-    opts.y = Math.max(0, Math.round(b.y + (b.height - h) / 2));
+    const area = screen.getDisplayMatching(b).workArea;
+    let x = Math.round(b.x + (b.width - w) / 2);
+    let y = Math.round(b.y + (b.height - h) / 2);
+    // 그 모니터 안으로만 밀어 넣는다 (화면 밖으로 나가지 않게)
+    x = Math.min(Math.max(x, area.x), area.x + area.width - w);
+    y = Math.min(Math.max(y, area.y), area.y + area.height - h);
+    opts.x = x;
+    opts.y = y;
   }
   settingsWin = new BrowserWindow(opts);
   settingsWin.loadFile('settings.html');
@@ -1045,6 +1084,16 @@ ipcMain.on('set-ui', (_e, v) => {
     saveState({ fontScale: Object.assign(getFontScale(), v.fontScale) });
     sendToWidget();
   }
+  if (v.wxSpot !== undefined) {
+    const p = v.wxSpot || {};
+    if (isFinite(Number(p.lat)) && isFinite(Number(p.lon))) {
+      saveState({ wxSpot: { name: String(p.name || '고른 곳'), lat: Number(p.lat), lon: Number(p.lon) } });
+      debugLog('날씨 지역 바꿈: ' + p.name);
+      wxData = null;
+      refreshWeather();
+    }
+  }
+  if (v.wxShow !== undefined) { saveState({ wxShow: !!v.wxShow }); sendToWidget(); }
   if (v.gradeSheets !== undefined) {
     const cur = getGradeSheets();
     [1, 2, 3].forEach((g) => { if (v.gradeSheets[g] !== undefined) cur[g] = String(v.gradeSheets[g] || ''); });
@@ -1189,6 +1238,10 @@ ipcMain.on('open-easy', () => openEasyWindow());
 ipcMain.on('show-widget', () => showWidgetOnly());
 
 /* 학년부 일지 — 받아 둔 것 주기 / 새로 받기 */
+/* 날씨 — 지금 다시 받기 · 고를 수 있는 지역 목록 */
+ipcMain.handle('wx-refresh', async () => { await refreshWeather(); return wxData; });
+ipcMain.handle('wx-spots', () => weather.SPOTS);
+
 ipcMain.handle('grade-get', (_e, grade) => {
   const g = Number(grade) || getGradePick();
   return loadGradePlans()[g] || null;
@@ -1469,6 +1522,10 @@ if (!gotLock) {
       debugLog(`${APP_NAME} — 시간표 없이 시작합니다 (구글 로그인 불필요)`);
       sendToWidget();
     }
+
+    // 날씨 — 켜고 잠시 뒤 한 번, 그 뒤로는 30분마다
+    scheduleTask('wx', '날씨', 3000, () => refreshWeather());
+    setInterval(() => refreshWeather(), 30 * 60 * 1000);
 
     checkForUpdates();
     setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);

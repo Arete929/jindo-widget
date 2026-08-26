@@ -913,6 +913,27 @@ function viewProgress(d) {
 /* 업데이트가 준비되면 맨 위에 눌러서 설치할 수 있는 띠를 띄운다.
    윈도우 알림과 트레이 메뉴만으로는 계속 놓치기 쉬워서 화면에 직접 둔다. */
 /* 무엇을 언제 받는지 보여준다 — 조용히 실패하면 «안 된다»고만 알게 되니까 */
+/* ── 날씨·미세먼지 ── */
+var WX = null, WXSHOW = true, WXSPOT = '';
+function wxCard() {
+  if (!WXSHOW || !WX || WX.error || !WX.now) return '';
+  var n = WX.now, t = WX.today, a = WX.air;
+  var h = '<div class="wx" title="' + esc(WXSPOT || '') + ' · 눌러서 다시 받기">'
+    + '<button class="wxb" id="wxGet">'
+    + '<span class="wxi">' + n.icon + '</span>'
+    + '<span class="wxt"><b>' + n.temp + '°</b>'
+    + '<i>' + esc(n.text) + '</i></span>'
+    + '<span class="wxs">' + t.min + '° / ' + t.max + '°'
+    + (t.rain >= 30 ? ' · 비 ' + t.rain + '%' : '') + '</span>';
+  if (a && a.pm10) {
+    h += '<span class="wxp g' + a.pm10.lv + '">미세 <b>' + esc(a.pm10.t) + '</b></span>';
+  }
+  if (a && a.pm25) {
+    h += '<span class="wxp g' + a.pm25.lv + '">초미세 <b>' + esc(a.pm25.t) + '</b></span>';
+  }
+  return h + '</button></div>';
+}
+
 var TASKS = [];
 /* ── AI 사용량 (클로드·제미나이) ──────────────────────────────
    위젯이 보이지 않는 창으로 직접 읽어 온다. 원형과 막대 중에 고를 수 있고,
@@ -1463,7 +1484,7 @@ function render() {
     return report();
   }
 
-  var d = STATE, html = '<div class="top">' + titleBar() + notesCard() + usageBar() + updBar() + taskBar();
+  var d = STATE, html = '<div class="top">' + titleBar() + notesCard() + wxCard() + usageBar() + updBar() + taskBar();
   // 혜원 데스크는 수업진도 자료를 안 받으므로 날짜·요일을 스스로 만든다
   var nd = new Date();
   var dText = d.date ? d.date.slice(5).replace('-', '월 ') + '일'
@@ -1597,6 +1618,11 @@ widgetAPI.onData(function (p) {
   }
   if (p.easyFav) EASYFAV = p.easyFav;
   if (p.comciSide) cmSide = p.comciSide === 'row' ? 'row' : 'col';
+  if (p.wx) {
+    WXSHOW = p.wx.show !== false;
+    WXSPOT = (p.wx.spot && p.wx.spot.name) || '';
+    if (p.wx.data) WX = p.wx.data;
+  }
   if (p.grade) {
     gpSheets = p.grade.sheets || {};
     if (!gpTouched) { gpShow = !!p.grade.show; gpGrade = p.grade.pick || 3; }
@@ -1991,6 +2017,12 @@ function wireViews(app) {
     } else if (VIEW === 'rec') {
       RECDATA = null; recLoad(true);
     } else { render(); }
+  });
+  var wxg = app.querySelector('#wxGet');
+  if (wxg) wxg.addEventListener('click', function () {
+    wxg.classList.add('busy');
+    widgetAPI.wxRefresh().then(function (d) { if (d) WX = d; render(); })
+      .catch(function () { render(); });
   });
   var ug = app.querySelector('#usgGet');
   if (ug) ug.addEventListener('click', function () { widgetAPI.usageRefresh(); });

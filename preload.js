@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   openEasy: () => ipcRenderer.send('open-easy'),
   showWidget: () => ipcRenderer.send('show-widget'),
 
+  /* 날씨·미세먼지 */
+  wxRefresh: () => ipcRenderer.invoke('wx-refresh'),
+  wxSpots: () => ipcRenderer.invoke('wx-spots'),
+
   /* 학년부 일지 */
   gradeGet: (g) => ipcRenderer.invoke('grade-get', g),
   gradeFetch: (g) => ipcRenderer.invoke('grade-fetch', g),
