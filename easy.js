@@ -21,8 +21,7 @@ var MENU = [
   { v: 'rec', p: 'nav-rec', t: '학생기록', d: '학급 → 학생 → 분류로 쓰고 모아 보기', g: '기록' },
   { v: 'link', p: 'nav-home', t: '바로가기', d: '자주 가는 곳을 담아 두고 한 번에', g: '바로가기' },
   // ★ 진도표는 혜원이지에만 — 진호알리미에는 수업진도 대시보드가 따로 있다
-  { v: 'note', p: 'nav-rec', t: '수업메모', d: '컴시간 시간표로 오늘 수업에 한 줄', g: '기록', hyewon: true },
-  { v: 'grid', p: 'nav-comci', t: '진도표', d: '학기 전체를 주차별 격자로', g: '기록', hyewon: true }
+  { v: 'grid', p: 'nav-comci', t: '진도표', d: '칸을 눌러 그 자리에서 적습니다', g: '기록', hyewon: true }
 ];
 function navImg(m) { return '<img src="assets/' + m.p + '.png" alt="">'; }
 /* 이 갈래에서 쓸 수 있는 화면만 — 진도표는 혜원이지 것이다 */

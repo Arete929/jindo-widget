@@ -1824,13 +1824,69 @@ function gMine() {
   });
   return { name: me.name, by: by, maxP: Math.max(maxP, 6) };
 }
-/* 그 날 그 교시의 «학년별 창체» — 학사일정 표에서 온다 */
+/* ── 학사일정 코드 ─────────────────────────────────────────
+   학사일정 시트는 교시마다 한 글자씩 적어 둔다. 실제 자료로 확인한 뜻:
+     L(1010번)  교과 수업        ← 이것이 «보통» 이다
+     G(34번)    동아리활동       (그 날 행사도 «동아리(123)»)
+     A(20번)    자율활동         (창체의날)
+     CE(7번)    진로활동
+     T(19번)    고사             (중간·기말고사 날)
+     J(31번)    자치             (모두 금요일 1교시)
+     S(3번)     봉사활동
+     빈칸       적어 두지 않은 칸 → 컴시간 시간표를 그대로 따른다
+   ★ 전에는 «글자가 있으면 창체» 로 보아 L 까지 수업을 막았다.
+     그래서 멀쩡한 수업이 죄다 «수업 없음» 이 되었다. */
+var CVOC = { L: '', G: '동아리', A: '자율', CE: '진로', T: '고사', J: '자치', S: '봉사' };
+function codeName(c) {
+  var k = String(c || '').toUpperCase();
+  if (!k) return '';
+  return CVOC[k] === undefined ? k : CVOC[k];
+}
+/* 그 교시에 수업을 하는가 — 빈칸이나 L 이면 한다 */
+function codeIsLesson(c) { return !codeName(c); }
+
+/* ── 동아리·진로 날 «자리 ↔ 교시» ──────────────────────────
+   하루는 1·2·3·4 — 점심 — 5·6·7 이고, 동아리·진로는 늘 오후(뒤 자리)에 한다.
+   매번 같은 교시만 빠지지 않게 그 날은 «교시 순서» 를 바꾼다.
+     학사일정 글이 «동아리(123)» 이면
+       뒤 세 자리 = 동아리 (원래 1·2·3교시 수업은 그 날 없어진다)
+       앞 네 자리 = 남은 4·5·6·7 교시를 차례로   → 수업 순서가 4567123 이 된다
+   ★ 수업진도 대시보드(server.js 의 seatPlanOfNote) 와 «같은 규칙» 이어야 한다.
+     둘이 어긋나면 차시가 갈린다. */
+var LASTP = 7;
+var SEATACT = [
+  { name: '동아리', re: /동아리\s*\(\s*([0-9]+)\s*[,)]/ },
+  { name: '진로', re: /진로\s*\(\s*([0-9]+)\s*[,)]/ }
+];
+/* 괄호 안이 «712, 진로박람회» 처럼 뒤에 글자가 붙기도 한다 — 앞의 숫자만 읽는다 */
+function seatPlan(ev) {
+  var txt = String(ev || '');
+  for (var i = 0; i < SEATACT.length; i++) {
+    var m = txt.match(SEATACT[i].re);
+    if (!m) continue;
+    var digits = (m[1].match(/[1-7]/g) || []).map(Number);
+    if (!digits.length || digits.length >= LASTP) continue;
+    var head = LASTP - digits.length, rest = [];
+    for (var p = 1; p <= LASTP; p++) if (digits.indexOf(p) < 0) rest.push(p);
+    var seat2per = {}, clubSeat = {};
+    rest.forEach(function (q, k) { seat2per[k + 1] = q; });
+    digits.forEach(function (q, k) {
+      var seat = head + 1 + k;
+      seat2per[seat] = q; clubSeat[seat] = true;
+    });
+    return { seat2per: seat2per, clubSeat: clubSeat, name: SEATACT[i].name, periods: digits };
+  }
+  return null;
+}
+
+/* 그 날 그 교시의 학년별 코드 — 수업이 아닌 것만 모은다 */
 function gCodes(ac, p) {
   if (!ac || !ac.grades) return [];
   var out = [];
   [1, 2, 3].forEach(function (g) {
     var c = ac.grades[g] && ac.grades[g][p - 1];
-    if (c) out.push({ g: g, code: c });
+    var nm = codeName(c);
+    if (nm) out.push({ g: g, code: nm });
   });
   return out;
 }
@@ -1847,7 +1903,7 @@ function gridBuild() {
   var notes = {};
   (NT || []).forEach(function (x) { notes[x.date + '_' + x.p] = x; });
 
-  var counts = {}, weeks = [];
+  var counts = {}, weeks = [], maxSeat = me.maxP;
   for (var w = 0; w < GRIDW; w++) {
     var days = [];
     for (var k = 0; k < 5; k++) {
@@ -1857,29 +1913,42 @@ function gridBuild() {
       var ev = (ac && ac.event) || '';
       var off = gOff(ev);
       var cells = {};
-      for (var p = 1; p <= me.maxP; p++) {
-        var slot = (me.by[GDOW[k]] || {})[p];
-        var codes = gCodes(ac, p);
-        if (!slot) { cells[p] = codes.length ? { codes: codes } : null; continue; }
-        if (off) { cells[p] = { cls: slot.cls, off: true }; continue; }
-        // 내 학급의 학년에 창체가 걸리면 그 시간은 수업이 아니다
-        var mineCode = codes.filter(function (c) { return c.g === slot.g; })[0];
+      // ★ 동아리·진로 날은 «자리 규칙» 이 전부를 정한다 — 학사일정 글자보다 앞선다
+      var plan = off ? null : seatPlan(ev);
+      var last = plan ? LASTP : me.maxP;
+      for (var seat = 1; seat <= last; seat++) {
+        var per = plan ? plan.seat2per[seat] : seat;   // 이 자리가 실제 몇 교시인가
+        var slot = per ? (me.by[GDOW[k]] || {})[per] : null;
+        if (off) { cells[seat] = slot ? { cls: slot.cls, off: true } : null; continue; }
+        if (plan && plan.clubSeat[seat]) {
+          // 이 자리는 그 활동을 한다. 원래 이 교시에 있던 내 수업은 그 날 없어진다.
+          cells[seat] = { act: plan.name, per: per,
+                          pushed: slot ? slot.cls : '' };
+          continue;
+        }
+        var codes = gCodes(ac, seat);
+        if (!slot) { cells[seat] = codes.length ? { codes: codes } : null; continue; }
+        // 창체가 내 학급 학년에 걸리면 그 시간은 수업이 아니다
+        var mineCode = plan ? null : codes.filter(function (c) { return c.g === slot.g; })[0];
         if (mineCode) {
-          cells[p] = { cls: slot.cls, none: true, code: mineCode.code, codes: codes };
+          cells[seat] = { cls: slot.cls, none: true, code: mineCode.code, codes: codes };
           continue;
         }
         counts[slot.cls] = (counts[slot.cls] || 0) + 1;
-        var got = notes[iso + '_' + p];
-        cells[p] = {
+        var got = notes[iso + '_' + seat];
+        cells[seat] = {
           cls: slot.cls, n: counts[slot.cls], subject: slot.subject,
-          text: (got && got.text) || '', codes: codes
+          text: (got && got.text) || '', codes: plan ? [] : codes,
+          at: (got && got.at) || '',
+          per: (plan && per !== seat) ? per : 0    // 자리와 교시가 다르면 알려 준다
         };
       }
+      if (plan) maxSeat = LASTP;
       days.push({ dt: dt, iso: iso, dow: GDOW[k], event: ev, off: off, cells: cells });
     }
     weeks.push({ no: w + 1, mon: days[0].dt, days: days });
   }
-  return { me: me, weeks: weeks, maxP: me.maxP, start: start };
+  return { me: me, weeks: weeks, maxP: maxSeat, start: start };
 }
 /* 오늘이 몇 주차인가 (없으면 1) */
 function gThisWeek(G) {
@@ -1916,10 +1985,18 @@ function gWeekTable(G, wk) {
       if (d.off) { h += '<td class="goff' + tdy + '">휴업</td>'; return; }
       if (!c) { h += '<td class="' + tdy.replace(/^ /, '') + '"></td>'; return; }
       if (c.off) { h += '<td class="goff' + tdy + '">휴업</td>'; return; }
+      if (c.act) {
+        // 동아리·진로 자리 — 그 바람에 밀린 수업이 있으면 함께 알려 준다
+        h += '<td class="gact' + tdy + '">'
+          + '<u class="gbadge">' + esc(c.act) + '</u>'
+          + (c.pushed
+            ? '<i class="gpush">' + esc(c.pushed) + ' ' + c.per + '교시 밀림</i>' : '')
+          + '</td>';
+        return;
+      }
       if (c.none) {
         h += '<td class="gnone' + tdy + '"><b>' + esc(c.cls) + '</b>'
-          + '<u>' + esc(c.code) + '</u>'
-          + '<i>수업 없음</i></td>';
+          + '<u class="gbadge">' + esc(c.code) + '</u></td>';
         return;
       }
       if (!c.cls) {
@@ -1930,9 +2007,13 @@ function gWeekTable(G, wk) {
         return;
       }
       var cd = (c.codes || []).filter(function (x) { return x.g + '' !== (c.cls.split('-')[0]); });
-      h += '<td class="gon' + tdy + '" data-gcell="' + esc(d.iso + ',' + p) + '">'
-        + '<b>' + esc(c.cls) + '</b><em>' + c.n + '</em>'
-        + '<u' + (c.text ? '' : ' class="dimtx"') + '>' + esc(c.text || '차시 미지정') + '</u>'
+      // ★ 누르면 그 자리에서 바로 적는다 — 수업과 진도표가 한 화면이다
+      h += '<td class="gon' + tdy + '" data-gd="' + esc(d.iso) + '" data-gdow="' + esc(d.dow)
+        + '" data-gp="' + p + '" data-gc="' + esc(c.cls) + '" data-gs="' + esc(c.subject || '')
+        + '" title="눌러서 적기">'
+        + '<span class="ghd"><b>' + esc(c.cls) + '</b><em>' + c.n + '</em></span>'
+        + (c.per ? '<i class="gper">' + c.per + '교시</i>' : '')
+        + '<u class="gtx' + (c.text ? '' : ' dimtx') + '">' + esc(c.text || '＋ 적기') + '</u>'
         + (cd.length ? '<i>' + cd.map(function (x) { return x.g + ':' + esc(x.code); }).join(' ') + '</i>' : '')
         + '</td>';
     });
@@ -1971,7 +2052,10 @@ function viewGrid() {
 
   if (gAll) {
     h += '<div class="ghint">개학한 주가 <b>1주차</b> 입니다. 학급 옆 작은 숫자는 '
-      + '그 학급이 학기 들어 <b>몇 번째 수업</b> 인지입니다.</div>';
+      + '그 학급이 학기 들어 <b>몇 번째 수업</b> 인지입니다. '
+      + '칸을 <b>누르면 그 자리에서 적습니다</b>.<br>'
+      + '<b>동아리·진로 날</b> 은 교시 순서가 바뀝니다 — 예를 들어 «동아리(123)» 이면 '
+      + '수업을 <b>4·5·6·7</b> 교시 차례로 하고 1·2·3교시는 동아리입니다.</div>';
     h += G.weeks.map(function (wk) { return gWeekTable(G, wk); }).join('');
   } else {
     var i = Math.max(0, Math.min(G.weeks.length - 1, here + gWeekOff));
@@ -2048,7 +2132,7 @@ function render() {
   var tab = TT_SUB.indexOf(VIEW) >= 0 ? 'tt' : VIEW;
   html += '<div class="chips">'
     + (HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']
-              : ['work,주간업무', 'comci,컴시간', 'note,수업메모', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']).map(function (s) {
+              : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']).map(function (s) {
         var p = s.split(',');
         return '<button class="chip' + (tab === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">' + p[1] + '</button>';
       }).join('') + '</div>';
@@ -2087,6 +2171,47 @@ function render() {
 
   wireViews(app);
   report();
+}
+
+/* 격자 칸을 눌러 그 자리에서 적는다.
+   엔터로 담고, Esc 로 그만둔다. 딴 데를 눌러도 담긴다. */
+function gEdit(td) {
+  if (td.querySelector('.gti')) return;
+  var u = td.querySelector('.gtx');
+  if (!u) return;
+  var old = u.classList.contains('dimtx') ? '' : u.textContent;
+  var inp = document.createElement('input');
+  inp.className = 'gti';
+  inp.value = old;
+  inp.maxLength = 120;
+  u.style.display = 'none';
+  td.appendChild(inp);
+  inp.focus();
+  inp.select();
+  var done = false;
+  function fin(save) {
+    if (done) return;
+    var v = inp.value.trim();
+    if (!save || v === old) { done = true; inp.remove(); u.style.display = ''; return; }
+    done = true;
+    inp.disabled = true;
+    widgetAPI.noteSave({
+      date: td.dataset.gd, dow: td.dataset.gdow, p: Number(td.dataset.gp),
+      cls: td.dataset.gc, subject: td.dataset.gs, text: v
+    }).then(function (r) {
+      if (r && r.ok) { ntLoad(true); }
+      else { ntErr = (r && r.error) || '담지 못했습니다'; done = false; inp.disabled = false; render(); }
+    }).catch(function (e) {
+      ntErr = (e && e.message) || String(e); done = false; inp.disabled = false; render();
+    });
+  }
+  inp.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); fin(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); fin(false); }
+    e.stopPropagation();
+  });
+  inp.addEventListener('click', function (e) { e.stopPropagation(); });
+  inp.addEventListener('blur', function () { fin(true); });
 }
 
 /* 전체 보기에서 «이번주» 를 누르면 그 주 표로 미끄러져 간다.
@@ -2273,6 +2398,9 @@ function wireViews(app) {
   });
   var gg = app.querySelector('#gGet');
   if (gg) gg.addEventListener('click', function () { ntLoad(true); });
+  app.querySelectorAll('td.gon').forEach(function (td) {
+    td.addEventListener('click', function () { gEdit(td); });
+  });
   // 진도표 — 저장·다시 읽기·학급 고르기
   var ntg = app.querySelector('#ntGet');
   if (ntg) ntg.addEventListener('click', function () { ntLoad(true); });
