@@ -18,7 +18,8 @@ var MENU = [
   { v: 'cal', p: 'nav-cal', t: '학사일정', d: '3월부터 이듬해 2월까지', g: '오늘 볼 것' },
   { v: 'meal', p: 'nav-meal', t: '급식', d: '주 단위로 넘겨 보기', g: '오늘 볼 것' },
   { v: 'comci', p: 'nav-comci', t: '컴시간', d: '교사·학급 시간표', g: '오늘 볼 것' },
-  { v: 'rec', p: 'nav-rec', t: '학생기록', d: '학급 → 학생 → 분류로 쓰고 모아 보기', g: '기록' }
+  { v: 'rec', p: 'nav-rec', t: '학생기록', d: '학급 → 학생 → 분류로 쓰고 모아 보기', g: '기록' },
+  { v: 'link', p: 'nav-home', t: '바로가기', d: '자주 가는 곳을 담아 두고 한 번에', g: '바로가기' }
 ];
 function navImg(m) { return '<img src="assets/' + m.p + '.png" alt="">'; }
 function menuOf(v) { return MENU.filter(function (m) { return m.v === v; })[0] || MENU[0]; }
@@ -41,24 +42,41 @@ function sideUsage() {
         + '<button class="sulg" data-usglogin="' + esc(k) + '">'
         + (u.needsLogin ? '로그인하기' : '다시 시도') + '</button></div>';
     }
+    var body;
+    if (USGSTYLE === 'ring') {
+      body = '<div class="rings">' + ms.map(function (x) {
+        var p = pctOf(x.m);
+        return '<div class="ring">' + ringSvg(p)
+          + '<div class="lb">' + esc(x.lb) + '</div>'
+          + '<div class="rs">' + (leftOf(x.m) ? esc(leftOf(x.m)) + ' 남음' : esc(atOf(x.m))) + '</div>'
+          + '</div>';
+      }).join('') + '</div>';
+    } else {
+      body = ms.map(function (x) {
+        var p = pctOf(x.m);
+        return '<div class="sub"><span class="subt">' + esc(x.lb) + '<b>' + p + '%</b></span>'
+          + '<span class="subk"><i style="width:' + Math.min(100, p) + '%;background:' + usgFill(p) + '"></i></span>'
+          + '<span class="subr">' + (leftOf(x.m) ? esc(leftOf(x.m)) + ' 남음' : esc(atOf(x.m))) + '</span>'
+          + '</div>';
+      }).join('');
+    }
     return '<div class="sut"><div class="sun">' + esc(u.label || k) + '</div>'
-      + ms.map(function (x) {
-          var p = pctOf(x.m);
-          return '<div class="sub"><span class="subt">' + esc(x.lb) + '<b>' + p + '%</b></span>'
-            + '<span class="subk"><i style="width:' + Math.min(100, p) + '%;background:' + usgFill(p) + '"></i></span>'
-            + '<span class="subr">' + (leftOf(x.m) ? esc(leftOf(x.m)) + ' 남음' : esc(atOf(x.m))) + '</span>'
-            + '</div>';
-        }).join('')
-      + '</div>';
+      + body + '</div>';
   }).join('');
   // 내 PC — 같은 막대 모양으로
   if (ms.length) {
     h += '<div class="sut"><div class="sun">내 PC</div>'
-      + ms.map(function (x) {
-          return '<div class="sub"><span class="subt">' + esc(x.lb) + '<b>' + x.pct + '%</b></span>'
-            + '<span class="subk"><i style="width:' + x.pct + '%;background:' + usgFill(x.pct) + '"></i></span>'
-            + '<span class="subr">' + esc(x.sub) + '</span></div>';
-        }).join('')
+      + (USGSTYLE === 'ring'
+        ? '<div class="rings">' + ms.map(function (x) {
+            return '<div class="ring">' + ringSvg(x.pct)
+              + '<div class="lb">' + esc(x.lb) + '</div>'
+              + '<div class="rs">' + esc(x.sub) + '</div></div>';
+          }).join('') + '</div>'
+        : ms.map(function (x) {
+            return '<div class="sub"><span class="subt">' + esc(x.lb) + '<b>' + x.pct + '%</b></span>'
+              + '<span class="subk"><i style="width:' + x.pct + '%;background:' + usgFill(x.pct) + '"></i></span>'
+              + '<span class="subr">' + esc(x.sub) + '</span></div>';
+          }).join(''))
       + '</div>';
   }
   return h + (keys.length ? '<button class="sulg wide" id="usgGet">⟳ 다시 읽기</button>' : '')
@@ -78,8 +96,10 @@ function drawTop() {
 
 /* ── 왼쪽 메뉴 ── */
 function drawSide() {
-  var h = '<div class="brand"><img src="assets/hyewon-icon.png" alt="">'
-    + '<span><b>혜원이지</b><small>HYEWON EASY</small></span></div>';
+  // ★ 이름·아이콘은 갈래대로 (박아 두면 진호알리미가 혜원이지로 보인다)
+  var h = '<div class="brand"><img src="assets/'
+    + (HAS_TT ? 'icon.png' : 'hyewon-icon.png') + '" alt="">'
+    + '<span><b>' + brandHtml() + '</b></span></div>';
   h += sideUsage();
   h += MENU.map(function (m) {
     return '<button class="nav' + (VIEW === m.v ? ' on' : '') + '" data-go="' + m.v + '">'
@@ -141,9 +161,82 @@ function tile(m) {
     + '<div class="td">' + esc(m.d) + '</div></div>';
 }
 
+/* ── 대시보드 칸 ──────────────────────────────────────────
+   내용이 없으면 그 칸은 아예 안 나온다. 빈 상자는 자리만 먹는다. */
+function dcard(title, body, goTo) {
+  if (!body) return '';
+  return '<div class="dc"><div class="dch">' + esc(title)
+    + (goTo ? '<button class="dcgo" data-go="' + goTo + '">더 보기 ›</button>' : '')
+    + '</div><div class="dcb">' + body + '</div></div>';
+}
+/* ① 오늘 일정 — 학사일정 + 켜 놓은 학년부 일지 */
+function dcToday() {
+  if (!AC) { loadAcademic(); return ''; }
+  var now = new Date();
+  var d = acDayOf(now);
+  var gp = gpOf(String(now.getMonth() + 1), now.getDate());
+  var ev = (d && d.event) || '';
+  if (!ev && !gp.length) return '';
+  var h = ev ? '<div class="dbig">' + esc(ev) + '</div>' : '';
+  if (gp.length) {
+    h += '<div class="dgp">' + gp.map(function (o) {
+      return '<div class="dgpr"><i class="gl">' + o.g + '학년</i>'
+        + '<b class="gpc h' + gpHue(o.x.cat) + '">' + esc(o.x.cat || '') + '</b>'
+        + '<span>' + esc(o.x.title || '') + '</span></div>';
+    }).join('') + '</div>';
+  }
+  return h;
+}
+/* ② 오늘 급식 — 학사일정 «오늘» 처럼 글자를 키운다 */
+function dcMeal() {
+  if (!ML) { loadMeals(); return ''; }
+  var list = mealToday();
+  if (!list.length) return '';
+  return list.map(function (s) {
+    return '<div class="dmr"><div class="dmn">' + esc(s.name)
+      + (s.kcal ? '<em>' + esc(s.kcal) + '</em>' : '') + '</div>'
+      + '<div class="dmd">' + s.dishes.map(function (t) {
+          return '<span>' + esc(t) + '</span>';
+        }).join('') + '</div></div>';
+  }).join('');
+}
+/* ③ 오늘 수업 — 시간표가 있는 갈래(진호알리미)에서만 */
+function dcLesson() {
+  if (!HAS_TT || !STATE) return '';
+  var ls = STATE.lessons || [];
+  if (!ls.length) return '';
+  return '<div class="dls">' + ls.map(function (l) {
+    return '<div class="dlr"><i>' + esc(String(l.period)) + '교시</i>'
+      + '<b>' + esc(l.cls || '') + '</b>'
+      + '<span>' + esc(l.unit || '') + (l.n ? ' · ' + l.n + '차시' : '') + '</span></div>';
+  }).join('') + '</div>';
+}
+/* ④ 앞으로 7일 */
+function dcNext() {
+  if (!AC) return '';
+  var list = acNext(7);
+  if (!list.length) return '';
+  var DOW = ['일', '월', '화', '수', '목', '금', '토'];
+  return '<div class="dnx">' + list.map(function (o) {
+    var extra = o.gp.map(function (g) { return g.x.title || ''; })
+      .filter(Boolean).join(' · ');
+    return '<div class="dnr"><i>' + (o.dt.getMonth() + 1) + '/' + o.dt.getDate()
+      + '<small>' + DOW[o.dt.getDay()] + '</small></i>'
+      + '<span>' + esc(o.event || extra) + '</span></div>';
+  }).join('') + '</div>';
+}
+
 function viewHome() {
   var h = todayLine();
   h += wxCard();   // 사용량은 사이드바에 있다
+
+  // ★ 여기가 «대시보드다운» 부분 — 사이드바에 없는 것들이다
+  var cards = dcard('오늘 일정', dcToday(), 'cal')
+    + dcard('오늘 수업', dcLesson(), '')
+    + dcard('오늘 급식', dcMeal(), 'meal')
+    + dcard('앞으로 7일', dcNext(), 'cal')
+    + dcard('바로가기', linkTiles(), 'link');
+  if (cards) h += '<div class="dcs">' + cards + '</div>';
 
   var favs = EASYFAV.filter(known).map(menuOf).filter(function (m) { return m.v !== 'home'; });
   if (favs.length) {
@@ -169,8 +262,8 @@ render = function () {
   var m = menuOf(VIEW);
   var h;
   if (VIEW === 'home') {
-    h = '<div class="ehead"><div class="ph"><h1>혜원이지</h1>'
-      + '<span class="sub">HYEWON EASY</span><span class="sp"></span>'
+    h = '<div class="ehead"><div class="ph"><h1>' + brandHtml() + '</h1>'
+      + '<span class="sp"></span>'
       + fontBtns('home') + '</div></div>' + viewHome();
   } else {
     // 머리는 «제목 + 그 화면의 조작 줄» 이다. 조작 줄(.top2)은 그린 뒤에 옮겨 넣는다.
@@ -181,7 +274,8 @@ render = function () {
         : VIEW === 'cal' ? viewAcademic()
           : VIEW === 'meal' ? viewMeals()
             : VIEW === 'comci' ? viewComci()
-              : VIEW === 'rec' ? viewRec() : '')
+              : VIEW === 'rec' ? viewRec()
+              : VIEW === 'link' ? viewLinks() : '')
       + '</div>';
   }
   MAIN.style.setProperty('--wf', String(FS[fsKey()] || 1));

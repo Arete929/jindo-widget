@@ -31,8 +31,6 @@
   .brand { display: flex; align-items: center; gap: 8px; padding: 2px 6px 14px; }
   .brand img { width: 26px; height: 26px; object-fit: contain; -webkit-user-drag: none; }
   .brand b { font-size: 17px; font-weight: 800; letter-spacing: -.4px; }
-  .brand small { display: block; font-size: 9px; font-weight: 700; color: var(--dim);
-                 letter-spacing: 1.4px; margin-top: -2px; }
 
   .nav {
     display: flex; align-items: center; gap: 9px; width: 100%;
@@ -64,6 +62,10 @@
   }
   .subk i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
   .subr { display: block; font-size: 9px; color: var(--dim); }
+  /* 원형으로 볼 때 — 사이드바가 좁으니 세 개씩 접어 넣는다 */
+  .sus .rings { flex-wrap: wrap; gap: 6px 4px; justify-content: center; }
+  .sus .ring { flex: 0 0 calc(33.33% - 3px); }
+  .sus .ring .rs { font-size: 7.5px; }
   .sulg {
     width: 100%; margin-top: 4px; border: 1px solid var(--line); background: none;
     color: var(--dim); border-radius: 7px; padding: 5px; cursor: pointer;
@@ -84,6 +86,54 @@
   .ehead .top2 { background: none; padding: 0; margin: 6px 0 0; }
   .main::-webkit-scrollbar { width: 9px; }
   .main::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; }
+
+  /* ── 대시보드 칸 ── */
+  .dcs { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+         gap: 10px; margin: 12px 0 4px; align-items: start; }
+  .dc { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+        overflow: hidden; }
+  .dch { display: flex; align-items: center; gap: 8px; padding: 9px 12px 7px;
+         font-size: calc(11px * var(--wf)); font-weight: 800; color: var(--dim);
+         letter-spacing: .3px; }
+  .dcgo { margin-left: auto; background: none; border: 0; cursor: pointer;
+          font-family: inherit; font-size: calc(10px * var(--wf)); font-weight: 800;
+          color: var(--accent); padding: 0; }
+  .dcb { padding: 0 12px 11px; }
+  .dbig { font-size: calc(17px * var(--wf)); font-weight: 800; color: var(--fg);
+          line-height: 1.35; }
+  /* 학년부 줄 */
+  .dgp { margin-top: 7px; display: flex; flex-direction: column; gap: 4px; }
+  .dgpr { display: flex; align-items: baseline; gap: 6px; font-size: calc(11.5px * var(--wf)); }
+  .dgpr .gl { font-style: normal; font-size: calc(9.5px * var(--wf)); font-weight: 800;
+              color: var(--dim); flex: 0 0 auto; }
+  .dgpr b { font-size: calc(10px * var(--wf)); border-radius: 5px; padding: 1px 5px;
+            flex: 0 0 auto; }
+  .dgpr span { color: var(--fg2); min-width: 0; }
+  /* 급식 */
+  .dmr + .dmr { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--line); }
+  .dmn { font-size: calc(10.5px * var(--wf)); font-weight: 800; color: var(--dim);
+         margin-bottom: 4px; }
+  .dmn em { font-style: normal; font-weight: 700; margin-left: 6px; opacity: .8; }
+  .dmd { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+  .dmd span { font-size: calc(14px * var(--wf)); font-weight: 700; color: var(--fg); }
+  /* 오늘 수업 */
+  .dlr { display: flex; align-items: baseline; gap: 8px; padding: 3px 0;
+         font-size: calc(12.5px * var(--wf)); }
+  .dlr + .dlr { border-top: 1px solid var(--line); }
+  .dlr i { font-style: normal; font-size: calc(10px * var(--wf)); font-weight: 800;
+           color: var(--accent); flex: 0 0 auto; }
+  .dlr b { font-weight: 800; color: var(--fg); flex: 0 0 auto; }
+  .dlr span { color: var(--dim); font-size: calc(11px * var(--wf)); min-width: 0; }
+  /* 앞으로 7일 */
+  .dnr { display: flex; align-items: baseline; gap: 9px; padding: 3px 0;
+         font-size: calc(12px * var(--wf)); }
+  .dnr + .dnr { border-top: 1px solid var(--line); }
+  .dnr i { font-style: normal; font-weight: 800; color: var(--dim); flex: 0 0 auto;
+           font-size: calc(11px * var(--wf)); }
+  .dnr i small { font-weight: 700; margin-left: 3px; opacity: .75; }
+  .dnr span { color: var(--fg2); min-width: 0; }
+  /* 대시보드 안의 바로가기 타일은 한 줄에 하나씩 */
+  .dc .lnks { grid-template-columns: 1fr; gap: 5px; padding: 0; }
 
   .ph { display: flex; align-items: baseline; gap: 10px; margin-bottom: 0; }
   .ph h1 { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }

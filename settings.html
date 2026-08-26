@@ -159,6 +159,27 @@
 </section>
 
 <section>
+  <h2>바로가기</h2>
+  <div class="row">
+    <label class="lb">제목</label>
+    <input type="text" id="lkT" placeholder="예: 나이스" maxlength="40" style="flex:0 0 150px">
+    <input type="text" id="lkU" placeholder="주소 (예: neis.go.kr)">
+    <button id="lkAdd">담기</button>
+  </div>
+  <div class="row" id="lkListRow" style="display:none">
+    <label class="lb">담은 것</label>
+    <div id="lkList" style="flex:1;min-width:0"></div>
+  </div>
+  <div class="hint">
+    자주 가는 곳을 담아 두면 <b>위젯 보기의 「바로가기」 탭</b>과
+    <b>넓게 보기의 「바로가기」</b> 에 타일로 나옵니다.
+    누르면 위 <b>「바깥 주소를 열 브라우저」</b> 에서 고른 것으로 열립니다.<br>
+    <b>▲▼</b> 로 순서를 바꾸고 <b>✕</b> 로 뺍니다.
+    주소 앞에 <b>https://</b> 를 안 적어도 알아서 붙습니다.
+  </div>
+</section>
+
+<section>
   <h2>사용량</h2>
   <div class="row">
     <label class="lb">무엇을 볼까</label>
@@ -586,6 +607,8 @@ function __paint() {
     };
   }
   paintNeis();
+  LKS = null;   // 새 자료를 받았으니 들고 있던 것을 버린다
+  paintLks();
   paintRec();
 }
 
@@ -719,6 +742,48 @@ function paintNeis() {
       + '</span> · 급식 ' + ((UI.meals.meals || []).length) + '건';
   }
 }
+
+/* ── 바로가기 ──────────────────────────────────────────────
+   급식 학교와 같은 얼개다 — 담고, ▲▼ 로 옮기고, ✕ 로 뺀다. */
+var LKS = null;
+function lks() { if (!LKS) LKS = (UI.links || []).slice(); return LKS; }
+function saveLks() { widgetAPI.setUi({ links: LKS }); paintLks(); }
+function paintLks() {
+  var list = lks();
+  $('lkListRow').style.display = list.length ? '' : 'none';
+  $('lkList').innerHTML = list.map(function (x, i) {
+    return '<div class="nrow">'
+      + '<span class="nnm"><b>' + esc(x.t) + '</b> · ' + esc(x.u) + '</span>'
+      + '<button data-lup="' + i + '" title="위로"' + (i === 0 ? ' disabled' : '') + '>▲</button>'
+      + '<button data-ldn="' + i + '" title="아래로"' + (i === list.length - 1 ? ' disabled' : '') + '>▼</button>'
+      + '<button data-lx="' + i + '" title="빼기">✕</button></div>';
+  }).join('');
+  $('lkList').querySelectorAll('[data-lup],[data-ldn],[data-lx]').forEach(function (b) {
+    b.onclick = function () {
+      var i = Number(b.dataset.lup !== undefined ? b.dataset.lup
+        : (b.dataset.ldn !== undefined ? b.dataset.ldn : b.dataset.lx));
+      if (b.dataset.lx !== undefined) LKS.splice(i, 1);
+      else {
+        var j = b.dataset.lup !== undefined ? i - 1 : i + 1;
+        if (j < 0 || j >= LKS.length) return;
+        var t = LKS[i]; LKS[i] = LKS[j]; LKS[j] = t;
+      }
+      saveLks();
+    };
+  });
+}
+function addLk() {
+  var t = $('lkT').value.trim(), u = $('lkU').value.trim();
+  if (!t || !u) return;
+  lks().push({ t: t, u: u });
+  $('lkT').value = ''; $('lkU').value = '';
+  saveLks();
+  $('lkT').focus();
+}
+$('lkAdd').onclick = addLk;
+// 주소 칸에서 엔터를 쳐도 담긴다
+$('lkU').addEventListener('keydown', function (e) { if (e.key === 'Enter') addLk(); });
+$('lkT').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('lkU').focus(); });
 
 $('nFind').onclick = function () {
   var q = $('nQ').value.trim();

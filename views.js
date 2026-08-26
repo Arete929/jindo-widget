@@ -639,6 +639,45 @@ function gpHue(cat) {
   return n;
 }
 
+/* 그 날의 학사일정 한 줄 — 대시보드가 쓴다.
+   ★ 시트에 다른 해 탭이 섞여 있으므로 ok !== false 인 달만 본다
+     (8월이 셋이라 목요일 일정이 수요일에 뜨던 일이 있었다). */
+function acDayOf(dt) {
+  if (!AC || !AC.months) return null;
+  var m = String(dt.getMonth() + 1), day = dt.getDate();
+  var ms = AC.months.filter(function (x) { return x.ok !== false && x.month === m; });
+  if (!ms.length) ms = AC.months.filter(function (x) { return x.month === m; });
+  for (var i = ms.length - 1; i >= 0; i--) {
+    var hit = (ms[i].days || []).filter(function (d) { return d.day === day; })[0];
+    if (hit) return hit;
+  }
+  return null;
+}
+/* 오늘부터 n일 — 일정이 있는 날만 추린다 */
+function acNext(n) {
+  var out = [], now = new Date();
+  for (var i = 1; i <= n; i++) {
+    var dt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    var d = acDayOf(dt);
+    var gp = gpOf(String(dt.getMonth() + 1), dt.getDate());
+    var ev = (d && d.event) || '';
+    if (!ev && !gp.length) continue;
+    out.push({ dt: dt, event: ev, gp: gp });
+  }
+  return out;
+}
+/* 오늘 급식 — 학교마다 한 덩이 */
+function mealToday() {
+  if (!ML) return [];
+  var t = todayYmd();
+  var schools = ML.schools && ML.schools.length ? ML.schools
+    : [{ name: ML.school || '급식', meals: ML.meals || [] }];
+  return schools.map(function (s) {
+    var hit = (s.meals || []).filter(function (x) { return x.date === t; })[0];
+    return hit ? { name: s.name, dishes: hit.dishes || [], kcal: hit.kcal || '' } : null;
+  }).filter(Boolean);
+}
+
 function loadAcademic() {
   if (acBusy) return;
   acBusy = true;
@@ -1540,10 +1579,58 @@ function notesCard() {
     + '지난 내역은 <b>설정 → 정보 → «업데이트 내역 보기»</b> 에서 언제든 볼 수 있어요.</div>'
     + '</div>';
 }
+/* 이름 — 혜원이지는 뒤 두 글자를 색 상자로 준다. 진호알리미는 그대로.
+   ★ 위젯 제목 줄과 넓은 창이 같이 쓴다(한 곳에서만 고치도록). */
+function brandHtml() {
+  var n = String(APPNAME || '');
+  if (HAS_TT || n.length < 3) return esc(n);
+  return esc(n.slice(0, 2)) + '<em class="bchip">' + esc(n.slice(2)) + '</em>';
+}
+/* ── 바로가기 ──────────────────────────────────────────────
+   제목과 주소만 담긴 타일. 누르면 «설정에서 고른 브라우저» 로 열린다.
+   ★ 그림은 인터넷에서 받아 오지 않는다 — 첫 글자를 동그라미에 넣는다.
+     (파비콘을 받아 오면 인터넷이 없을 때 빈칸이 되고, 켤 때마다 느려진다) */
+var LINKS = [];
+/* 이름에서 한 글자 — 한글이면 첫 글자, 영문이면 대문자 한 자 */
+function linkLetter(t) {
+  var s = String(t || '').replace(/^[\s\[({<]+/, '');
+  return s ? s.charAt(0).toUpperCase() : '·';
+}
+/* 제목마다 늘 같은 색이 나오도록 — 글자값을 더해서 고른다 */
+var LINKHUE = ['#5b6ee1', '#e07a3f', '#3fa07a', '#c1508e', '#7a5bd6', '#3f8fc1', '#c9a227'];
+function linkColor(t) {
+  var s = String(t || ''), n = 0;
+  for (var i = 0; i < s.length; i++) n = (n + s.charCodeAt(i)) % 9973;
+  return LINKHUE[n % LINKHUE.length];
+}
+function linkTiles() {
+  if (!LINKS.length) return '';
+  return LINKS.map(function (x, i) {
+    return '<button class="lnk" data-lnk="' + i + '" title="' + esc(x.u) + '">'
+      + '<span class="lico" style="background:' + linkColor(x.t) + '">'
+      + esc(linkLetter(x.t)) + '</span>'
+      + '<span class="ltx"><b>' + esc(x.t) + '</b><i>' + esc(linkHost(x.u)) + '</i></span>'
+      + '</button>';
+  }).join('');
+}
+/* 주소에서 «어디인지» 만 짧게 보여 준다 */
+function linkHost(u) {
+  var s = String(u || '').replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+  var i = s.indexOf('/');
+  return i > 0 ? s.slice(0, i) : s;
+}
+function viewLinks() {
+  if (!LINKS.length) {
+    return '<div class="empty">담아 둔 바로가기가 없습니다.<br>'
+      + '<b>설정 → 바로가기</b> 에서 제목과 주소를 넣어 주세요.</div>';
+  }
+  return '<div class="lnks">' + linkTiles() + '</div>';
+}
+
 function titleBar() {
   return '<div class="tbar">'
     + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
-    + '<span class="ttl">' + esc(APPNAME) + '</span>'
+    + '<span class="ttl">' + brandHtml() + '</span>'
     + '<button class="gear" title="설정" onclick="widgetAPI.openSettings()"></button>'
     + (VER ? '<span class="tver">v' + esc(VER) + '</span>' : '')
     + '<span class="grip" title="여기를 잡고 끌면 위젯이 움직입니다">⠿⠿</span></div>';
@@ -1607,8 +1694,8 @@ function render() {
   var TT_SUB = ['today', 'week', 'progress'];
   var tab = TT_SUB.indexOf(VIEW) >= 0 ? 'tt' : VIEW;
   html += '<div class="chips">'
-    + (HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록']
-              : ['work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록']).map(function (s) {
+    + (HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']
+              : ['work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']).map(function (s) {
         var p = s.split(',');
         return '<button class="chip' + (tab === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">' + p[1] + '</button>';
       }).join('') + '</div>';
@@ -1629,6 +1716,7 @@ function render() {
     : VIEW === 'cal' ? viewAcademic()
     : VIEW === 'meal' ? viewMeals()
     : VIEW === 'rec' ? viewRec()
+    : VIEW === 'link' ? viewLinks()
     : viewToday(d);
   html += '<div class="foot">@JINHOKIM</div>';   // 버전은 제목 줄 오른쪽 끝에 있다
   app.style.setProperty('--wf', String(FS[fsKey()] || 1));
@@ -1686,6 +1774,7 @@ widgetAPI.onData(function (p) {
   if (!IS_EASY) VIEW = p.view || VIEW;
   VER = p.version || '';
   UPD = p.update || null;
+  LINKS = p.links || [];
   if (p.font && p.font !== FONT) {
     FONT = p.font;
     if (FONT === 'pretendard') delete document.documentElement.dataset.font;
@@ -1772,6 +1861,13 @@ setInterval(function () {
    위젯(#app)과 혜원이지(#main)가 «같은 연결»을 쓴다. 화면 조각이 같으니
    단추도 같아야 한다 — 한 군데만 고치면 두 프로그램이 같이 고쳐진다. */
 function wireViews(app) {
+  // 바로가기 — 설정에서 고른 브라우저로 연다
+  app.querySelectorAll('[data-lnk]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var x = LINKS[Number(b.dataset.lnk)];
+      if (x && x.u) widgetAPI.openUrl(x.u);
+    });
+  });
   // ★ .rach 도 함께 훑는다 — 학생기록 아코디언의 «머리» 단추다.
   //   .wkb 만 훑던 때에는 눌러도 아무 일이 없어서 «펼쳐지지 않는다» 였다.
   app.querySelectorAll('.wkb, .rach, .gph').forEach(function (b) {

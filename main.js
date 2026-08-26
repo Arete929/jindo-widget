@@ -257,6 +257,30 @@ function getGradeSheets() {
 function getGradePick() { const g = Number(loadState().gradePick); return [1, 2, 3].includes(g) ? g : 3; }
 /* 켜 놓은 학년들. 예전에는 스위치 하나 + 보고 있는 학년이었다 —
    그때 값이 남아 있으면 그대로 옮겨 준다. */
+/* ── 바로가기 ──────────────────────────────────────────────
+   제목과 주소만 있으면 된다. 이 PC 에만 담긴다(남과 섞이지 않는다).
+   공용 목록(런처 시트에서 오는 것)은 따로 온다 — 여기 것은 «내가 만든 것». */
+function getLinks() {
+  const raw = loadState().links;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((x) => ({ t: String((x && x.t) || '').trim(), u: String((x && x.u) || '').trim() }))
+    .filter((x) => x.t && x.u)
+    .slice(0, 40);
+}
+/* 주소를 다듬는다 — 앞에 http 가 없으면 붙이고, 엉뚱한 것은 버린다.
+   ★ file: 이나 javascript: 같은 것은 열지 않는다. */
+function tidyUrl(u) {
+  let s = String(u || '').trim();
+  if (!s) return '';
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(s)) s = 'https://' + s;
+  try {
+    const p = new URL(s);
+    if (p.protocol !== 'http:' && p.protocol !== 'https:') return '';
+    return p.toString();
+  } catch (e) { return ''; }
+}
+
 function getGradeOn() {
   const st = loadState();
   if (Array.isArray(st.gradeOn)) {
@@ -285,8 +309,8 @@ async function refreshGradePlan(grade) {
 // 둘은 스위치처럼 한 번에 하나만 뜬다. 다음에 켤 때도 그 모습으로 시작한다.
 function getViewMode() { return loadState().viewMode === 'easy' ? 'easy' : 'widget'; }
 const VIEWS = HAS_TT
-  ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal', 'rec']
-  : ['work', 'comci', 'cal', 'meal', 'rec'];
+  ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal', 'rec', 'link']
+  : ['work', 'comci', 'cal', 'meal', 'rec', 'link'];
 function getView() {
   const v = loadState().view;
   return VIEWS.includes(v) ? v : VIEWS[0];
@@ -482,6 +506,7 @@ function sendToWidget() {
     wx: { show: getWxShow(), spot: getWxSpot(), data: wxData },
     sys: { show: getSysShow(), data: sysData },
     easyFav: loadState().easyFav || [],          // 혜원이지 대시보드 즐겨찾기
+    links: getLinks(),                           // 바로가기 타일
     update: { state: updateState, version: updateVersion }
   };
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
@@ -1165,6 +1190,7 @@ ipcMain.handle('get-settings', () => ({
     academicSheet: loadState().academicSheet || academic.DEFAULT_SHEET,
     neis: loadState().neis || null,
     neisList: getNeisList(),
+    links: getLinks(),
     browsers: browserList().map((b) => ({ key: b.key, label: b.label })),
     browser: getBrowserPick(),
     meals: loadMeals(),
@@ -1231,6 +1257,15 @@ ipcMain.on('set-ui', (_e, v) => {
   }
   if (v.comciSide !== undefined) {
     saveState({ comciSide: v.comciSide === 'row' ? 'row' : 'col' });
+    sendToWidget();
+  }
+  if (v.links !== undefined) {
+    const list = (v.links || [])
+      .map((x) => ({ t: String((x && x.t) || '').trim().slice(0, 40), u: tidyUrl(x && x.u) }))
+      .filter((x) => x.t && x.u)
+      .slice(0, 40);
+    saveState({ links: list });
+    debugLog('바로가기 ' + list.length + '개');
     sendToWidget();
   }
   if (v.easyFav !== undefined) {
