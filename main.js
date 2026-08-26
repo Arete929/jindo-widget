@@ -903,20 +903,40 @@ ipcMain.handle('meals-fetch', async (_e, off) => {
 
 /* ===================== 설정 창 ===================== */
 // 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기)을 위해 창을 따로 둔다.
-function openSettingsWindow() {
+function openSettingsWindow(from) {
   if (settingsWin && !settingsWin.isDestroyed()) { settingsWin.show(); settingsWin.focus(); return; }
-  settingsWin = new BrowserWindow({
-    width: 620, height: 760, title: APP_NAME + ' 설정',
+  // ★ «어디서 눌렀는가» 에 딸린 창으로 띄운다.
+  //   그러면 그 창 위에만 뜨고, 작업표시줄에 따로 잡히지 않고, 부모를 닫으면 같이 닫힌다.
+  //   전에는 늘 620px 짜리가 따로 떠서, 1100px 넓은 창에서 누르면 엉뚱해 보였다.
+  const parent = (from && !from.isDestroyed()) ? from
+    : (easyWin && !easyWin.isDestroyed() && easyWin.isVisible()) ? easyWin
+    : (widgetWin && !widgetWin.isDestroyed()) ? widgetWin : null;
+  // 넓은 창에서 열었으면 그 창에 어울리게 크게, 위젯에서 열었으면 지금 크기 그대로
+  const big = parent === easyWin;
+  const w = big ? 820 : 620;
+  const h = big ? 820 : 760;
+  const opts = {
+    width: w, height: h, title: APP_NAME + ' 설정',
     backgroundColor: '#F7F7FF', autoHideMenuBar: true, resizable: true,
+    minWidth: 520, minHeight: 420,
     icon: path.join(__dirname, 'assets', ICON),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true, nodeIntegration: false
     }
-  });
+  };
+  if (parent) {
+    opts.parent = parent;
+    opts.skipTaskbar = true;          // 부모에 딸린 창이라 따로 잡히지 않게
+    // 부모 한가운데에 놓는다 — 다른 모니터에서 열어도 눈앞에 뜬다
+    const b = parent.getBounds();
+    opts.x = Math.round(b.x + (b.width - w) / 2);
+    opts.y = Math.max(0, Math.round(b.y + (b.height - h) / 2));
+  }
+  settingsWin = new BrowserWindow(opts);
   settingsWin.loadFile('settings.html');
   settingsWin.on('closed', () => { settingsWin = null; if (rebuildTrayMenu) rebuildTrayMenu(); });
-  debugLog('설정 창을 열었습니다');
+  debugLog('설정 창을 열었습니다' + (parent ? (big ? ' (넓은 창에 딸려서)' : ' (위젯에 딸려서)') : ''));
 }
 
 ipcMain.handle('get-settings', () => ({
@@ -992,7 +1012,10 @@ ipcMain.on('set-ui', (_e, v) => {
 });
 ipcMain.on('check-update', () => checkForUpdates(true));
 ipcMain.on('open-log', () => shell.openPath(debugLogFile));
-ipcMain.on('open-settings', () => openSettingsWindow());
+ipcMain.on('open-settings', (e) => {
+  // 누른 창을 그대로 부모로 삼는다 (위젯에서 눌렀나, 넓은 창에서 눌렀나)
+  openSettingsWindow(BrowserWindow.fromWebContents(e.sender));
+});
 ipcMain.on('install-update', () => installUpdateNow());
 ipcMain.on('notes-seen', () => {              // 닫으면 이 버전은 다시 안 띄운다
   showNotes = false;
