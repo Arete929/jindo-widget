@@ -36,6 +36,29 @@ function parseCsv(text) {
 }
 
 const DAY_OK = /^[일월화수목금토]$/;
+const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+
+/* 이 달이 «어느 해» 것인지 날짜·요일로 알아본다.
+   같은 달이라도 해가 다르면 요일이 통째로 밀리므로, 며칠만 맞춰 봐도 바로 갈린다.
+   → { year: 알아낸 연도(못 찾으면 0), score: 몇 %가 맞았나 } */
+function guessYear(month, days, aroundYear) {
+  const m = Number(month);
+  const list = (days || []).filter((d) => d.day >= 1 && d.day <= 31 && DAY_OK.test(d.dow));
+  if (!m || list.length < 5) return { year: 0, score: 0 };
+  let best = { year: 0, score: 0 };
+  // 앞뒤 3년만 본다 — 학사일정이 그보다 멀리 벗어날 일은 없다
+  for (let y = aroundYear - 3; y <= aroundYear + 3; y++) {
+    let hit = 0;
+    list.forEach((d) => {
+      const t = new Date(y, m - 1, d.day);
+      if (t.getMonth() === m - 1 && DOW[t.getDay()] === d.dow) hit++;
+    });
+    const score = hit / list.length;
+    if (score > best.score) best = { year: y, score: score };
+  }
+  // 어중간하면 «모르겠다» 로 둔다 (억지로 한 해를 고르지 않는다)
+  return best.score >= 0.9 ? best : { year: 0, score: best.score };
+}
 
 /* 한 달치 → { month, days:[{day, dow, event, grades:{1:[...],2:[...],3:[...]}}] } */
 function parseMonth(csv, tab) {
@@ -76,7 +99,18 @@ function parseMonth(csv, tab) {
   const fromTab = (String(tab).match(/^(\d{1,2})/) || [])[1];
   const fromCell = (String(rows.map(r => r[2] || '').find(v => /(\d{1,2})월/.test(v)) || '')
     .match(/(\d{1,2})월/) || [])[1];
-  return { tab: tab, month: fromTab || fromCell || tab, days: days };
+  const month = fromTab || fromCell || tab;
+  // 학년도 기준 그 달이 «있어야 할» 해 — 3~12월은 올해, 1~2월은 다음 해
+  const now = new Date();
+  const acStart = now.getMonth() + 1 >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const want = Number(month) >= 3 ? acStart : acStart + 1;
+  const g = guessYear(month, days, want);
+  return {
+    tab: tab, month: month, days: days,
+    year: g.year,                    // 요일로 알아낸 연도 (0 = 모르겠음)
+    wantYear: want,                  // 이 학년도라면 이 해여야 한다
+    ok: !g.year || g.year === want   // 모르겠으면 일단 쓴다 (괜한 것을 감추지 않는다)
+  };
 }
 
 /* 한 달 받기 */

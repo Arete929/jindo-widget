@@ -120,6 +120,7 @@
 
 <script>
 var DATA = null;          // 위젯이 보내주는 오늘 자료 (날짜 표시용)
+var APPNAME = '';         // 갈래 이름 — 메인이 알려 준다 (진호알리미 등)
 var OFF = 0;              // 지금 보고 있는 주 (0 = 이번주)
 var WEEKS = {};           // 오프셋별로 받아둔 주간 자료
 var prevOn = false, nextOn = false;   // 위·아래 펼치기
@@ -291,11 +292,15 @@ function render() {
   if (nextOn) body += blockHtml(OFF + 1, '다음주');
 
   box.innerHTML = head + nav + body
-    + '<div class="foot">혜원 데스크 · 오늘 ' + esc((DATA && DATA.date) || '') + '</div>';
+    + '<div class="foot">' + esc(APPNAME || '') + ' · 오늘 ' + esc((DATA && DATA.date) || '') + '</div>';
 }
 
 widgetAPI.onData(function (p) {
   DATA = p.data && p.data.ready ? p.data : null;
+  if (p.appName) {
+    APPNAME = p.appName;
+    document.title = APPNAME + ' — 주간 시간표';
+  }
   WEEKS = {};            // 자료가 새로 오면 받아둔 주들도 다시 받는다
   render();
 });

@@ -448,6 +448,8 @@
   .chips.sub .chip.on { background: var(--card2); border-color: var(--card2); color: var(--fg); }
 
   /* ── 학사일정 ── */
+  /* 시트에 섞여 있는 «다른 해» 탭 — 눌러 볼 수는 있게 두되 흐리게 */
+  .wkb.oldyr { opacity: .55; border-style: dashed; }
   .acmon {
     font-size: calc(12px * var(--wf)); font-weight: 800; color: var(--accent);
     padding: 8px 0 4px; letter-spacing: -.2px;

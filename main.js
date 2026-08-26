@@ -820,6 +820,8 @@ function todayEventText() {
     let found = '';
     a.months.forEach((m) => {
       if (String(m.month) !== mm) return;
+      // ★ 다른 해 탭이 섞여 있으면 그쪽을 읽어 엉뚱한 일정이 뜬다 (실제로 겪었다)
+      if (m.ok === false) return;
       (m.days || []).forEach((d) => {
         if (d.day !== dd) return;
         const t = String(d.event || '').trim();

@@ -522,6 +522,7 @@ function viewComci() {
    월 단추는 «그 자리로 데려가는» 역할이고, 스크롤을 하면 단추도 따라 움직인다.
    «오늘» 단추를 누르면 오늘 날짜로 간다 — 탭을 처음 열 때도 저절로 오늘로 간다. */
 var AC = null, acBusy = false, acScrolled = false, acSpy = '';
+var acAllYears = false;   // «다른 해» 탭까지 펼쳐 볼 것인가
 
 function loadAcademic() {
   if (acBusy) return;
@@ -557,15 +558,31 @@ function viewAcademic() {
 
   var now = new Date(), todayD = now.getDate(), todayM = String(now.getMonth() + 1);
   var wr = weekRange();
-  // 8월처럼 한 달이 «8-1·8-2» 로 나뉘면 뒤쪽이 지금 쓰는 달이다
+  // ★ 시트에 «다른 해» 탭이 섞여 있을 수 있다. 실제로 8월이 셋이었다
+  //   (8-1=2025 · 8-2=2026 · 8=2027). 요일로 알아낸 해가 어긋나면 감춘다.
+  //   academic.js 가 달마다 ok 를 매겨 준다. 옛 자료에는 ok 가 없으니 그때는 다 쓴다.
+  var other = ms.filter(function (x) { return x.ok === false; });
+  if (!acAllYears && other.length) {
+    ms = ms.filter(function (x) { return x.ok !== false; });
+    if (!ms.length) ms = (AC.months) || [];      // 다 어긋나면 차라리 다 보여준다
+  }
   var mine = ms.filter(function (x) { return x.month === todayM; });
-  if (!acSpy) acSpy = (mine.length ? mine[mine.length - 1] : ms[0]).tab;
+  if (!acSpy || !ms.some(function (x) { return x.tab === acSpy; })) {
+    acSpy = (mine.length ? mine[mine.length - 1] : ms[0]).tab;
+  }
 
   var h = '<div class="top2"><div class="wknav">'
     + ms.map(function (x) {
-        return '<button class="wkb' + (x.tab === acSpy ? ' now' : '') + '" data-ac="' + esc(x.tab) + '">'
-          + esc(x.month) + '월' + (/-/.test(x.tab) ? '<small>' + esc(x.tab) + '</small>' : '') + '</button>';
+        var tag = (x.ok === false && x.year) ? String(x.year) + '년'
+          : (/-/.test(x.tab) ? esc(x.tab) : '');
+        return '<button class="wkb' + (x.tab === acSpy ? ' now' : '')
+          + (x.ok === false ? ' oldyr' : '') + '" data-ac="' + esc(x.tab) + '">'
+          + esc(x.month) + '월' + (tag ? '<small>' + esc(tag) + '</small>' : '') + '</button>';
       }).join('')
+    + (other.length
+        ? '<button class="wkb" id="acYrs" title="시트에 다른 해 탭이 섞여 있습니다">'
+          + (acAllYears ? '− 올해만' : '+ 다른 해 ' + other.length + '개') + '</button>'
+        : '')
     + '<span class="spacer"></span>'
     + fontBtns('cal')
     + '<button class="wkb go" id="acToday" title="오늘 날짜로">오늘로</button>'
@@ -1627,6 +1644,10 @@ function wireViews(app) {
     b.addEventListener('click', function () {
       scrollToEl(document.getElementById('acm-' + b.dataset.ac), 2);
     });
+  });
+  var acY = app.querySelector('#acYrs');
+  if (acY) acY.addEventListener('click', function () {
+    acAllYears = !acAllYears; acSpy = ''; acScrolled = false; render();
   });
   var acT = app.querySelector('#acToday');
   if (acT) acT.addEventListener('click', goToday);
