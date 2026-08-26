@@ -33,6 +33,7 @@ files:
   - academic.js
   - gradeplan.js  # 학년부 일지 시트
   - weather.js    # 날씨·미세먼지 (Open-Meteo)
+  - sysinfo.js    # 이 PC 의 CPU·램
   - aiusage.js
   - httpx.js
   - googleauth.js

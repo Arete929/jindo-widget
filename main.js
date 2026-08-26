@@ -20,6 +20,7 @@ const recordsmain = require('./recordsmain.js');
 const roster = require('./roster.js');
 const gradeplan = require('./gradeplan.js');
 const weather = require('./weather.js');
+const sysinfo = require('./sysinfo.js');
 
 /* ── 갈래(flavor) ──────────────────────────────────────────────
    한 벌의 코드로 두 프로그램을 만든다. 빌드할 때 package.json 에 flavor 를 심어 두고
@@ -157,8 +158,28 @@ function getFontScale() {
 }
 // 처음 설치했을 때는 AI 사용량을 꺼 둔다 — 켜면 클로드·제미나이에 로그인해야 해서,
 // 받자마자 쓰는 사람에게는 «로그인하기» 단추만 두 칸 보이는 셈이 된다.
-function getUsageShow() { const v = loadState().usageShow; return v === undefined ? false : !!v; }
+/* 켜 놓은 AI 들. 예전에는 «다 켜기/다 끄기» 하나였다 — 그 값이 남아 있으면 옮겨 준다. */
+const USAGE_KEYS = ['claude', 'gemini', 'gpt'];
+function getUsageOn() {
+  const st = loadState();
+  if (Array.isArray(st.usageOn)) return st.usageOn.filter((k) => USAGE_KEYS.includes(k));
+  return st.usageShow ? ['claude', 'gemini'] : [];   // 옛 설정 옮기기
+}
+function getUsageShow() { return getUsageOn().length > 0; }
 function getUsageStyle() { return loadState().usageStyle === 'bar' ? 'bar' : 'ring'; }
+
+/* ── 내 PC (CPU·램) ───────────────────────────────────────────
+   인터넷도 열쇠도 필요 없다. 나눠 주는 판에서 굳이 보일 것은 아니라 기본은 꺼짐. */
+function getSysShow() { return !!loadState().sysShow; }
+let sysData = null;
+let sysTimer = null;
+function startSys() {
+  if (sysTimer) { clearInterval(sysTimer); sysTimer = null; }
+  if (!getSysShow()) { sysData = null; sendToWidget(); return; }
+  const tick = () => { sysData = sysinfo.read(); sendToWidget(); };
+  tick();
+  sysTimer = setInterval(tick, 3000);   // 3초마다 — 이 정도면 앱에 부담이 없다
+}
 
 /* ── 날씨·미세먼지 ────────────────────────────────────────────
    Open-Meteo — 열쇠가 필요 없다. 학교망에서 막히면 조용히 안 보이게 둔다.
@@ -414,11 +435,13 @@ function sendToWidget() {
     rec: recordsmain.recState(),
     flavor: FLAVOR,
     appName: APP_NAME,
-    usage: { show: getUsageShow(), style: getUsageStyle(), data: aiusage.snapshot() },
+    usage: { show: getUsageShow(), on: getUsageOn(), style: getUsageStyle(),
+             data: aiusage.snapshot() },
     comciPick: loadState().comciPick || null,
     comciSide: loadState().comciSide === 'row' ? 'row' : 'col',
     grade: { on: getGradeOn(), sheets: getGradeSheets() },
     wx: { show: getWxShow(), spot: getWxSpot(), data: wxData },
+    sys: { show: getSysShow(), data: sysData },
     easyFav: loadState().easyFav || [],          // 혜원이지 대시보드 즐겨찾기
     update: { state: updateState, version: updateVersion }
   };
@@ -1102,6 +1125,7 @@ ipcMain.on('set-ui', (_e, v) => {
     }
   }
   if (v.wxShow !== undefined) { saveState({ wxShow: !!v.wxShow }); sendToWidget(); }
+  if (v.sysShow !== undefined) { saveState({ sysShow: !!v.sysShow }); startSys(); }
   if (v.gradeSheets !== undefined) {
     const cur = getGradeSheets();
     [1, 2, 3].forEach((g) => { if (v.gradeSheets[g] !== undefined) cur[g] = String(v.gradeSheets[g] || ''); });
@@ -1119,6 +1143,10 @@ ipcMain.on('set-ui', (_e, v) => {
   }
   if (v.easyFav !== undefined) {
     saveState({ easyFav: (v.easyFav || []).map(String).slice(0, 12) });
+    sendToWidget();
+  }
+  if (v.usageOn !== undefined) {
+    saveState({ usageOn: (v.usageOn || []).filter((k) => USAGE_KEYS.includes(k)) });
     sendToWidget();
   }
   if (v.usageShow !== undefined) { saveState({ usageShow: !!v.usageShow }); sendToWidget(); }
@@ -1530,6 +1558,7 @@ if (!gotLock) {
       sendToWidget();
     }
 
+    startSys();          // 내 PC (켜 두었을 때만 돈다)
     // 날씨 — 켜고 잠시 뒤 한 번, 그 뒤로는 30분마다
     scheduleTask('wx', '날씨', 3000, () => refreshWeather());
     setInterval(() => refreshWeather(), 30 * 60 * 1000);

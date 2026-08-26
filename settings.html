@@ -150,20 +150,28 @@
 </section>
 
 <section>
-  <h2>AI 사용량</h2>
+  <h2>사용량</h2>
   <div class="row">
-    <label class="lb">보이기</label>
+    <label class="lb">무엇을 볼까</label>
     <div class="chips" id="usgRow">
-      <button class="sw" id="usgSw"><span class="track"><span class="knob"></span></span><span id="usgSwTxt">보이기</span></button>
-      <span style="width:8px"></span>
+      <button class="sw" data-uk="claude"><span class="track"><span class="knob"></span></span>Claude</button>
+      <button class="sw" data-uk="gemini"><span class="track"><span class="knob"></span></span>Gemini</button>
+      <button class="sw" data-uk="gpt"><span class="track"><span class="knob"></span></span>ChatGPT</button>
+      <button class="sw" id="sysSw"><span class="track"><span class="knob"></span></span>내 PC</button>
+    </div>
+  </div>
+  <div class="row">
+    <label class="lb">모양</label>
+    <div class="chips">
       <button data-usgstyle="ring">원형</button><button data-usgstyle="bar">막대</button>
+      <span class="hint" style="margin:0 0 0 8px">위젯에서만 갈립니다 — 넓게 보기는 늘 막대입니다</span>
     </div>
   </div>
   <div class="hint" id="usgHint">
-    클로드·제미나이의 <b>남은 사용량</b>을 보여줍니다.<br>
-    위젯에서는 <b>제목 줄 아래 띠</b>로, 넓게 보기에서는 <b>사이드바 맨 위 타일</b>로 나옵니다.<br>
-    처음 한 번은 <b>«로그인하기»</b> 를 눌러 클로드·제미나이에 각각 로그인해야 합니다.
-    (원형·막대는 위젯에서만 갈립니다 — 넓게 보기는 늘 막대입니다)
+    켠 것만 <b>위젯 제목 줄 아래 띠</b>와 <b>넓게 보기 사이드바</b>에 나옵니다.<br>
+    <b>AI 는 처음 한 번</b> «로그인하기» 를 눌러 각각 로그인해야 합니다.<br>
+    <b>내 PC</b> 는 이 컴퓨터의 CPU·램입니다 — 인터넷도 로그인도 필요 없고 3초마다 다시 잽니다.
+    <span class="warn">ChatGPT 는 남은 양을 보여주는 화면이 또렷하지 않아, 못 읽을 수도 있습니다.</span>
   </div>
 </section>
 
@@ -461,9 +469,11 @@ function __paint() {
   $('thRow').querySelectorAll('button').forEach(function (b) {
     b.className = (b.dataset.th === (UI.theme || '')) ? 'on' : '';
   });
-  var usgOn = UI.usageShow !== false;
-  $('usgSw').className = 'sw' + (usgOn ? ' on' : '');
-  $('usgSwTxt').textContent = usgOn ? '보이기' : '숨기기';
+  var on = (UI.usage && UI.usage.on) || [];
+  $('usgRow').querySelectorAll('[data-uk]').forEach(function (b) {
+    b.className = 'sw' + (on.indexOf(b.dataset.uk) >= 0 ? ' on' : '');
+  });
+  $('sysSw').className = 'sw' + ((UI.sys && UI.sys.show) ? ' on' : '');
   $('fontRow').querySelectorAll('button').forEach(function (b) {
     b.className = (b.dataset.fo === (UI.font || 'pretendard')) ? 'on' : '';
   });
@@ -601,10 +611,18 @@ $('fontRow').querySelectorAll('button').forEach(function (b) {
   b.onclick = function () { UI.font = b.dataset.fo; widgetAPI.setUi({ font: UI.font }); paint(); };
 });
 $('notesBtn').onclick = function () { widgetAPI.notesShow(); };
-$('usgSw').onclick = function () {
-  UI.usageShow = !(UI.usageShow !== false);
-  widgetAPI.setUi({ usageShow: UI.usageShow });
-  paint();
+$('usgRow').querySelectorAll('[data-uk]').forEach(function (b) {
+  b.onclick = function () {
+    var on = ((UI.usage && UI.usage.on) || []).slice();
+    var k = on.indexOf(b.dataset.uk);
+    if (k >= 0) on.splice(k, 1); else on.push(b.dataset.uk);
+    widgetAPI.setUi({ usageOn: on });
+    setTimeout(load, 250);
+  };
+});
+$('sysSw').onclick = function () {
+  widgetAPI.setUi({ sysShow: !$('sysSw').classList.contains('on') });
+  setTimeout(load, 250);
 };
 $('usgRow').querySelectorAll('button[data-usgstyle]').forEach(function (b) {
   b.onclick = function () {

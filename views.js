@@ -946,11 +946,48 @@ function wxCard() {
   return h + '</button></div>';
 }
 
+/* ── 내 PC (CPU·램) ── AI 사용량과 같은 모양으로 그린다 ── */
+var SYS = null, SYSSHOW = false;
+function sysMetrics() {
+  if (!SYSSHOW || !SYS) return [];
+  var out = [];
+  if (SYS.cpu !== null && SYS.cpu !== undefined) {
+    out.push({ lb: 'CPU', pct: SYS.cpu, sub: (SYS.cores || 0) + '코어' });
+  }
+  if (SYS.ram) {
+    out.push({ lb: 'RAM', pct: SYS.ram.pct,
+      sub: SYS.ram.usedGb + ' / ' + SYS.ram.totalGb + ' GB' });
+  }
+  return out;
+}
+/* 80% 넘으면 빨강 — 값이 계속 움직이니 눈에 걸리게 */
+function sysHot(p) { return p >= 80 ? ' hot' : (p >= 60 ? ' warm' : ''); }
+function sysBox() {
+  var ms = sysMetrics();
+  if (!ms.length) return '';
+  var h = '<div class="box"><div class="nm">내 PC</div>';
+  if (USGSTYLE === 'ring') {
+    h += '<div class="rings">' + ms.map(function (x) {
+      return '<div class="ring' + sysHot(x.pct) + '">' + ringSvg(x.pct)
+        + '<div class="lb">' + esc(x.lb) + '</div>'
+        + '<div class="rs">' + esc(x.sub) + '</div></div>';
+    }).join('') + '</div>';
+  } else {
+    h += '<div class="bars">' + ms.map(function (x) {
+      return '<div class="brow"><div class="bt">' + esc(x.lb) + '<b>' + x.pct + '%</b></div>'
+        + '<div class="bk' + sysHot(x.pct) + '"><i style="width:' + x.pct + '%"></i></div>'
+        + '<div class="rs">' + esc(x.sub) + '</div></div>';
+    }).join('') + '</div>';
+  }
+  return h + '</div>';
+}
+
 var TASKS = [];
 /* ── AI 사용량 (클로드·제미나이) ──────────────────────────────
    위젯이 보이지 않는 창으로 직접 읽어 온다. 원형과 막대 중에 고를 수 있고,
    «얼마나 남았는지»와 «언제 초기화되는지»를 함께 보여준다. */
 var USG = null, USGSHOW = true, USGSTYLE = 'ring';
+var USGON = [];   // 켜 놓은 AI 들
 
 function pctOf(m) { return m && m.pct !== null && m.pct !== undefined ? Number(m.pct) : null; }
 /* 남은 시간은 창을 켜 둔 채로도 계속 줄어야 한다 — 그래서 «초기화 시각»에서 매번 다시 센다 */
@@ -1029,11 +1066,12 @@ function usgBox(key, u) {
   return h + '</div>';
 }
 function usageBar() {
-  if (!USGSHOW || !USG) return '';
-  var keys = Object.keys(USG);
-  if (!keys.length) return '';
+  var keys = (USG ? Object.keys(USG) : []).filter(function (k) { return USGON.indexOf(k) >= 0; });
+  var sys = sysBox();
+  if (!keys.length && !sys) return '';
   return '<div class="usg">'
     + keys.map(function (k) { return usgBox(k, USG[k] || {}); }).join('')
+    + sys
     + '<div class="usgset">'
     + '<button class="wkb' + (USGSTYLE === 'ring' ? ' now' : '') + '" data-usgstyle="ring" title="원형">◍</button>'
     + '<button class="wkb' + (USGSTYLE === 'bar' ? ' now' : '') + '" data-usgstyle="bar" title="막대">▤</button>'
@@ -1630,6 +1668,10 @@ widgetAPI.onData(function (p) {
   }
   if (p.easyFav) EASYFAV = p.easyFav;
   if (p.comciSide) cmSide = p.comciSide === 'row' ? 'row' : 'col';
+  if (p.sys) {
+    SYSSHOW = !!p.sys.show;
+    SYS = p.sys.data || null;
+  }
   if (p.wx) {
     WXSHOW = p.wx.show !== false;
     WXSPOT = (p.wx.spot && p.wx.spot.name) || '';
@@ -1645,6 +1687,7 @@ widgetAPI.onData(function (p) {
   if (p.usage) {
     USG = p.usage.data || null;
     USGSHOW = p.usage.show !== false;
+    USGON = p.usage.on || [];
     USGSTYLE = p.usage.style === 'bar' ? 'bar' : 'ring';
   }
   if (p.theme !== undefined && p.theme !== THEME) {

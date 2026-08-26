@@ -186,6 +186,11 @@
   /* 사용량 띠의 빈 곳으로도 끌 수 있게 — 단, 단추는 눌려야 한다 */
   .usg { display: flex; gap: 6px; margin-bottom: 8px; -webkit-app-region: drag; }
   .usg button { -webkit-app-region: no-drag; }
+  /* 내 PC — 많이 쓰면 눈에 걸리게 */
+  .bk.warm i { background: #e08a1e; }
+  .bk.hot i { background: #c0392b; }
+  .ring.warm svg circle:last-child { stroke: #e08a1e; }
+  .ring.hot svg circle:last-child { stroke: #c0392b; }
   .usg .box {
     flex: 1; min-width: 0; background: var(--card); border-radius: 8px; padding: 6px 8px;
   }

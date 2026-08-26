@@ -153,6 +153,56 @@ const GEMINI_LOGIN_CHECK_SCRIPT = `(function(){
   } catch (e) { return false; }
 })()`;
 
+const GPT_EXTRACT_SCRIPT = `(function(){
+  const text = document.body.innerText || '';
+  function email() {
+    try {
+      const re = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/;
+      const blocked = /^(support|help|privacy|legal|security|admin|no-?reply|billing|sales|info|contact)@/i;
+      const all = text.match(new RegExp(re.source, 'g')) || [];
+      for (const em of all) if (!blocked.test(em)) return em;
+    } catch (e) {}
+    return null;
+  }
+  // 흔한 꼴들을 두루 찾아본다 —
+  //   «12 / 160 messages» · «45% used» · «160개 중 12개»
+  function pick() {
+    let m = text.match(/(\\d+)\\s*%\\s*(?:used|사용)/i);
+    if (m) return { pct: parseInt(m[1], 10) };
+    m = text.match(/(\\d+)\\s*\\/\\s*(\\d+)\\s*(?:messages|메시지)/i);
+    if (m) {
+      const a = parseInt(m[1], 10), b = parseInt(m[2], 10);
+      if (b > 0) return { pct: Math.round(a / b * 100), note: a + ' / ' + b };
+    }
+    m = text.match(/(\\d+)\\s*(?:개|건)?\\s*중\\s*(\\d+)/);
+    if (m) {
+      const b = parseInt(m[1], 10), a = parseInt(m[2], 10);
+      if (b > 0) return { pct: Math.round(a / b * 100), note: a + ' / ' + b };
+    }
+    return null;
+  }
+  function resetOf() {
+    const m = text.match(/(?:resets?|재설정|초기화)[^\\n]{0,40}/i);
+    return m ? m[0].trim().slice(0, 40) : '';
+  }
+  const got = pick();
+  if (!got) {
+    // 못 읽었을 때 — 무엇이 보였는지 조금 남긴다(다음에 맞추려고)
+    return { ok: false, unread: true, account: email(),
+             seen: text.replace(/\\s+/g, ' ').slice(0, 240) };
+  }
+  return { ok: true, account: email(),
+           session: { pct: got.pct, reset: resetOf() || (got.note || '') } };
+})()`;
+
+const GPT_LOGIN_CHECK_SCRIPT = `(function(){
+  try {
+    const t = document.body.innerText || '';
+    if (/Log\\s*in|Sign\\s*up|로그인|시작하기/i.test(t) && !/Settings|설정/i.test(t)) return false;
+    return true;
+  } catch (e) { return false; }
+})()`;
+
 const PROVIDERS = {
   claude: {
     key: 'claude',
@@ -173,6 +223,18 @@ const PROVIDERS = {
     extract: GEMINI_EXTRACT_SCRIPT,
     loginCheck: GEMINI_LOGIN_CHECK_SCRIPT,
     settle: 2600
+  },
+  // ★ ChatGPT 는 «남은 양» 화면이 클로드·제미나이만큼 또렷하지 않다.
+  //   설정 → 사용량을 열어 흔한 꼴을 찾아보고, 못 찾으면 솔직히 «못 읽었다» 고 한다.
+  gpt: {
+    key: 'gpt',
+    label: 'ChatGPT',
+    partition: 'persist:gptusage',
+    loginUrl: 'https://chatgpt.com/auth/login',
+    usageUrl: () => `https://chatgpt.com/#settings/Usage?_w=${Date.now()}`,
+    extract: GPT_EXTRACT_SCRIPT,
+    loginCheck: GPT_LOGIN_CHECK_SCRIPT,
+    settle: 3200
   }
 };
 const KEYS = Object.keys(PROVIDERS);

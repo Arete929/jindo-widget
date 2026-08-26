@@ -1,4 +1,4 @@
-/* 파일명: easy.js | @version 1.6.0
+/* 파일명: easy.js | @version 1.7.0
    혜원이지 — 넓은 창의 뼈대. 왼쪽 메뉴 · 대시보드 · 화면 갈아 끼우기.
 
    ★ 자료를 읽어 오고 화면 조각을 만드는 일은 views.js 가 그대로 한다.
@@ -11,14 +11,16 @@ var MAIN = document.getElementById('main');
 var EBAR = document.getElementById('ebar');   // 맨 위를 가로지르는 띠
 
 /* 담긴 화면. v 값은 위젯이 쓰는 이름 그대로다 — 설정·기억이 서로 통한다. */
+// 그림 아이콘은 Music\\진호아이콘 에서 가져와 assets/nav-*.png 로 넣어 두었다
 var MENU = [
-  { v: 'home', i: '🏠', t: '대시보드', d: '오늘 것을 한눈에', g: '' },
-  { v: 'work', i: '📋', t: '주간업무', d: '표·들여쓰기까지 원문 그대로', g: '오늘 볼 것' },
-  { v: 'cal', i: '📅', t: '학사일정', d: '3월부터 이듬해 2월까지', g: '오늘 볼 것' },
-  { v: 'meal', i: '🍚', t: '급식', d: '주 단위로 넘겨 보기', g: '오늘 볼 것' },
-  { v: 'comci', i: '🕘', t: '컴시간', d: '교사·학급 시간표', g: '오늘 볼 것' },
-  { v: 'rec', i: '✍', t: '학생기록', d: '학급 → 학생 → 분류로 쓰고 모아 보기', g: '기록' }
+  { v: 'home', p: 'nav-home', t: '대시보드', d: '오늘 것을 한눈에', g: '' },
+  { v: 'work', p: 'nav-work', t: '주간업무', d: '표·들여쓰기까지 원문 그대로', g: '오늘 볼 것' },
+  { v: 'cal', p: 'nav-cal', t: '학사일정', d: '3월부터 이듬해 2월까지', g: '오늘 볼 것' },
+  { v: 'meal', p: 'nav-meal', t: '급식', d: '주 단위로 넘겨 보기', g: '오늘 볼 것' },
+  { v: 'comci', p: 'nav-comci', t: '컴시간', d: '교사·학급 시간표', g: '오늘 볼 것' },
+  { v: 'rec', p: 'nav-rec', t: '학생기록', d: '학급 → 학생 → 분류로 쓰고 모아 보기', g: '기록' }
 ];
+function navImg(m) { return '<img src="assets/' + m.p + '.png" alt="">'; }
 function menuOf(v) { return MENU.filter(function (m) { return m.v === v; })[0] || MENU[0]; }
 function known(v) { return MENU.some(function (m) { return m.v === v; }); }
 
@@ -26,10 +28,11 @@ function known(v) { return MENU.some(function (m) { return m.v === v; }); }
    위젯은 머리에 띠로 붙이지만 넓은 창은 본문이 넓어야 하니 옆으로 뺀다.
    좁은 자리라 «막대» 하나로만 보여준다(원형은 글씨가 뭉갠다). */
 function sideUsage() {
-  if (!USGSHOW || !USG) return '';
-  var keys = Object.keys(USG);
-  if (!keys.length) return '';
-  var h = '<div class="sgrp">AI 사용량</div><div class="sus">';
+  if (!USG) return '';
+  var keys = Object.keys(USG).filter(function (k) { return USGON.indexOf(k) >= 0; });
+  var ms = sysMetrics();
+  if (!keys.length && !ms.length) return '';
+  var h = '<div class="sgrp">사용량</div><div class="sus">';
   h += keys.map(function (k) {
     var u = USG[k] || {};
     var ms = usgMetrics(u);
@@ -48,7 +51,18 @@ function sideUsage() {
         }).join('')
       + '</div>';
   }).join('');
-  return h + '<button class="sulg wide" id="usgGet">⟳ 다시 읽기</button></div>';
+  // 내 PC — 같은 막대 모양으로
+  if (ms.length) {
+    h += '<div class="sut"><div class="sun">내 PC</div>'
+      + ms.map(function (x) {
+          return '<div class="sub"><span class="subt">' + esc(x.lb) + '<b>' + x.pct + '%</b></span>'
+            + '<span class="subk' + sysHot(x.pct) + '"><i style="width:' + x.pct + '%"></i></span>'
+            + '<span class="subr">' + esc(x.sub) + '</span></div>';
+        }).join('')
+      + '</div>';
+  }
+  return h + (keys.length ? '<button class="sulg wide" id="usgGet">⟳ 다시 읽기</button>' : '')
+    + '</div>';
 }
 
 /* 맨 위 띠 — 업데이트 안내와 «바뀐 내역». 사이드바 위까지 지나간다.
@@ -69,11 +83,11 @@ function drawSide() {
   h += sideUsage();
   h += MENU.map(function (m) {
     return '<button class="nav' + (VIEW === m.v ? ' on' : '') + '" data-go="' + m.v + '">'
-      + '<i>' + m.i + '</i>' + esc(m.t) + '</button>';
+      + navImg(m) + esc(m.t) + '</button>';
   }).join('');
   h += '<div class="navgap"></div>'
     + '<button class="nav" id="goWid"><img src="assets/widget.png" alt="">위젯 보기</button>'
-    + '<button class="nav" id="goSet"><i>⚙</i>설정</button>'
+    + '<button class="nav" id="goSet"><img src="assets/nav-set.png" alt="">설정</button>'
     + '<div class="sfoot">v' + esc(VER) + ' · made by KIMJINHO</div>';
   SIDE.innerHTML = h;
   SIDE.querySelectorAll('[data-go]').forEach(function (b) {
@@ -122,7 +136,7 @@ function tile(m) {
   return '<div class="tile" data-go="' + m.v + '">'
     + '<button class="fav' + (on ? ' on' : '') + '" data-fav="' + m.v + '" '
     + 'title="' + (on ? '즐겨찾기에서 빼기' : '즐겨찾기에 넣기') + '">' + (on ? '★' : '☆') + '</button>'
-    + '<div class="ic">' + m.i + '</div>'
+    + '<div class="ic">' + navImg(m) + '</div>'
     + '<div class="tt">' + esc(m.t) + '</div>'
     + '<div class="td">' + esc(m.d) + '</div></div>';
 }

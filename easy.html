@@ -1,4 +1,4 @@
-<!-- 파일명: easy.html | @version 1.6.0 -->
+<!-- 파일명: easy.html | @version 1.7.0 -->
 <!-- 혜원이지 (HYEWON EASY) — 위젯과 달리 «열어서 일하는» 넓은 창.
      색·모양은 위젯과 같은 ui.css 를 함께 쓴다(테마 일곱). 자료를 읽어 오는 부분은
      위젯이 쓰던 그대로다 — 여기서는 화면만 넓게 다시 그린다. -->
@@ -63,6 +63,9 @@
     background: color-mix(in srgb, var(--fg) 16%, var(--card2)); overflow: hidden;
   }
   .subk i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+  /* 내 PC — 많이 쓰면 눈에 걸리게 */
+  .subk.warm i { background: #e08a1e; }
+  .subk.hot i { background: #c0392b; }
   .subr { display: block; font-size: 9px; color: var(--dim); }
   .sulg {
     width: 100%; margin-top: 4px; border: 1px solid var(--line); background: none;
@@ -113,9 +116,10 @@
   .tile:hover { border-color: var(--accent); transform: translateY(-2px); }
   .tile .ic {
     width: 34px; height: 34px; border-radius: 9px; display: flex;
-    align-items: center; justify-content: center; font-size: 17px; margin-bottom: 11px;
+    align-items: center; justify-content: center; margin-bottom: 11px;
     background: color-mix(in srgb, var(--accent) 20%, var(--card));
   }
+  .tile .ic img { width: 22px; height: 22px; object-fit: contain; -webkit-user-drag: none; }
   .tile .tt { font-size: 14px; font-weight: 800; margin-bottom: 3px; }
   .tile .td { font-size: 11.5px; color: var(--dim); line-height: 1.5; }
   .tile .fav {
