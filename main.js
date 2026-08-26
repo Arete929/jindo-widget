@@ -1082,6 +1082,15 @@ ipcMain.handle('get-settings', () => ({
     font: getFont(),
     usageShow: getUsageShow(),
     usageStyle: getUsageStyle(),
+    // ★ 설정 창은 위젯과 «다른 자료» 를 받는다. 새 항목을 넣을 때 여기도 넣어야
+    //   설정에서 지금 값이 보이고, 스위치를 눌렀을 때 나머지가 안 지워진다.
+    //   (usage 가 빠져 있어서 스위치가 늘 꺼짐으로 보이고, 누르면 빈 목록에
+    //    하나만 담겨 «한 번에 하나만» 켜졌다)
+    usage: { show: getUsageShow(), on: getUsageOn(), style: getUsageStyle(),
+             data: aiusage.snapshot() },
+    sys: { show: getSysShow(), data: sysData },
+    wx: { show: getWxShow(), spot: getWxSpot(), data: wxData },
+    grade: { on: getGradeOn(), sheets: getGradeSheets() },
     rec: recordsmain.recState(),
     academicSheet: loadState().academicSheet || academic.DEFAULT_SHEET,
     neis: loadState().neis || null,
