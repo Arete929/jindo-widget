@@ -35,9 +35,11 @@ function esc(name) { return encodeURIComponent(name); }
      그냥 두면 «시트 만들기» 를 눌러 시트가 하나 더 생기고, 기록이 두 곳으로 갈린다.
      drive.file 권한은 «이 앱이 만든 파일» 을 볼 수 있으니, 만들기 전에 먼저 찾아본다. */
 async function findSheet(token, title) {
-  const name = String(title || '[혜원 데스크] 학생기록').replace(/'/g, "\\'");
-  const q = "mimeType='application/vnd.google-apps.spreadsheet'"
-    + " and trashed=false and name='" + name + "'";
+  // 이름은 여러 개를 받을 수 있다 — 앱 이름이 바뀌어도 옛 시트를 찾아야 하기 때문이다
+  const names = (Array.isArray(title) ? title : [title || '[혜원이지] 학생기록'])
+    .map((n) => String(n).replace(/'/g, "\\'"));
+  const q = "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and ("
+    + names.map((n) => "name='" + n + "'").join(' or ') + ')';
   const r = await json({
     url: DRIVE + '?q=' + esc(q)
       + '&fields=' + esc('files(id,name,createdTime,modifiedTime)')
@@ -59,7 +61,7 @@ async function createSheet(token, title) {
     method: 'POST', url: SHEETS, token: token,
     contentType: 'application/json',
     body: JSON.stringify({
-      properties: { title: title || '[혜원 데스크] 학생기록' },
+      properties: { title: title || '[혜원이지] 학생기록' },
       sheets: [
         { properties: { title: TAB_REC } },
         { properties: { title: TAB_CAT } },

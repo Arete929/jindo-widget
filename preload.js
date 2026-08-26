@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   openApp: () => ipcRenderer.send('open-app'),
   openUrl: (url) => ipcRenderer.send('open-url', url),
   openTimetable: () => ipcRenderer.send('open-timetable'),
+  openEasy: () => ipcRenderer.send('open-easy'),
   openSettings: () => ipcRenderer.send('open-settings'),
   getWeek: (off) => ipcRenderer.invoke('get-week', off),
   getWork: () => ipcRenderer.invoke('get-work'),

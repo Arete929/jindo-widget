@@ -17,6 +17,8 @@ files:
   - widget.html
   - ui.css        # 색·모양 (위젯과 혜원이지가 함께 쓴다)
   - views.js      # 화면을 만드는 코드 (마찬가지)
+  - easy.html     # «넓게 보기» 창 (왼쪽 메뉴 + 대시보드)
+  - easy.js
   - timetable.html
   - comcigan.js
   - fetchtext.js

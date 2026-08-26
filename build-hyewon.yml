@@ -1,4 +1,8 @@
-# 혜원 데스크 — 시간표만 뺀 «나눠 주기용» (구글 로그인도 필요 없다)
+# 혜원이지 — 시간표만 뺀 «나눠 주기용» (구글 로그인도 필요 없다)
+#
+# ★ 설치 이름(HyewonDesk)·appId·업데이트 채널은 «일부러» 그대로 둔다.
+#   바꾸면 이미 깔린 것이 자동 업데이트를 못 받고, 설정·구글 로그인도 초기화된다.
+#   사람이 보는 이름만 «혜원이지» 다.
 #
 # ★ appId·설치 이름을 진호알리미와 따로 둔다.
 #   그래야 한 PC에 둘 다 깔아도 설정·기록·자동 업데이트가 서로 섞이지 않는다.
@@ -19,6 +23,8 @@ files:
   - widget.html
   - ui.css        # 색·모양 (위젯과 혜원이지가 함께 쓴다)
   - views.js      # 화면을 만드는 코드 (마찬가지)
+  - easy.html     # «넓게 보기» 창 (왼쪽 메뉴 + 대시보드)
+  - easy.js
   - timetable.html
   - comcigan.js
   - fetchtext.js
@@ -47,7 +53,7 @@ nsis:
   perMachine: false
   runAfterFinish: true
   deleteAppDataOnUninstall: false
-  shortcutName: 혜원 데스크
+  shortcutName: 혜원이지
 publish:
   - provider: github
     owner: Arete929

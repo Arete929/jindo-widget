@@ -31,14 +31,13 @@ const roster = require('./roster.js');
 
    ★ 앞으로 고칠 때: 시간표에 딸린 것만 jinho 에, 나머지는 둘 다에 넣는다. */
 const FLAVOR = (() => {
-  try {
-    const f = require('./package.json').flavor;
-    return (f === 'hyewon' || f === 'easy') ? f : 'jinho';
-  } catch (e) { return 'jinho'; }
+  try { return require('./package.json').flavor === 'hyewon' ? 'hyewon' : 'jinho'; }
+  catch (e) { return 'jinho'; }
 })();
 const HAS_TT = FLAVOR === 'jinho';              // 시간표를 쓰는가
-const IS_EASY = FLAVOR === 'easy';              // 넓게 열어 놓고 쓰는 창인가
-const APP_NAME = HAS_TT ? '진호알리미' : (IS_EASY ? '혜원이지' : '혜원 데스크');
+// ★ «넓은 창» 은 따로 설치하는 프로그램이 아니라 이 앱이 여는 두 번째 창이다.
+//   전에는 easy 라는 갈래로 따로 냈는데, 설정·구글 로그인이 갈려서 하나로 합쳤다.
+const APP_NAME = HAS_TT ? '진호알리미' : '혜원이지';
 const ICON = HAS_TT ? 'icon.png' : 'hyewon-icon.png';
 const TRAY_ICON = HAS_TT ? 'tray.png' : 'hyewon-tray.png';
 
@@ -344,6 +343,7 @@ function sendToWidget() {
     update: { state: updateState, version: updateVersion }
   };
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
+  if (easyWin && !easyWin.isDestroyed()) easyWin.webContents.send('jindo-data', payload);
   if (timetableWin && !timetableWin.isDestroyed()) timetableWin.webContents.send('jindo-data', payload);
   updateTrayTooltip();
 }
@@ -514,7 +514,6 @@ function widgetSize(view) {
   return { width: Math.round(baseWidthFor(view || getView()) * k), height: Math.round(300 * k) };
 }
 function applyWidgetWidth(view) {
-  if (IS_EASY) return;   // 혜원이지는 크기·위치를 사람이 잡는다
   if (!widgetWin || widgetWin.isDestroyed()) return;
   if (userSized()) return;   // 직접 맞춰 둔 크기를 건드리지 않는다
   const want = Math.round(baseWidthFor(view) * SIZES[getScale()]);
@@ -555,12 +554,15 @@ function keepOnScreen() {
   saveState({ x: p.x, y: p.y });
   debugLog(`위젯이 화면 밖이라 되돌렸습니다 -> (${p.x}, ${p.y})`);
 }
-/* 혜원이지 — 떠 있는 위젯이 아니라 «열어서 일하는» 창이다.
-   테두리도 있고, 늘 위로 뜨지도 않고, 작업표시줄에도 보인다.
-   창은 widgetWin 자리에 그대로 넣는다 — 그러면 자료를 보내는 길·트레이가 그대로 통한다. */
-function createEasyWindow() {
+/* ── 넓은 창 ──────────────────────────────────────────────
+   떠 있는 카드가 아니라 «열어서 일하는» 창. 담긴 것은 위젯과 똑같고,
+   왼쪽 메뉴와 대시보드로 넓게 볼 뿐이다(easy.html · easy.js).
+   ★ 별도 프로그램이 아니라 이 앱의 두 번째 창이다 — 설정·구글 로그인을 함께 쓴다. */
+let easyWin = null;
+function openEasyWindow() {
+  if (easyWin && !easyWin.isDestroyed()) { easyWin.show(); easyWin.focus(); return; }
   const st = loadState();
-  widgetWin = new BrowserWindow({
+  easyWin = new BrowserWindow({
     width: Number(st.easyW) || 1100, height: Number(st.easyH) || 750,
     x: typeof st.easyX === 'number' ? st.easyX : undefined,
     y: typeof st.easyY === 'number' ? st.easyY : undefined,
@@ -575,26 +577,25 @@ function createEasyWindow() {
       nodeIntegration: false
     }
   });
-  widgetWin.setMenuBarVisibility(false);
-  widgetWin.loadFile('easy.html');
+  easyWin.setMenuBarVisibility(false);
+  easyWin.loadFile('easy.html');
 
   let boundsTimer = null;
   const remember = () => {
     clearTimeout(boundsTimer);
     boundsTimer = setTimeout(() => {
-      if (!widgetWin || widgetWin.isDestroyed() || widgetWin.isMaximized()) return;
-      const b = widgetWin.getBounds();
+      if (!easyWin || easyWin.isDestroyed() || easyWin.isMaximized()) return;
+      const b = easyWin.getBounds();
       saveState({ easyW: b.width, easyH: b.height, easyX: b.x, easyY: b.y });
     }, 400);
   };
-  widgetWin.on('resize', remember);
-  widgetWin.on('move', remember);
-  widgetWin.on('closed', () => { widgetWin = null; });
-  widgetWin.webContents.once('did-finish-load', () => { sendToWidget(); sendTasks(); });
+  easyWin.on('resize', remember);
+  easyWin.on('move', remember);
+  easyWin.on('closed', () => { easyWin = null; });
+  easyWin.webContents.once('did-finish-load', () => { sendToWidget(); sendTasks(); });
 }
 
 function createWidgetWindow() {
-  if (IS_EASY) return createEasyWindow();
   const size = widgetSize();
   const pos = safePosition(loadState(), size);
   widgetWin = new BrowserWindow({
@@ -643,7 +644,6 @@ function createWidgetWindow() {
 }
 
 function applyScale(key) {
-  if (IS_EASY) return;   // 혜원이지는 크기·위치를 사람이 잡는다
   saveState({ size: key });
   if (widgetWin && !widgetWin.isDestroyed()) {
     const s = widgetSize(getView());
@@ -653,7 +653,6 @@ function applyScale(key) {
   sendToWidget();
 }
 function resetWidgetPosition() {
-  if (IS_EASY) return;   // 혜원이지는 크기·위치를 사람이 잡는다
   if (!widgetWin || widgetWin.isDestroyed()) { createWidgetWindow(); return; }
   const a = screen.getPrimaryDisplay().workArea;
   const b = widgetWin.getBounds();
@@ -665,7 +664,6 @@ function resetWidgetPosition() {
   debugLog(`위젯 위치 초기화: 주 모니터 가운데(${x}, ${y})`);
 }
 function applyOpacity(v) {
-  if (IS_EASY) return;   // 혜원이지는 크기·위치를 사람이 잡는다
   saveState({ opacity: v });
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.setOpacity(v);
 }
@@ -1033,30 +1031,28 @@ function createTray() {
       { label: '⚙️ 설정', click: () => openSettingsWindow() },
       { type: 'separator' },
       {
-        label: IS_EASY ? '창 열기' : '위젯 보이기', type: 'checkbox',
+        label: '위젯 보이기', type: 'checkbox',
         checked: !!(widgetWin && !widgetWin.isDestroyed() && widgetWin.isVisible()),
         click: (mi) => {
           if (!widgetWin || widgetWin.isDestroyed()) { createWidgetWindow(); return; }
           mi.checked ? widgetWin.show() : widgetWin.hide();
         }
       },
-      // 떠 있는 위젯에만 뜻이 있는 것들 — 혜원이지는 보통 창이라 뺀다
-      ...(IS_EASY ? [] : [
-        { label: '항상 위로 고정', type: 'checkbox', checked: getAlwaysOnTop(), click: (mi) => applyAlwaysOnTop(mi.checked) },
-        { label: '위젯 투명도', submenu: opacityMenu },
-        { label: '위젯 크기', submenu: sizeMenu }
-      ]),
+      { label: '⊞ 넓게 보기', click: () => openEasyWindow() },
+      { label: '항상 위로 고정', type: 'checkbox', checked: getAlwaysOnTop(), click: (mi) => applyAlwaysOnTop(mi.checked) },
+      { label: '위젯 투명도', submenu: opacityMenu },
+      { label: '위젯 크기', submenu: sizeMenu },
       { type: 'separator' },
       // 시간표에 딸린 것들은 진호알리미에만 넣는다
       ...(HAS_TT ? [
         { label: '🗓️ 주간 시간표 크게 보기', click: () => openTimetableWindow() },
         { label: '지금 새로고침', click: () => pollOnce() }
       ] : []),
-      ...(IS_EASY ? [] : [{
+      {
         // 다른 모니터를 뽑았거나 위젯을 어디 뒀는지 못 찾을 때 쓰는 탈출구
         label: '위젯 위치 초기화 (화면 가운데로)',
         click: () => resetWidgetPosition()
-      }]),
+      },
       ...(HAS_TT ? [
         { label: '수업진도 앱 열기 (크롬)', click: () => openInBrowser(APP_URL) },
         { label: '크롬으로 로그인', click: () => startLogin() }
@@ -1079,8 +1075,6 @@ function createTray() {
   tray.on('click', () => {
     checkForUpdates();   // 켜볼 때 한 번 — 새 버전이 있으면 바로 띠가 뜬다
     if (!widgetWin || widgetWin.isDestroyed()) { createWidgetWindow(); return; }
-    // 혜원이지는 «열어서 쓰는» 창이라, 트레이를 누르면 숨기지 않고 앞으로 불러온다
-    if (IS_EASY) { widgetWin.show(); widgetWin.focus(); return; }
     widgetWin.isVisible() ? widgetWin.hide() : widgetWin.show();
   });
   updateTrayTooltip();
@@ -1090,6 +1084,7 @@ function createTray() {
 ipcMain.on('refresh-now', () => pollOnce());
 ipcMain.on('open-login', () => startLogin());
 ipcMain.on('open-timetable', () => openTimetableWindow());
+ipcMain.on('open-easy', () => openEasyWindow());
 
 /* ── AI 사용량 ── */
 ipcMain.on('usage-login', (_e, key) => aiusage.openLogin(String(key || '')));
@@ -1206,7 +1201,6 @@ ipcMain.on('set-view', (_e, view) => {
 });
 // 내용 높이에 맞춰 카드 높이를 조절한다 (가로는 고정)
 ipcMain.on('content-height', (_e, h) => {
-  if (IS_EASY) return;   // 혜원이지는 크기·위치를 사람이 잡는다
   if (!widgetWin || widgetWin.isDestroyed()) return;
   const k = SIZES[getScale()];
   if (userSized()) return;   // 직접 맞춰 둔 크기를 건드리지 않는다

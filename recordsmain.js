@@ -126,12 +126,14 @@ function register(helpers) {
   });
 
   /* 시트 만들기 / 휴지통으로 */
-  const SHEET_TITLE = '[혜원 데스크] 학생기록';
+  const SHEET_TITLE = '[혜원이지] 학생기록';
+  // ★ 이름을 바꾸기 전(v1.28 이하)에 만든 시트도 찾아야 한다. 못 찾으면 시트가 갈린다.
+  const SHEET_TITLES = [SHEET_TITLE, '[혜원 데스크] 학생기록'];
 
   /* 다른 PC 에서 이미 만들어 둔 것이 있는지 본다 (없으면 null) */
   ipcMain.handle('rec-find', async () => {
     const t = await token();
-    const found = await rec.findSheet(t, SHEET_TITLE);
+    const found = await rec.findSheet(t, SHEET_TITLES);
     if (found) S.log('학생기록 — 드라이브에 이미 있는 시트를 찾음: ' + found.id);
     return found;
   });
@@ -140,7 +142,7 @@ function register(helpers) {
     const t = await token();
     // ★ 먼저 찾아본다. 다른 PC 에서 만들어 둔 것이 있으면 새로 만들지 않고 이어 쓴다.
     //   (안 그러면 PC 마다 시트가 하나씩 생겨 기록이 갈린다)
-    const found = await rec.findSheet(t, SHEET_TITLE);
+    const found = await rec.findSheet(t, SHEET_TITLES);
     if (found) {
       S.save({ recSheet: { id: found.id, url: found.url, createdAt: found.createdAt, trashedAt: '', email: (S.load().gauth || {}).email || '' } });
       S.log('학생기록 — 이미 있는 시트에 이어 붙임: ' + found.id);

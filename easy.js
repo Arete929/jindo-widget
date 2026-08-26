@@ -1,4 +1,4 @@
-/* 파일명: easy.js | @version 1.1.0
+/* 파일명: easy.js | @version 1.2.0
    혜원이지 — 넓은 창의 뼈대. 왼쪽 메뉴 · 대시보드 · 화면 갈아 끼우기.
 
    ★ 자료를 읽어 오고 화면 조각을 만드는 일은 views.js 가 그대로 한다.
@@ -41,8 +41,9 @@ function drawSide() {
 }
 
 function go(v) {
+  // ★ 위젯과 «보던 탭» 을 나눠 갖지 않는다. 나눠 가지면 넓은 창에서 옮길 때
+  //   뒤에 떠 있는 위젯 탭까지 같이 바뀌어 헷갈린다. 이 창은 늘 대시보드에서 시작한다.
   VIEW = v;
-  if (v !== 'home') widgetAPI.setView(v);   // 위젯과 같은 자리에 기억해 둔다
   render();
 }
 
@@ -147,3 +148,5 @@ MAIN.addEventListener('scroll', function () {
 
 VIEW = 'home';
 render();
+// 위젯이 보내 주는 «보던 탭» 에 끌려가지 않도록, 값이 와도 대시보드를 지킨다
+widgetAPI.onData(function () { if (!known(VIEW)) VIEW = 'home'; });

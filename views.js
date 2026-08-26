@@ -28,7 +28,9 @@ function bumpFont(key, dir) {
 /* 갈래 — jinho(진호알리미, 시간표 있음) / hyewon(혜원 데스크, 시간표 없음).
    메인이 그릴 때마다 알려 준다. 시간표에 딸린 것만 가리고 나머지는 둘 다 같다. */
 var FLAVOR = 'jinho', HAS_TT = true, APPNAME = '진호알리미';
-var IS_EASY = false;      // 혜원이지(넓은 창)인가 — 위젯이면 false
+// 지금 그리고 있는 창이 «넓은 창»(easy.html)인가. 왼쪽 메뉴가 있으면 넓은 창이다.
+// ★ 갈래로 가르지 않는다 — 한 프로그램이 위젯 창과 넓은 창을 함께 띄우기 때문이다.
+var IS_EASY = !!document.getElementById('side');
 var EASYFAV = [];         // 혜원이지 대시보드 즐겨찾기
 
 /* 화면이 담기는 통. 위젯은 #app, 혜원이지는 #main 이다.
@@ -1277,6 +1279,7 @@ function render() {
   var dowText = (d.dow || ['일', '월', '화', '수', '목', '금', '토'][nd.getDay()]) + '요일';
   html += '<div class="head"><span class="date">' + esc(dText) + '</span>'
     + '<span class="dow">' + esc(dowText) + '</span><span class="spacer"></span>'
+    + '<button class="ico" title="넓게 보기 — 큰 창으로 엽니다" onclick="widgetAPI.openEasy()">⊞</button>'
     + (HAS_TT ? '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>' : '')
     // ★ 혜원 데스크·혜원이지는 수업진도를 안 쓴다. 예전에는 여기서도 refreshNow() 를
     //   불러서 위젯이 통째로 「수업진도에 로그인해 주세요」로 덮였다.
@@ -1371,7 +1374,6 @@ widgetAPI.onMealsChanged(function () { ML = null; if (VIEW === 'meal') render();
 
 widgetAPI.onData(function (p) {
   if (p.flavor) FLAVOR = p.flavor;
-  IS_EASY = FLAVOR === 'easy';
   STATE = p.data;
   // 혜원이지는 대시보드라는 «위젯에 없는» 화면이 있어서, 보던 화면을 스스로 챙긴다
   if (!IS_EASY) VIEW = p.view || VIEW;
@@ -1397,7 +1399,7 @@ widgetAPI.onData(function (p) {
   }
   if (p.flavor) {
     HAS_TT = FLAVOR === 'jinho';
-    APPNAME = p.appName || (HAS_TT ? '진호알리미' : (IS_EASY ? '혜원이지' : '혜원 데스크'));
+    APPNAME = p.appName || (HAS_TT ? '진호알리미' : '혜원이지');
     if (!HAS_TT && ['today', 'week', 'progress'].indexOf(VIEW) >= 0) VIEW = IS_EASY ? 'home' : 'work';
   }
   if (p.easyFav) EASYFAV = p.easyFav;
@@ -1409,12 +1411,7 @@ widgetAPI.onData(function (p) {
   if (p.theme !== undefined && p.theme !== THEME) {
     THEME = p.theme || '';
     if (THEME) document.documentElement.dataset.theme = THEME;
-    else if (IS_EASY) document.documentElement.dataset.theme = 'slate';
     else delete document.documentElement.dataset.theme;
-  }
-  // 혜원이지의 기본 옷은 슬레이트다 — 처음 켤 때 비어 있으면 채워 준다
-  if (IS_EASY && !document.documentElement.dataset.theme) {
-    document.documentElement.dataset.theme = 'slate';
   }
   if (!IS_EASY && p.scale && p.scale !== SCALE) {
     SCALE = p.scale;
@@ -1422,7 +1419,8 @@ widgetAPI.onData(function (p) {
   }
   if (VIEW === 'week' && STATE && STATE.ready) { WK = null; loadWeek(WEEKOFF); }
   // 창 제목 — 세 갈래가 각자 제 이름을 단다 (html 의 <title> 은 갈래를 모른다)
-  if (APPNAME && document.title !== APPNAME) document.title = APPNAME;
+  var want = APPNAME + (IS_EASY ? ' — 넓게 보기' : '');
+  if (APPNAME && document.title !== want) document.title = want;
   render();
 });
 
