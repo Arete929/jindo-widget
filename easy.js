@@ -1,4 +1,4 @@
-/* 파일명: easy.js | @version 1.3.0
+/* 파일명: easy.js | @version 1.4.0
    혜원이지 — 넓은 창의 뼈대. 왼쪽 메뉴 · 대시보드 · 화면 갈아 끼우기.
 
    ★ 자료를 읽어 오고 화면 조각을 만드는 일은 views.js 가 그대로 한다.
@@ -30,7 +30,7 @@ function drawSide() {
       + '<i>' + m.i + '</i>' + esc(m.t) + '</button>';
   }).join('');
   h += '<div class="navgap"></div>'
-    + '<button class="nav" id="goWid"><i>⊟</i>위젯 보기</button>'
+    + '<button class="nav" id="goWid"><img src="assets/widget.png" alt="">위젯 보기</button>'
     + '<button class="nav" id="goSet"><i>⚙</i>설정</button>'
     + '<div class="sfoot">v' + esc(VER) + ' · made by KIMJINHO</div>';
   SIDE.innerHTML = h;

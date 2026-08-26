@@ -25,6 +25,7 @@ files:
   - worknotice.js
   - neis.js
   - academic.js
+  - gradeplan.js  # 학년부 일지 시트
   - aiusage.js
   - httpx.js
   - googleauth.js

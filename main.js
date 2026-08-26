@@ -18,6 +18,7 @@ const fs = require('fs');
 const aiusage = require('./aiusage.js');
 const recordsmain = require('./recordsmain.js');
 const roster = require('./roster.js');
+const gradeplan = require('./gradeplan.js');
 
 /* ── 갈래(flavor) ──────────────────────────────────────────────
    한 벌의 코드로 두 프로그램을 만든다. 빌드할 때 package.json 에 flavor 를 심어 두고
@@ -157,6 +158,42 @@ function getFontScale() {
 // 받자마자 쓰는 사람에게는 «로그인하기» 단추만 두 칸 보이는 셈이 된다.
 function getUsageShow() { const v = loadState().usageShow; return v === undefined ? false : !!v; }
 function getUsageStyle() { return loadState().usageStyle === 'bar' ? 'bar' : 'ring'; }
+
+/* ── 학년부 일지 ──────────────────────────────────────────────
+   학년마다 시트가 따로 있다. 주소는 해마다 바뀌므로 설정에서 고칠 수 있게 둔다.
+   3학년 것만 기본으로 넣어 두고 1·2학년은 빈 칸이다. */
+const GRADE_SHEET_DEFAULT = {
+  1: '',
+  2: '',
+  3: 'https://docs.google.com/spreadsheets/d/1Gl42JULgKo_s8iLXyDGoUY7hHOM5LCb2Op_BKUEKYSE/edit?gid=0#gid=0'
+};
+function getGradeSheets() {
+  const v = loadState().gradeSheets || {};
+  const out = {};
+  [1, 2, 3].forEach((g) => {
+    out[g] = (v[g] === undefined ? GRADE_SHEET_DEFAULT[g] : String(v[g] || ''));
+  });
+  return out;
+}
+function getGradePick() { const g = Number(loadState().gradePick); return [1, 2, 3].includes(g) ? g : 3; }
+function getGradeShow() { return !!loadState().gradeShow; }
+const gradeFile = path.join(userDataPath, 'gradeplan.json');
+function loadGradePlans() {
+  try { return JSON.parse(fs.readFileSync(gradeFile, 'utf-8')); } catch (e) { return {}; }
+}
+function saveGradePlans(v) {
+  try { fs.writeFileSync(gradeFile, JSON.stringify(v)); } catch (e) { /* 무시 */ }
+}
+async function refreshGradePlan(grade) {
+  const url = getGradeSheets()[grade];
+  if (!url) throw new Error(grade + '학년 시트 주소가 아직 없습니다');
+  const got = await gradeplan.fetchPlan(url);
+  const all = loadGradePlans();
+  all[grade] = got;
+  saveGradePlans(all);
+  debugLog(`학년부 일지 ${grade}학년 — ${got.items.length}건 / 구분 ${got.cats.length}개`);
+  return got;
+}
 // 마지막으로 보던 모습 — 'widget'(떠 있는 카드) 또는 'easy'(넓게 보기).
 // 둘은 스위치처럼 한 번에 하나만 뜬다. 다음에 켤 때도 그 모습으로 시작한다.
 function getViewMode() { return loadState().viewMode === 'easy' ? 'easy' : 'widget'; }
@@ -343,6 +380,7 @@ function sendToWidget() {
     usage: { show: getUsageShow(), style: getUsageStyle(), data: aiusage.snapshot() },
     comciPick: loadState().comciPick || null,
     comciSide: loadState().comciSide === 'row' ? 'row' : 'col',
+    grade: { show: getGradeShow(), pick: getGradePick(), sheets: getGradeSheets() },
     easyFav: loadState().easyFav || [],          // 혜원이지 대시보드 즐겨찾기
     update: { state: updateState, version: updateVersion }
   };
@@ -1007,6 +1045,18 @@ ipcMain.on('set-ui', (_e, v) => {
     saveState({ fontScale: Object.assign(getFontScale(), v.fontScale) });
     sendToWidget();
   }
+  if (v.gradeSheets !== undefined) {
+    const cur = getGradeSheets();
+    [1, 2, 3].forEach((g) => { if (v.gradeSheets[g] !== undefined) cur[g] = String(v.gradeSheets[g] || ''); });
+    saveState({ gradeSheets: cur });
+    debugLog('학년부 일지 시트 주소 변경');
+    sendToWidget();
+  }
+  if (v.gradeShow !== undefined) { saveState({ gradeShow: !!v.gradeShow }); sendToWidget(); }
+  if (v.gradePick !== undefined) {
+    saveState({ gradePick: Number(v.gradePick) || 3 });
+    sendToWidget();
+  }
   if (v.comciSide !== undefined) {
     saveState({ comciSide: v.comciSide === 'row' ? 'row' : 'col' });
     sendToWidget();
@@ -1137,6 +1187,22 @@ ipcMain.on('open-login', () => startLogin());
 ipcMain.on('open-timetable', () => openTimetableWindow());
 ipcMain.on('open-easy', () => openEasyWindow());
 ipcMain.on('show-widget', () => showWidgetOnly());
+
+/* 학년부 일지 — 받아 둔 것 주기 / 새로 받기 */
+ipcMain.handle('grade-get', (_e, grade) => {
+  const g = Number(grade) || getGradePick();
+  return loadGradePlans()[g] || null;
+});
+ipcMain.handle('grade-fetch', async (_e, grade) => {
+  const g = Number(grade) || getGradePick();
+  try {
+    return await refreshGradePlan(g);
+  } catch (e) {
+    const msg = (e && e.message) || String(e);
+    debugLog('학년부 일지 받기 실패: ' + msg);
+    return { items: [], cats: [], error: msg };
+  }
+});
 
 /* ── 주간업무 인쇄 ──────────────────────────────────────────────
    화면을 그대로 인쇄하면 탭·검색줄·어두운 바탕까지 나온다. 그래서 화면 쪽에서

@@ -581,7 +581,48 @@ function viewComci() {
    월 단추는 «그 자리로 데려가는» 역할이고, 스크롤을 하면 단추도 따라 움직인다.
    «오늘» 단추를 누르면 오늘 날짜로 간다 — 탭을 처음 열 때도 저절로 오늘로 간다. */
 var AC = null, acBusy = false, acScrolled = false, acSpy = '';
+/* ── 학년부 일지 ── 학사일정 위에 얹어 보는 «그 학년만의 할 일» ── */
+var GP = null;               // 받아 둔 일지 { items, cats }
+var gpShow = false;          // 스위치 — 켜야 보인다
+var gpGrade = 3;             // 보고 있는 학년
+var gpSheets = {};           // 학년별 시트 주소 (설정에서 넣는다)
+var gpCat = [];              // 골라 놓은 구분 (비면 전체)
+var gpOpen = '';             // 세부사항을 펼쳐 놓은 항목
+var gpBusy = false, gpErr = '';
+var gpTouched = false;       // 화면에서 스위치를 건드렸는가 (메인 값이 덮어쓰지 않게)
 var acAllYears = false;   // «다른 해» 탭까지 펼쳐 볼 것인가
+
+/* 학년부 일지를 받아 온다. 받아 둔 것이 있으면 그것부터 쓰고, 없으면 시트에서 */
+function gpLoad(force) {
+  if (gpBusy) return;
+  gpBusy = true; gpErr = '';
+  var call = force ? widgetAPI.gradeFetch(gpGrade) : widgetAPI.gradeGet(gpGrade);
+  call.then(function (d) {
+    gpBusy = false;
+    if (!d && !force) { gpLoad(true); return; }      // 받아 둔 것이 없으면 시트에서
+    GP = d || { items: [], cats: [] };
+    gpErr = (d && d.error) || '';
+    render();
+  }).catch(function (e) {
+    gpBusy = false; GP = { items: [], cats: [] };
+    gpErr = (e && e.message) || String(e);
+    render();
+  });
+}
+/* 그 날짜의 학년부 항목 (고른 구분만) */
+function gpOf(month, day) {
+  if (!gpShow || !GP) return [];
+  return (GP.items || []).filter(function (x) {
+    if (x.month !== Number(month) || x.day !== day) return false;
+    return !gpCat.length || gpCat.indexOf(x.cat) >= 0;
+  });
+}
+/* 구분마다 색을 달리한다 — 이름을 숫자로 바꿔 여덟 색에 돌려 쓴다 */
+function gpHue(cat) {
+  var n = 0, s = String(cat || '');
+  for (var i = 0; i < s.length; i++) n = (n * 31 + s.charCodeAt(i)) % 8;
+  return n;
+}
 
 function loadAcademic() {
   if (acBusy) return;
@@ -643,9 +684,43 @@ function viewAcademic() {
           + (acAllYears ? '− 올해만' : '+ 다른 해 ' + other.length + '개') + '</button>'
         : '')
     + '<span class="spacer"></span>'
+    + '<button class="wkb sw' + (gpShow ? ' now' : '') + '" id="gpSw" '
+    + 'title="학년부 일지를 학사일정 위에 함께 보기">'
+    + '<span class="track"><span class="knob"></span></span>학년부</button>'
     + fontBtns('cal')
     + '<button class="wkb go" id="acToday" title="오늘 날짜로">오늘로</button>'
     + '<button class="wkb" id="acGet" title="다시 가져오기">⟳</button></div></div>';
+
+  // 학년·구분 고르개 — 스위치를 켰을 때만 나온다
+  if (gpShow) {
+    var haveG = [1, 2, 3].filter(function (g) { return (gpSheets[g] || '').trim(); });
+    h += '<div class="wknav gpbar">';
+    if (haveG.length > 1) {
+      h += haveG.map(function (g) {
+        return '<button class="wkb' + (g === gpGrade ? ' now' : '') + '" data-gg="' + g + '">'
+          + g + '학년</button>';
+      }).join('');
+    }
+    if (!(gpSheets[gpGrade] || '').trim()) {
+      h += '<span class="shint">' + gpGrade + '학년 시트 주소를 설정에 넣어 주세요</span>'
+        + '<button class="wkb" onclick="widgetAPI.openSettings()">설정 열기</button>';
+    } else if (gpErr) {
+      h += '<span class="shint warnfg">' + esc(gpErr) + '</span>';
+    } else if (!GP) {
+      h += '<span class="shint">학년부 일지를 받는 중…</span>';
+    } else {
+      var cats = (GP.cats || []);
+      h += '<span class="slab">구분</span>'
+        + '<button class="wkb' + (gpCat.length ? '' : ' now') + '" data-ga="1">전체</button>'
+        + cats.map(function (c) {
+            return '<button class="wkb gpc h' + gpHue(c) + (gpCat.indexOf(c) >= 0 ? ' now' : '')
+              + '" data-gc="' + esc(c) + '">' + esc(c) + '</button>';
+          }).join('')
+        + '<span class="spacer"></span>'
+        + '<button class="wkb" id="gpGet" title="학년부 일지 다시 받기">⟳</button>';
+    }
+    h += '</div>';
+  }
 
   h += ms.map(function (m) {
     var year = acYear(m.month);
@@ -674,6 +749,7 @@ function viewAcademic() {
           + '<span class="acd">' + d.day + '<small>' + esc(d.dow) + '</small></span>'
           + '<span class="ace">' + esc(d.event || '') + '</span>'
           + (lit ? '<span class="acc">' + lit + '</span>' : '') + '</div>'
+          + gpRows(m.month, d.day)
       };
     });
     // 이번 주는 «날짜마다» 가 아니라 «한 주를 통째로» 테두리로 묶는다.
@@ -697,6 +773,25 @@ function viewAcademic() {
   }).join('');
   return h;
 }
+/* 그 날의 학년부 항목을 줄로 그린다. 세부사항은 눌러야 펼쳐진다(여러 줄이라 길다) */
+function gpRows(month, day) {
+  var list = gpOf(month, day);
+  if (!list.length) return '';
+  return '<div class="gpl">' + list.map(function (x, i) {
+    var key = month + '-' + day + '-' + i;
+    var open = gpOpen === key;
+    return '<div class="gpi' + (open ? ' on' : '') + '">'
+      + '<button class="gph" data-gp="' + esc(key) + '">'
+      + '<i class="gpk h' + gpHue(x.cat) + '">' + esc(x.cat || '·') + '</i>'
+      + '<span class="gpt">' + esc(x.title || '') + '</span>'
+      + (x.done ? '<em class="gpd" title="확인함">✔</em>' : '')
+      + (x.detail ? '<em class="gpa">' + (open ? '▾' : '▸') + '</em>' : '')
+      + '</button>'
+      + (open && x.detail ? '<div class="gpb">' + esc(x.detail) + '</div>' : '')
+      + '</div>';
+  }).join('') + '</div>';
+}
+
 /* 스크롤한 만큼 «지금 보고 있는 달»을 골라 단추에 표시한다.
    다시 그리면 입력·스크롤이 튀므로, 여기서는 단추의 표시만 갈아 끼운다. */
 function acSpyScroll() {
@@ -1376,7 +1471,8 @@ function render() {
   var dowText = (d.dow || ['일', '월', '화', '수', '목', '금', '토'][nd.getDay()]) + '요일';
   html += '<div class="head"><span class="date">' + esc(dText) + '</span>'
     + '<span class="dow">' + esc(dowText) + '</span><span class="spacer"></span>'
-    + '<button class="ico" title="넓게 보기 — 큰 창으로 엽니다" onclick="widgetAPI.openEasy()">⊞</button>'
+    + '<button class="ico img" title="넓게 보기 — 사이드바가 있는 큰 창" onclick="widgetAPI.openEasy()">'
+    + '<img src="assets/wide.png" alt="넓게 보기"></button>'
     + (HAS_TT ? '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>' : '')
     // ★ 혜원 데스크·혜원이지는 수업진도를 안 쓴다. 예전에는 여기서도 refreshNow() 를
     //   불러서 위젯이 통째로 「수업진도에 로그인해 주세요」로 덮였다.
@@ -1501,6 +1597,10 @@ widgetAPI.onData(function (p) {
   }
   if (p.easyFav) EASYFAV = p.easyFav;
   if (p.comciSide) cmSide = p.comciSide === 'row' ? 'row' : 'col';
+  if (p.grade) {
+    gpSheets = p.grade.sheets || {};
+    if (!gpTouched) { gpShow = !!p.grade.show; gpGrade = p.grade.pick || 3; }
+  }
   if (p.usage) {
     USG = p.usage.data || null;
     USGSHOW = p.usage.show !== false;
@@ -1547,7 +1647,7 @@ setInterval(function () {
 function wireViews(app) {
   // ★ .rach 도 함께 훑는다 — 학생기록 아코디언의 «머리» 단추다.
   //   .wkb 만 훑던 때에는 눌러도 아무 일이 없어서 «펼쳐지지 않는다» 였다.
-  app.querySelectorAll('.wkb, .rach').forEach(function (b) {
+  app.querySelectorAll('.wkb, .rach, .gph').forEach(function (b) {
     b.addEventListener('click', function () {
       if (b.dataset.off !== undefined) { WK = null; loadWeek(Number(b.dataset.off)); return; }
       if (b.dataset.doc) { workDoc = b.dataset.doc; workOff = 0; render(); return; }
@@ -1572,6 +1672,10 @@ function wireViews(app) {
         var ta0 = app.querySelector('#recText');
         if (ta0) recDraft = ta0.value;      // 쓰던 글을 지키고 다시 그린다
         recWhen = b.dataset.rw;
+        render(); return;
+      }
+      if (b.dataset.gp) {                        // 학년부 세부사항 펼치기·접기
+        gpOpen = (gpOpen === b.dataset.gp) ? '' : b.dataset.gp;
         render(); return;
       }
       if (b.dataset.ro !== undefined) {          // 타일 펼치기·접기
@@ -1699,6 +1803,18 @@ function wireViews(app) {
       if (b.id === 'wkNext') { moveHit(1); return; }
       if (b.id === 'wkPrev') { moveHit(-1); return; }
       if (b.dataset.cm) { cmMode = b.dataset.cm; render(); return; }
+      if (b.dataset.gg) {                       // 학년 바꾸기
+        gpGrade = Number(b.dataset.gg) || 3;
+        GP = null; gpCat = []; gpOpen = '';
+        widgetAPI.setUi({ gradePick: gpGrade });
+        gpLoad(false); render(); return;
+      }
+      if (b.dataset.ga) { gpCat = []; render(); return; }
+      if (b.dataset.gc) {                       // 구분 고르기
+        var gk = gpCat.indexOf(b.dataset.gc);
+        if (gk >= 0) gpCat.splice(gk, 1); else gpCat.push(b.dataset.gc);
+        render(); return;
+      }
       if (b.dataset.cs) {
         cmSide = b.dataset.cs === 'row' ? 'row' : 'col';
         widgetAPI.setUi({ comciSide: cmSide });
@@ -1763,6 +1879,15 @@ function wireViews(app) {
       scrollToEl(document.getElementById('acm-' + b.dataset.ac), 2);
     });
   });
+  var gsw = app.querySelector('#gpSw');
+  if (gsw) gsw.addEventListener('click', function () {
+    gpShow = !gpShow; gpTouched = true;
+    widgetAPI.setUi({ gradeShow: gpShow });
+    if (gpShow && !GP) gpLoad(false);
+    render();
+  });
+  var gge = app.querySelector('#gpGet');
+  if (gge) gge.addEventListener('click', function () { GP = null; gpLoad(true); render(); });
   var acY = app.querySelector('#acYrs');
   if (acY) acY.addEventListener('click', function () {
     acAllYears = !acAllYears; acSpy = ''; acScrolled = false; render();

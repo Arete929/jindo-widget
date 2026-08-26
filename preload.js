@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   openTimetable: () => ipcRenderer.send('open-timetable'),
   openEasy: () => ipcRenderer.send('open-easy'),
   showWidget: () => ipcRenderer.send('show-widget'),
+
+  /* 학년부 일지 */
+  gradeGet: (g) => ipcRenderer.invoke('grade-get', g),
+  gradeFetch: (g) => ipcRenderer.invoke('grade-fetch', g),
   openSettings: () => ipcRenderer.send('open-settings'),
   getWeek: (off) => ipcRenderer.invoke('get-week', off),
   getWork: () => ipcRenderer.invoke('get-work'),
