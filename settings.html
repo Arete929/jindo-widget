@@ -325,6 +325,19 @@
 </section>
 
 <section>
+  <h2>바깥 주소 열기</h2>
+  <div class="row">
+    <label class="lb">어느 브라우저</label>
+    <div class="chips" id="brRow"></div>
+  </div>
+  <div class="hint">
+    <b>수업진도 대시보드 · 구글 로그인 · 주간업무 링크</b> 같은 바깥 주소를 열 때 씁니다.<br>
+    이 PC 에 깔려 있는 것만 보입니다. <b>«기본 브라우저»</b> 를 고르면 윈도우가 정한 것으로 엽니다.<br>
+    (구글 로그인은 앱 안 브라우저를 막아서, 진짜 브라우저를 띄워야 합니다)
+  </div>
+</section>
+
+<section>
   <h2>모양</h2>
   <div class="row">
     <label class="lb">위젯 크기</label>
@@ -478,6 +491,23 @@ function __paint() {
   $('thRow').querySelectorAll('button').forEach(function (b) {
     b.className = (b.dataset.th === (UI.theme || '')) ? 'on' : '';
   });
+  // 바깥 주소를 열 브라우저
+  var brs = (UI.browsers || []).concat([{ key: 'system', label: '기본 브라우저' }]);
+  var brPick = UI.browser || '';
+  $('brRow').innerHTML = brs.map(function (b) {
+    // 아무것도 안 골랐으면 «있는 것 중 첫 번째» 가 실제로 쓰인다 — 그것을 표시해 준다
+    var isOn = brPick ? (b.key === brPick) : (b.key === (brs[0] && brs[0].key));
+    return '<button data-br="' + b.key + '"' + (isOn ? ' class="on"' : '') + '>'
+      + esc(b.label) + (!brPick && isOn ? ' <small>(지금)</small>' : '') + '</button>';
+  }).join('');
+  $('brRow').querySelectorAll('[data-br]').forEach(function (b) {
+    b.onclick = function () {
+      widgetAPI.setUi({ browser: b.dataset.br });
+      UI.browser = b.dataset.br;
+      paint();
+    };
+  });
+
   var on = (UI.usage && UI.usage.on) || [];
   $('usgRow').querySelectorAll('[data-uk]').forEach(function (b) {
     b.className = 'sw' + (on.indexOf(b.dataset.uk) >= 0 ? ' on' : '');

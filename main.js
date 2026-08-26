@@ -77,19 +77,48 @@ function debugLog(msg) {
 
 // 전체 앱을 브라우저로 열 때 — 기본 브라우저(이 PC 는 웨일)가 아니라 크롬을 쓴다.
 // 크롬이 없으면 엣지, 그것도 없으면 기본 브라우저.
-function browserPath() {
+/* 브라우저마다 깔릴 만한 자리들 */
+function browserCandidates(key) {
   const PF = process.env.ProgramFiles || 'C:\\Program Files';
   const PF86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
   const LOCAL = process.env.LOCALAPPDATA || '';
-  const list = [
-    path.join(PF, 'Google', 'Chrome', 'Application', 'chrome.exe'),
-    path.join(PF86, 'Google', 'Chrome', 'Application', 'chrome.exe'),
-    path.join(LOCAL, 'Google', 'Chrome', 'Application', 'chrome.exe'),
-    path.join(PF, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
-    path.join(PF86, 'Microsoft', 'Edge', 'Application', 'msedge.exe')
-  ];
-  for (const p of list) { try { if (fs.existsSync(p)) return p; } catch (e) { /* 무시 */ } }
+  const roots = [PF, PF86, LOCAL].filter(Boolean);
+  const where = {
+    whale: ['Naver', 'Naver Whale', 'Application', 'whale.exe'],
+    chrome: ['Google', 'Chrome', 'Application', 'chrome.exe'],
+    edge: ['Microsoft', 'Edge', 'Application', 'msedge.exe']
+  }[key];
+  if (!where) return [];
+  return roots.map((r) => path.join(r, ...where));
+}
+function findBrowser(key) {
+  for (const p of browserCandidates(key)) {
+    try { if (fs.existsSync(p)) return p; } catch (e) { /* 무시 */ }
+  }
   return null;
+}
+/* 이 PC 에 깔려 있는 것들 — 설정에서 고르게 보여준다 */
+const BROWSERS = [
+  { key: 'whale', label: '웨일' },
+  { key: 'chrome', label: '크롬' },
+  { key: 'edge', label: '엣지' }
+];
+function browserList() {
+  return BROWSERS.map((b) => ({ key: b.key, label: b.label, path: findBrowser(b.key) }))
+    .filter((b) => b.path);
+}
+function getBrowserPick() { return String(loadState().browser || ''); }
+/* 고른 것이 있으면 그것, 없으면 있는 것 중 앞에서부터 */
+function browserPath() {
+  const pick = getBrowserPick();
+  if (pick === 'system') return null;            // 일부러 «기본 브라우저» 를 고른 경우
+  if (pick) {
+    const p = findBrowser(pick);
+    if (p) return p;
+    debugLog(`고른 브라우저(${pick})를 못 찾아 다른 것으로 엽니다`);
+  }
+  const have = browserList();
+  return have.length ? have[0].path : null;
 }
 function openInBrowser(url) {
   const exe = browserPath();
@@ -333,6 +362,13 @@ autoUpdater.on('download-progress', (p) => {
   const step = Math.floor(p.percent / 10) * 10;
   if (step !== lastLoggedPercent) { lastLoggedPercent = step; debugLog(`업데이트 다운로드 ${step}%`); }
 });
+autoUpdater.on('update-available', (info) => {
+  // 이미 «준비됨» 인데 더 새 것이 나왔다면, 그 새 것으로 갈아탄다
+  const v = info && info.version;
+  if (updateState === 'ready' && v && v !== updateVersion) {
+    debugLog(`더 새 버전 발견 — v${updateVersion} 대신 v${v} 를 받습니다`);
+  }
+});
 autoUpdater.on('update-downloaded', (info) => {
   lastLoggedPercent = -1;
   saveNotes(info.version, info.releaseNotes);
@@ -365,10 +401,13 @@ function checkForUpdates(manual) {
     if (manual) notify(APP_NAME, '개발 모드에서는 업데이트를 확인하지 않아요.');
     return;
   }
-  if (updateState === 'ready') {
-    if (manual) notify(`${APP_NAME} 업데이트 준비됨`,
+  // ★ «준비됨» 이어도 확인은 계속한다.
+  //   설치를 미루고 오래 켜 두면 그 사이 새 판이 여러 번 나오는데,
+  //   예전에는 여기서 그냥 돌아가 버려서 낡은 것을 계속 «준비됨» 이라고 들고 있었다.
+  //   (혜원이지가 v1.31.1 에 멈춘 채 1.37.1 까지 여섯 판을 못 본 일이 있다)
+  if (updateState === 'ready' && manual) {
+    notify(`${APP_NAME} 업데이트 준비됨`,
       `v${updateVersion} 설치 준비가 끝났어요. 클릭하면 재시작하며 설치합니다.`, () => installUpdateNow());
-    return;
   }
   if (manual) manualUpdateCheck = true;
   autoUpdater.checkForUpdates().catch((e) => debugLog(`업데이트 확인 실패: ${e && e.message ? e.message : e}`));
@@ -1126,6 +1165,8 @@ ipcMain.handle('get-settings', () => ({
     academicSheet: loadState().academicSheet || academic.DEFAULT_SHEET,
     neis: loadState().neis || null,
     neisList: getNeisList(),
+    browsers: browserList().map((b) => ({ key: b.key, label: b.label })),
+    browser: getBrowserPick(),
     meals: loadMeals(),
     loggedIn: !!(lastData && !lastData.needLogin)
   }
@@ -1137,6 +1178,10 @@ ipcMain.on('set-ui', (_e, v) => {
   if (v.opacity !== undefined) applyOpacity(Number(v.opacity));
   if (v.alwaysOnTop !== undefined) applyAlwaysOnTop(!!v.alwaysOnTop);
   if (v.autoLaunch !== undefined) app.setLoginItemSettings({ openAtLogin: !!v.autoLaunch });
+  if (v.browser !== undefined) {
+    saveState({ browser: String(v.browser || '') });
+    debugLog('바깥 주소를 열 브라우저: ' + (v.browser || '(있는 것 중에서)'));
+  }
   if (v.neisList !== undefined) {
     const list = (v.neisList || []).filter((x) => x && x.code);
     saveState({ neisList: list });
