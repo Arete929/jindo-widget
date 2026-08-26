@@ -11,8 +11,10 @@ var TODAYEV = '';
 /* 업데이트 내역 — 새 버전으로 켜졌을 때 한 번 보여주고, 닫으면 다시 안 뜬다 */
 var NOTES = null;
 /* 탭마다 글자 크기 배율을 따로 둔다. 메인이 저장해 두므로 껐다 켜도 그대로다. */
-var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1 };
-function fsKey() { return ({ work: 'work', comci: 'comci', cal: 'cal', meal: 'meal', rec: 'rec' })[VIEW] || ''; }
+var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1 };
+function fsKey() {
+  return ({ work: 'work', comci: 'comci', cal: 'cal', meal: 'meal', rec: 'rec', home: 'home' })[VIEW] || '';
+}
 function fontBtns(key) {
   return '<span class="wfs">'
     + '<button class="wkb" data-fs="' + key + ',-1" title="글자 작게">A−</button>'
@@ -468,6 +470,8 @@ function moveHit(step) {
 /* ── 컴시간 ──
    설정 창에서 한 번 불러온 학교 시간표를 보여준다. 교사·학급 중 불러온 것만 나온다. */
 var CM = null, cmBusy = false, cmMode = '', cmGrade = 1, cmCls = 1, cmPicked = false;
+// 교사표와 학급표를 나란히 볼 것인가(가로) 위아래로 볼 것인가(세로)
+var cmSide = 'col';   // col = 세로(교사표 밑에 학급표) · row = 가로(나란히)
 
 function loadComci() {
   if (cmBusy) return;
@@ -519,8 +523,19 @@ function viewComci() {
     + fontBtns('comci')
     + '<button class="wkb" id="cmGet" title="설정에서 다시 불러오기">⚙</button></div>';
 
-  // ★ 둘 다 골라 두었으면 둘 다 내려 보여준다 (전에는 하나만 골라 볼 수 있었다)
+  // 둘 다 있으면 나란히(가로) / 위아래(세로) 를 고를 수 있다
+  if (hasT && hasC) {
+    h += '<div class="wknav"><span class="slab">보기</span>'
+      + '<button class="wkb' + (cmSide === 'col' ? ' now' : '') + '" data-cs="col" '
+      + 'title="교사 시간표 밑에 학급 시간표">⬍ 세로</button>'
+      + '<button class="wkb' + (cmSide === 'row' ? ' now' : '') + '" data-cs="row" '
+      + 'title="교사 시간표 옆에 학급 시간표">⬌ 가로</button></div>';
+  }
+  h += '<div class="cmwrap ' + ((hasT && hasC) ? cmSide : 'col') + '">';
+
+  // ★ 둘 다 골라 두었으면 둘 다 보여준다 (전에는 하나만 골라 볼 수 있었다)
   if (hasT) {
+    h += '<div class="cmcol">';
     // 저장은 번호로 한다 — 가려진 이름은 겹칠 수 있다(김진호·김민호 → 둘 다 김*호)
     var me = d.byTeacher.filter(function (t) { return t.i === cfg.teacherIdx; })[0]
       || d.byTeacher.filter(function (t) { return t.name === cfg.teacher; })[0]
@@ -531,9 +546,11 @@ function viewComci() {
       return '<td class="c u1" title="' + esc(x.grade + '-' + x.cls + ' ' + x.subject) + '">'
         + '<b>' + x.grade + '-' + x.cls + '</b><u>' + esc(x.subject) + '</u></td>';
     });
+    h += '</div>';
   }
 
   if (hasC) {
+    h += '<div class="cmcol">';
     var gsel = d.classes.filter(function (g) { return g.grade === cmGrade; })[0] || d.classes[0];
     cmGrade = gsel.grade;
     h += '<div class="cmh">학급 시간표</div>';
@@ -553,8 +570,9 @@ function viewComci() {
       return '<td class="c u0" title="' + esc(x.subject + ' / ' + x.teacher) + '">'
         + '<b>' + esc(x.subject) + '</b><u>' + esc(x.teacher) + '</u></td>';
     });
+    h += '</div>';
   }
-  return h;
+  return h + '</div>';
 }
 
 /* ── 학사일정 ── */
@@ -1482,6 +1500,7 @@ widgetAPI.onData(function (p) {
     if (!HAS_TT && ['today', 'week', 'progress'].indexOf(VIEW) >= 0) VIEW = IS_EASY ? 'home' : 'work';
   }
   if (p.easyFav) EASYFAV = p.easyFav;
+  if (p.comciSide) cmSide = p.comciSide === 'row' ? 'row' : 'col';
   if (p.usage) {
     USG = p.usage.data || null;
     USGSHOW = p.usage.show !== false;
@@ -1680,6 +1699,11 @@ function wireViews(app) {
       if (b.id === 'wkNext') { moveHit(1); return; }
       if (b.id === 'wkPrev') { moveHit(-1); return; }
       if (b.dataset.cm) { cmMode = b.dataset.cm; render(); return; }
+      if (b.dataset.cs) {
+        cmSide = b.dataset.cs === 'row' ? 'row' : 'col';
+        widgetAPI.setUi({ comciSide: cmSide });
+        render(); return;
+      }
       if (b.dataset.cg) {
         cmGrade = Number(b.dataset.cg); cmCls = 1;
         widgetAPI.setComciPick({ grade: cmGrade, cls: cmCls });   // 마지막으로 본 반을 기억

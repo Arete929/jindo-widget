@@ -1,4 +1,4 @@
-<!-- 파일명: easy.html | @version 1.2.0 -->
+<!-- 파일명: easy.html | @version 1.3.0 -->
 <!-- 혜원이지 (HYEWON EASY) — 위젯과 달리 «열어서 일하는» 넓은 창.
      색·모양은 위젯과 같은 ui.css 를 함께 쓴다(테마 일곱). 자료를 읽어 오는 부분은
      위젯이 쓰던 그대로다 — 여기서는 화면만 넓게 다시 그린다. -->
@@ -41,11 +41,19 @@
   .navgap { height: 10px; }
   .sfoot { margin-top: auto; padding: 10px 8px 0; font-size: 10px; color: var(--dim); opacity: .75; }
 
-  .main { flex: 1; min-width: 0; height: 100vh; overflow-y: auto; padding: 20px 24px 40px; }
+  .main { flex: 1; min-width: 0; height: 100vh; overflow-y: auto; padding: 0 24px 40px; }
+  /* ★ 맨 위 붙박이 머리 — 제목 + 그 화면의 조작 줄(월 단추·검색·글자크기·오늘로).
+     전에는 이 줄이 그냥 흘러가 버려서 «글자 크기 단추가 없다» 처럼 보였다. */
+  .ehead {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--bg); padding: 16px 0 6px;
+    box-shadow: 0 6px 10px -8px rgba(0,0,0,.45);
+  }
+  .ehead .top2 { background: none; padding: 0; margin: 6px 0 0; }
   .main::-webkit-scrollbar { width: 9px; }
   .main::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; }
 
-  .ph { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .ph { display: flex; align-items: baseline; gap: 10px; margin-bottom: 0; }
   .ph h1 { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
   .ph .sub { font-size: 12.5px; color: var(--dim); }
   .ph .sp { flex: 1; }
@@ -53,7 +61,7 @@
   /* 오늘 한 줄 요약 */
   .today {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px;
-    background: var(--card); border-radius: 12px; padding: 14px 18px; margin: 14px 0 22px;
+    background: var(--card); border-radius: 12px; padding: 14px 18px; margin: 4px 0 22px;
   }
   .today .big { font-size: 17px; font-weight: 800; }
   .today .it { font-size: 13px; color: var(--fg2); }

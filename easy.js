@@ -1,4 +1,4 @@
-/* 파일명: easy.js | @version 1.2.0
+/* 파일명: easy.js | @version 1.3.0
    혜원이지 — 넓은 창의 뼈대. 왼쪽 메뉴 · 대시보드 · 화면 갈아 끼우기.
 
    ★ 자료를 읽어 오고 화면 조각을 만드는 일은 views.js 가 그대로 한다.
@@ -30,12 +30,15 @@ function drawSide() {
       + '<i>' + m.i + '</i>' + esc(m.t) + '</button>';
   }).join('');
   h += '<div class="navgap"></div>'
+    + '<button class="nav" id="goWid"><i>⊟</i>위젯 보기</button>'
     + '<button class="nav" id="goSet"><i>⚙</i>설정</button>'
     + '<div class="sfoot">v' + esc(VER) + ' · made by KIMJINHO</div>';
   SIDE.innerHTML = h;
   SIDE.querySelectorAll('[data-go]').forEach(function (b) {
     b.addEventListener('click', function () { go(b.dataset.go); });
   });
+  var gw = SIDE.querySelector('#goWid');
+  if (gw) gw.addEventListener('click', function () { widgetAPI.showWidget(); });
   var gs = SIDE.querySelector('#goSet');
   if (gs) gs.addEventListener('click', function () { widgetAPI.openSettings(); });
 }
@@ -74,8 +77,7 @@ function tile(m) {
 }
 
 function viewHome() {
-  var h = '<div class="ph"><h1>혜원이지</h1><span class="sub">HYEWON EASY</span></div>';
-  h += todayLine();
+  var h = todayLine();
 
   var favs = EASYFAV.filter(known).map(menuOf).filter(function (m) { return m.v !== 'home'; });
   if (favs.length) {
@@ -100,9 +102,13 @@ render = function () {
   var m = menuOf(VIEW);
   var h;
   if (VIEW === 'home') {
-    h = viewHome();
+    h = '<div class="ehead"><div class="ph"><h1>혜원이지</h1>'
+      + '<span class="sub">HYEWON EASY</span><span class="sp"></span>'
+      + fontBtns('home') + '</div></div>' + viewHome();
   } else {
-    h = '<div class="ph"><h1>' + esc(m.t) + '</h1><span class="sub">' + esc(m.d) + '</span></div>'
+    // 머리는 «제목 + 그 화면의 조작 줄» 이다. 조작 줄(.top2)은 그린 뒤에 옮겨 넣는다.
+    h = '<div class="ehead"><div class="ph"><h1>' + esc(m.t) + '</h1>'
+      + '<span class="sub">' + esc(m.d) + '</span></div></div>'
       + '<div id="view">'
       + (VIEW === 'work' ? viewWork()
         : VIEW === 'cal' ? viewAcademic()
@@ -114,6 +120,11 @@ render = function () {
   MAIN.style.setProperty('--wf', String(FS[fsKey()] || 1));
   MAIN.style.setProperty('--toph', '0px');   // 머리에 붙여 놓은 줄이 없다
   MAIN.innerHTML = h;
+  // ★ 조작 줄을 머리 안으로 옮긴다 — 스크롤해도 월 단추·글자크기·오늘로가 늘 보인다.
+  //   (위젯도 같은 방법을 쓴다. 따로 «두 번째 층» 을 두면 높이를 한 픽셀만 잘못 재도 숨는다)
+  var eh = MAIN.querySelector('.ehead');
+  var et = MAIN.querySelector('.top2');
+  if (eh && et) eh.appendChild(et);
 
   // 즐겨찾기 별표 — 타일을 여는 것보다 «먼저» 가로챈다
   MAIN.querySelectorAll('[data-fav]').forEach(function (b) {

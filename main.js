@@ -144,7 +144,7 @@ function getFont() {
 // 탭마다 글자 크기 배율을 따로 기억한다 (주간업무·컴시간·학사일정·급식)
 function getFontScale() {
   const v = loadState().fontScale;
-  const out = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1 };
+  const out = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1 };
   if (v && typeof v === 'object') {
     Object.keys(out).forEach((k) => {
       const n = Number(v[k]);
@@ -157,6 +157,9 @@ function getFontScale() {
 // 받자마자 쓰는 사람에게는 «로그인하기» 단추만 두 칸 보이는 셈이 된다.
 function getUsageShow() { const v = loadState().usageShow; return v === undefined ? false : !!v; }
 function getUsageStyle() { return loadState().usageStyle === 'bar' ? 'bar' : 'ring'; }
+// 마지막으로 보던 모습 — 'widget'(떠 있는 카드) 또는 'easy'(넓게 보기).
+// 둘은 스위치처럼 한 번에 하나만 뜬다. 다음에 켤 때도 그 모습으로 시작한다.
+function getViewMode() { return loadState().viewMode === 'easy' ? 'easy' : 'widget'; }
 const VIEWS = HAS_TT
   ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal', 'rec']
   : ['work', 'comci', 'cal', 'meal', 'rec'];
@@ -339,6 +342,7 @@ function sendToWidget() {
     appName: APP_NAME,
     usage: { show: getUsageShow(), style: getUsageStyle(), data: aiusage.snapshot() },
     comciPick: loadState().comciPick || null,
+    comciSide: loadState().comciSide === 'row' ? 'row' : 'col',
     easyFav: loadState().easyFav || [],          // 혜원이지 대시보드 즐겨찾기
     update: { state: updateState, version: updateVersion }
   };
@@ -560,6 +564,11 @@ function keepOnScreen() {
    ★ 별도 프로그램이 아니라 이 앱의 두 번째 창이다 — 설정·구글 로그인을 함께 쓴다. */
 let easyWin = null;
 function openEasyWindow() {
+  // ★ 스위치다 — 넓게 보기를 열면 떠 있는 카드는 물러난다.
+  //   둘이 함께 떠 있으면 같은 것이 두 군데 보여 헷갈린다.
+  saveState({ viewMode: 'easy' });
+  if (widgetWin && !widgetWin.isDestroyed()) widgetWin.hide();
+  if (rebuildTrayMenu) rebuildTrayMenu();
   if (easyWin && !easyWin.isDestroyed()) { easyWin.show(); easyWin.focus(); return; }
   const st = loadState();
   easyWin = new BrowserWindow({
@@ -591,8 +600,21 @@ function openEasyWindow() {
   };
   easyWin.on('resize', remember);
   easyWin.on('move', remember);
-  easyWin.on('closed', () => { easyWin = null; });
+  easyWin.on('closed', () => {
+    easyWin = null;
+    // 창을 닫으면 떠 있는 카드로 돌아간다 — 아무것도 안 남으면 앱이 사라진 것처럼 보인다
+    showWidgetOnly();
+  });
   easyWin.webContents.once('did-finish-load', () => { sendToWidget(); sendTasks(); });
+}
+
+/* 넓게 보기를 접고 떠 있는 카드로 돌아간다 */
+function showWidgetOnly() {
+  saveState({ viewMode: 'widget' });
+  if (easyWin && !easyWin.isDestroyed()) { const w = easyWin; easyWin = null; w.destroy(); }
+  if (!widgetWin || widgetWin.isDestroyed()) createWidgetWindow();
+  else { widgetWin.show(); widgetWin.focus(); }
+  if (rebuildTrayMenu) rebuildTrayMenu();
 }
 
 function createWidgetWindow() {
@@ -985,6 +1007,10 @@ ipcMain.on('set-ui', (_e, v) => {
     saveState({ fontScale: Object.assign(getFontScale(), v.fontScale) });
     sendToWidget();
   }
+  if (v.comciSide !== undefined) {
+    saveState({ comciSide: v.comciSide === 'row' ? 'row' : 'col' });
+    sendToWidget();
+  }
   if (v.easyFav !== undefined) {
     saveState({ easyFav: (v.easyFav || []).map(String).slice(0, 12) });
     sendToWidget();
@@ -1054,14 +1080,15 @@ function createTray() {
       { label: '⚙️ 설정', click: () => openSettingsWindow() },
       { type: 'separator' },
       {
-        label: '위젯 보이기', type: 'checkbox',
-        checked: !!(widgetWin && !widgetWin.isDestroyed() && widgetWin.isVisible()),
-        click: (mi) => {
-          if (!widgetWin || widgetWin.isDestroyed()) { createWidgetWindow(); return; }
-          mi.checked ? widgetWin.show() : widgetWin.hide();
-        }
+        label: '⊟ 위젯 보기', type: 'radio',
+        checked: !(easyWin && !easyWin.isDestroyed()),
+        click: () => showWidgetOnly()
       },
-      { label: '⊞ 넓게 보기', click: () => openEasyWindow() },
+      {
+        label: '⊞ 넓게 보기', type: 'radio',
+        checked: !!(easyWin && !easyWin.isDestroyed()),
+        click: () => openEasyWindow()
+      },
       { label: '항상 위로 고정', type: 'checkbox', checked: getAlwaysOnTop(), click: (mi) => applyAlwaysOnTop(mi.checked) },
       { label: '위젯 투명도', submenu: opacityMenu },
       { label: '위젯 크기', submenu: sizeMenu },
@@ -1097,6 +1124,7 @@ function createTray() {
   rebuildTrayMenu = () => tray.setContextMenu(buildMenu());
   tray.on('click', () => {
     checkForUpdates();   // 켜볼 때 한 번 — 새 버전이 있으면 바로 띠가 뜬다
+    if (easyWin && !easyWin.isDestroyed()) { easyWin.show(); easyWin.focus(); return; }
     if (!widgetWin || widgetWin.isDestroyed()) { createWidgetWindow(); return; }
     widgetWin.isVisible() ? widgetWin.hide() : widgetWin.show();
   });
@@ -1108,6 +1136,7 @@ ipcMain.on('refresh-now', () => pollOnce());
 ipcMain.on('open-login', () => startLogin());
 ipcMain.on('open-timetable', () => openTimetableWindow());
 ipcMain.on('open-easy', () => openEasyWindow());
+ipcMain.on('show-widget', () => showWidgetOnly());
 
 /* ── 주간업무 인쇄 ──────────────────────────────────────────────
    화면을 그대로 인쇄하면 탭·검색줄·어두운 바탕까지 나온다. 그래서 화면 쪽에서
@@ -1359,6 +1388,8 @@ if (!gotLock) {
     }
 
     createWidgetWindow();
+    // 지난번에 넓게 보기로 두었으면 그 모습으로 시작한다
+    if (getViewMode() === 'easy') openEasyWindow();
     createTray();
     if (HAS_TT) {
       getWorkerWindow();
