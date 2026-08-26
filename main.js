@@ -971,17 +971,27 @@ const mealFile = path.join(userDataPath, 'meals.json');
 function loadMeals() {
   try { return JSON.parse(fs.readFileSync(mealFile, 'utf-8')); } catch (e) { return null; }
 }
-/* 나이스 학교는 컴시간에서 고른 학교 이름으로 자동으로 찾아둔다 */
-async function neisSchool() {
+/* ★ 급식은 학교를 «여럿» 담을 수 있다.
+   사립이라 학교는 여중인데 교사 급식은 여고 것을 먹는 경우가 있다 — 둘 다 본다.
+   예전에는 한 곳(neis)만 담았다. 그 값이 남아 있으면 목록의 첫 칸으로 옮겨 준다. */
+function getNeisList() {
   const st = loadState();
-  if (st.neis && st.neis.code) return st.neis;
+  if (Array.isArray(st.neisList) && st.neisList.length) return st.neisList;
+  if (st.neis && st.neis.code) return [st.neis];
+  return [];
+}
+/* 담아 둔 곳이 없으면 컴시간에서 고른 학교 이름으로 한 번 찾아 둔다 */
+async function neisSchools() {
+  const have = getNeisList();
+  if (have.length) return have;
+  const st = loadState();
   const name = (st.comci && st.comci.school && st.comci.school.name) || '';
   if (!name) throw new Error('설정에서 학교를 먼저 골라주세요');
   const list = await neis.searchSchool(name);
   if (!list.length) throw new Error(`나이스에서 «${name}» 을 찾지 못했습니다`);
-  const picked = list[0];
-  saveState({ neis: picked });
-  debugLog(`나이스 학교 찾음: ${picked.name} (${picked.atptName}/${picked.code})`);
+  const picked = [list[0]];
+  saveState({ neisList: picked });
+  debugLog(`나이스 학교 찾음: ${list[0].name} (${list[0].atptName}/${list[0].code})`);
   return picked;
 }
 let mealFetching = false;
@@ -989,12 +999,33 @@ async function refreshMeals(baseDate, weekOff) {
   if (mealFetching) return loadMeals();
   mealFetching = true;
   try {
-    const school = await neisSchool();
-    const w = await neis.fetchWeekMeals(school, baseDate);
-    w.school = school.name;
+    const schools = await neisSchools();
+    // 학교마다 받아서 한 덩어리로 묶는다. 한 곳이 막혀도 나머지는 보여준다.
+    const got = [];
+    for (const s of schools) {
+      try {
+        const one = await neis.fetchWeekMeals(s, baseDate);
+        got.push({ name: s.name, code: s.code, meals: one.meals,
+                   from: one.from, to: one.to });
+      } catch (e) {
+        debugLog(`급식 «${s.name}» 실패: ${(e && e.message) || e}`);
+        got.push({ name: s.name, code: s.code, meals: [],
+                   error: (e && e.message) || '받지 못했습니다' });
+      }
+    }
+    const first = got.find((g) => g.from) || {};
+    const w = {
+      schools: got,
+      school: got.map((g) => g.name).join(' · '),
+      // 옛 화면도 읽을 수 있게 첫 학교 것을 그대로 둔다
+      meals: (got[0] && got[0].meals) || [],
+      from: first.from || '', to: first.to || '',
+      fetchedAt: new Date().toISOString()
+    };
     w.weekOff = Number(weekOff) || 0;   // 몇 주 옮겨 본 것인지 화면이 알아야 한다
     try { fs.writeFileSync(mealFile, JSON.stringify(w)); } catch (e) { /* 무시 */ }
-    debugLog(`급식 받기 완료 — ${w.meals.length}건 (${w.from}~${w.to})`);
+    debugLog('급식 받기 완료 — '
+      + got.map((g) => `${g.name} ${g.meals.length}건`).join(' · ') + ` (${w.from}~${w.to})`);
     if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('meals-changed');
     return w;
   } catch (e) {
@@ -1094,6 +1125,7 @@ ipcMain.handle('get-settings', () => ({
     rec: recordsmain.recState(),
     academicSheet: loadState().academicSheet || academic.DEFAULT_SHEET,
     neis: loadState().neis || null,
+    neisList: getNeisList(),
     meals: loadMeals(),
     loggedIn: !!(lastData && !lastData.needLogin)
   }
@@ -1105,6 +1137,12 @@ ipcMain.on('set-ui', (_e, v) => {
   if (v.opacity !== undefined) applyOpacity(Number(v.opacity));
   if (v.alwaysOnTop !== undefined) applyAlwaysOnTop(!!v.alwaysOnTop);
   if (v.autoLaunch !== undefined) app.setLoginItemSettings({ openAtLogin: !!v.autoLaunch });
+  if (v.neisList !== undefined) {
+    const list = (v.neisList || []).filter((x) => x && x.code);
+    saveState({ neisList: list });
+    debugLog('급식 학교 목록: ' + (list.map((x) => x.name).join(' · ') || '(빔)'));
+    sendToWidget();
+  }
   if (v.neis && v.neis.code) {
     saveState({ neis: v.neis });
     debugLog(`급식 학교 지정: ${v.neis.name} (${v.neis.atpt}/${v.neis.code})`);

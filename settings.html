@@ -49,6 +49,11 @@
   .list div:hover { background: #f2f0ff; }
   .list div.sel { background: #e9e5ff; font-weight: 800; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  /* 담아 둔 급식 학교 한 줄 */
+  .nrow { display: flex; align-items: center; gap: 6px; padding: 4px 0; }
+  .nrow + .nrow { border-top: 1px solid #f1eff9; }
+  .nrow .nnm { flex: 1; min-width: 0; font-size: 12.5px; }
+  .nrow button { padding: 3px 8px; font-size: 11px; }
   /* 교사 명단 — 컴시간 앱처럼 번호를 붙여 세로로 (가려진 이름만으로는 구분이 안 된다) */
   .tname { width: 100%; max-height: 210px; overflow-y: auto;
            border: 1px solid var(--border); border-radius: 8px; }
@@ -137,15 +142,19 @@
     <button id="nFind">검색</button>
   </div>
   <div id="nList" class="list" style="display:none"></div>
-  <div class="row" id="nPicked" style="display:none"></div>
+  <div class="row" id="nPickedRow" style="display:none">
+    <label class="lb">담은 학교</label>
+    <div id="nPicked" style="flex:1;min-width:0"></div>
+  </div>
   <div class="row">
     <button class="go" id="nFetch">지금 불러오기</button>
     <span id="nMsg" class="hint" style="margin:0"></span>
   </div>
   <div class="hint">
     나이스 교육정보 개방포털에서 받아옵니다 — <b>인증키가 필요 없습니다.</b><br>
-    컴시간과 별개로 고를 수 있습니다. 같은 이름의 학교가 여러 곳이면
-    교육청·학교종류를 보고 골라주세요.
+    <b>학교를 여럿 담을 수 있습니다</b> — 검색해서 고르면 아래에 더해집니다.
+    담은 순서대로 급식 화면에 나오고, <b>▲▼</b> 로 순서를 바꿉니다.<br>
+    (사립처럼 <b>학생은 여중 · 교사 급식은 여고</b> 인 경우에 쓰세요)
   </div>
 </section>
 
@@ -636,16 +645,43 @@ $('usgRow').querySelectorAll('button[data-usgstyle]').forEach(function (b) {
 // 컴시간과 따로 고른다. 같은 이름의 학교가 여러 곳일 수 있어서 교육청·종류를 함께 보여준다.
 var nFound = [];
 
+/* 담아 둔 급식 학교들 — 화면이 고치는 동안 여기에 들고 있는다 */
+var NLIST = null;
+function neisList() {
+  if (NLIST) return NLIST;
+  NLIST = (UI.neisList || []).slice();
+  if (!NLIST.length && UI.neis && UI.neis.code) NLIST = [UI.neis];
+  return NLIST;
+}
+function saveNeis() {
+  widgetAPI.setUi({ neisList: NLIST });
+  paintNeis();
+}
 function paintNeis() {
-  if (UI.neis && UI.neis.code) {
-    $('nPicked').style.display = '';
-    $('nPicked').innerHTML = '<label class="lb">선택됨</label><span class="ok">✔ '
-      + esc(UI.neis.atptName || '') + ' · ' + esc(UI.neis.name || '')
-      + (UI.neis.kind ? ' (' + esc(UI.neis.kind) + ')' : '') + '</span>';
-  } else {
-    $('nPicked').style.display = 'none';
-  }
-  $('nFetch').disabled = !(UI.neis && UI.neis.code);
+  var list = neisList();
+  $('nPickedRow').style.display = list.length ? '' : 'none';
+  $('nPicked').innerHTML = list.map(function (s, i) {
+    return '<div class="nrow"><span class="ok">✔</span>'
+      + '<span class="nnm">' + esc(s.atptName || '') + ' · <b>' + esc(s.name || '') + '</b>'
+      + (s.kind ? ' (' + esc(s.kind) + ')' : '') + '</span>'
+      + '<button data-nup="' + i + '" title="위로"' + (i === 0 ? ' disabled' : '') + '>▲</button>'
+      + '<button data-ndn="' + i + '" title="아래로"' + (i === list.length - 1 ? ' disabled' : '') + '>▼</button>'
+      + '<button data-nx="' + i + '" title="빼기">✕</button></div>';
+  }).join('');
+  $('nPicked').querySelectorAll('[data-nup],[data-ndn],[data-nx]').forEach(function (b) {
+    b.onclick = function () {
+      var i = Number(b.dataset.nup !== undefined ? b.dataset.nup
+        : (b.dataset.ndn !== undefined ? b.dataset.ndn : b.dataset.nx));
+      if (b.dataset.nx !== undefined) NLIST.splice(i, 1);
+      else {
+        var j = b.dataset.nup !== undefined ? i - 1 : i + 1;
+        if (j < 0 || j >= NLIST.length) return;
+        var t = NLIST[i]; NLIST[i] = NLIST[j]; NLIST[j] = t;
+      }
+      saveNeis();
+    };
+  });
+  $('nFetch').disabled = !list.length;
   if (UI.meals && UI.meals.fetchedAt) {
     var d = new Date(UI.meals.fetchedAt);
     $('nMsg').innerHTML = '<span class="ok">마지막 · ' + (d.getMonth() + 1) + '/' + d.getDate()
@@ -671,8 +707,11 @@ $('nFind').onclick = function () {
     }).join('');
     $('nList').querySelectorAll('div[data-ni]').forEach(function (el) {
       el.onclick = function () {
+        // ★ 바꾸는 것이 아니라 «더한다» — 학교를 여럿 볼 수 있다
         UI.neis = nFound[Number(el.dataset.ni)];
-        widgetAPI.setUi({ neis: UI.neis });
+        neisList();
+        if (!NLIST.some(function (x) { return x.code === UI.neis.code; })) NLIST.push(UI.neis);
+        saveNeis();
         $('nList').style.display = 'none';
         paintNeis();
       };

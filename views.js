@@ -868,7 +868,9 @@ function loadMeals() {
 }
 function viewMeals() {
   if (!ML) { loadMeals(); return '<div class="empty">급식을 불러오는 중…</div>'; }
-  var list = (ML.meals) || [];
+  var schools = ML.schools || null;
+  var multi = !!(schools && schools.length > 1);
+  var list = multi ? [] : ((schools && schools[0] && schools[0].meals) || ML.meals || []);
   var off = Number(ML.weekOff) || 0;
   var head = '<div class="top2"><div class="wknav">'
     + '<button class="wkb" data-ml="' + (off - 1) + '" title="지난 주">◀</button>'
@@ -878,20 +880,33 @@ function viewMeals() {
     + (off !== 0 ? '<button class="wkb go" data-ml="0">이번주</button>' : '')
     + fontBtns('meal')
     + '<button class="wkb" id="mlGet" title="다시 가져오기">⟳</button></div></div>';
-  if (!list.length) {
+  if (!multi && !list.length) {
     return head + '<div class="empty">' + (ML.error ? esc(ML.error) : '이 주에는 급식이 없습니다.')
       + '<br><button class="btn" id="mlGetBig">지금 가져오기</button></div>';
   }
   var todayStr = todayYmd();
-  return head + list.map(function (x) {
-    var on = (x.date === todayStr);
-    return '<div class="ml' + (on ? ' tdy' : '') + '">'
-      + '<div class="mlh">' + esc(mdDow(x.date)) + (on ? ' <em>오늘</em>' : '')
-      + '<span>' + esc(x.kcal) + '</span></div>'
-      + '<div class="mld">' + x.dishes.map(function (t) {
-          return '<span>' + esc(t) + '</span>';
-        }).join('') + '</div></div>';
-  }).join('');
+  // ★ 오늘 것은 학사일정의 «오늘» 처럼 크게 키워 눈에 먼저 들어오게 한다
+  function days(rows) {
+    return (rows || []).map(function (x) {
+      var on = (x.date === todayStr);
+      return '<div class="ml' + (on ? ' tdy' : '') + '">'
+        + '<div class="mlh">' + esc(mdDow(x.date)) + (on ? ' <em>오늘</em>' : '')
+        + '<span>' + esc(x.kcal || '') + '</span></div>'
+        + '<div class="mld">' + (x.dishes || []).map(function (t) {
+            return '<span>' + esc(t) + '</span>';
+          }).join('') + '</div></div>';
+    }).join('');
+  }
+  // 학교를 여럿 담아 두었으면 학교마다 갈라 보여준다
+  if (multi) {
+    return head + ML.schools.map(function (s) {
+      return '<div class="mlsch">' + esc(s.name) + '</div>'
+        + (s.error ? '<div class="empty">' + esc(s.error) + '</div>'
+          : (s.meals && s.meals.length ? days(s.meals)
+            : '<div class="empty">이 주에는 급식이 없습니다.</div>'));
+    }).join('');
+  }
+  return head + days(list);
 }
 function fmtYmd(s) {
   var m = String(s || '').match(/^(\d{4})(\d{2})(\d{2})$/);
