@@ -1,4 +1,4 @@
-/* 파일명: easy.js | @version 1.5.0
+/* 파일명: easy.js | @version 1.6.0
    혜원이지 — 넓은 창의 뼈대. 왼쪽 메뉴 · 대시보드 · 화면 갈아 끼우기.
 
    ★ 자료를 읽어 오고 화면 조각을 만드는 일은 views.js 가 그대로 한다.
@@ -8,6 +8,7 @@
 
 var SIDE = document.getElementById('side');
 var MAIN = document.getElementById('main');
+var EBAR = document.getElementById('ebar');   // 맨 위를 가로지르는 띠
 
 /* 담긴 화면. v 값은 위젯이 쓰는 이름 그대로다 — 설정·기억이 서로 통한다. */
 var MENU = [
@@ -48,6 +49,17 @@ function sideUsage() {
       + '</div>';
   }).join('');
   return h + '<button class="sulg wide" id="usgGet">⟳ 다시 읽기</button></div>';
+}
+
+/* 맨 위 띠 — 업데이트 안내와 «바뀐 내역». 사이드바 위까지 지나간다.
+   위젯에서는 머리 안에 들어가지만, 넓은 창은 사이드바가 있어 따로 둔다. */
+function drawTop() {
+  if (!EBAR) return;
+  EBAR.innerHTML = updBar() + notesCard();
+  var nx = EBAR.querySelector('#notesX');
+  if (nx) nx.addEventListener('click', function () {
+    NOTES = null; widgetAPI.notesSeen(); render();
+  });
 }
 
 /* ── 왼쪽 메뉴 ── */
@@ -136,6 +148,7 @@ function viewHome() {
 render = function () {
   if (composing) return;   // 한글 조합 중에는 화면을 건드리지 않는다
   if (!known(VIEW)) VIEW = 'home';
+  drawTop();
   drawSide();
   if (!STATE) { MAIN.innerHTML = '<div class="loading">불러오는 중…</div>'; return; }
 
