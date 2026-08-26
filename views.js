@@ -975,22 +975,20 @@ function sysMetrics() {
   }
   return out;
 }
-/* 80% 넘으면 빨강 — 값이 계속 움직이니 눈에 걸리게 */
-function sysHot(p) { return p >= 80 ? ' hot' : (p >= 60 ? ' warm' : ''); }
 function sysBox() {
   var ms = sysMetrics();
   if (!ms.length) return '';
   var h = '<div class="box"><div class="nm">내 PC</div>';
   if (USGSTYLE === 'ring') {
     h += '<div class="rings">' + ms.map(function (x) {
-      return '<div class="ring' + sysHot(x.pct) + '">' + ringSvg(x.pct)
+      return '<div class="ring">' + ringSvg(x.pct)
         + '<div class="lb">' + esc(x.lb) + '</div>'
         + '<div class="rs">' + esc(x.sub) + '</div></div>';
     }).join('') + '</div>';
   } else {
     h += '<div class="bars">' + ms.map(function (x) {
       return '<div class="brow"><div class="bt">' + esc(x.lb) + '<b>' + x.pct + '%</b></div>'
-        + '<div class="bk' + sysHot(x.pct) + '"><i style="width:' + x.pct + '%"></i></div>'
+        + '<div class="bk"><i style="width:' + x.pct + '%;background:' + usgFill(x.pct) + '"></i></div>'
         + '<div class="rs">' + esc(x.sub) + '</div></div>';
     }).join('') + '</div>';
   }
@@ -1035,11 +1033,38 @@ function resetTxt(m) {
   if (a) bits.push(esc(a) + ' 초기화');
   return bits.join(' · ');
 }
+/* ── 사용량 색 ────────────────────────────────────────────────
+   40% 부터 노랑, 오를수록 붉어지고 90% 넘으면 빨강.
+   ★ 테마와 상관없이 늘 같은 색이다 — «많이 썼다» 는 신호는 옷이 바뀌어도 같아야 한다.
+   40% 아래에서만 테마 강조색을 써서 평소에는 화면과 겉돌지 않게 한다. */
+var USGTONE = [
+  { at: 0,  a: 'var(--accent)', b: 'var(--accent)' },   // 여유
+  { at: 40, a: '#f5d02a', b: '#eab308' },               // 노랑
+  { at: 60, a: '#f0a92a', b: '#ef8b1e' },               // 주황
+  { at: 80, a: '#ef7a22', b: '#e85f22' },               // 진주황
+  { at: 90, a: '#e0452e', b: '#d31f26' }                // 빨강
+];
+function usgTone(pct) {
+  var p = Number(pct) || 0, t = USGTONE[0];
+  for (var i = 0; i < USGTONE.length; i++) { if (p >= USGTONE[i].at) t = USGTONE[i]; }
+  return t;
+}
+/* 막대에 쓸 그라데이션 한 줄 */
+function usgFill(pct) {
+  var t = usgTone(pct);
+  return 'linear-gradient(90deg,' + t.a + ',' + t.b + ')';
+}
+
+var RINGN = 0;   // 그라데이션마다 이름이 달라야 해서
 function ringSvg(pct) {
   var r = 15, c = 2 * Math.PI * r, off = c * (1 - Math.min(100, Math.max(0, pct)) / 100);
+  var t = usgTone(pct), id = 'ug' + (++RINGN);
   return '<svg width="42" height="42" viewBox="0 0 42 42">'
+    + '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1">'
+    + '<stop offset="0" style="stop-color:' + t.a + '"/>'
+    + '<stop offset="1" style="stop-color:' + t.b + '"/></linearGradient></defs>'
     + '<circle cx="21" cy="21" r="' + r + '" fill="none" stroke="var(--card2)" stroke-width="5"/>'
-    + '<circle cx="21" cy="21" r="' + r + '" fill="none" stroke="var(--accent)" stroke-width="5"'
+    + '<circle cx="21" cy="21" r="' + r + '" fill="none" stroke="url(#' + id + ')" stroke-width="5"'
     + ' stroke-linecap="round" stroke-dasharray="' + c.toFixed(1) + '"'
     + ' stroke-dashoffset="' + off.toFixed(1) + '" transform="rotate(-90 21 21)"/>'
     + '<text x="21" y="25" text-anchor="middle">' + pct + '</text></svg>';
@@ -1074,7 +1099,7 @@ function usgBox(key, u) {
     h += '<div class="bars">' + ms.map(function (x) {
       var p = pctOf(x.m);
       return '<div class="brow"><div class="bt">' + esc(x.lb) + '<b>' + p + '%</b></div>'
-        + '<div class="bk"><i style="width:' + Math.min(100, p) + '%"></i></div>'
+        + '<div class="bk"><i style="width:' + Math.min(100, p) + '%;background:' + usgFill(p) + '"></i></div>'
         + '<div class="rs">' + resetTxt(x.m) + '</div></div>';
     }).join('') + '</div>';
   }

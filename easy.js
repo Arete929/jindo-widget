@@ -45,7 +45,7 @@ function sideUsage() {
       + ms.map(function (x) {
           var p = pctOf(x.m);
           return '<div class="sub"><span class="subt">' + esc(x.lb) + '<b>' + p + '%</b></span>'
-            + '<span class="subk"><i style="width:' + Math.min(100, p) + '%"></i></span>'
+            + '<span class="subk"><i style="width:' + Math.min(100, p) + '%;background:' + usgFill(p) + '"></i></span>'
             + '<span class="subr">' + (leftOf(x.m) ? esc(leftOf(x.m)) + ' 남음' : esc(atOf(x.m))) + '</span>'
             + '</div>';
         }).join('')
@@ -56,7 +56,7 @@ function sideUsage() {
     h += '<div class="sut"><div class="sun">내 PC</div>'
       + ms.map(function (x) {
           return '<div class="sub"><span class="subt">' + esc(x.lb) + '<b>' + x.pct + '%</b></span>'
-            + '<span class="subk' + sysHot(x.pct) + '"><i style="width:' + x.pct + '%"></i></span>'
+            + '<span class="subk"><i style="width:' + x.pct + '%;background:' + usgFill(x.pct) + '"></i></span>'
             + '<span class="subr">' + esc(x.sub) + '</span></div>';
         }).join('')
       + '</div>';
