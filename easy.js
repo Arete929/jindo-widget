@@ -20,7 +20,6 @@ var MENU = [
   { v: 'comci', p: 'nav-comci', t: '컴시간', d: '교사·학급 시간표', g: '오늘 볼 것' },
   { v: 'rec', p: 'nav-rec', t: '학생기록', d: '학급 → 학생 → 분류로 쓰고 모아 보기', g: '기록' },
   { v: 'office', p: 'nav-work', t: '교무실', d: '부서별 자료·서식·링크', g: '오늘 볼 것' },
-  { v: 'tool', p: 'nav-set', t: '도구', d: '명렬표 보기 · 글자수 세기', g: '기록' },
   { v: 'link', p: 'nav-home', t: '바로가기', d: '자주 가는 곳을 담아 두고 한 번에', g: '바로가기' },
   // ★ 진도표는 혜원이지에만 — 진호알리미에는 수업진도 대시보드가 따로 있다
   { v: 'grid', p: 'nav-comci', t: '진도표', d: '칸을 눌러 그 자리에서 적습니다', g: '기록', hyewon: true }
@@ -184,9 +183,25 @@ function tile(m) {
 
 /* ── 대시보드 칸 ──────────────────────────────────────────
    내용이 없으면 그 칸은 아예 안 나온다. 빈 상자는 자리만 먹는다. */
-function dcard(title, body, goTo) {
+/* 칸 폭 — 좁게(1) · 보통(2) · 넓게(3). 여섯 칸 격자에 1·2·3 칸씩 차지한다.
+   ★ 머리의 좁·보·넓 을 눌러 그 자리에서 바로 바꾼다. 설정까지 안 가도 된다. */
+function dcSize(k) {
+  var n = Number(DASHSIZE[k]);
+  return (n >= 1 && n <= 3) ? n : 2;
+}
+function dcard(title, body, goTo, key) {
   if (!body) return '';
-  return '<div class="dc"><div class="dch">' + esc(title)
+  var sz = key ? dcSize(key) : 2;
+  return '<div class="dc w' + sz + '"><div class="dch">' + esc(title)
+    + (key
+      ? '<span class="dcsz">'
+        + [1, 2, 3].map(function (n) {
+            return '<button class="' + (sz === n ? 'on' : '') + '" data-dcsz="'
+              + key + ',' + n + '" title="' + ['좁게', '보통', '넓게'][n - 1] + '">'
+              + ['좁', '보', '넓'][n - 1] + '</button>';
+          }).join('')
+        + '</span>'
+      : '')
     + (goTo ? '<button class="dcgo" data-go="' + goTo + '">더 보기 ›</button>' : '')
     + '</div><div class="dcb">' + body + '</div></div>';
 }
@@ -263,7 +278,7 @@ function viewHome() {
   ];
   var cards = inOrder(CARDS, DASHORDER, function (c) { return c.k; })
     .filter(function (c) { return DASHOFF.indexOf(c.k) < 0; })
-    .map(function (c) { return dcard(c.t, c.body(), c.go); })
+    .map(function (c) { return dcard(c.t, c.body(), c.go, c.k); })
     .join('');
   if (cards) h += '<div class="dcs">' + cards + '</div>';
 
@@ -307,8 +322,7 @@ render = function () {
               : VIEW === 'link' ? viewLinks()
                 : VIEW === 'note' ? viewNote()
                   : VIEW === 'grid' ? viewGrid()
-                    : VIEW === 'tool' ? viewTools()
-                      : VIEW === 'office' ? viewOffice() : '')
+                    : VIEW === 'office' ? viewOffice() : '')
       + '</div>';
   }
   MAIN.style.setProperty('--wf', String(FS[fsKey()] || 1));
@@ -321,6 +335,16 @@ render = function () {
   if (eh && et) eh.appendChild(et);
 
   // 즐겨찾기 별표 — 타일을 여는 것보다 «먼저» 가로챈다
+  // 칸 폭 — 좁·보·넓
+  MAIN.querySelectorAll('[data-dcsz]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var p = b.dataset.dcsz.split(',');
+      DASHSIZE[p[0]] = Number(p[1]);
+      widgetAPI.setUi({ dashSize: DASHSIZE });
+      render();
+    });
+  });
   MAIN.querySelectorAll('[data-fav]').forEach(function (b) {
     b.addEventListener('click', function (e) {
       e.stopPropagation();

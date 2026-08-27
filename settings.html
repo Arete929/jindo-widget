@@ -960,6 +960,14 @@ function paintTs() {
     $('tsMsg').textContent = '아직 안 넣었습니다';
   }
 }
+/* ESC 로 설정 창 닫기 */
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  var t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) { t.blur(); return; }
+  widgetAPI.escClose();
+});
+
 $('tsSave').onclick = function () {
   var v = $('tsIn').value;
   widgetAPI.setUi({ termStart: v });

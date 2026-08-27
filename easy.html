@@ -90,13 +90,34 @@
   .main::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; }
 
   /* ── 대시보드 칸 ── */
-  .dcs { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  /* 칸마다 폭을 고른다 — 여섯 칸 격자에 1·2·3 칸씩.
+     창이 좁으면 격자를 줄여 저절로 접힌다. */
+  .dcs { display: grid; grid-template-columns: repeat(6, 1fr);
          gap: 10px; margin: 12px 0 4px; align-items: start; }
+  .dc.w1 { grid-column: span 2; }
+  .dc.w2 { grid-column: span 3; }
+  .dc.w3 { grid-column: span 6; }
+  @media (max-width: 1100px) {
+    .dcs { grid-template-columns: repeat(4, 1fr); }
+    .dc.w1 { grid-column: span 2; } .dc.w2 { grid-column: span 2; }
+    .dc.w3 { grid-column: span 4; }
+  }
+  @media (max-width: 720px) {
+    .dcs { grid-template-columns: 1fr; }
+    .dc.w1, .dc.w2, .dc.w3 { grid-column: span 1; }
+  }
   .dc { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-        overflow: hidden; }
+        overflow: hidden; min-width: 0; }
   .dch { display: flex; align-items: center; gap: 8px; padding: 9px 12px 7px;
          font-size: calc(11px * var(--wf)); font-weight: 800; color: var(--dim);
-         letter-spacing: .3px; }
+         letter-spacing: .3px; flex-wrap: wrap; min-width: 0; }
+  /* 좁·보·넓 단추 */
+  .dcsz { margin-left: auto; display: flex; gap: 2px; }
+  .dcsz button { background: var(--card2); border: 0; cursor: pointer;
+                 font-family: inherit; font-size: calc(9px * var(--wf)); font-weight: 800;
+                 color: var(--dim); border-radius: 4px; padding: 1px 5px; }
+  .dcsz button.on { background: var(--accent); color: var(--on); }
+  .dcsz + .dcgo { margin-left: 8px; }
   .dcgo { margin-left: auto; background: none; border: 0; cursor: pointer;
           font-family: inherit; font-size: calc(10px * var(--wf)); font-weight: 800;
           color: var(--accent); padding: 0; }

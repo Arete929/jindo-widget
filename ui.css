@@ -171,13 +171,14 @@
   .ttl { font-size: 17px; font-weight: 800; letter-spacing: -.3px; color: var(--fg); }
   /* 이름 — 「혜원」 은 그냥 두고 「이지」 만 색 상자로 준다.
      네 글자가 모두 같은 굵기라 눈에 안 들어온다는 지적이 있었다. */
-  /* 앞 두 글자(혜원)를 «바탕색 단추» 로 준다 — 밝은 옷에서는 흰 바탕에 보라 글자가 되고,
-     어두운 옷에서는 어두운 바탕에 강조색 글자가 된다(테마마다 저절로 맞는다). */
+  /* 이름 — 상자를 걷어내고 «색과 굵기» 로만 가른다.
+     상자는 단추처럼 보여서 이름이 둘로 쪼개져 읽혔다.
+     앞 두 글자(혜원)는 진하게, 뒤(이지)는 옅게 — 한 낱말로 이어 읽힌다. */
   .bchip {
-    font-style: normal; font-weight: 900; color: var(--accent); background: var(--bg);
-    border: 1.5px solid var(--accent); border-radius: .4em;
-    padding: .02em .3em; margin-right: .16em; letter-spacing: -.02em;
+    font-style: normal; font-weight: 900; color: var(--accent);
+    letter-spacing: -.03em; margin-right: .04em;
   }
+  .brest { font-weight: 600; color: var(--dim); letter-spacing: -.03em; }
   /* 설정 톱니 — 제목 옆에 둔다. 테마 바탕색에 따라 그림을 갈아 끼운다.
      밝은 바탕에는 검정, 어두운 바탕에는 하늘색, 강렬한 빨강 바탕에는 테두리가 있는 것. */
   .gear {

@@ -177,7 +177,7 @@ function getFont() {
 function getFontScale() {
   const v = loadState().fontScale;
   const out = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1, note: 1, link: 1,
-    grid: 1, tool: 1, office: 1 };
+    grid: 1, office: 1 };
   if (v && typeof v === 'object') {
     Object.keys(out).forEach((k) => {
       const n = Number(v[k]);
@@ -341,6 +341,12 @@ function getDashOrder() {
   const v = loadState().dashOrder;
   return Array.isArray(v) ? v.map(String).slice(0, 20) : [];
 }
+/* 대시보드 칸 폭 — 칸마다 좁게(1) · 보통(2) · 넓게(3) 중 하나.
+   여섯 칸짜리 격자에 1·2·3 칸씩 차지한다. */
+function getDashSize() {
+  const v = loadState().dashSize;
+  return (v && typeof v === 'object') ? v : {};
+}
 function getDashOff() {
   const v = loadState().dashOff;
   return Array.isArray(v) ? v.map(String).slice(0, 20) : [];
@@ -431,8 +437,8 @@ async function refreshGradePlan(grade) {
 // 둘은 스위치처럼 한 번에 하나만 뜬다. 다음에 켤 때도 그 모습으로 시작한다.
 function getViewMode() { return loadState().viewMode === 'easy' ? 'easy' : 'widget'; }
 const VIEWS = HAS_TT
-  ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal', 'rec', 'office', 'tool', 'link']
-  : ['work', 'comci', 'note', 'grid', 'cal', 'meal', 'rec', 'office', 'tool', 'link'];
+  ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal', 'rec', 'office', 'link']
+  : ['work', 'comci', 'note', 'grid', 'cal', 'meal', 'rec', 'office', 'link'];
 function getView() {
   const v = loadState().view;
   return VIEWS.includes(v) ? v : VIEWS[0];
@@ -633,6 +639,7 @@ function sendToWidget() {
     navStyle: getNavStyle(),                     // 차림표 — 아이콘만/글자만/둘 다
     tabOrder: getTabOrder(),                     // 탭·차림표 순서
     officeFav: getOfficeFav(),                   // 교무실 즐겨찾기
+    dashSize: getDashSize(),                     // 대시보드 칸 폭
     dashOrder: getDashOrder(), dashOff: getDashOff(),   // 대시보드 칸
     photo: { dir: getPhotoDir(), sec: getPhotoSec() },  // 사진 액자
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },   // 런처 목록
@@ -1323,7 +1330,7 @@ ipcMain.handle('get-settings', () => ({
     termStart: getTermStart(),
     navStyle: getNavStyle(),
     tabOrder: getTabOrder(), dashOrder: getDashOrder(), dashOff: getDashOff(),
-    officeFav: getOfficeFav(),
+    officeFav: getOfficeFav(), dashSize: getDashSize(),
     photo: { dir: getPhotoDir(), sec: getPhotoSec(), count: photoList().length },
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },
     browsers: browserList().map((b) => ({ key: b.key, label: b.label })),
@@ -1419,6 +1426,15 @@ ipcMain.on('set-ui', (_e, v) => {
   }
   if (v.dashOrder !== undefined) {
     saveState({ dashOrder: (v.dashOrder || []).map(String).slice(0, 20) });
+    sendToWidget();
+  }
+  if (v.dashSize !== undefined) {
+    const out = {};
+    Object.keys(v.dashSize || {}).slice(0, 20).forEach((k) => {
+      const n = Number(v.dashSize[k]);
+      if (n >= 1 && n <= 3) out[String(k)] = n;
+    });
+    saveState({ dashSize: out });
     sendToWidget();
   }
   if (v.dashOff !== undefined) {
@@ -1610,6 +1626,15 @@ ipcMain.handle('photo-read', (_e, i) => {
     return { name: path.basename(f),
       data: 'data:image/' + mime + ';base64,' + b.toString('base64') };
   } catch (e) { return null; }
+});
+/* ESC 로 창 닫기 — 화면이 «닫아 달라» 고 보내면 그 창을 감춘다.
+   ★ 「닫기」 이지 「끄기」 가 아니다. 뒤에서는 계속 돌고, 트레이로 다시 부른다. */
+ipcMain.on('esc-close', (e) => {
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (!w || w.isDestroyed()) return;
+  if (widgetWin && w === widgetWin) { w.hide(); return; }
+  if (easyWin && w === easyWin) { w.hide(); return; }
+  w.close();                       // 설정·시간표 같은 창은 그냥 닫는다
 });
 ipcMain.on('open-easy', () => openEasyWindow());
 ipcMain.handle('feed-refresh', async () => { await refreshFeed(); return feedData; });

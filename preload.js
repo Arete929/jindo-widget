@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   photoPick: () => ipcRenderer.invoke('photo-pick'),
   photoList: () => ipcRenderer.invoke('photo-list'),
   photoRead: (i) => ipcRenderer.invoke('photo-read', i),
+  escClose: () => ipcRenderer.send('esc-close'),
   openEasy: () => ipcRenderer.send('open-easy'),
   showWidget: () => ipcRenderer.send('show-widget'),
   hideWidget: () => ipcRenderer.send('hide-widget'),
