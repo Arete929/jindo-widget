@@ -1774,6 +1774,108 @@ function viewOffice() {
   return h;
 }
 
+
+/* ── 전광판 ────────────────────────────────────────────────
+   같은 학교 선생님끼리 한 줄씩 주고받는 흐르는 띠.
+   ★ 주소가 없으면 그 자리가 «아예» 안 보인다 — 나눠 준 판에는 자연히 안 나온다.
+   ★ 보내는 칸은 컴시간 학교가 그 학교일 때만 보인다. */
+var BOARD = null, bdOpen = false, bdBusy = false, bdErr = '', bdOkAt = '';
+function bdOn() { return !!(BOARD && BOARD.url); }
+/* 내 학교인가 — 전광판이 알려 준 학교와 내 컴시간 학교를 견준다 */
+function bdMine() {
+  if (!BOARD) return false;
+  var d = BOARD.data || {};
+  if (!d.school) return false;                 // 아직 못 읽었으면 잠자코 있는다
+  return String(BOARD.school || '') === String(d.school);
+}
+function bdList() { return (BOARD && BOARD.data && BOARD.data.list) || []; }
+
+function boardBar() {
+  if (!bdOn()) return '';
+  var list = bdList();
+  var err = (BOARD.data && BOARD.data.error) || '';
+  var h = '<div class="bd">';
+  h += '<div class="bdrow">'
+    + '<span class="bdic">📢</span>';
+  if (err) {
+    h += '<span class="bdmsg warn">' + esc(err) + '</span>';
+  } else if (!list.length) {
+    h += '<span class="bdmsg dim">오늘은 아직 올라온 것이 없습니다</span>';
+  } else {
+    // ★ 글이 길면 흐르고, 짧으면 가만히 둔다 — 짧은 글이 굳이 움직이면 눈에 거슬린다
+    var one = list.map(function (x) {
+      return '<b>' + esc(x.who) + '</b> ' + esc(x.text);
+    }).join('<i class="bdsep">·</i>');
+    var len = list.reduce(function (n, x) { return n + x.who.length + x.text.length + 3; }, 0);
+    h += '<span class="bdmsg"><span class="bdflow' + (len > 34 ? ' run' : '') + '">'
+      + one + '</span></span>';
+  }
+  h += '<button class="bdb" id="bdGet" title="다시 읽기">⟳</button>';
+  if (bdMine()) {
+    h += '<button class="bdb' + (bdOpen ? ' now' : '') + '" id="bdOpen" title="한 줄 보내기">'
+      + (bdOpen ? '✕' : '✎') + '</button>';
+  }
+  h += '</div>';
+
+  if (bdOpen && bdMine()) {
+    h += '<div class="bdw">'
+      + '<input class="bdi nick" id="bdWho" maxlength="20" placeholder="닉네임" value="'
+      + esc(BOARD.nick || '') + '">'
+      + '<input class="bdi" id="bdText" maxlength="120" placeholder="하고 싶은 말">'
+      + '<button class="bdgo" id="bdSend"' + (bdBusy ? ' disabled' : '') + '>'
+      + (bdBusy ? '보내는 중…' : '보내기') + '</button></div>';
+    if (bdErr) h += '<div class="bdhint warn">' + esc(bdErr) + '</div>';
+    else if (bdOkAt) h += '<div class="bdhint ok">✅ 올렸습니다 · ' + esc(bdOkAt) + '</div>';
+    else h += '<div class="bdhint">오늘 하루만 흐릅니다. 같은 학교 선생님들께 보입니다.</div>';
+  }
+  return h + '</div>';
+}
+
+
+/* 전광판 단추 잇기 — 띠가 있는 «그 자리» 에 건다.
+   위젯은 본문 안, 넓게 보기는 맨 위 띠 — 자리가 달라서 따로 부른다. */
+function wireBoard(root) {
+  if (!root) return;
+  var bg = root.querySelector('#bdGet');
+  if (bg) bg.addEventListener('click', function () {
+    bg.textContent = '…';
+    widgetAPI.boardRefresh().then(function () { bdErr = ''; });
+  });
+  var bo = root.querySelector('#bdOpen');
+  if (bo) bo.addEventListener('click', function () {
+    bdOpen = !bdOpen; bdErr = ''; bdOkAt = ''; render();
+  });
+  var bt = root.querySelector('#bdText');
+  var bs = root.querySelector('#bdSend');
+  if (bs) bs.addEventListener('click', function () { bdSend(root); });
+  if (bt) bt.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); bdSend(root); }
+    e.stopPropagation();          // ESC 로 창이 닫히지 않게
+  });
+  var bw = root.querySelector('#bdWho');
+  if (bw) bw.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); if (bt) bt.focus(); }
+    e.stopPropagation();
+  });
+}
+
+function bdSend(app) {
+  var who = app.querySelector('#bdWho'), tx = app.querySelector('#bdText');
+  if (!who || !tx) return;
+  var w = who.value.trim(), t = tx.value.trim();
+  if (!w) { who.focus(); return; }
+  if (!t) { tx.focus(); return; }
+  bdBusy = true; bdErr = ''; render();
+  widgetAPI.boardSend({ who: w, text: t }).then(function (r) {
+    bdBusy = false;
+    if (r && r.ok) { bdErr = ''; bdOkAt = r.at || ''; }
+    else { bdErr = (r && r.error) || '보내지 못했습니다'; bdOkAt = ''; }
+    render();
+  }).catch(function (e) {
+    bdBusy = false; bdErr = (e && e.message) || String(e); render();
+  });
+}
+
 function brandHtml() {
   var n = String(APPNAME || '');
   if (HAS_TT || n.length < 3) return esc(n);
@@ -2398,7 +2500,7 @@ function render() {
     return report();
   }
 
-  var d = STATE, html = '<div class="top">' + titleBar() + notesCard() + wxCard() + usageBar() + updBar() + taskBar();
+  var d = STATE, html = '<div class="top">' + titleBar() + boardBar() + notesCard() + wxCard() + usageBar() + updBar() + taskBar();
   // 혜원 데스크는 수업진도 자료를 안 받으므로 날짜·요일을 스스로 만든다
   var nd = new Date();
   var dText = d.date ? d.date.slice(5).replace('-', '월 ') + '일'
@@ -2658,6 +2760,7 @@ widgetAPI.onData(function (p) {
   TERMSTART = p.termStart || '';
   NAVSTYLE = p.navStyle || 'both';
   TABORDER = p.tabOrder || [];
+  BOARD = p.board || null;
   ofFav = p.officeFav || ofFav;
   DASHORDER = p.dashOrder || [];
   DASHOFF = p.dashOff || [];
@@ -3075,6 +3178,7 @@ function wireViews(app) {
       scrollToEl(document.getElementById('acm-' + b.dataset.ac), 2);
     });
   });
+  wireBoard(app);   // 전광판 — 위젯은 본문 안에 띠가 있다
   // 교무실
   app.querySelectorAll('[data-ofv]').forEach(function (b) {
     b.addEventListener('click', function () { ofOnlyFav = b.dataset.ofv === '1'; render(); });

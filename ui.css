@@ -242,6 +242,42 @@
   .rsr b { font-size: calc(12.5px * var(--wf)); font-weight: 800; color: var(--fg); }
   .rsr u { margin-left: auto; text-decoration: none; font-size: calc(9.5px * var(--wf));
            color: var(--dim); }
+  /* ── 전광판 ── */
+  .bd { background: var(--card); border-bottom: 1px solid var(--line);
+        padding: calc(5px * var(--wf)) calc(9px * var(--wf)); }
+  .bdrow { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .bdic { flex: 0 0 auto; font-size: calc(12px * var(--wf)); }
+  .bdmsg { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap;
+           font-size: calc(11.5px * var(--wf)); color: var(--fg2); }
+  .bdmsg.dim { color: var(--dim); }
+  .bdmsg.warn { color: var(--holfg); text-overflow: ellipsis; }
+  .bdmsg b { font-weight: 800; color: var(--accent); margin-right: 3px; }
+  .bdsep { font-style: normal; color: var(--dim); margin: 0 10px; }
+  /* 길면 흐른다 — 짧으면 가만히 둔다 */
+  .bdflow { display: inline-block; padding-left: 0; }
+  .bdflow.run { animation: bdmove 22s linear infinite; padding-left: 100%; }
+  .bd:hover .bdflow.run { animation-play-state: paused; }
+  @keyframes bdmove { from { transform: translateX(0); }
+                      to { transform: translateX(-100%); } }
+  .bdb { flex: 0 0 auto; background: none; border: 1px solid var(--line);
+         color: var(--dim); border-radius: 6px; cursor: pointer; font-family: inherit;
+         font-size: calc(10px * var(--wf)); padding: calc(2px * var(--wf)) calc(6px * var(--wf)); }
+  .bdb.now { background: var(--accent); border-color: var(--accent); color: var(--on); }
+  .bdw { display: flex; gap: 5px; margin-top: 6px; }
+  .bdi { min-width: 0; background: var(--bg); color: var(--fg);
+         border: 1px solid var(--line); border-radius: 7px;
+         padding: calc(5px * var(--wf)) calc(8px * var(--wf));
+         font-family: inherit; font-size: calc(11.5px * var(--wf)); }
+  .bdi.nick { flex: 0 0 calc(84px * var(--wf)); }
+  .bdi:not(.nick) { flex: 1; }
+  .bdi:focus { outline: none; border-color: var(--accent); }
+  .bdgo { flex: 0 0 auto; background: var(--accent); color: var(--on); border: 0;
+          border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 800;
+          font-size: calc(11px * var(--wf)); padding: 0 calc(12px * var(--wf)); }
+  .bdgo:disabled { opacity: .55; cursor: default; }
+  .bdhint { margin-top: 4px; font-size: calc(9.5px * var(--wf)); color: var(--dim); }
+  .bdhint.warn { color: var(--holfg); font-weight: 700; }
+  .bdhint.ok { color: var(--now); font-weight: 700; }
   /* ── 온라인 교무실 ── */
   /* 준비중 알림 — 예시 자료라는 것을 또렷이 */
   .ofdemo { display: flex; align-items: flex-start; gap: 9px;

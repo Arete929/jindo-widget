@@ -62,4 +62,40 @@ function fetchText(url, opts) {
   });
 }
 
-module.exports = { fetchText };
+/* 글자를 보내고 답을 받는다 — 전광판이 한 줄 올릴 때 쓴다.
+   ★ GAS 웹앱은 답을 줄 때 다른 주소로 한 번 넘긴다(302). redirect:follow 로 따라간다.
+   ★ Content-Type 을 text/plain 으로 둔다 — application/json 이면 브라우저가
+     «미리 물어보기(preflight)» 를 하는데 GAS 가 그것을 안 받아 준다. */
+function postText(url, body, opts) {
+  const o = opts || {};
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const finish = (fn, v) => { if (!done) { done = true; fn(v); } };
+    const req = net.request({ method: 'POST', url: url, redirect: 'follow' });
+    req.setHeader('User-Agent', o.userAgent || UA);
+    req.setHeader('Content-Type', 'text/plain;charset=utf-8');
+    req.on('response', (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(Buffer.from(c)));
+      res.on('end', () => {
+        const txt = Buffer.concat(chunks).toString("utf8");
+        if (res.statusCode !== 200) {
+          finish(reject, new Error("오류 " + res.statusCode));
+          return;
+        }
+        finish(resolve, txt);
+      });
+      res.on('error', (e) => finish(reject, e));
+    });
+    req.on('error', (e) => finish(reject, new Error(String((e && e.message) || e))));
+    const t = setTimeout(() => {
+      finish(reject, new Error("서버가 응답하지 않습니다"));
+      try { req.abort(); } catch (e) { /* 무시 */ }
+    }, o.timeout || 25000);
+    req.on('close', () => clearTimeout(t));
+    req.write(String(body == null ? "" : body));
+    req.end();
+  });
+}
+
+module.exports = { fetchText, postText };

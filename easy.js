@@ -99,7 +99,8 @@ function sideUsage() {
    위젯에서는 머리 안에 들어가지만, 넓은 창은 사이드바가 있어 따로 둔다. */
 function drawTop() {
   if (!EBAR) return;
-  EBAR.innerHTML = updBar() + notesCard();
+  EBAR.innerHTML = boardBar() + updBar() + notesCard();
+  wireBoard(EBAR);   // 전광판 — 넓게 보기는 맨 위 띠에 있다
   var nx = EBAR.querySelector('#notesX');
   if (nx) nx.addEventListener('click', function () {
     NOTES = null; widgetAPI.notesSeen(); render();

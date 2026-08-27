@@ -262,7 +262,7 @@ function getGradePick() { const g = Number(loadState().gradePick); return [1, 2,
    «내 앱 대시보드»(런처 GAS) 에서 공유로 켜 둔 앱들을 받아 온다.
    ★ 이것 하나만 고치면 쓰는 사람 모두에게 반영된다 — 각자 넣을 필요가 없다.
    ★ 로그인은 필요 없다. 화면(HTML)이 아니라 알맹이만 받는다(?view=json). */
-const { fetchText } = require('./fetchtext.js');
+const { fetchText, postText } = require('./fetchtext.js');
 const FEED_URL = 'https://script.google.com/macros/s/'
   + 'AKfycbwot9uum8L5CUb6ouJdI03nwg6jS8WPJ0zu91y8EthdYWf0mVSMLws4zV2I6cEWry_0/exec';
 let feedData = null;   // { apps:[{t,u,d,icon,tab}], at, error }
@@ -326,6 +326,38 @@ function photoList() {
    자주 쓰는 것을 앞으로 당겨 둔다. 위젯의 탭 줄과 넓게 보기의 왼쪽
    차림표가 «같은 순서» 를 쓴다 — 둘이 다르면 손이 헷갈린다.
    ★ 담아 둔 목록에 없는 화면(새로 생긴 것)은 뒤에 붙는다. */
+/* ── 전광판 ────────────────────────────────────────────────
+   같은 학교 선생님끼리 한 줄씩 주고받는다.
+   ★ 이 앱에서 «바깥에 쓰는» 것은 이것뿐이다. 그래서 두 겹으로 막는다.
+     ① 앱   — 컴시간 학교가 그 학교가 아니면 보내는 칸이 안 보인다
+     ② GAS  — 학교 코드를 함께 받아 거기서 한 번 더 본다
+   ★ 주소가 비어 있으면 그 자리가 아예 안 보인다 — 나눠 준 판에는 자연히 안 나온다. */
+let boardData = null;   // { list:[{at,who,text}], school, at, error }
+function getBoardUrl() { return String(loadState().boardUrl || '').trim(); }
+function getBoardNick() { return String(loadState().boardNick || '').trim(); }
+/* 내 컴시간 학교 코드 — 이것과 전광판 학교가 같아야 보낼 수 있다 */
+function mySchoolCode() {
+  const c = getComciConfig();
+  return String((c && c.school && c.school.code) || '');
+}
+async function refreshBoard() {
+  const url = getBoardUrl();
+  if (!url) { boardData = null; sendToWidget(); return; }
+  try {
+    const txt = await fetchText(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'view=json');
+    const j = JSON.parse(txt);
+    boardData = {
+      list: ((j && j.list) || []).slice(-30),
+      school: String((j && j.school) || ''),
+      at: (j && j.at) || '', error: ''
+    };
+  } catch (e) {
+    boardData = { list: [], school: '', at: '', error: (e && e.message) || String(e) };
+    debugLog('전광판 못 읽음 — ' + boardData.error);
+  }
+  sendToWidget();
+}
+
 /* 교무실 즐겨찾기 — 별표로 위에 고정해 둔 것 */
 function getOfficeFav() {
   const v = loadState().officeFav;
@@ -640,6 +672,8 @@ function sendToWidget() {
     tabOrder: getTabOrder(),                     // 탭·차림표 순서
     officeFav: getOfficeFav(),                   // 교무실 즐겨찾기
     dashSize: getDashSize(),                     // 대시보드 칸 폭
+    board: { url: getBoardUrl(), nick: getBoardNick(), school: mySchoolCode(),
+             data: boardData },                  // 전광판
     dashOrder: getDashOrder(), dashOff: getDashOff(),   // 대시보드 칸
     photo: { dir: getPhotoDir(), sec: getPhotoSec() },  // 사진 액자
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },   // 런처 목록
@@ -1331,6 +1365,8 @@ ipcMain.handle('get-settings', () => ({
     navStyle: getNavStyle(),
     tabOrder: getTabOrder(), dashOrder: getDashOrder(), dashOff: getDashOff(),
     officeFav: getOfficeFav(), dashSize: getDashSize(),
+    board: { url: getBoardUrl(), nick: getBoardNick(), school: mySchoolCode(),
+             data: boardData },
     photo: { dir: getPhotoDir(), sec: getPhotoSec(), count: photoList().length },
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },
     browsers: browserList().map((b) => ({ key: b.key, label: b.label })),
@@ -1416,6 +1452,14 @@ ipcMain.on('set-ui', (_e, v) => {
     sendToWidget();
   }
   if (v.photoClear) { saveState({ photoDir: '' }); sendToWidget(); }
+  if (v.boardUrl !== undefined) {
+    saveState({ boardUrl: String(v.boardUrl || '').trim() });
+    debugLog('전광판 주소 바꿈');
+    refreshBoard();
+  }
+  if (v.boardNick !== undefined) {
+    saveState({ boardNick: String(v.boardNick || '').trim().slice(0, 20) });
+  }
   if (v.officeFav !== undefined) {
     saveState({ officeFav: (v.officeFav || []).map(String).slice(0, 60) });
     sendToWidget();
@@ -1636,6 +1680,32 @@ ipcMain.on('esc-close', (e) => {
   if (easyWin && w === easyWin) { w.hide(); return; }
   w.close();                       // 설정·시간표 같은 창은 그냥 닫는다
 });
+/* 전광판 — 한 줄 보내기. 보내고 나면 새 목록을 그대로 돌려준다. */
+ipcMain.handle('board-send', async (_e, o) => {
+  const url = getBoardUrl();
+  if (!url) return { ok: false, error: '전광판 주소가 없습니다' };
+  const who = String((o && o.who) || '').trim().slice(0, 20);
+  const text = String((o && o.text) || '').trim().slice(0, 120);
+  if (!who) return { ok: false, error: '닉네임을 적어 주세요' };
+  if (!text) return { ok: false, error: '하고 싶은 말을 적어 주세요' };
+  saveState({ boardNick: who });          // 닉네임은 기억해 둔다
+  try {
+    const txt = await postText(url, JSON.stringify({
+      school: mySchoolCode(), who: who, text: text
+    }));
+    const j = JSON.parse(txt);
+    if (!j || !j.ok) return { ok: false, error: (j && j.error) || '보내지 못했습니다' };
+    boardData = { list: (j.list || []).slice(-30),
+      school: (boardData && boardData.school) || mySchoolCode(), at: j.at || '', error: '' };
+    debugLog('전광판 보냄 — ' + who + ': ' + text.slice(0, 30));
+    sendToWidget();
+    return { ok: true, at: j.at || '' };
+  } catch (e) {
+    debugLog('전광판 보내기 실패 — ' + (e.message || e));
+    return { ok: false, error: (e && e.message) || String(e) };
+  }
+});
+ipcMain.handle('board-refresh', async () => { await refreshBoard(); return boardData; });
 ipcMain.on('open-easy', () => openEasyWindow());
 ipcMain.handle('feed-refresh', async () => { await refreshFeed(); return feedData; });
 ipcMain.on('show-widget', () => showWidgetOnly());
@@ -1976,6 +2046,10 @@ if (!gotLock) {
     // 런처 목록 — 자주 바뀌지 않으니 켤 때 한 번, 그 뒤로는 6시간마다
     scheduleTask('feed', '내 앱 목록', 6000, () => refreshFeed());
     setInterval(() => refreshFeed(), 6 * 60 * 60 * 1000);
+
+    // 전광판 — 켤 때 한 번, 그 뒤로는 5분마다
+    scheduleTask('board', '전광판', 8000, () => refreshBoard());
+    setInterval(() => refreshBoard(), 5 * 60 * 1000);
 
     checkForUpdates();
     setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
