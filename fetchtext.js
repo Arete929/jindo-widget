@@ -63,37 +63,47 @@ function fetchText(url, opts) {
 }
 
 /* 글자를 보내고 답을 받는다 — 전광판이 한 줄 올릴 때 쓴다.
-   ★ GAS 웹앱은 답을 줄 때 다른 주소로 한 번 넘긴다(302). redirect:follow 로 따라간다.
-   ★ Content-Type 을 text/plain 으로 둔다 — application/json 이면 브라우저가
-     «미리 물어보기(preflight)» 를 하는데 GAS 가 그것을 안 받아 준다. */
+   ★ GAS 웹앱은 POST 를 받고 나서 «다른 주소로 넘긴다»(302 → googleusercontent).
+     redirect:follow 로 그냥 따라가면 POST 를 다시 보내려다
+     «411 Length Required» 가 난다 — 글은 이미 담겼는데 실패한 줄 안다.
+     그래서 넘김을 손수 받아, 넘어간 주소는 GET 으로 읽는다.
+   ★ Content-Type 은 text/plain 으로 둔다. application/json 이면 GAS 가 안 받는다. */
 function postText(url, body, opts) {
   const o = opts || {};
+  const text = String(body == null ? '' : body);
+  const buf = Buffer.from(text, 'utf8');
   return new Promise((resolve, reject) => {
     let done = false;
     const finish = (fn, v) => { if (!done) { done = true; fn(v); } };
-    const req = net.request({ method: 'POST', url: url, redirect: 'follow' });
+    const t = setTimeout(() => {
+      finish(reject, new Error('서버가 응답하지 않습니다'));
+    }, o.timeout || 25000);
+    const ok = (v) => { clearTimeout(t); finish(resolve, v); };
+    const no = (e) => { clearTimeout(t); finish(reject, e); };
+
+    const req = net.request({ method: 'POST', url: url, redirect: 'manual' });
     req.setHeader('User-Agent', o.userAgent || UA);
     req.setHeader('Content-Type', 'text/plain;charset=utf-8');
+    // ★ Content-Length 는 손대지 않는다 — 크로미움이 스스로 넣는다.
+    //   직접 넣으면 net::ERR_INVALID_ARGUMENT 로 막힌다.
+
+    // 넘기라고 하면 그 주소를 GET 으로 읽는다
+    req.on('redirect', (status, method, redirectUrl) => {
+      try { req.abort(); } catch (e) { /* 무시 */ }
+      fetchText(redirectUrl, { timeout: o.timeout || 25000 }).then(ok).catch(no);
+    });
     req.on('response', (res) => {
       const chunks = [];
       res.on('data', (c) => chunks.push(Buffer.from(c)));
       res.on('end', () => {
-        const txt = Buffer.concat(chunks).toString("utf8");
-        if (res.statusCode !== 200) {
-          finish(reject, new Error("오류 " + res.statusCode));
-          return;
-        }
-        finish(resolve, txt);
+        const txt = Buffer.concat(chunks).toString('utf8');
+        if (res.statusCode !== 200) { no(new Error('오류 ' + res.statusCode)); return; }
+        ok(txt);
       });
-      res.on('error', (e) => finish(reject, e));
+      res.on('error', (e) => no(e));
     });
-    req.on('error', (e) => finish(reject, new Error(String((e && e.message) || e))));
-    const t = setTimeout(() => {
-      finish(reject, new Error("서버가 응답하지 않습니다"));
-      try { req.abort(); } catch (e) { /* 무시 */ }
-    }, o.timeout || 25000);
-    req.on('close', () => clearTimeout(t));
-    req.write(String(body == null ? "" : body));
+    req.on('error', (e) => no(new Error(String((e && e.message) || e))));
+    req.write(buf);
     req.end();
   });
 }
