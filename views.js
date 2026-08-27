@@ -1830,16 +1830,85 @@ function linkHost(u) {
   var i = s.indexOf('/');
   return i > 0 ? s.slice(0, i) : s;
 }
+/* ── 바로가기 손보기 ───────────────────────────────────────
+   설정까지 가지 않고 이 화면에서 담고·옮기고·뺀다.
+   ★ 고치면 곧바로 main 으로 보내고, main 이 다시 내려 준다 —
+     그래야 위젯과 넓게 보기가 함께 바뀐다. */
+var lkEdit = false;
+/* 한 번 눌러 담는 것들. 업무포털은 시도마다 주소가 달라 제목만 채운다. */
+var LKPRE = [
+  { t: '나이스', u: 'https://www.neis.go.kr' },
+  { t: '학교알리미', u: 'https://www.schoolinfo.go.kr' },
+  { t: '에듀넷', u: 'https://www.edunet.net' },
+  { t: '커리어넷', u: 'https://www.career.go.kr' },
+  { t: '인디스쿨', u: 'https://indischool.com' },
+  { t: '업무포털', u: '' }
+];
+function lkSave(list) {
+  LINKS = list;
+  widgetAPI.setUi({ links: list });
+  render();
+}
+function lkMove(i, d) {
+  var l = LINKS.slice(), j = i + d;
+  if (j < 0 || j >= l.length) return;
+  var t = l[i]; l[i] = l[j]; l[j] = t;
+  lkSave(l);
+}
+function lkDrop(i) {
+  var l = LINKS.slice();
+  l.splice(i, 1);
+  lkSave(l);
+}
+function lkAddFrom(app) {
+  var t = app.querySelector('#lkNewT'), u = app.querySelector('#lkNewU');
+  if (!t || !u) return;
+  var tv = t.value.trim(), uv = u.value.trim();
+  if (!tv || !uv) { u.focus(); return; }
+  lkSave(LINKS.concat([{ t: tv, u: uv }]));
+}
+
 function viewLinks() {
-  var mine = linkTiles(), feed = feedTiles();
-  if (!mine && !feed) {
-    return '<div class="empty">담아 둔 바로가기가 없습니다.<br>'
-      + '<b>설정 → 바로가기</b> 에서 제목과 주소를 넣어 주세요.</div>';
+  var feed = feedTiles();
+  var h = '<div class="top2"><div class="wknav">'
+    + '<button class="wkb' + (lkEdit ? ' now' : '') + '" id="lkEd">'
+    + (lkEdit ? '✓ 다 됐어요' : '✎ 고치기') + '</button>'
+    + '<span class="spacer"></span>' + fontBtns('link')
+    + (FEED ? '<button class="wkb" id="fdGet" title="내 앱 다시 읽기">⟳</button>' : '')
+    + '</div></div>';
+
+  if (lkEdit) {
+    h += '<div class="lkadd">'
+      + '<div class="lkrow">'
+      + '<input id="lkNewT" placeholder="제목" maxlength="40">'
+      + '<input id="lkNewU" placeholder="주소 (neis.go.kr 처럼 적어도 됩니다)">'
+      + '<button class="ntb" id="lkNewGo">담기</button></div>'
+      + '<div class="lkpre">' + LKPRE.map(function (x, i) {
+          return '<button class="wkb" data-lkpre="' + i + '">＋ ' + esc(x.t)
+            + (x.u ? '' : ' ⌨') + '</button>';
+        }).join('') + '</div>'
+      + '</div>';
   }
-  var h = '';
-  if (mine) h += '<div class="lgrp">내 바로가기</div><div class="lnks">' + mine + '</div>';
+
+  if (LINKS.length) {
+    h += '<div class="lgrp">내 바로가기</div><div class="lnks">'
+      + LINKS.map(function (x, i) {
+          if (!lkEdit) return linkTile(x, 'lnk="' + i);
+          // 고치는 동안에는 타일 대신 «옮기고 빼는» 줄로 보여 준다
+          return '<div class="lked">'
+            + '<span class="lnm"><b>' + esc(x.t) + '</b><i>' + esc(linkHost(x.u)) + '</i></span>'
+            + '<button class="wkb" data-lkup="' + i + '"' + (i === 0 ? ' disabled' : '') + '>▲</button>'
+            + '<button class="wkb" data-lkdn="' + i + '"'
+            + (i === LINKS.length - 1 ? ' disabled' : '') + '>▼</button>'
+            + '<button class="wkb" data-lkx="' + i + '" title="빼기">✕</button></div>';
+        }).join('') + '</div>';
+  } else if (!lkEdit) {
+    h += '<div class="empty">담아 둔 바로가기가 없습니다.<br>'
+      + '위의 <b>✎ 고치기</b> 를 눌러 담아 보세요.</div>';
+  }
+
   if (feed) {
-    h += '<div class="lgrp">내 앱 <button class="wkb" id="fdGet" title="다시 읽기">⟳</button>'
+    h += '<div class="lgrp">내 앱'
       + (FEED.at ? '<small>' + esc(FEED.at) + '</small>' : '') + '</div>'
       + '<div class="lnks">' + feed + '</div>';
   } else if (FEED && FEED.error) {
@@ -2716,6 +2785,37 @@ function wireViews(app) {
       var x = (FEED && FEED.apps) ? FEED.apps[Number(b.dataset.fd)] : null;
       if (x && x.u) widgetAPI.openUrl(x.u);
     });
+  });
+  // 바로가기 손보기
+  var lke = app.querySelector('#lkEd');
+  if (lke) lke.addEventListener('click', function () { lkEdit = !lkEdit; render(); });
+  var lkg = app.querySelector('#lkNewGo');
+  if (lkg) lkg.addEventListener('click', function () { lkAddFrom(app); });
+  var lku = app.querySelector('#lkNewU');
+  if (lku) lku.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); lkAddFrom(app); }
+  });
+  var lkt = app.querySelector('#lkNewT');
+  if (lkt) lkt.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); lku && lku.focus(); }
+  });
+  app.querySelectorAll('[data-lkpre]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var x = LKPRE[Number(b.dataset.lkpre)];
+      if (x.u) { lkSave(LINKS.concat([{ t: x.t, u: x.u }])); return; }
+      // 주소가 시도마다 다른 것은 제목만 채우고 주소 칸으로 보낸다
+      if (lkt) lkt.value = x.t;
+      if (lku) { lku.value = ''; lku.focus(); }
+    });
+  });
+  app.querySelectorAll('[data-lkup]').forEach(function (b) {
+    b.addEventListener('click', function () { lkMove(Number(b.dataset.lkup), -1); });
+  });
+  app.querySelectorAll('[data-lkdn]').forEach(function (b) {
+    b.addEventListener('click', function () { lkMove(Number(b.dataset.lkdn), 1); });
+  });
+  app.querySelectorAll('[data-lkx]').forEach(function (b) {
+    b.addEventListener('click', function () { lkDrop(Number(b.dataset.lkx)); });
   });
   var fdb = app.querySelector('#fdGet');
   if (fdb) fdb.addEventListener('click', function () {

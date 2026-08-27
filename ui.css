@@ -392,6 +392,24 @@
          padding: 8px 9px; cursor: pointer; font-family: inherit; color: var(--fg);
          min-width: 0; }
   .lnk:hover { background: var(--card2); }
+  /* 바로가기 손보기 */
+  .lkadd { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+           padding: 9px 10px; margin: 6px 0 4px; }
+  .lkrow { display: flex; gap: 6px; }
+  .lkrow input { min-width: 0; background: var(--bg); color: var(--fg);
+                 border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px;
+                 font-family: inherit; font-size: calc(12px * var(--wf)); }
+  .lkrow #lkNewT { flex: 0 0 calc(110px * var(--wf)); }
+  .lkrow #lkNewU { flex: 1; }
+  .lkrow input:focus { outline: none; border-color: var(--accent); }
+  .lkpre { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .lked { display: flex; align-items: center; gap: 5px; background: var(--card);
+          border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; }
+  .lnm { flex: 1; min-width: 0; }
+  .lnm b { display: block; font-size: calc(12.5px * var(--wf)); font-weight: 800;
+           color: var(--fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lnm i { display: block; font-style: normal; font-size: calc(9.5px * var(--wf));
+           color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .lgrp { display: flex; align-items: baseline; gap: 7px; padding: 8px 2px 4px;
           font-size: calc(10px * var(--wf)); font-weight: 800; color: var(--dim);
           letter-spacing: .3px; }
