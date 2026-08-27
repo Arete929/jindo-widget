@@ -283,6 +283,16 @@ async function refreshFeed() {
                      tab: String(a.tab || '').trim() }))
       .filter((a) => a.t && a.u);
     feedData = { apps, at: (j && j.at) || '', error: '' };
+
+    // ★ 런처 목록에 «전광판» 이 있으면 그 주소를 스스로 챙긴다.
+    //   그러면 다른 선생님은 붙여넣지 않아도 전광판이 켜진다.
+    //   손으로 넣어 둔 것이 있으면 건드리지 않는다.
+    const bd = apps.filter((a) => /전광판/.test(a.t))[0];
+    if (bd && bd.u && !loadState().boardUrlManual && getBoardUrl() !== bd.u) {
+      saveState({ boardUrl: bd.u });
+      debugLog('전광판 주소를 런처에서 받아 왔습니다');
+      refreshBoard();
+    }
     debugLog(`런처 목록 ${apps.length}개`);
   } catch (e) {
     feedData = { apps: [], at: '', error: (e && e.message) || String(e) };
@@ -1453,8 +1463,10 @@ ipcMain.on('set-ui', (_e, v) => {
   }
   if (v.photoClear) { saveState({ photoDir: '' }); sendToWidget(); }
   if (v.boardUrl !== undefined) {
-    saveState({ boardUrl: String(v.boardUrl || '').trim() });
-    debugLog('전광판 주소 바꿈');
+    const u = String(v.boardUrl || '').trim();
+    // 손으로 넣었으면 그 뒤로는 런처가 덮지 않는다
+    saveState({ boardUrl: u, boardUrlManual: !!u });
+    debugLog('전광판 주소 바꿈' + (u ? '' : ' (비움 — 다시 런처를 따릅니다)'));
     refreshBoard();
   }
   if (v.boardNick !== undefined) {
