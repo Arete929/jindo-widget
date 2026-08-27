@@ -8,7 +8,7 @@
 //   앱이 화면을 그릴 때 쓰는 것과 똑같은 계산 결과라서, 앱 화면이 바뀌어도 안 깨진다.
 //   로그인은 진짜 크롬에서 하고 그 결과(구글 ID 토큰)만 127.0.0.1 로 넘겨받는다 — startLogin() 참고.
 
-const { app, BrowserWindow, Tray, Menu, ipcMain, shell, Notification, screen, powerMonitor } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, shell, Notification, screen, powerMonitor, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const http = require('http');
@@ -176,7 +176,8 @@ function getFont() {
 // 탭마다 글자 크기 배율을 따로 기억한다 (주간업무·컴시간·학사일정·급식)
 function getFontScale() {
   const v = loadState().fontScale;
-  const out = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1, note: 1, link: 1 };
+  const out = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1, note: 1, link: 1,
+    grid: 1, tool: 1 };
   if (v && typeof v === 'object') {
     Object.keys(out).forEach((k) => {
       const n = Number(v[k]);
@@ -290,6 +291,56 @@ async function refreshFeed() {
   sendToWidget();
 }
 
+/* ── 사진 액자 ─────────────────────────────────────────────
+   폴더를 고르면 그 안의 사진을 돌아가며 보여 준다.
+   ★ 사진은 목록만 넘기고, 화면이 한 장씩 달라고 할 때 읽어 준다.
+     수백 장을 한꺼번에 넘기면 창이 굳는다. */
+const PHOTO_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+function getPhotoDir() { return String(loadState().photoDir || ''); }
+function getPhotoSec() {
+  const n = Number(loadState().photoSec);
+  return (n >= 3 && n <= 600) ? n : 12;
+}
+/* 폴더 안의 사진 목록 — 하위 폴더까지 한 겹만 본다 */
+function photoList() {
+  const dir = getPhotoDir();
+  if (!dir) return [];
+  const out = [];
+  const scan = (d, deep) => {
+    let names;
+    try { names = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
+    for (const it of names) {
+      if (out.length >= 500) return;
+      const full = path.join(d, it.name);
+      if (it.isDirectory()) { if (deep < 1) scan(full, deep + 1); continue; }
+      const ext = path.extname(it.name).toLowerCase();
+      if (PHOTO_EXT.indexOf(ext) >= 0) out.push(full);
+    }
+  };
+  scan(dir, 0);
+  out.sort();
+  return out;
+}
+
+/* ── 차림표 순서 ───────────────────────────────────────────
+   자주 쓰는 것을 앞으로 당겨 둔다. 위젯의 탭 줄과 넓게 보기의 왼쪽
+   차림표가 «같은 순서» 를 쓴다 — 둘이 다르면 손이 헷갈린다.
+   ★ 담아 둔 목록에 없는 화면(새로 생긴 것)은 뒤에 붙는다. */
+function getTabOrder() {
+  const v = loadState().tabOrder;
+  return Array.isArray(v) ? v.map(String).slice(0, 20) : [];
+}
+/* ── 대시보드 칸 ───────────────────────────────────────────
+   순서를 바꾸고, 안 볼 것은 접어 둔다. */
+function getDashOrder() {
+  const v = loadState().dashOrder;
+  return Array.isArray(v) ? v.map(String).slice(0, 20) : [];
+}
+function getDashOff() {
+  const v = loadState().dashOff;
+  return Array.isArray(v) ? v.map(String).slice(0, 20) : [];
+}
+
 /* 차림표 모양 — 아이콘만 / 글자만 / 둘 다.
    위젯의 탭 줄과 넓게 보기의 왼쪽 차림표가 «함께» 이것을 따른다. */
 function getNavStyle() {
@@ -300,8 +351,12 @@ function getNavStyle() {
 /* 개학일 — 진도표의 «1주차» 를 여기서부터 센다.
    학사일정에서 «개학» 이라 적힌 날을 찾는 방법도 있지만, 표현이 해마다 달라
    놓치기 쉽다. 한 학기에 한 번 넣는 것이니 손으로 넣는 편이 확실하다. */
+/* 아직 안 넣었으면 이 날부터 1주차로 본다 — 넣자마자 진도표가 나오게.
+   학기가 바뀌면 설정에서 고치면 된다. */
+const TERM_DEFAULT = '2026-08-18';
 function getTermStart() {
-  const s = String(loadState().termStart || '').trim();
+  const st = loadState();
+  const s = String(st.termStart === undefined ? TERM_DEFAULT : (st.termStart || '')).trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
 }
 
@@ -371,8 +426,8 @@ async function refreshGradePlan(grade) {
 // 둘은 스위치처럼 한 번에 하나만 뜬다. 다음에 켤 때도 그 모습으로 시작한다.
 function getViewMode() { return loadState().viewMode === 'easy' ? 'easy' : 'widget'; }
 const VIEWS = HAS_TT
-  ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal', 'rec', 'link']
-  : ['work', 'comci', 'note', 'grid', 'cal', 'meal', 'rec', 'link'];
+  ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal', 'rec', 'tool', 'link']
+  : ['work', 'comci', 'note', 'grid', 'cal', 'meal', 'rec', 'tool', 'link'];
 function getView() {
   const v = loadState().view;
   return VIEWS.includes(v) ? v : VIEWS[0];
@@ -571,6 +626,9 @@ function sendToWidget() {
     links: getLinks(),                           // 바로가기 타일
     termStart: getTermStart(),                   // 진도표 1주차 기준
     navStyle: getNavStyle(),                     // 차림표 — 아이콘만/글자만/둘 다
+    tabOrder: getTabOrder(),                     // 탭·차림표 순서
+    dashOrder: getDashOrder(), dashOff: getDashOff(),   // 대시보드 칸
+    photo: { dir: getPhotoDir(), sec: getPhotoSec() },  // 사진 액자
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },   // 런처 목록
     update: { state: updateState, version: updateVersion }
   };
@@ -1258,6 +1316,8 @@ ipcMain.handle('get-settings', () => ({
     links: getLinks(),
     termStart: getTermStart(),
     navStyle: getNavStyle(),
+    tabOrder: getTabOrder(), dashOrder: getDashOrder(), dashOff: getDashOff(),
+    photo: { dir: getPhotoDir(), sec: getPhotoSec(), count: photoList().length },
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },
     browsers: browserList().map((b) => ({ key: b.key, label: b.label })),
     browser: getBrowserPick(),
@@ -1335,6 +1395,24 @@ ipcMain.on('set-ui', (_e, v) => {
     saveState({ feedUrl: String(v.feedUrl || '') });
     debugLog('런처 주소 바꿈');
     refreshFeed();
+  }
+  if (v.photoSec !== undefined) {
+    const n = Number(v.photoSec);
+    saveState({ photoSec: (n >= 3 && n <= 600) ? n : 12 });
+    sendToWidget();
+  }
+  if (v.photoClear) { saveState({ photoDir: '' }); sendToWidget(); }
+  if (v.tabOrder !== undefined) {
+    saveState({ tabOrder: (v.tabOrder || []).map(String).slice(0, 20) });
+    sendToWidget();
+  }
+  if (v.dashOrder !== undefined) {
+    saveState({ dashOrder: (v.dashOrder || []).map(String).slice(0, 20) });
+    sendToWidget();
+  }
+  if (v.dashOff !== undefined) {
+    saveState({ dashOff: (v.dashOff || []).map(String).slice(0, 20) });
+    sendToWidget();
   }
   if (v.navStyle !== undefined) {
     const t = String(v.navStyle || '');
@@ -1488,6 +1566,40 @@ ipcMain.on('open-timetable', () => openTimetableWindow());
 ipcMain.on('hide-widget', () => {
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.hide();
 });
+/* 사진 액자 — 폴더 고르기 · 목록 · 한 장 읽기 */
+ipcMain.handle('photo-pick', async () => {
+  const r = await dialog.showOpenDialog({
+    title: '사진이 든 폴더를 골라 주세요',
+    properties: ['openDirectory'],
+    defaultPath: getPhotoDir() || app.getPath('pictures')
+  });
+  if (r.canceled || !r.filePaths.length) return { dir: getPhotoDir(), count: photoList().length };
+  saveState({ photoDir: r.filePaths[0] });
+  const n = photoList().length;
+  debugLog('사진 액자 폴더: ' + r.filePaths[0] + ' — ' + n + '장');
+  sendToWidget();
+  return { dir: r.filePaths[0], count: n };
+});
+ipcMain.handle('photo-list', () => ({
+  dir: getPhotoDir(), sec: getPhotoSec(),
+  files: photoList().map((f) => path.basename(f))
+}));
+/* 한 장을 그림 자료로 읽어 준다 — 목록의 몇 번째인지로 고른다.
+   ★ 화면이 준 «파일 이름» 을 그대로 믿지 않고, 우리가 만든 목록에서 고른다. */
+ipcMain.handle('photo-read', (_e, i) => {
+  const list = photoList();
+  const n = Number(i);
+  if (!list.length || !(n >= 0) || n >= list.length) return null;
+  const f = list[n];
+  try {
+    const b = fs.readFileSync(f);
+    if (b.length > 12 * 1024 * 1024) return null;   // 너무 큰 것은 건너뛴다
+    const ext = path.extname(f).toLowerCase().replace('.', '');
+    const mime = ext === 'jpg' ? 'jpeg' : ext;
+    return { name: path.basename(f),
+      data: 'data:image/' + mime + ';base64,' + b.toString('base64') };
+  } catch (e) { return null; }
+});
 ipcMain.on('open-easy', () => openEasyWindow());
 ipcMain.handle('feed-refresh', async () => { await refreshFeed(); return feedData; });
 ipcMain.on('show-widget', () => showWidgetOnly());
@@ -1555,17 +1667,45 @@ const PRINT_CSS = `
   u { text-decoration: underline; }
 `;
 
+/* 미리보기 창 위에 붙는 줄. 인쇄할 때는 @media print 로 사라진다. */
+const PAPER_BAR_CSS = `
+  .pbar { position: sticky; top: 0; z-index: 9;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; margin: -14px -14px 14px;
+    background: #27187E; color: #F7F7FF;
+    font-size: 13px; font-weight: 700; }
+  .pbar b { font-weight: 800; }
+  .pbar .sp { flex: 1; }
+  .pbar button { font-family: inherit; font-size: 13px; font-weight: 800;
+    border: 0; border-radius: 8px; padding: 7px 16px; cursor: pointer; }
+  .pbar .go { background: #F7F7FF; color: #27187E; }
+  .pbar .no { background: rgba(255,255,255,.16); color: #F7F7FF; }
+  @media print { .pbar { display: none !important; } }
+`;
+const PAPER_BAR_HTML = '<div class="pbar">'
+  + '<b>미리보기</b><span>실제로 나올 종이 그대로입니다</span><span class="sp"></span>'
+  + '<button class="no" onclick="paper.close()">닫기</button>'
+  + '<button class="go" onclick="paper.print()">🖨 인쇄</button></div>';
+
 function printPaper(p) {
   return new Promise((resolve) => {
+    // ★ 이제 «보여 주는» 창이다 — 눈으로 보고 나서 인쇄를 누른다
     const win = new BrowserWindow({
-      show: false,
-      webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
+      width: 900, height: 1000, show: false,
+      title: (p.range || '주간업무') + ' — 미리보기',
+      icon: path.join(__dirname, 'assets', ICON),
+      webPreferences: {
+        preload: path.join(__dirname, 'paperload.js'),
+        nodeIntegration: false, contextIsolation: true
+      }
     });
+    win.setMenuBarVisibility(false);
     const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">'
       + '<title>' + escHtml(p.title) + '</title>'
       + '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9'
       + '/dist/web/variable/pretendardvariable-dynamic-subset.min.css">'
-      + '<style>' + PRINT_CSS + '</style></head><body>'
+      + '<style>' + PRINT_CSS + PAPER_BAR_CSS + '</style></head><body>'
+      + PAPER_BAR_HTML
       + '<div class="head"><h1>' + escHtml(p.range || '주간업무') + '</h1>'
       + '<div class="sub">' + escHtml(p.doc || '') + ' · ' + escHtml(APP_NAME)
       + ' · 뽑은 날 ' + stampNow() + '</div></div>'
@@ -1573,21 +1713,22 @@ function printPaper(p) {
       + '</body></html>';
 
     const done = (ok) => {
+      paperWin = null;
       if (!win.isDestroyed()) win.destroy();
       resolve(ok);
     };
+    // 창이 닫히면(엑스를 눌러도) 기다리던 쪽을 풀어 준다
+    win.once('closed', () => { paperWin = null; resolve(true); });
     win.webContents.once('did-finish-load', () => {
-      // 글꼴이 늦게 올 수 있어 조금 기다렸다가 인쇄한다 (글자가 깨져 나오는 것을 막는다)
+      // 글꼴이 늦게 올 수 있어 조금 기다렸다가 보여 준다 (글자가 깨져 보이는 것을 막는다)
       setTimeout(() => {
-        if (win.isDestroyed()) return resolve(false);
-        win.webContents.print({ silent: false, printBackground: true }, (ok, why) => {
-          if (!ok && why && why !== 'cancelled') debugLog('주간업무 인쇄 실패: ' + why);
-          else debugLog('주간업무 인쇄 — ' + (ok ? '보냄' : '취소'));
-          done(ok);
-        });
-      }, 600);
+        if (win.isDestroyed()) return;
+        win.center();
+        win.show();
+      }, 400);
     });
     win.webContents.once('did-fail-load', () => { debugLog('인쇄용 종이를 못 그림'); done(false); });
+    paperWin = win;
     win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
   });
 }
@@ -1600,6 +1741,19 @@ function stampNow() {
   return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate())
     + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
+
+/* 미리보기 창에서 오는 두 가지 */
+let paperWin = null;
+ipcMain.on('paper-print', () => {
+  if (!paperWin || paperWin.isDestroyed()) return;
+  paperWin.webContents.print({ silent: false, printBackground: true }, (ok, why) => {
+    if (!ok && why && why !== 'cancelled') debugLog('주간업무 인쇄 실패: ' + why);
+    else debugLog('주간업무 인쇄 — ' + (ok ? '보냄' : '취소'));
+  });
+});
+ipcMain.on('paper-close', () => {
+  if (paperWin && !paperWin.isDestroyed()) paperWin.close();
+});
 
 ipcMain.handle('work-print', async (_e, p) => {
   if (!p || !p.body) return false;

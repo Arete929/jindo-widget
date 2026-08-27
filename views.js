@@ -14,7 +14,7 @@ var NOTES = null;
 var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1 };
 function fsKey() {
   return ({ work: 'work', comci: 'comci', cal: 'cal', meal: 'meal', rec: 'rec',
-    home: 'home', note: 'note', link: 'link', grid: 'grid' })[VIEW] || '';
+    home: 'home', note: 'note', link: 'link', grid: 'grid', tool: 'tool' })[VIEW] || '';
 }
 function fontBtns(key) {
   return '<span class="wfs">'
@@ -1589,10 +1589,196 @@ function notesCard() {
 }
 /* 이름 — 혜원이지는 뒤 두 글자를 색 상자로 준다. 진호알리미는 그대로.
    ★ 위젯 제목 줄과 넓은 창이 같이 쓴다(한 곳에서만 고치도록). */
+/* 담아 둔 순서대로 늘어놓는다. 목록에 없는 것(새로 생긴 화면)은 뒤에 붙는다.
+   ★ 순서를 담아 두는 곳이 하나뿐이라, 위젯과 넓게 보기가 늘 같은 순서가 된다. */
+function inOrder(list, order, keyOf) {
+  if (!order || !order.length) return list;
+  var rank = {};
+  order.forEach(function (k, i) { rank[k] = i; });
+  var head = [], tail = [];
+  list.forEach(function (x) {
+    (rank[keyOf(x)] === undefined ? tail : head).push(x);
+  });
+  head.sort(function (a, b) { return rank[keyOf(a)] - rank[keyOf(b)]; });
+  return head.concat(tail);
+}
+
+/* ── 도구 ──────────────────────────────────────────────────
+   자주 쓰는 잔일 둘을 한 화면에 모았다.
+     · 명렬표 — 학급 고르면 번호·이름을 죽 보여 준다
+     · 글자수 세기 — 나이스 기재요령대로 «바이트» 까지 센다 */
+var toolTab = 'roster', RS = null, rsBusy = false, rsCls = '';
+var cntText = '';
+var PH = null, phI = 0, phBusy = false, phSrc = '', phTimer = null;
+function rsLoad(force) {
+  if (rsBusy) return;
+  if (RS && !force) return;
+  rsBusy = true;
+  widgetAPI.rosterGet().then(function (r) {
+    rsBusy = false; RS = r || { students: [], classes: [] }; render();
+  }).catch(function (e) {
+    rsBusy = false; RS = { students: [], classes: [], error: (e && e.message) || String(e) };
+    render();
+  });
+}
+/* 나이스 기재요령(중학교) — 한글 3바이트 · 영문/숫자/기호 1바이트 · 엔터 1바이트.
+   ★ 흔히 쓰는 셈틀은 엔터를 2로 세는데 그것은 틀렸다. 과세특 500자 = 1500바이트. */
+function neisBytes(s) {
+  var n = 0;
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charCodeAt(i);
+    if (c === 10) { n += 1; continue; }        // 엔터
+    if (c === 13) continue;                    // 캐리지리턴은 안 센다
+    n += (c > 127) ? 3 : 1;
+  }
+  return n;
+}
+function viewTools() {
+  var h = '<div class="top2"><div class="wknav">'
+    + ['roster,명렬표', 'count,글자수 세기', 'photo,사진 액자'].map(function (s) {
+        var p = s.split(',');
+        return '<button class="wkb' + (toolTab === p[0] ? ' now' : '') + '" data-tool="'
+          + p[0] + '">' + p[1] + '</button>';
+      }).join('')
+    + '<span class="spacer"></span>' + fontBtns('tool')
+    + (toolTab === 'roster' ? '<button class="wkb" id="rsGet" title="다시 받기">⟳</button>' : '')
+    + '</div></div>';
+  if (toolTab === 'count') return h + toolCount();
+  if (toolTab === 'photo') return h + toolPhoto();
+  return h + toolRoster();
+}
+function toolRoster() {
+  if (!RS) { rsLoad(); return '<div class="empty">명렬표를 불러오는 중…</div>'; }
+  // 자료 모양: { classes:[{key:'3-1', students:[{id,no,name}]}], count }
+  var cls = RS.classes || [];
+  if (RS.error || !cls.length) {
+    return '<div class="empty">' + esc(RS.error || '명렬표가 비어 있습니다.') + '<br>'
+      + '<button class="btn" id="rsGetBig">지금 받기</button><br>'
+      + '<button class="btn" onclick="widgetAPI.openSettings()">설정에서 주소 고치기</button></div>';
+  }
+  if (!rsCls || !cls.some(function (c) { return c.key === rsCls; })) rsCls = cls[0].key;
+  var h = '<div class="wknav"><span class="slab">학급</span>'
+    + cls.map(function (c) {
+        return '<button class="wkb' + (rsCls === c.key ? ' now' : '') + '" data-rc="'
+          + esc(c.key) + '">' + esc(c.key) + '</button>';
+      }).join('') + '</div>';
+  var one = cls.filter(function (c) { return c.key === rsCls; })[0];
+  var mine = (one.students || []).slice()
+    .sort(function (a, b) { return (a.no || 0) - (b.no || 0); });
+  h += '<div class="rsh">' + esc(rsCls) + ' · ' + mine.length + '명'
+    + '<small>모두 ' + (RS.count || 0) + '명</small></div>';
+  h += '<div class="rslist">' + mine.map(function (s) {
+    return '<div class="rsr"><i>' + (s.no || '') + '</i>'
+      + '<b>' + esc(s.name || '') + '</b>'
+      + (s.id ? '<u>' + esc(String(s.id)) + '</u>' : '') + '</div>';
+  }).join('') + '</div>';
+  return h;
+}
+/* ── 사진 액자 ─────────────────────────────────────────────
+   폴더를 고르면 그 안의 사진이 돌아가며 뜬다.
+   ★ 목록만 받아 두고 «한 장씩» 읽는다 — 수백 장을 한꺼번에 받으면 창이 굳는다. */
+function phLoad(force) {
+  if (phBusy) return;
+  if (PH && !force) return;
+  phBusy = true;
+  widgetAPI.photoList().then(function (r) {
+    phBusy = false;
+    PH = r || { dir: '', files: [], sec: 12 };
+    if (phI >= (PH.files || []).length) phI = 0;
+    render();
+    phShow();
+  }).catch(function () { phBusy = false; PH = { dir: '', files: [], sec: 12 }; render(); });
+}
+/* 지금 차례의 사진을 읽어 화면에 얹는다 */
+function phShow() {
+  if (!PH || !(PH.files || []).length) return;
+  var want = phI;
+  widgetAPI.photoRead(want).then(function (p) {
+    if (!p || want !== phI) return;
+    phSrc = p.data;
+    var el = (typeof appEl === 'function' ? appEl() : document.getElementById('app'));
+    var img = el && el.querySelector('#phImg');
+    if (img) { img.src = p.data; }
+    var nm = el && el.querySelector('#phName');
+    if (nm) nm.textContent = p.name;
+  }).catch(function () {});
+}
+function phGo(d) {
+  if (!PH || !(PH.files || []).length) return;
+  var n = PH.files.length;
+  phI = ((phI + d) % n + n) % n;
+  phSrc = '';
+  phShow();
+  var el = (typeof appEl === 'function' ? appEl() : document.getElementById('app'));
+  var c = el && el.querySelector('#phNo');
+  if (c) c.textContent = (phI + 1) + ' / ' + n;
+}
+/* 저절로 넘기기 — 액자 화면을 보고 있을 때만 돈다 */
+function phTick() {
+  if (phTimer) { clearInterval(phTimer); phTimer = null; }
+  if (VIEW !== 'tool' || toolTab !== 'photo') return;
+  var sec = (PH && PH.sec) || 12;
+  phTimer = setInterval(function () {
+    if (VIEW !== 'tool' || toolTab !== 'photo') { clearInterval(phTimer); phTimer = null; return; }
+    phGo(1);
+  }, sec * 1000);
+}
+function toolPhoto() {
+  if (!PH) { phLoad(); return '<div class="empty">사진을 찾는 중…</div>'; }
+  var files = PH.files || [];
+  if (!PH.dir) {
+    return '<div class="empty">사진이 든 <b>폴더</b>를 골라 주세요.<br>'
+      + '<button class="btn" id="phPick">폴더 고르기</button>'
+      + '<div style="margin-top:8px;font-size:10.5px;opacity:.8">'
+      + '고른 폴더와 그 아래 한 겹까지 봅니다 (최대 500장).</div></div>';
+  }
+  if (!files.length) {
+    return '<div class="empty">그 폴더에 사진이 없습니다.<br>'
+      + '<span style="font-size:10.5px;opacity:.8">' + esc(PH.dir) + '</span><br>'
+      + '<button class="btn" id="phPick">다른 폴더 고르기</button></div>';
+  }
+  return '<div class="ph">'
+    + '<div class="phbox"><img id="phImg"'
+    + (phSrc ? ' src="' + phSrc + '"' : '') + ' alt=""></div>'
+    + '<div class="phbar">'
+    + '<button class="wkb" id="phPrev">◀</button>'
+    + '<span class="phno" id="phNo">' + (phI + 1) + ' / ' + files.length + '</span>'
+    + '<button class="wkb" id="phNext">▶</button>'
+    + '<span class="phnm" id="phName"></span>'
+    + '<span class="spacer"></span>'
+    + '<button class="wkb" id="phPick">폴더 바꾸기</button></div>'
+    + '<div class="phdir">' + esc(PH.dir) + ' · ' + files.length + '장 · '
+    + ((PH.sec || 12)) + '초마다 넘어감</div>'
+    + '</div>';
+}
+
+function toolCount() {
+  var t = cntText;
+  var chars = t.replace(/\r/g, '').length;
+  var noSpace = t.replace(/\s/g, '').length;
+  var bytes = neisBytes(t);
+  var lines = t ? t.replace(/\r/g, '').split('\n').length : 0;
+  var pct = Math.min(100, Math.round(bytes / 1500 * 100));
+  return '<div class="cnt">'
+    + '<textarea id="cntIn" placeholder="여기에 붙여넣으세요">' + esc(t) + '</textarea>'
+    + '<div class="cntg">'
+    + '<div class="cntb"><b>' + bytes + '</b><span>Byte</span></div>'
+    + '<div class="cntb"><b>' + chars + '</b><span>글자</span></div>'
+    + '<div class="cntb"><b>' + noSpace + '</b><span>공백 빼고</span></div>'
+    + '<div class="cntb"><b>' + lines + '</b><span>줄</span></div>'
+    + '</div>'
+    + '<div class="cntbar"><i style="width:' + pct + '%;background:' + usgFill(pct) + '"></i></div>'
+    + '<div class="cnth">과세특 <b>500자 = 1500Byte</b> 기준 <b>' + pct + '%</b>'
+    + (bytes > 1500 ? ' <em class="over">— ' + (bytes - 1500) + 'Byte 넘었습니다</em>' : '') + '</div>'
+    + '<div class="cnth dim">나이스 기재요령(중학교) — 한글 3 · 영문/숫자/기호 1 · <b>엔터 1</b> Byte.'
+    + ' 흔히 쓰는 셈틀은 엔터를 2로 세는데 그것은 틀립니다.</div>'
+    + '</div>';
+}
+
 function brandHtml() {
   var n = String(APPNAME || '');
   if (HAS_TT || n.length < 3) return esc(n);
-  return esc(n.slice(0, 2)) + '<em class="bchip">' + esc(n.slice(2)) + '</em>';
+  return '<em class="bchip">' + esc(n.slice(0, 2)) + '</em>' + esc(n.slice(2));
 }
 /* ── 바로가기 ──────────────────────────────────────────────
    제목과 주소만 담긴 타일. 누르면 «설정에서 고른 브라우저» 로 열린다.
@@ -1601,6 +1787,7 @@ function brandHtml() {
 var LINKS = [];
 var TERMSTART = '';
 var NAVSTYLE = 'both';
+var TABORDER = [], DASHORDER = [], DASHOFF = [];
 var FEED = null;
 /* 이름에서 한 글자 — 한글이면 첫 글자, 영문이면 대문자 한 자 */
 function linkLetter(t) {
@@ -2177,8 +2364,10 @@ function render() {
   var TT_SUB = ['today', 'week', 'progress'];
   var tab = TT_SUB.indexOf(VIEW) >= 0 ? 'tt' : VIEW;
   html += '<div class="chips">'
-    + (HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']
-              : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']).map(function (s) {
+    + inOrder(
+        HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'tool,도구', 'link,바로가기']
+               : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'tool,도구', 'link,바로가기'],
+        TABORDER, function (s) { return s.split(',')[0]; }).map(function (s) {
         var p = s.split(',');
         return '<button class="chip nav' + NAVSTYLE + (tab === p[0] ? ' on' : '')
           + '" data-v="' + p[0] + '" title="' + esc(p[1]) + '">' + chipInner(p[0], p[1]) + '</button>';
@@ -2203,6 +2392,7 @@ function render() {
     : VIEW === 'link' ? viewLinks()
     : VIEW === 'note' ? viewNote()
     : VIEW === 'grid' ? viewGrid()
+    : VIEW === 'tool' ? viewTools()
     : viewToday(d);
   html += '<div class="foot">@JINHOKIM</div>';   // 버전은 제목 줄 오른쪽 끝에 있다
   app.style.setProperty('--wf', String(FS[fsKey()] || 1));
@@ -2218,6 +2408,23 @@ function render() {
 
   wireViews(app);
   report();
+}
+
+/* 글자수 — 다시 그리지 않고 숫자만 갈아 끼운다 */
+function cntPaint(app) {
+  var t = cntText;
+  var bytes = neisBytes(t);
+  var v = [bytes, t.replace(/\r/g, '').length, t.replace(/\s/g, '').length,
+    t ? t.replace(/\r/g, '').split('\n').length : 0];
+  app.querySelectorAll('.cntb b').forEach(function (b, i) { b.textContent = v[i]; });
+  var pct = Math.min(100, Math.round(bytes / 1500 * 100));
+  var bar = app.querySelector('.cntbar i');
+  if (bar) { bar.style.width = pct + '%'; bar.style.background = usgFill(pct); }
+  var hint = app.querySelector('.cnth');
+  if (hint) {
+    hint.innerHTML = '과세특 <b>500자 = 1500Byte</b> 기준 <b>' + pct + '%</b>'
+      + (bytes > 1500 ? ' <em class="over">— ' + (bytes - 1500) + 'Byte 넘었습니다</em>' : '');
+  }
 }
 
 /* 격자 칸을 눌러 그 자리에서 적는다.
@@ -2340,6 +2547,9 @@ widgetAPI.onData(function (p) {
   LINKS = p.links || [];
   TERMSTART = p.termStart || '';
   NAVSTYLE = p.navStyle || 'both';
+  TABORDER = p.tabOrder || [];
+  DASHORDER = p.dashOrder || [];
+  DASHOFF = p.dashOff || [];
   FEED = (p.feed && p.feed.show && p.feed.data) ? p.feed.data : null;
   if (p.font && p.font !== FONT) {
     FONT = p.font;
@@ -2722,6 +2932,31 @@ function wireViews(app) {
       scrollToEl(document.getElementById('acm-' + b.dataset.ac), 2);
     });
   });
+  // 도구 — 명렬표·글자수
+  app.querySelectorAll('[data-tool]').forEach(function (b) {
+    b.addEventListener('click', function () { toolTab = b.dataset.tool; render(); });
+  });
+  app.querySelectorAll('[data-rc]').forEach(function (b) {
+    b.addEventListener('click', function () { rsCls = b.dataset.rc; render(); });
+  });
+  var rsb = app.querySelector('#rsGet') || app.querySelector('#rsGetBig');
+  if (rsb) rsb.addEventListener('click', function () { RS = null; rsLoad(true); });
+  // 사진 액자
+  var pk = app.querySelector('#phPick');
+  if (pk) pk.addEventListener('click', function () {
+    widgetAPI.photoPick().then(function () { PH = null; phI = 0; phSrc = ''; phLoad(true); });
+  });
+  var pp = app.querySelector('#phPrev');
+  if (pp) pp.addEventListener('click', function () { phGo(-1); phTick(); });
+  var pn = app.querySelector('#phNext');
+  if (pn) pn.addEventListener('click', function () { phGo(1); phTick(); });
+  if (app.querySelector('#phImg')) { phTick(); if (!phSrc) phShow(); }
+  var ci = app.querySelector('#cntIn');
+  if (ci) {
+    // ★ 한 자 칠 때마다 다시 그리면 한글 조합이 깨진다 — 값만 담고 숫자만 고친다
+    ci.addEventListener('input', function () { cntText = ci.value; cntPaint(app); });
+    ci.addEventListener('blur', function () { cntText = ci.value; });
+  }
   var gpb2 = app.querySelector('#gpGet2');
   if (gpb2) gpb2.addEventListener('click', function () {
     gpOn.forEach(function (g) { GPD[g] = null; gpErr[g] = ''; gpLoad(g, true); });

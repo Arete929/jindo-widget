@@ -171,9 +171,12 @@
   .ttl { font-size: 17px; font-weight: 800; letter-spacing: -.3px; color: var(--fg); }
   /* 이름 — 「혜원」 은 그냥 두고 「이지」 만 색 상자로 준다.
      네 글자가 모두 같은 굵기라 눈에 안 들어온다는 지적이 있었다. */
+  /* 앞 두 글자(혜원)를 «바탕색 단추» 로 준다 — 밝은 옷에서는 흰 바탕에 보라 글자가 되고,
+     어두운 옷에서는 어두운 바탕에 강조색 글자가 된다(테마마다 저절로 맞는다). */
   .bchip {
-    font-style: normal; font-weight: 900; color: var(--on); background: var(--accent);
-    border-radius: .4em; padding: .06em .34em; margin-left: .12em; letter-spacing: -.02em;
+    font-style: normal; font-weight: 900; color: var(--accent); background: var(--bg);
+    border: 1.5px solid var(--accent); border-radius: .4em;
+    padding: .02em .3em; margin-right: .16em; letter-spacing: -.02em;
   }
   /* 설정 톱니 — 제목 옆에 둔다. 테마 바탕색에 따라 그림을 갈아 끼운다.
      밝은 바탕에는 검정, 어두운 바탕에는 하늘색, 강렬한 빨강 바탕에는 테두리가 있는 것. */
@@ -224,6 +227,51 @@
     background: var(--accent); color: var(--on); font-family: inherit;
     font-size: 10px; font-weight: 800; cursor: pointer;
   }
+  /* ── 도구: 명렬표 ── */
+  .rsh { display: flex; align-items: baseline; gap: 8px; padding: 8px 2px 5px;
+         font-size: calc(13px * var(--wf)); font-weight: 800; color: var(--fg); }
+  .rsh small { font-size: calc(10px * var(--wf)); font-weight: 600; color: var(--dim); }
+  .rslist { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 4px; padding-bottom: 10px; }
+  .rsr { display: flex; align-items: baseline; gap: 6px; background: var(--card);
+         border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
+  .rsr i { font-style: normal; flex: 0 0 auto; min-width: calc(18px * var(--wf));
+           text-align: right; font-size: calc(10.5px * var(--wf)); font-weight: 800;
+           color: var(--dim); }
+  .rsr b { font-size: calc(12.5px * var(--wf)); font-weight: 800; color: var(--fg); }
+  .rsr u { margin-left: auto; text-decoration: none; font-size: calc(9.5px * var(--wf));
+           color: var(--dim); }
+  /* ── 도구: 사진 액자 ── */
+  .ph { padding: 6px 0 10px; }
+  .phbox { background: var(--card2); border-radius: 12px; overflow: hidden;
+           display: flex; align-items: center; justify-content: center;
+           min-height: calc(240px * var(--wf)); }
+  .phbox img { max-width: 100%; max-height: calc(460px * var(--wf));
+               display: block; -webkit-user-drag: none; }
+  .phbar { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .phno { font-size: calc(11px * var(--wf)); font-weight: 800; color: var(--fg2);
+          min-width: calc(64px * var(--wf)); text-align: center; }
+  .phnm { font-size: calc(10px * var(--wf)); color: var(--dim); min-width: 0;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .phdir { margin-top: 6px; font-size: calc(9.5px * var(--wf)); color: var(--dim);
+           word-break: break-all; }
+  /* ── 도구: 글자수 세기 ── */
+  .cnt { padding: 6px 0 10px; }
+  .cnt textarea { width: 100%; min-height: calc(190px * var(--wf)); resize: vertical;
+    background: var(--card); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 12px; font-family: inherit; line-height: 1.6;
+    font-size: calc(12.5px * var(--wf)); }
+  .cnt textarea:focus { outline: none; border-color: var(--accent); }
+  .cntg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+  .cntb { background: var(--card2); border-radius: 9px; padding: 8px 4px; text-align: center; }
+  .cntb b { display: block; font-size: calc(17px * var(--wf)); font-weight: 900; color: var(--fg); }
+  .cntb span { display: block; font-size: calc(9.5px * var(--wf)); color: var(--dim); margin-top: 1px; }
+  .cntbar { height: 7px; border-radius: 999px; margin-top: 9px; overflow: hidden;
+            background: var(--card2); }
+  .cntbar i { display: block; height: 100%; border-radius: 999px; }
+  .cnth { margin-top: 6px; font-size: calc(11px * var(--wf)); color: var(--fg2); line-height: 1.6; }
+  .cnth.dim { color: var(--dim); font-size: calc(10px * var(--wf)); margin-top: 4px; }
+  .cnth .over { font-style: normal; font-weight: 800; color: var(--holfg); }
   /* ── 진도표 격자 ── */
   .ghint { font-size: calc(10.5px * var(--wf)); color: var(--dim); padding: 6px 2px 2px;
            line-height: 1.6; }

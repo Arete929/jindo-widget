@@ -13,6 +13,10 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   noteLoad: () => ipcRenderer.invoke('note-load'),
   noteSave: (o) => ipcRenderer.invoke('note-save', o),
   feedRefresh: () => ipcRenderer.invoke('feed-refresh'),
+  /* 사진 액자 */
+  photoPick: () => ipcRenderer.invoke('photo-pick'),
+  photoList: () => ipcRenderer.invoke('photo-list'),
+  photoRead: (i) => ipcRenderer.invoke('photo-read', i),
   openEasy: () => ipcRenderer.send('open-easy'),
   showWidget: () => ipcRenderer.send('show-widget'),
   hideWidget: () => ipcRenderer.send('hide-widget'),

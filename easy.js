@@ -19,13 +19,21 @@ var MENU = [
   { v: 'meal', p: 'nav-meal', t: '급식', d: '주 단위로 넘겨 보기', g: '오늘 볼 것' },
   { v: 'comci', p: 'nav-comci', t: '컴시간', d: '교사·학급 시간표', g: '오늘 볼 것' },
   { v: 'rec', p: 'nav-rec', t: '학생기록', d: '학급 → 학생 → 분류로 쓰고 모아 보기', g: '기록' },
+  { v: 'tool', p: 'nav-set', t: '도구', d: '명렬표 보기 · 글자수 세기', g: '기록' },
   { v: 'link', p: 'nav-home', t: '바로가기', d: '자주 가는 곳을 담아 두고 한 번에', g: '바로가기' },
   // ★ 진도표는 혜원이지에만 — 진호알리미에는 수업진도 대시보드가 따로 있다
   { v: 'grid', p: 'nav-comci', t: '진도표', d: '칸을 눌러 그 자리에서 적습니다', g: '기록', hyewon: true }
 ];
 function navImg(m) { return '<img src="assets/' + m.p + '.png" alt="">'; }
 /* 이 갈래에서 쓸 수 있는 화면만 — 진도표는 혜원이지 것이다 */
-function menus() { return MENU.filter(function (m) { return !(m.hyewon && HAS_TT); }); }
+function menus() {
+  var list = MENU.filter(function (m) { return !(m.hyewon && HAS_TT); });
+  // 대시보드는 늘 맨 앞에 둔다 — 순서를 바꿔도 «집» 은 첫 자리다
+  var home = list.filter(function (m) { return m.v === 'home'; });
+  var rest = inOrder(list.filter(function (m) { return m.v !== 'home'; }),
+    TABORDER, function (m) { return m.v; });
+  return home.concat(rest);
+}
 function menuOf(v) { return MENU.filter(function (m) { return m.v === v; })[0] || MENU[0]; }
 function known(v) { return menus().some(function (m) { return m.v === v; }); }
 
@@ -242,13 +250,20 @@ function viewHome() {
   var h = todayLine();
   h += wxCard();   // 사용량은 사이드바에 있다
 
-  // ★ 여기가 «대시보드다운» 부분 — 사이드바에 없는 것들이다
-  var cards = dcard('오늘 일정', dcToday(), 'cal')
-    + dcard('오늘 수업', dcLesson(), '')
-    + dcard('오늘 급식', dcMeal(), 'meal')
-    + dcard('앞으로 7일', dcNext(), 'cal')
-    + dcard('바로가기', linkTiles(), 'link')
-    + dcard('내 앱', feedTiles(), 'link');
+  // ★ 여기가 «대시보드다운» 부분 — 사이드바에 없는 것들이다.
+  //   순서는 설정에서 바꾸고, 안 볼 것은 접어 둔다.
+  var CARDS = [
+    { k: 'today', t: '오늘 일정', go: 'cal', body: dcToday },
+    { k: 'lesson', t: '오늘 수업', go: '', body: dcLesson },
+    { k: 'meal', t: '오늘 급식', go: 'meal', body: dcMeal },
+    { k: 'next', t: '앞으로 7일', go: 'cal', body: dcNext },
+    { k: 'link', t: '바로가기', go: 'link', body: linkTiles },
+    { k: 'feed', t: '내 앱', go: 'link', body: feedTiles }
+  ];
+  var cards = inOrder(CARDS, DASHORDER, function (c) { return c.k; })
+    .filter(function (c) { return DASHOFF.indexOf(c.k) < 0; })
+    .map(function (c) { return dcard(c.t, c.body(), c.go); })
+    .join('');
   if (cards) h += '<div class="dcs">' + cards + '</div>';
 
   var favs = EASYFAV.filter(known).map(menuOf).filter(function (m) { return m.v !== 'home'; });
@@ -290,7 +305,8 @@ render = function () {
               : VIEW === 'rec' ? viewRec()
               : VIEW === 'link' ? viewLinks()
                 : VIEW === 'note' ? viewNote()
-                  : VIEW === 'grid' ? viewGrid() : '')
+                  : VIEW === 'grid' ? viewGrid()
+                    : VIEW === 'tool' ? viewTools() : '')
       + '</div>';
   }
   MAIN.style.setProperty('--wf', String(FS[fsKey()] || 1));
