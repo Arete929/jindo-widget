@@ -177,7 +177,7 @@ function getFont() {
 function getFontScale() {
   const v = loadState().fontScale;
   const out = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1, note: 1, link: 1,
-    grid: 1, tool: 1 };
+    grid: 1, tool: 1, office: 1 };
   if (v && typeof v === 'object') {
     Object.keys(out).forEach((k) => {
       const n = Number(v[k]);
@@ -326,6 +326,11 @@ function photoList() {
    자주 쓰는 것을 앞으로 당겨 둔다. 위젯의 탭 줄과 넓게 보기의 왼쪽
    차림표가 «같은 순서» 를 쓴다 — 둘이 다르면 손이 헷갈린다.
    ★ 담아 둔 목록에 없는 화면(새로 생긴 것)은 뒤에 붙는다. */
+/* 교무실 즐겨찾기 — 별표로 위에 고정해 둔 것 */
+function getOfficeFav() {
+  const v = loadState().officeFav;
+  return Array.isArray(v) ? v.map(String).slice(0, 60) : [];
+}
 function getTabOrder() {
   const v = loadState().tabOrder;
   return Array.isArray(v) ? v.map(String).slice(0, 20) : [];
@@ -426,8 +431,8 @@ async function refreshGradePlan(grade) {
 // 둘은 스위치처럼 한 번에 하나만 뜬다. 다음에 켤 때도 그 모습으로 시작한다.
 function getViewMode() { return loadState().viewMode === 'easy' ? 'easy' : 'widget'; }
 const VIEWS = HAS_TT
-  ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal', 'rec', 'tool', 'link']
-  : ['work', 'comci', 'note', 'grid', 'cal', 'meal', 'rec', 'tool', 'link'];
+  ? ['today', 'week', 'progress', 'work', 'comci', 'cal', 'meal', 'rec', 'office', 'tool', 'link']
+  : ['work', 'comci', 'note', 'grid', 'cal', 'meal', 'rec', 'office', 'tool', 'link'];
 function getView() {
   const v = loadState().view;
   return VIEWS.includes(v) ? v : VIEWS[0];
@@ -627,6 +632,7 @@ function sendToWidget() {
     termStart: getTermStart(),                   // 진도표 1주차 기준
     navStyle: getNavStyle(),                     // 차림표 — 아이콘만/글자만/둘 다
     tabOrder: getTabOrder(),                     // 탭·차림표 순서
+    officeFav: getOfficeFav(),                   // 교무실 즐겨찾기
     dashOrder: getDashOrder(), dashOff: getDashOff(),   // 대시보드 칸
     photo: { dir: getPhotoDir(), sec: getPhotoSec() },  // 사진 액자
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },   // 런처 목록
@@ -1317,6 +1323,7 @@ ipcMain.handle('get-settings', () => ({
     termStart: getTermStart(),
     navStyle: getNavStyle(),
     tabOrder: getTabOrder(), dashOrder: getDashOrder(), dashOff: getDashOff(),
+    officeFav: getOfficeFav(),
     photo: { dir: getPhotoDir(), sec: getPhotoSec(), count: photoList().length },
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },
     browsers: browserList().map((b) => ({ key: b.key, label: b.label })),
@@ -1402,6 +1409,10 @@ ipcMain.on('set-ui', (_e, v) => {
     sendToWidget();
   }
   if (v.photoClear) { saveState({ photoDir: '' }); sendToWidget(); }
+  if (v.officeFav !== undefined) {
+    saveState({ officeFav: (v.officeFav || []).map(String).slice(0, 60) });
+    sendToWidget();
+  }
   if (v.tabOrder !== undefined) {
     saveState({ tabOrder: (v.tabOrder || []).map(String).slice(0, 20) });
     sendToWidget();

@@ -14,7 +14,8 @@ var NOTES = null;
 var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1 };
 function fsKey() {
   return ({ work: 'work', comci: 'comci', cal: 'cal', meal: 'meal', rec: 'rec',
-    home: 'home', note: 'note', link: 'link', grid: 'grid', tool: 'tool' })[VIEW] || '';
+    home: 'home', note: 'note', link: 'link', grid: 'grid', tool: 'tool',
+    office: 'office' })[VIEW] || '';
 }
 function fontBtns(key) {
   return '<span class="wfs">'
@@ -1775,6 +1776,177 @@ function toolCount() {
     + '</div>';
 }
 
+
+/* ── 온라인 교무실 ─────────────────────────────────────────
+   부서마다 갈라 타일로 본다. 주소면 눌러서 열고, 폴더면 펼쳐서 파일을 받는다.
+
+   ★ 지금은 «예시 자료» 다. 화면 생김새를 먼저 맞춰 두는 것이다.
+     진짜 자료는 학교 구글 계정에 시트·폴더를 두고 거기서 받아 온다.
+     그때 OFFICE 만 갈아 끼우면 되도록 모양을 미리 맞춰 두었다.
+
+   ★ 아이콘은 선으로 그린 것을 코드 안에 넣는다 — 남의 그림 파일을 쓰지 않아
+     인터넷이 없어도 나오고, 테마 색을 그대로 따라간다. */
+var OFICON = {
+  folder: '<path d="M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>',
+  file: '<path d="M5 3h9l5 5v13H5z"/><path d="M14 3v5h5"/>',
+  doc: '<path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M15 4v5h5"/><path d="M8 13h8M8 17h5"/>',
+  sheet: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  chart: '<path d="M4 19V9M10 19V4M16 19v-7M22 19H2"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  book: '<path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z"/><path d="M8 3v18"/>',
+  users: '<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 20a5.5 5.5 0 0 1 5-4.9"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+  form: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/>',
+  app: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>'
+};
+function ofSvg(name, cls) {
+  var p = OFICON[name] || OFICON.link;
+  return '<svg class="' + (cls || '') + '" viewBox="0 0 24 24">' + p + '</svg>';
+}
+/* 주소를 보고 아이콘을 고른다 — 적어 두지 않아도 알맞은 것이 나온다 */
+function ofIconOf(x) {
+  if (x.icon && OFICON[x.icon]) return x.icon;
+  if (x.files) return 'folder';
+  var u = String(x.u || '');
+  if (/drive\.google\.com\/drive\/folders/.test(u)) return 'folder';
+  if (/docs\.google\.com\/spreadsheets/.test(u)) return 'sheet';
+  if (/docs\.google\.com\/document/.test(u)) return 'doc';
+  if (/docs\.google\.com\/forms/.test(u)) return 'form';
+  if (/script\.google\.com/.test(u)) return 'app';
+  return 'link';
+}
+/* 파일 이름 끝을 보고 아이콘을 고른다 */
+function ofFileIcon(n) {
+  var e = String(n || '').toLowerCase();
+  if (/\.(xlsx?|csv)$/.test(e)) return 'sheet';
+  if (/\.(hwpx?|docx?|pdf|txt)$/.test(e)) return 'file';
+  return 'file';
+}
+
+/* 부서 차례 — 주간업무에 적힌 그대로 쓴다.
+   아직 못 받았으면 아래 기본 차례로 간다. «기타» 는 언제나 맨 뒤. */
+var OFDEPT_BASE = ['교무기획부', '연구정보부', '생활상담부', '창의복지부',
+  '1학년부', '2학년부', '3학년부', '행정실'];
+function ofDepts() {
+  var out = [];
+  var wk = WORK && WORK[workDoc];
+  var last = wk && wk.length ? wk[wk.length - 1] : null;
+  (last && last.depts ? last.depts : []).forEach(function (d) {
+    if (d.name && d.name !== '기타' && out.indexOf(d.name) < 0) out.push(d.name);
+  });
+  if (!out.length) out = OFDEPT_BASE.slice();
+  return out;
+}
+
+/* ★ 예시 자료. 진짜가 붙으면 이 덩어리만 갈아 끼운다. */
+var OFFICE = {
+  demo: true,
+  items: [
+    { dept: '교무기획부', t: '공문 서식', d: '기안·시행문 양식', icon: 'folder',
+      files: [
+        { n: '기안문 서식.hwp', s: '24KB' },
+        { n: '시행문 서식.hwp', s: '18KB' },
+        { n: '예산집행 대장.xlsx', s: '41KB' }
+      ] },
+    { dept: '교무기획부', t: '학사일정', d: '연간 수업일수 계획표', icon: 'calendar', u: '#' },
+    { dept: '교무기획부', t: '나이스', d: '대국민 서비스', icon: 'clock', u: '#' },
+    { dept: '연구정보부', t: '과세특 작성 도우미', d: 'AI 특기사항 초안', icon: 'pencil', u: '#' },
+    { dept: '연구정보부', t: '3학년 성적분석', d: '13과목·수행평가', icon: 'chart', u: '#' },
+    { dept: '생활상담부', t: '학교폭력 서식', d: '사안 처리 양식', icon: 'folder',
+      files: [{ n: '사안접수 보고서.hwp', s: '31KB' }, { n: '학부모 통지문.hwp', s: '22KB' }] },
+    { dept: '창의복지부', t: '체험학습 신청', d: '교외체험학습 서식', icon: 'form', u: '#' },
+    { dept: '3학년부', t: '3학년부 일지', d: '구분·내용·세부사항', icon: 'book', u: '#' },
+    { dept: '3학년부', t: '2026 짝꿍선정', d: '모둠 편성', icon: 'users', u: '#' },
+    { dept: '3학년부', t: '고입 자료', d: '원서·추천서 양식', icon: 'folder', unshared: true,
+      files: [
+        { n: '입학원서.hwp', s: '52KB' }, { n: '추천서 양식.hwp', s: '19KB' },
+        { n: '자기소개서.hwp', s: '17KB' }
+      ] },
+    { dept: '행정실', t: '지출품의 서식', d: '여비·물품 구입', icon: 'folder',
+      files: [{ n: '지출품의서.hwp', s: '28KB' }, { n: '여비정산서.xlsx', s: '35KB' }] },
+    { dept: '행정실', t: '시설 요청', d: '수리·점검 신청', icon: 'form', u: '#' },
+    { dept: '', t: '인디스쿨', d: 'indischool.com', u: 'https://indischool.com' }
+  ]
+};
+
+var ofFav = [], ofOnlyFav = false, ofQ = '', ofOpen = {};
+function ofKey(x) { return x.dept + '|' + x.t; }
+function ofHit(x) {
+  if (!ofQ) return true;
+  var q = ofQ.toLowerCase();
+  return (x.t + ' ' + (x.d || '') + ' ' + (x.dept || '')).toLowerCase().indexOf(q) >= 0;
+}
+
+function ofTile(x, i) {
+  var key = ofKey(x), on = ofFav.indexOf(key) >= 0;
+  var open = !!ofOpen[key];
+  var n = x.files ? x.files.length : 0;
+  var h = '<div class="oft' + (open ? ' open' : '') + '" data-of="' + i + '">'
+    + '<button class="ofstar' + (on ? ' on' : '') + '" data-offav="' + esc(key) + '" '
+    + 'title="' + (on ? '즐겨찾기에서 빼기' : '즐겨찾기에 넣기') + '">' + (on ? '★' : '☆') + '</button>'
+    + (n ? '<span class="ofcnt">' + n + '개 ' + (open ? '▴' : '▾') + '</span>' : '')
+    + '<span class="ofic">' + ofSvg(ofIconOf(x)) + '</span>'
+    + '<b>' + esc(x.t) + '</b>'
+    + (x.d ? '<i>' + esc(x.d) + '</i>' : '');
+  if (open && x.files) {
+    h += '<div class="offs">' + x.files.map(function (f) {
+      return '<div class="off"><span>' + ofSvg(ofFileIcon(f.n)) + '</span>'
+        + '<b>' + esc(f.n) + '</b><u>' + esc(f.s || '') + '</u><em>⤓</em></div>';
+    }).join('') + '</div>';
+  }
+  if (x.unshared) {
+    h += '<div class="ofwarn">⚠ 폴더가 공유 안 됨 — 나만 받아집니다</div>';
+  }
+  return h + '</div>';
+}
+
+function viewOffice() {
+  var h = '<div class="top2"><div class="wknav">'
+    + '<button class="wkb' + (ofOnlyFav ? '' : ' now') + '" data-ofv="0">전체</button>'
+    + '<button class="wkb' + (ofOnlyFav ? ' now' : '') + '" data-ofv="1">★ 즐겨찾기</button>'
+    + '<span class="spacer"></span>'
+    + '<input class="ofq" id="ofQ" placeholder="이름·설명으로 찾기" value="' + esc(ofQ) + '">'
+    + fontBtns('office')
+    + '</div></div>';
+
+  // ★ 예시라는 것을 또렷이 — 진짜 자료로 착각하면 안 된다
+  if (OFFICE.demo) {
+    h += '<div class="ofdemo"><b>준비중</b>'
+      + '<span>아래는 <b>예시 자료</b> 입니다. 화면 생김새를 먼저 맞춰 두었습니다.<br>'
+      + '학교 구글 계정이 정해지면 그곳의 시트·폴더와 이어 붙입니다.</span></div>';
+  }
+
+  var list = OFFICE.items.filter(ofHit);
+  if (ofOnlyFav) list = list.filter(function (x) { return ofFav.indexOf(ofKey(x)) >= 0; });
+  var idx = {};
+  OFFICE.items.forEach(function (x, i) { idx[ofKey(x)] = i; });
+
+  var favs = list.filter(function (x) { return ofFav.indexOf(ofKey(x)) >= 0; });
+  if (favs.length && !ofOnlyFav) {
+    h += '<div class="ofdept fav">즐겨찾기<small>★ 눌러 고정</small></div>'
+      + '<div class="oftiles">' + favs.map(function (x) { return ofTile(x, idx[ofKey(x)]); }).join('') + '</div>';
+  }
+
+  var order = ofDepts().concat(['기타']);
+  var shown = 0;
+  order.forEach(function (dep) {
+    var mine = list.filter(function (x) {
+      return (x.dept || '기타') === dep;
+    });
+    if (!mine.length) return;          // 빈 부서는 아예 안 보인다
+    shown += mine.length;
+    h += '<div class="ofdept">' + esc(dep)
+      + '<small>' + (dep === '기타' ? '부서를 안 적은 것' : mine.length) + '</small></div>'
+      + '<div class="oftiles">' + mine.map(function (x) { return ofTile(x, idx[ofKey(x)]); }).join('') + '</div>';
+  });
+  if (!shown && !favs.length) {
+    h += '<div class="empty">' + (ofQ ? '찾는 것이 없습니다.' : '아직 담긴 것이 없습니다.') + '</div>';
+  }
+  return h;
+}
+
 function brandHtml() {
   var n = String(APPNAME || '');
   if (HAS_TT || n.length < 3) return esc(n);
@@ -2439,8 +2611,8 @@ function render() {
   var tab = TT_SUB.indexOf(VIEW) >= 0 ? 'tt' : VIEW;
   html += '<div class="chips">'
     + inOrder(
-        HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'tool,도구', 'link,바로가기']
-               : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'tool,도구', 'link,바로가기'],
+        HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'tool,도구', 'link,바로가기']
+               : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'tool,도구', 'link,바로가기'],
         TABORDER, function (s) { return s.split(',')[0]; }).map(function (s) {
         var p = s.split(',');
         return '<button class="chip nav' + NAVSTYLE + (tab === p[0] ? ' on' : '')
@@ -2467,6 +2639,7 @@ function render() {
     : VIEW === 'note' ? viewNote()
     : VIEW === 'grid' ? viewGrid()
     : VIEW === 'tool' ? viewTools()
+    : VIEW === 'office' ? viewOffice()
     : viewToday(d);
   html += '<div class="foot">@JINHOKIM</div>';   // 버전은 제목 줄 오른쪽 끝에 있다
   app.style.setProperty('--wf', String(FS[fsKey()] || 1));
@@ -2482,6 +2655,24 @@ function render() {
 
   wireViews(app);
   report();
+}
+
+/* 교무실 찾기 — 다시 그리지 않고 안 맞는 타일만 감춘다.
+   ★ 다시 그리면 한글을 치는 도중에 글자가 깨진다. */
+function ofPaint(app) {
+  app.querySelectorAll('[data-of]').forEach(function (t) {
+    var x = OFFICE.items[Number(t.dataset.of)];
+    t.style.display = (x && ofHit(x)) ? '' : 'none';
+  });
+  // 남은 것이 없는 부서 머리는 같이 감춘다
+  app.querySelectorAll('.oftiles').forEach(function (g) {
+    var any = [].some.call(g.querySelectorAll('[data-of]'), function (t) {
+      return t.style.display !== 'none';
+    });
+    g.style.display = any ? '' : 'none';
+    var head = g.previousElementSibling;
+    if (head && head.classList.contains('ofdept')) head.style.display = any ? '' : 'none';
+  });
 }
 
 /* 글자수 — 다시 그리지 않고 숫자만 갈아 끼운다 */
@@ -2644,6 +2835,7 @@ widgetAPI.onData(function (p) {
   TERMSTART = p.termStart || '';
   NAVSTYLE = p.navStyle || 'both';
   TABORDER = p.tabOrder || [];
+  ofFav = p.officeFav || ofFav;
   DASHORDER = p.dashOrder || [];
   DASHOFF = p.dashOff || [];
   FEED = (p.feed && p.feed.show && p.feed.data) ? p.feed.data : null;
@@ -3059,6 +3251,39 @@ function wireViews(app) {
       scrollToEl(document.getElementById('acm-' + b.dataset.ac), 2);
     });
   });
+  // 교무실
+  app.querySelectorAll('[data-ofv]').forEach(function (b) {
+    b.addEventListener('click', function () { ofOnlyFav = b.dataset.ofv === '1'; render(); });
+  });
+  app.querySelectorAll('[data-offav]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();                  // 별표가 타일 열기보다 먼저다
+      var k = b.dataset.offav, i = ofFav.indexOf(k);
+      if (i >= 0) ofFav.splice(i, 1); else ofFav.push(k);
+      widgetAPI.setUi({ officeFav: ofFav });
+      render();
+    });
+  });
+  app.querySelectorAll('[data-of]').forEach(function (t) {
+    t.addEventListener('click', function () {
+      var x = OFFICE.items[Number(t.dataset.of)];
+      if (!x) return;
+      if (x.files) {                        // 폴더면 펼치고 접는다
+        var k = ofKey(x);
+        ofOpen[k] = !ofOpen[k];
+        render();
+        return;
+      }
+      if (OFFICE.demo) return;              // 예시라 아무 데도 안 간다
+      if (x.u) widgetAPI.openUrl(x.u);
+    });
+  });
+  var ofq = app.querySelector('#ofQ');
+  if (ofq) {
+    // ★ 한 자 칠 때마다 다시 그리면 한글 조합이 깨진다 — 타일만 감췄다 보였다 한다
+    ofq.addEventListener('input', function () { ofQ = ofq.value; ofPaint(app); });
+    ofq.addEventListener('blur', function () { ofQ = ofq.value; });
+  }
   // 도구 — 명렬표·글자수
   app.querySelectorAll('[data-tool]').forEach(function (b) {
     b.addEventListener('click', function () { toolTab = b.dataset.tool; render(); });

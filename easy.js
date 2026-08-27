@@ -19,6 +19,7 @@ var MENU = [
   { v: 'meal', p: 'nav-meal', t: '급식', d: '주 단위로 넘겨 보기', g: '오늘 볼 것' },
   { v: 'comci', p: 'nav-comci', t: '컴시간', d: '교사·학급 시간표', g: '오늘 볼 것' },
   { v: 'rec', p: 'nav-rec', t: '학생기록', d: '학급 → 학생 → 분류로 쓰고 모아 보기', g: '기록' },
+  { v: 'office', p: 'nav-work', t: '교무실', d: '부서별 자료·서식·링크', g: '오늘 볼 것' },
   { v: 'tool', p: 'nav-set', t: '도구', d: '명렬표 보기 · 글자수 세기', g: '기록' },
   { v: 'link', p: 'nav-home', t: '바로가기', d: '자주 가는 곳을 담아 두고 한 번에', g: '바로가기' },
   // ★ 진도표는 혜원이지에만 — 진호알리미에는 수업진도 대시보드가 따로 있다
@@ -306,7 +307,8 @@ render = function () {
               : VIEW === 'link' ? viewLinks()
                 : VIEW === 'note' ? viewNote()
                   : VIEW === 'grid' ? viewGrid()
-                    : VIEW === 'tool' ? viewTools() : '')
+                    : VIEW === 'tool' ? viewTools()
+                      : VIEW === 'office' ? viewOffice() : '')
       + '</div>';
   }
   MAIN.style.setProperty('--wf', String(FS[fsKey()] || 1));

@@ -241,6 +241,71 @@
   .rsr b { font-size: calc(12.5px * var(--wf)); font-weight: 800; color: var(--fg); }
   .rsr u { margin-left: auto; text-decoration: none; font-size: calc(9.5px * var(--wf));
            color: var(--dim); }
+  /* ── 온라인 교무실 ── */
+  /* 준비중 알림 — 예시 자료라는 것을 또렷이 */
+  .ofdemo { display: flex; align-items: flex-start; gap: 9px;
+            background: var(--warnbg); border: 1px solid var(--warnfg);
+            border-radius: 10px; padding: 9px 11px; margin: 6px 0 2px; }
+  .ofdemo b { flex: 0 0 auto; background: var(--warnfg); color: var(--bg);
+              border-radius: 6px; padding: 2px 8px;
+              font-size: calc(10px * var(--wf)); font-weight: 900; }
+  .ofdemo span { font-size: calc(10.5px * var(--wf)); color: var(--warnfg);
+                 line-height: 1.55; }
+  /* 찾기 칸 */
+  .ofq { flex: 0 1 calc(190px * var(--wf)); min-width: calc(110px * var(--wf));
+         background: var(--card); color: var(--fg); border: 1px solid var(--line);
+         border-radius: 8px; padding: calc(5px * var(--wf)) calc(10px * var(--wf));
+         font-family: inherit; font-size: calc(11.5px * var(--wf)); }
+  .ofq:focus { outline: none; border-color: var(--accent); }
+  /* 부서 머리 */
+  .ofdept { display: flex; align-items: center; gap: 7px;
+            margin: calc(14px * var(--wf)) 0 calc(6px * var(--wf)) 2px;
+            font-size: calc(12px * var(--wf)); font-weight: 800; color: var(--fg2); }
+  .ofdept::before { content: ""; width: 6px; height: 6px; border-radius: 50%;
+                    background: var(--accent); flex: 0 0 auto; }
+  .ofdept.fav::before { background: #e0a52e; }
+  .ofdept small { font-weight: 600; color: var(--dim); font-size: calc(10px * var(--wf)); }
+  /* 타일 */
+  .oftiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+             gap: 8px; align-items: start; }
+  .oft { position: relative; background: var(--card); border: 1px solid var(--line);
+         border-radius: 11px; padding: calc(11px * var(--wf)); cursor: pointer;
+         display: flex; flex-direction: column; gap: calc(6px * var(--wf)); min-width: 0; }
+  .oft:hover { background: var(--card2); }
+  .oft.open { grid-column: span 2; background: var(--card2); }
+  .ofic { width: calc(32px * var(--wf)); height: calc(32px * var(--wf));
+          border-radius: 9px; background: var(--card2); flex: 0 0 auto;
+          display: flex; align-items: center; justify-content: center; }
+  .oft.open .ofic { background: var(--card); }
+  .ofic svg { width: calc(18px * var(--wf)); height: calc(18px * var(--wf));
+              stroke: var(--accent); fill: none; stroke-width: 1.8;
+              stroke-linecap: round; stroke-linejoin: round; }
+  .oft b { font-size: calc(12.5px * var(--wf)); font-weight: 800; color: var(--fg2);
+           line-height: 1.3; word-break: break-all; }
+  .oft i { font-style: normal; font-size: calc(10px * var(--wf)); color: var(--dim);
+           line-height: 1.45; }
+  .ofstar { position: absolute; top: calc(7px * var(--wf)); right: calc(8px * var(--wf));
+            background: none; border: 0; cursor: pointer; padding: 0;
+            font-size: calc(12px * var(--wf)); color: var(--line); font-family: inherit; }
+  .ofstar.on { color: #e0a52e; }
+  .ofcnt { position: absolute; top: calc(8px * var(--wf)); right: calc(26px * var(--wf));
+           font-size: calc(9px * var(--wf)); font-weight: 800; color: var(--dim);
+           background: var(--bg); border-radius: 5px; padding: 1px 5px; }
+  /* 펼친 파일 목록 */
+  .offs { border-top: 1px solid var(--line); margin-top: 2px; padding-top: 5px; }
+  .off { display: flex; align-items: center; gap: 7px; padding: calc(5px * var(--wf)) 2px; }
+  .off + .off { border-top: 1px solid var(--line); }
+  .off svg { width: calc(14px * var(--wf)); height: calc(14px * var(--wf));
+             stroke: var(--dim); fill: none; stroke-width: 1.8;
+             stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+  .off b { font-size: calc(11px * var(--wf)); font-weight: 700; color: var(--fg2);
+           min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .off u { margin-left: auto; text-decoration: none; flex: 0 0 auto;
+           font-size: calc(9.5px * var(--wf)); color: var(--dim); }
+  .off em { font-style: normal; flex: 0 0 auto; color: var(--accent);
+            font-weight: 800; font-size: calc(11px * var(--wf)); }
+  .ofwarn { margin-top: 4px; font-size: calc(9.5px * var(--wf));
+            font-weight: 700; color: var(--holfg); line-height: 1.45; }
   /* ── 도구: 사진 액자 ── */
   .ph { padding: 6px 0 10px; }
   .phbox { background: var(--card2); border-radius: 12px; overflow: hidden;
