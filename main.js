@@ -343,7 +343,23 @@ function photoList() {
      ② GAS  — 학교 코드를 함께 받아 거기서 한 번 더 본다
    ★ 주소가 비어 있으면 그 자리가 아예 안 보인다 — 나눠 준 판에는 자연히 안 나온다. */
 let boardData = null;   // { list:[{at,who,text}], school, at, error }
-function getBoardUrl() { return String(loadState().boardUrl || '').trim(); }
+/* 우리 학교 전광판 주소 — 앱에 박아 둔다.
+   ★ 이렇게 두면 «아무도 아무것도 안 해도» 켜진다. 붙여넣을 것도, 런처에 적을 것도 없다.
+   ★ 대신 이 주소는 공개 저장소에 남는다. 그래서 GAS 쪽에서 학교 코드를 보고,
+     한 사람이 하루에 보낼 수 있는 수도 막아 둔다. 그래도 성가신 일이 생기면
+     GAS 를 새로 배포해 주소를 바꾸고 이 줄만 고치면 된다.
+   ★ 설정에 손으로 넣은 것이 있으면 그것이 앞선다. */
+const BOARD_URL = 'https://script.google.com/macros/s/AKfycbz48C5LdR49cq6_SA8wbeqZHU70Kco3XW39lr45U0_8L_ctGEAvX2XGoRrJYOmse3unfQ/exec';
+function getBoardUrl() {
+  const st = loadState();
+  const v = st.boardUrl;
+  // 아직 아무것도 안 정했으면 박아 둔 것을 쓴다.
+  // 손으로 «비운» 것이라면(boardUrlManual) 그 뜻을 지켜 안 보여 준다.
+  if (v === undefined) return BOARD_URL;
+  const u = String(v || '').trim();
+  if (u) return u;
+  return st.boardUrlManual ? '' : BOARD_URL;
+}
 function getBoardNick() { return String(loadState().boardNick || '').trim(); }
 /* 내 컴시간 학교 코드 — 이것과 전광판 학교가 같아야 보낼 수 있다 */
 function mySchoolCode() {
@@ -1714,6 +1730,26 @@ ipcMain.handle('board-send', async (_e, o) => {
     return { ok: true, at: j.at || '' };
   } catch (e) {
     debugLog('전광판 보내기 실패 — ' + (e.message || e));
+    return { ok: false, error: (e && e.message) || String(e) };
+  }
+});
+/* 전광판 — 내가 쓴 것 지우기. 보낸때와 닉네임이 둘 다 맞아야 지워진다. */
+ipcMain.handle('board-del', async (_e, at) => {
+  const url = getBoardUrl();
+  const who = getBoardNick();
+  if (!url || !who || !at) return { ok: false, error: '지울 수 없습니다' };
+  try {
+    const txt = await postText(url, JSON.stringify({
+      school: mySchoolCode(), who: who, del: String(at)
+    }));
+    const j = JSON.parse(txt);
+    if (!j || !j.ok) return { ok: false, error: (j && j.error) || '지우지 못했습니다' };
+    boardData = { list: (j.list || []).slice(-30),
+      school: (boardData && boardData.school) || mySchoolCode(), at: j.at || '', error: '' };
+    debugLog('전광판 지움 — ' + at);
+    sendToWidget();
+    return { ok: true };
+  } catch (e) {
     return { ok: false, error: (e && e.message) || String(e) };
   }
 });

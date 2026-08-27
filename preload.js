@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   /* 전광판 */
   boardSend: (o) => ipcRenderer.invoke('board-send', o),
   boardRefresh: () => ipcRenderer.invoke('board-refresh'),
+  boardDel: (at) => ipcRenderer.invoke('board-del', at),
   escClose: () => ipcRenderer.send('esc-close'),
   openEasy: () => ipcRenderer.send('open-easy'),
   showWidget: () => ipcRenderer.send('show-widget'),

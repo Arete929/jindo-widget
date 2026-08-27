@@ -278,6 +278,19 @@
   .bdhint { margin-top: 4px; font-size: calc(9.5px * var(--wf)); color: var(--dim); }
   .bdhint.warn { color: var(--holfg); font-weight: 700; }
   .bdhint.ok { color: var(--now); font-weight: 700; }
+  /* 내가 쓴 것 — 지울 수 있게 */
+  .bdmine { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 4px; }
+  .bdmr { display: flex; align-items: center; gap: 7px; padding: 3px 0;
+          font-size: calc(11px * var(--wf)); }
+  .bdmr + .bdmr { border-top: 1px solid var(--line); }
+  .bdmr i { font-style: normal; flex: 0 0 auto; color: var(--dim);
+            font-size: calc(9.5px * var(--wf)); font-weight: 700; }
+  .bdmr span { flex: 1; min-width: 0; color: var(--fg2);
+               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bdx { flex: 0 0 auto; background: none; border: 1px solid var(--line);
+         color: var(--dim); border-radius: 5px; cursor: pointer; font-family: inherit;
+         font-size: calc(9.5px * var(--wf)); padding: 0 calc(6px * var(--wf)); }
+  .bdx:hover { border-color: var(--holfg); color: var(--holfg); }
   /* ── 온라인 교무실 ── */
   /* 준비중 알림 — 예시 자료라는 것을 또렷이 */
   .ofdemo { display: flex; align-items: flex-start; gap: 9px;
@@ -516,7 +529,11 @@
           font-size: calc(10px * var(--wf)); font-weight: 800; color: var(--dim);
           letter-spacing: .3px; }
   .lgrp small { font-weight: 600; opacity: .8; }
-  .lico.emo { background: var(--card2); font-size: calc(15px * var(--wf)); }
+  /* 선 아이콘 — 교무실과 같은 규칙 */
+  .lico { background: var(--card2); }
+  .lico svg { width: calc(16px * var(--wf)); height: calc(16px * var(--wf));
+              stroke: var(--accent); fill: none; stroke-width: 1.8;
+              stroke-linecap: round; stroke-linejoin: round; }
   .lico { flex: 0 0 auto; width: calc(26px * var(--wf)); height: calc(26px * var(--wf));
           border-radius: 8px; color: #fff; font-weight: 900;
           font-size: calc(13px * var(--wf)); display: flex;

@@ -1827,6 +1827,16 @@ function boardBar() {
     if (bdErr) h += '<div class="bdhint warn">' + esc(bdErr) + '</div>';
     else if (bdOkAt) h += '<div class="bdhint ok">✅ 올렸습니다 · ' + esc(bdOkAt) + '</div>';
     else h += '<div class="bdhint">오늘 하루만 흐릅니다. 같은 학교 선생님들께 보입니다.</div>';
+    // 내가 쓴 것 — 지울 수 있게 늘어놓는다
+    var nick = String((BOARD && BOARD.nick) || '').trim();
+    var mine = nick ? list.filter(function (x) { return x.who === nick; }) : [];
+    if (mine.length) {
+      h += '<div class="bdmine">' + mine.map(function (x) {
+        return '<div class="bdmr"><i>' + esc(String(x.at).slice(11, 16)) + '</i>'
+          + '<span>' + esc(x.text) + '</span>'
+          + '<button class="bdx" data-bdx="' + esc(x.at) + '" title="지우기">✕</button></div>';
+      }).join('') + '</div>';
+    }
   }
   return h + '</div>';
 }
@@ -1851,6 +1861,14 @@ function wireBoard(root) {
   if (bt) bt.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); bdSend(root); }
     e.stopPropagation();          // ESC 로 창이 닫히지 않게
+  });
+  root.querySelectorAll('[data-bdx]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      b.textContent = '…'; b.disabled = true;
+      widgetAPI.boardDel(b.dataset.bdx).then(function (r) {
+        if (!r || !r.ok) { bdErr = (r && r.error) || '지우지 못했습니다'; render(); }
+      });
+    });
   });
   var bw = root.querySelector('#bdWho');
   if (bw) bw.addEventListener('keydown', function (e) {
@@ -1904,11 +1922,9 @@ function linkColor(t) {
   return LINKHUE[n % LINKHUE.length];
 }
 function linkTile(x, key) {
-  // 런처에서 온 것은 시트에 적어 둔 그림글자(이모지)를 쓴다
-  var ico = x.icon
-    ? '<span class="lico emo">' + esc(x.icon) + '</span>'
-    : '<span class="lico" style="background:' + linkColor(x.t) + '">'
-      + esc(linkLetter(x.t)) + '</span>';
+  // ★ 교무실과 같은 «선 아이콘» 을 쓴다 — 주소를 보고 저절로 고른다.
+  //   그래야 한 화면에 이모지와 선 아이콘이 섞이지 않는다.
+  var ico = '<span class="lico">' + ofSvg(ofIconOf(x)) + '</span>';
   return '<button class="lnk" data-' + key + '" title="' + esc(x.u) + '">'
     + ico + '<span class="ltx"><b>' + esc(x.t) + '</b>'
     + '<i>' + esc(x.d || linkHost(x.u)) + '</i></span></button>';
@@ -2528,7 +2544,8 @@ function render() {
 
   // 탭마다 그림 — 넓게 보기의 차림표와 «같은 그림» 을 쓴다
   var NAVIMG = { tt: 'nav-home', work: 'nav-work', comci: 'nav-comci', grid: 'nav-rec',
-                 cal: 'nav-cal', meal: 'nav-meal', rec: 'nav-rec', link: 'nav-home' };
+                 cal: 'nav-cal', meal: 'nav-meal', rec: 'nav-rec',
+                 office: 'nav-office', link: 'nav-link' };
   function chipInner(v, label) {
     var img = NAVIMG[v]
       ? '<img src="assets/' + NAVIMG[v] + '.png" alt="">' : '';
