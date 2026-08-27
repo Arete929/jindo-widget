@@ -278,6 +278,9 @@
   .gt .gact { background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
   .gpush { display: block; font-style: normal; margin-top: 3px;
            font-size: calc(8.5px * var(--wf)); font-weight: 700; color: var(--dim); }
+  /* 밀려간 곳 */
+  .gmove { display: block; font-style: normal; margin-top: 1px;
+           font-size: calc(8px * var(--wf)); font-weight: 800; color: var(--warnfg); }
   /* 자리와 교시가 다른 날 — 원래 몇 교시인지 */
   .gper { display: block; font-style: normal; font-size: calc(8px * var(--wf));
           font-weight: 800; color: var(--dim); opacity: .85; }
@@ -430,6 +433,12 @@
     background: none; border: 1px solid var(--line); color: var(--dim);
     font-size: 12px; font-weight: 700; font-family: inherit;
   }
+  .chip img { width: calc(14px * var(--wf)); height: calc(14px * var(--wf));
+              object-fit: contain; vertical-align: -2px; margin-right: 4px;
+              -webkit-user-drag: none; }
+  .chip.navicon img { margin-right: 0; width: calc(17px * var(--wf));
+                      height: calc(17px * var(--wf)); vertical-align: -3px; }
+  .chip.navicon { flex: 0 1 auto; min-width: calc(38px * var(--wf)); }
   .chip:hover { border-color: var(--dim); color: var(--fg); }
   .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on); }
 

@@ -1593,6 +1593,7 @@ function brandHtml() {
      (파비콘을 받아 오면 인터넷이 없을 때 빈칸이 되고, 켤 때마다 느려진다) */
 var LINKS = [];
 var TERMSTART = '';
+var NAVSTYLE = 'both';
 var FEED = null;
 /* 이름에서 한 글자 — 한글이면 첫 글자, 영문이면 대문자 한 자 */
 function linkLetter(t) {
@@ -1879,6 +1880,17 @@ function seatPlan(ev) {
   return null;
 }
 
+/* 그 날 학사일정에 «적어 둔 것이 하나라도» 있는가.
+   아무것도 없으면 그 날은 시트에 없는 날이라, 컴시간 시간표를 그대로 따른다. */
+function acHasCode(ac) {
+  if (!ac || !ac.grades) return false;
+  for (var g = 1; g <= 3; g++) {
+    var row = ac.grades[g];
+    if (row && row.some(function (c) { return !!c; })) return true;
+  }
+  return false;
+}
+
 /* 그 날 그 교시의 학년별 코드 — 수업이 아닌 것만 모은다 */
 function gCodes(ac, p) {
   if (!ac || !ac.grades) return [];
@@ -1904,6 +1916,14 @@ function gridBuild() {
   (NT || []).forEach(function (x) { notes[x.date + '_' + x.p] = x; });
 
   var counts = {}, weeks = [], maxSeat = me.maxP;
+  // 학급마다 «못 한 자리» 를 차례로 담아 둔다 → 다음 수업 칸에 하나씩 붙는다
+  var skipQ = {};
+  function skipPush(cls, cell) { (skipQ[cls] = skipQ[cls] || []).push(cell); }
+  function skipTake(cls, iso, seat) {
+    var q = skipQ[cls];
+    if (!q || !q.length) return;
+    q.shift().to = { iso: iso, seat: seat };   // 밀린 칸에 «어디로 갔는지» 를 적어 둔다
+  }
   for (var w = 0; w < GRIDW; w++) {
     var days = [];
     for (var k = 0; k < 5; k++) {
@@ -1922,18 +1942,25 @@ function gridBuild() {
         if (off) { cells[seat] = slot ? { cls: slot.cls, off: true } : null; continue; }
         if (plan && plan.clubSeat[seat]) {
           // 이 자리는 그 활동을 한다. 원래 이 교시에 있던 내 수업은 그 날 없어진다.
-          cells[seat] = { act: plan.name, per: per,
-                          pushed: slot ? slot.cls : '' };
+          cells[seat] = { act: plan.name, per: per, pushed: slot ? slot.cls : '' };
+          if (slot) skipPush(slot.cls, cells[seat]);
           continue;
         }
         var codes = gCodes(ac, seat);
         if (!slot) { cells[seat] = codes.length ? { codes: codes } : null; continue; }
-        // 창체가 내 학급 학년에 걸리면 그 시간은 수업이 아니다
-        var mineCode = plan ? null : codes.filter(function (c) { return c.g === slot.g; })[0];
-        if (mineCode) {
-          cells[seat] = { cls: slot.cls, none: true, code: mineCode.code, codes: codes };
+        // ★ 그 교시에 수업을 하는가 — 대시보드(server.js)와 같은 가림 규칙
+        var gcal = (ac && ac.grades) ? ac.grades[slot.g] : null;
+        var code0 = gcal ? String(gcal[seat - 1] || '') : '';
+        var skip = plan
+          ? !!(code0 && code0 !== 'L')
+          : (gcal ? (code0 !== 'L') : acHasCode(ac));
+        if (skip) {
+          cells[seat] = { cls: slot.cls, none: true,
+                          code: codeName(code0) || '수업 없음', codes: codes };
+          skipPush(slot.cls, cells[seat]);
           continue;
         }
+        skipTake(slot.cls, iso, seat);   // 밀려 있던 것이 있으면 여기로 왔다고 적는다
         counts[slot.cls] = (counts[slot.cls] || 0) + 1;
         var got = notes[iso + '_' + seat];
         cells[seat] = {
@@ -1961,6 +1988,17 @@ function gThisWeek(G) {
   return G.weeks.length - 1;
 }
 
+/* 밀린 칸에 붙일 «→ 9/3(목) 2교시로 밀림» 한 줄.
+   갈 곳을 못 찾았으면(학기 안에 다음 수업이 없으면) 그냥 «밀림» 만 적는다. */
+function gTo(c) {
+  if (!c.to) return '<i class="gmove">밀림</i>';
+  var p = String(c.to.iso).split('-');
+  var dt = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  return '<i class="gmove">→ ' + Number(p[1]) + '/' + Number(p[2])
+    + '(' + ['일', '월', '화', '수', '목', '금', '토'][dt.getDay()] + ') '
+    + c.to.seat + '교시로 밀림</i>';
+}
+
 function gWeekTable(G, wk) {
   var todayIso = ymdOf(new Date());
   var h = '<div class="gw" id="gw' + wk.no + '"'
@@ -1986,17 +2024,17 @@ function gWeekTable(G, wk) {
       if (!c) { h += '<td class="' + tdy.replace(/^ /, '') + '"></td>'; return; }
       if (c.off) { h += '<td class="goff' + tdy + '">휴업</td>'; return; }
       if (c.act) {
-        // 동아리·진로 자리 — 그 바람에 밀린 수업이 있으면 함께 알려 준다
+        // 동아리·진로 자리 — 그 바람에 밀린 수업이 어디로 갔는지 함께 알려 준다
         h += '<td class="gact' + tdy + '">'
           + '<u class="gbadge">' + esc(c.act) + '</u>'
           + (c.pushed
-            ? '<i class="gpush">' + esc(c.pushed) + ' ' + c.per + '교시 밀림</i>' : '')
+            ? '<i class="gpush">' + esc(c.pushed) + ' ' + c.per + '교시</i>' + gTo(c) : '')
           + '</td>';
         return;
       }
       if (c.none) {
         h += '<td class="gnone' + tdy + '"><b>' + esc(c.cls) + '</b>'
-          + '<u class="gbadge">' + esc(c.code) + '</u></td>';
+          + '<u class="gbadge">' + esc(c.code) + '</u>' + gTo(c) + '</td>';
         return;
       }
       if (!c.cls) {
@@ -2065,7 +2103,9 @@ function viewGrid() {
 }
 
 function titleBar() {
-  return '<div class="tbar">'
+  // ★ 두 번 누르면 넓게 보기로 — 창 제목 줄에서 흔히 하는 몸짓이다
+  return '<div class="tbar" ondblclick="widgetAPI.openEasy()" '
+    + 'title="두 번 누르면 넓게 보기">'
     + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
     + '<span class="ttl">' + brandHtml() + '</span>'
     + '<button class="gear" title="설정" onclick="widgetAPI.openSettings()"></button>'
@@ -2127,6 +2167,16 @@ function render() {
       + (noteTxt ? ' · ' + esc(noteTxt) : '') + '</div>';
   }
 
+  // 탭마다 그림 — 넓게 보기의 차림표와 «같은 그림» 을 쓴다
+  var NAVIMG = { tt: 'nav-home', work: 'nav-work', comci: 'nav-comci', grid: 'nav-rec',
+                 cal: 'nav-cal', meal: 'nav-meal', rec: 'nav-rec', link: 'nav-home' };
+  function chipInner(v, label) {
+    var img = NAVIMG[v]
+      ? '<img src="assets/' + NAVIMG[v] + '.png" alt="">' : '';
+    if (NAVSTYLE === 'text' || !img) return esc(label);
+    if (NAVSTYLE === 'icon') return img;
+    return img + esc(label);
+  }
   // 큰 탭 5개. «시간표» 안에서 오늘·이번주·진도를 다시 고른다.
   var TT_SUB = ['today', 'week', 'progress'];
   var tab = TT_SUB.indexOf(VIEW) >= 0 ? 'tt' : VIEW;
@@ -2134,7 +2184,8 @@ function render() {
     + (HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']
               : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'link,바로가기']).map(function (s) {
         var p = s.split(',');
-        return '<button class="chip' + (tab === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">' + p[1] + '</button>';
+        return '<button class="chip nav' + NAVSTYLE + (tab === p[0] ? ' on' : '')
+          + '" data-v="' + p[0] + '" title="' + esc(p[1]) + '">' + chipInner(p[0], p[1]) + '</button>';
       }).join('') + '</div>';
 
   if (tab === 'tt') {
@@ -2292,6 +2343,7 @@ widgetAPI.onData(function (p) {
   UPD = p.update || null;
   LINKS = p.links || [];
   TERMSTART = p.termStart || '';
+  NAVSTYLE = p.navStyle || 'both';
   FEED = (p.feed && p.feed.show && p.feed.data) ? p.feed.data : null;
   if (p.font && p.font !== FONT) {
     FONT = p.font;

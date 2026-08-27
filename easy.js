@@ -106,12 +106,18 @@ function drawSide() {
     + '<span><b>' + brandHtml() + '</b></span></div>';
   h += sideUsage();
   h += menus().map(function (m) {
-    return '<button class="nav' + (VIEW === m.v ? ' on' : '') + '" data-go="' + m.v + '">'
-      + navImg(m) + esc(m.t) + '</button>';
+    return '<button class="nav nav' + NAVSTYLE + (VIEW === m.v ? ' on' : '')
+      + '" data-go="' + m.v + '" title="' + esc(m.t) + '">'
+      + (NAVSTYLE === 'text' ? '' : navImg(m))
+      + (NAVSTYLE === 'icon' ? '' : esc(m.t)) + '</button>';
   }).join('');
   h += '<div class="navgap"></div>'
-    + '<button class="nav" id="goWid"><img src="assets/widget.png" alt="">위젯 보기</button>'
-    + '<button class="nav" id="goSet"><img src="assets/nav-set.png" alt="">설정</button>'
+    + '<button class="nav nav' + NAVSTYLE + '" id="goWid" title="위젯 보기">'
+    + (NAVSTYLE === 'text' ? '' : '<img src="assets/widget.png" alt="">')
+    + (NAVSTYLE === 'icon' ? '' : '위젯 보기') + '</button>'
+    + '<button class="nav nav' + NAVSTYLE + '" id="goSet" title="설정">'
+    + (NAVSTYLE === 'text' ? '' : '<img src="assets/nav-set.png" alt="">')
+    + (NAVSTYLE === 'icon' ? '' : '설정') + '</button>'
     + '<div class="sfoot">v' + esc(VER) + ' · made by KIMJINHO</div>';
   SIDE.innerHTML = h;
   SIDE.querySelectorAll('[data-go]').forEach(function (b) {

@@ -417,10 +417,27 @@
     </div>
   </div>
   <div class="row">
-    <label class="lb">기타</label>
+    <label class="lb">켜고 끄기</label>
     <div class="chips">
-      <button id="aotBtn">항상 위로 고정</button>
-      <button id="autoBtn">Windows 시작 시 자동 실행</button>
+      <button class="sw" id="aotBtn"><span class="track"><span class="knob"></span></span>항상 위로 고정</button>
+      <button class="sw" id="autoBtn"><span class="track"><span class="knob"></span></span>컴퓨터를 켤 때 자동 실행</button>
+    </div>
+  </div>
+  <div class="row">
+    <label class="lb">차림표</label>
+    <div class="chips" id="navRow">
+      <button data-nav="both">아이콘＋글자</button>
+      <button data-nav="icon">아이콘만</button>
+      <button data-nav="text">글자만</button>
+    </div>
+  </div>
+  <div class="hint">
+    위젯 보기의 <b>탭 줄</b>과 넓게 보기의 <b>왼쪽 차림표</b>에 함께 걸립니다.<br>
+    위젯 <b>제목 줄을 두 번 누르면</b> 넓게 보기로 넘어갑니다.
+  </div>
+  <div class="row">
+    <label class="lb">되돌리기</label>
+    <div class="chips">
       <button id="posBtn">위젯 위치 초기화</button>
       <button id="autoSizeBtn">위젯 크기 자동으로</button>
     </div>
@@ -584,8 +601,9 @@ function __paint() {
       if ($(k)) $(k).style.display = 'none';
     });
   }
-  $('aotBtn').className = UI.alwaysOnTop ? 'on' : '';
-  $('autoBtn').className = UI.autoLaunch ? 'on' : '';
+  $('aotBtn').classList.toggle('on', !!UI.alwaysOnTop);
+  $('autoBtn').classList.toggle('on', !!UI.autoLaunch);
+  paintNav();
   $('loginState').innerHTML = UI.loggedIn
     ? '<span class="ok">로그인됨</span>' : '<span class="warn">로그인 필요</span>';
   $('verText').textContent = 'v' + UI.version;
@@ -770,6 +788,21 @@ function paintNeis() {
       + '</span> · 급식 ' + ((UI.meals.meals || []).length) + '건';
   }
 }
+
+/* ── 차림표 모양 — 아이콘만 / 글자만 / 둘 다 ── */
+function paintNav() {
+  var v = UI.navStyle || 'both';
+  $('navRow').querySelectorAll('[data-nav]').forEach(function (b) {
+    b.classList.toggle('on', b.dataset.nav === v);
+  });
+}
+$('navRow').querySelectorAll('[data-nav]').forEach(function (b) {
+  b.onclick = function () {
+    UI.navStyle = b.dataset.nav;
+    widgetAPI.setUi({ navStyle: UI.navStyle });
+    paintNav();
+  };
+});
 
 /* ── 런처(내 앱 대시보드) 목록 ──────────────────────────────
    내가 런처 시트에서 «공유» 로 켜 둔 앱들이 타일로 함께 나온다.

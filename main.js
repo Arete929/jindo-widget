@@ -290,6 +290,13 @@ async function refreshFeed() {
   sendToWidget();
 }
 
+/* 차림표 모양 — 아이콘만 / 글자만 / 둘 다.
+   위젯의 탭 줄과 넓게 보기의 왼쪽 차림표가 «함께» 이것을 따른다. */
+function getNavStyle() {
+  const v = String(loadState().navStyle || '');
+  return (v === 'icon' || v === 'text') ? v : 'both';
+}
+
 /* 개학일 — 진도표의 «1주차» 를 여기서부터 센다.
    학사일정에서 «개학» 이라 적힌 날을 찾는 방법도 있지만, 표현이 해마다 달라
    놓치기 쉽다. 한 학기에 한 번 넣는 것이니 손으로 넣는 편이 확실하다. */
@@ -549,6 +556,7 @@ function sendToWidget() {
     easyFav: loadState().easyFav || [],          // 혜원이지 대시보드 즐겨찾기
     links: getLinks(),                           // 바로가기 타일
     termStart: getTermStart(),                   // 진도표 1주차 기준
+    navStyle: getNavStyle(),                     // 차림표 — 아이콘만/글자만/둘 다
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },   // 런처 목록
     update: { state: updateState, version: updateVersion }
   };
@@ -1235,6 +1243,7 @@ ipcMain.handle('get-settings', () => ({
     neisList: getNeisList(),
     links: getLinks(),
     termStart: getTermStart(),
+    navStyle: getNavStyle(),
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },
     browsers: browserList().map((b) => ({ key: b.key, label: b.label })),
     browser: getBrowserPick(),
@@ -1312,6 +1321,11 @@ ipcMain.on('set-ui', (_e, v) => {
     saveState({ feedUrl: String(v.feedUrl || '') });
     debugLog('런처 주소 바꿈');
     refreshFeed();
+  }
+  if (v.navStyle !== undefined) {
+    const t = String(v.navStyle || '');
+    saveState({ navStyle: (t === 'icon' || t === 'text') ? t : 'both' });
+    sendToWidget();
   }
   if (v.termStart !== undefined) {
     const s = String(v.termStart || '').trim();
