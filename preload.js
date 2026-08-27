@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   feedRefresh: () => ipcRenderer.invoke('feed-refresh'),
   openEasy: () => ipcRenderer.send('open-easy'),
   showWidget: () => ipcRenderer.send('show-widget'),
+  hideWidget: () => ipcRenderer.send('hide-widget'),
 
   /* 날씨·미세먼지 */
   wxRefresh: () => ipcRenderer.invoke('wx-refresh'),

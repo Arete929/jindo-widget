@@ -343,9 +343,23 @@ function loadGradePlans() {
 function saveGradePlans(v) {
   try { fs.writeFileSync(gradeFile, JSON.stringify(v)); } catch (e) { /* 무시 */ }
 }
+/* 주소에서 시트 번호만 뽑는다 */
+function sheetIdOf(u) {
+  const s = String(u || '').trim();
+  const m = s.match(/\/d\/([a-zA-Z0-9_-]{20,})/);
+  if (m) return m[1];
+  return /^[a-zA-Z0-9_-]{20,}$/.test(s) ? s : '';
+}
 async function refreshGradePlan(grade) {
   const url = getGradeSheets()[grade];
   if (!url) throw new Error(grade + '학년 시트 주소가 아직 없습니다');
+  // ★ 두 시트가 헷갈려 학년부 칸에 «학사일정 시트» 가 들어가는 일이 잦다.
+  //   그대로 두면 «머리글을 못 찾음» 이라는 알아듣기 어려운 말만 나온다.
+  const acId = sheetIdOf(loadState().academicSheet || academic.DEFAULT_SHEET);
+  if (acId && sheetIdOf(url) === acId) {
+    throw new Error(grade + '학년 칸에 «학사일정 시트» 가 들어 있습니다 — '
+      + '학년부 일지는 다른 시트입니다 (설정 → 학사일정 에서 고쳐 주세요)');
+  }
   const got = await gradeplan.fetchPlan(url);
   const all = loadGradePlans();
   all[grade] = got;
@@ -1470,6 +1484,10 @@ function createTray() {
 ipcMain.on('refresh-now', () => pollOnce());
 ipcMain.on('open-login', () => startLogin());
 ipcMain.on('open-timetable', () => openTimetableWindow());
+/* 닫기 — «끄는 것» 이 아니라 감추는 것이다. 트레이에서 다시 부른다. */
+ipcMain.on('hide-widget', () => {
+  if (widgetWin && !widgetWin.isDestroyed()) widgetWin.hide();
+});
 ipcMain.on('open-easy', () => openEasyWindow());
 ipcMain.handle('feed-refresh', async () => { await refreshFeed(); return feedData; });
 ipcMain.on('show-widget', () => showWidgetOnly());

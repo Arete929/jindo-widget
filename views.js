@@ -754,7 +754,14 @@ function viewAcademic() {
     var errs = gpOn.filter(function (g) { return gpErr[g]; });
     var wait = gpOn.filter(function (g) { return !GPD[g]; });
     if (errs.length) {
-      h += '<span class="shint warnfg">' + errs[0] + '학년 — ' + esc(gpErr[errs[0]]) + '</span>';
+      // ★ 까닭을 여기서 바로 알려 준다 — 설정까지 들어가 봐야 알 수 있으면 안 된다
+      h += '<span class="shint warnfg">' + errs[0] + '학년 — ' + esc(gpErr[errs[0]]) + '</span>'
+        + '<button class="wkb" onclick="widgetAPI.openSettings()">설정 열기</button>';
+    } else if (gpOn.some(function (g) { return (GPD[g] || {}).items && !GPD[g].items.length; })) {
+      var empty = gpOn.filter(function (g) { return (GPD[g] || {}).items && !GPD[g].items.length; });
+      h += '<span class="shint warnfg">' + empty.join('·') + '학년 일지에서 읽어 온 것이 없습니다</span>'
+        + '<button class="wkb" id="gpGet2">다시 받기</button>'
+        + '<button class="wkb" onclick="widgetAPI.openSettings()">설정 열기</button>';
     } else if (wait.length) {
       h += '<span class="shint">' + wait.join('·') + '학년 일지를 받는 중…</span>';
     }
@@ -1880,17 +1887,6 @@ function seatPlan(ev) {
   return null;
 }
 
-/* 그 날 학사일정에 «적어 둔 것이 하나라도» 있는가.
-   아무것도 없으면 그 날은 시트에 없는 날이라, 컴시간 시간표를 그대로 따른다. */
-function acHasCode(ac) {
-  if (!ac || !ac.grades) return false;
-  for (var g = 1; g <= 3; g++) {
-    var row = ac.grades[g];
-    if (row && row.some(function (c) { return !!c; })) return true;
-  }
-  return false;
-}
-
 /* 그 날 그 교시의 학년별 코드 — 수업이 아닌 것만 모은다 */
 function gCodes(ac, p) {
   if (!ac || !ac.grades) return [];
@@ -1948,15 +1944,13 @@ function gridBuild() {
         }
         var codes = gCodes(ac, seat);
         if (!slot) { cells[seat] = codes.length ? { codes: codes } : null; continue; }
-        // ★ 그 교시에 수업을 하는가 — 대시보드(server.js)와 같은 가림 규칙
-        var gcal = (ac && ac.grades) ? ac.grades[slot.g] : null;
-        var code0 = gcal ? String(gcal[seat - 1] || '') : '';
-        var skip = plan
-          ? !!(code0 && code0 !== 'L')
-          : (gcal ? (code0 !== 'L') : acHasCode(ac));
-        if (skip) {
-          cells[seat] = { cls: slot.cls, none: true,
-                          code: codeName(code0) || '수업 없음', codes: codes };
+        // ★ 그 교시에 수업을 하는가.
+        //   «적어 둔 글자» 가 L 이 아닐 때만 막는다. 빈칸은 막지 않는다 —
+        //   우리 시트는 모든 교시를 채워 두지 않는다(1·4 자리가 늘 비어 있는데
+        //   거기에도 수업이 있다). 빈칸을 막으면 차시가 통째로 어긋난다.
+        var mineCode = codes.filter(function (c) { return c.g === slot.g; })[0];
+        if (mineCode) {
+          cells[seat] = { cls: slot.cls, none: true, code: mineCode.code, codes: codes };
           skipPush(slot.cls, cells[seat]);
           continue;
         }
@@ -2109,6 +2103,8 @@ function titleBar() {
     + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
     + '<span class="ttl">' + brandHtml() + '</span>'
     + '<button class="gear" title="설정" onclick="widgetAPI.openSettings()"></button>'
+    + '<button class="tclose" title="닫기 — 끄는 것이 아니라 감춥니다.'
+    + ' 트레이 아이콘을 누르면 다시 나옵니다" onclick="widgetAPI.hideWidget()">✕</button>'
     + (VER ? '<span class="tver">v' + esc(VER) + '</span>' : '')
     + '<span class="grip" title="여기를 잡고 끌면 위젯이 움직입니다">⠿⠿</span></div>';
 }
@@ -2725,6 +2721,10 @@ function wireViews(app) {
     b.addEventListener('click', function () {
       scrollToEl(document.getElementById('acm-' + b.dataset.ac), 2);
     });
+  });
+  var gpb2 = app.querySelector('#gpGet2');
+  if (gpb2) gpb2.addEventListener('click', function () {
+    gpOn.forEach(function (g) { GPD[g] = null; gpErr[g] = ''; gpLoad(g, true); });
   });
   var gge = app.querySelector('#gpGet');
   if (gge) gge.addEventListener('click', function () {

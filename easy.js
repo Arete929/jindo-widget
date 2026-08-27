@@ -101,8 +101,10 @@ function drawTop() {
 /* ── 왼쪽 메뉴 ── */
 function drawSide() {
   // ★ 이름·아이콘은 갈래대로 (박아 두면 진호알리미가 혜원이지로 보인다)
+  // ★ 운영체제 아이콘(icon.png)은 흰 네모가 꽉 차 있다 — 위젯 제목 줄과 같은
+  //   투명한 로고를 쓴다
   var h = '<div class="brand"><img src="assets/'
-    + (HAS_TT ? 'icon.png' : 'hyewon-icon.png') + '" alt="">'
+    + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
     + '<span><b>' + brandHtml() + '</b></span></div>';
   h += sideUsage();
   h += menus().map(function (m) {
