@@ -1862,7 +1862,7 @@ function ntLoad(force) {
   widgetAPI.noteLoad().then(function (r) {
     ntBusy = false;
     NT = (r && r.notes) || [];
-    ntErr = (r && (r.error || (r.noSheet ? 'nosheet' : ''))) || '';
+    ntErr = (r && (r.error || r.warn)) || '';
     render();
   }).catch(function (e) {
     ntBusy = false; NT = []; ntErr = (e && e.message) || String(e); render();
@@ -2143,7 +2143,10 @@ function gridBuild() {
         }
         skipTake(slot.cls, iso, seat);   // 밀려 있던 것이 있으면 여기로 왔다고 적는다
         counts[slot.cls] = (counts[slot.cls] || 0) + 1;
+        // ★ 메모는 «날짜|교시» 에 붙어 있다. 컴시간 시간표가 바뀌어 그 자리의 학급이
+        //   달라졌으면, 옛 메모를 엉뚱한 반에 붙여 보이면 안 된다.
         var got = notes[iso + '_' + seat];
+        if (got && got.cls && got.cls !== slot.cls) got = null;
         cells[seat] = {
           cls: slot.cls, n: counts[slot.cls], subject: slot.subject,
           text: (got && got.text) || '', codes: plan ? [] : codes,
@@ -2269,6 +2272,8 @@ function viewGrid() {
     + fontBtns('grid')
     + '<button class="wkb" id="gGet" title="다시 읽기">⟳</button></div></div>';
 
+  // ★ 잘못된 것을 여기서 알린다. 전에는 알림 자리가 없어 조용히 실패했다.
+  if (ntErr) h += '<div class="note hol">' + esc(ntErr) + '</div>';
   if (gAll) {
     h += '<div class="ghint">개학한 주가 <b>1주차</b> 입니다. 학급 옆 작은 숫자는 '
       + '그 학급이 학기 들어 <b>몇 번째 수업</b> 인지입니다. '
@@ -2453,8 +2458,30 @@ function gEdit(td) {
       date: td.dataset.gd, dow: td.dataset.gdow, p: Number(td.dataset.gp),
       cls: td.dataset.gc, subject: td.dataset.gs, text: v
     }).then(function (r) {
-      if (r && r.ok) { ntLoad(true); }
-      else { ntErr = (r && r.error) || '담지 못했습니다'; done = false; inp.disabled = false; render(); }
+      if (r && r.ok) {
+        ntErr = '';
+        // ★ 다시 그리지 않는다. 다시 그리면 «담겼다» 는 표시가 곧바로 지워지고,
+        //   이어서 다른 칸을 적으려던 손이 끊긴다. 글자만 갈아 끼운다.
+        var key = td.dataset.gd + '|' + td.dataset.gp;
+        NT = (NT || []).filter(function (x) {
+          return (x.date + '|' + x.p) !== key;
+        });
+        if (v) {
+          NT.push({ date: td.dataset.gd, dow: td.dataset.gdow, p: Number(td.dataset.gp),
+            cls: td.dataset.gc, subject: td.dataset.gs, text: v, at: r.at || '' });
+        }
+        inp.remove();
+        u.textContent = v || '＋ 적기';
+        u.className = 'gtx' + (v ? '' : ' dimtx');
+        u.style.display = '';
+        u.title = r.at ? ('담김 · ' + r.at) : '';
+        td.classList.add('gsaved');
+        setTimeout(function () { td.classList.remove('gsaved'); }, 1400);
+      } else {
+        ntErr = (r && r.error) || '담지 못했습니다';
+        done = false; inp.disabled = false;
+        render();
+      }
     }).catch(function (e) {
       ntErr = (e && e.message) || String(e); done = false; inp.disabled = false; render();
     });

@@ -62,6 +62,31 @@ async function refreshRoster() {
   return r;
 }
 
+/* ── 수업 메모 — 이 PC 에 담아 두는 곳 ────────────────────
+   ★ 구글이 없어도 적을 수 있어야 한다. 시트는 «두 PC 맞추기» 용이다.
+   키는 «날짜|교시» 다. 한 시간에 한 줄이면 넉넉하다. */
+function noteFile() { return path.join(S.userDataPath, 'classnotes.json'); }
+function loadLocalNotes() {
+  try {
+    const j = JSON.parse(fs.readFileSync(noteFile(), 'utf-8'));
+    return (j && typeof j === 'object') ? j : {};
+  } catch (e) { return {}; }
+}
+function saveLocalNotes(o) {
+  try { fs.writeFileSync(noteFile(), JSON.stringify(o)); return true; }
+  catch (e) { S.log('수업 메모 담기 실패 — ' + (e.message || e)); return false; }
+}
+function stampNow() {
+  const t = new Date(), p = (n) => String(n).padStart(2, '0');
+  return `${t.getFullYear()}.${p(t.getMonth() + 1)}.${p(t.getDate())} `
+    + `${p(t.getHours())}:${p(t.getMinutes())}:${p(t.getSeconds())}`;
+}
+/* 담아 둔 것을 화면이 쓰는 목록 모양으로 */
+function localList() {
+  const m = loadLocalNotes();
+  return Object.keys(m).map((k) => m[k]).filter((x) => x && x.date && x.cls);
+}
+
 /* ── 화면이 알아야 할 상태 한 덩어리 ── */
 function recState() {
   // ★ 위젯 창이 뜨자마자 sendToWidget() 이 불리는데, 그때는 아직 register() 전이라
@@ -89,30 +114,55 @@ function register(helpers) {
 
   /* ── 수업 메모(진도표) ────────────────────────────────────
      컴시간 시간표가 «어느 수업인지» 를 채워 주므로, 사람은 한 줄만 적는다. */
+  /* 읽기 — 이 PC 것이 먼저다. 시트에만 있는 것(다른 PC 에서 적은 것)은 보태 준다. */
   ipcMain.handle('note-load', async () => {
+    const mine = loadLocalNotes();
+    const out = Object.keys(mine).map((k) => mine[k]);
     const st = S.load();
-    if (!st.recSheet || !st.recSheet.id) return { notes: [], noSheet: true };
+    if (!st.recSheet || !st.recSheet.id) return { notes: out, sheet: false };
     try {
       const t = await token();
-      return { notes: await rec.loadNotes(t, st.recSheet.id) };
+      const far = await rec.loadNotes(t, st.recSheet.id);
+      let added = 0;
+      far.forEach((x) => {
+        const k = x.date + '|' + x.p;
+        if (mine[k]) return;              // 이 PC 것이 앞선다
+        out.push(x); mine[k] = x; added++;
+      });
+      if (added) { saveLocalNotes(mine); S.log(`수업 메모 — 시트에서 ${added}줄 받아 옴`); }
+      return { notes: out, sheet: true };
     } catch (e) {
-      S.log('수업 메모 읽기 실패 — ' + (e.message || e));
-      return { notes: [], error: e.message || String(e) };
+      // 시트가 안 되더라도 이 PC 것은 그대로 보여 준다
+      S.log('수업 메모 — 시트 읽기 실패(이 PC 것만 씁니다) — ' + (e.message || e));
+      return { notes: out, sheet: false, warn: '시트를 못 읽어 이 PC 에 담긴 것만 보입니다' };
     }
   });
+  /* 담기 — ★ 이 PC 에 먼저 담고 곧바로 «됐다» 고 답한다.
+     시트는 뒤에서 밀어 넣는다. 시트가 안 돼도 적은 것은 남는다. */
   ipcMain.handle('note-save', async (_e, o) => {
-    const st = S.load();
-    if (!st.recSheet || !st.recSheet.id) return { ok: false, error: '먼저 학생기록 시트를 만들어 주세요' };
     if (!o || !o.date || !o.cls) return { ok: false, error: '어느 수업인지 알 수 없습니다' };
-    try {
-      const t = await token();
-      const r = await rec.saveNote(t, st.recSheet.id, o);
-      S.log(`수업 메모 — ${o.date} ${o.p}교시 ${o.cls} (${r.n}차시)`);
-      return { ok: true, at: r.at, n: r.n };
-    } catch (e) {
-      S.log('수업 메모 저장 실패 — ' + (e.message || e));
-      return { ok: false, error: e.message || String(e) };
+    const at = stampNow();
+    const m = loadLocalNotes();
+    const key = o.date + '|' + o.p;
+    const text = String(o.text || '');
+    if (!text) delete m[key];            // 비우면 지운다
+    else {
+      m[key] = { date: o.date, dow: o.dow || '', p: Number(o.p) || 0,
+        cls: o.cls, subject: o.subject || '', text: text, at: at };
     }
+    if (!saveLocalNotes(m)) return { ok: false, error: '이 PC 에 담지 못했습니다' };
+    S.log(`수업 메모 — ${o.date} ${o.p}교시 ${o.cls} (이 PC 에 담음)`);
+
+    // 시트는 «되면 좋고» — 기다리지 않는다
+    const st = S.load();
+    if (st.recSheet && st.recSheet.id && text) {
+      token()
+        .then((t) => rec.saveNote(t, st.recSheet.id, o))
+        .then(() => S.log('수업 메모 — 시트에도 담음'))
+        .catch((e) => S.log('수업 메모 — 시트에는 못 담음(이 PC 에는 담겼습니다) — '
+          + (e.message || e)));
+    }
+    return { ok: true, at: at, local: true };
   });
 
   /* 구글 연결 */

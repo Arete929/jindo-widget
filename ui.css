@@ -319,6 +319,8 @@
                font-size: calc(11px * var(--wf)); font-weight: 700; color: var(--accent);
                word-break: break-all; line-height: 1.3; }
   .gt .gon u.dimtx { color: var(--dim); font-weight: 500; opacity: .55; }
+  /* 담긴 순간 잠깐 켜진다 */
+  .gt td.gsaved { box-shadow: inset 0 0 0 2px var(--now); }
   /* 그 자리에서 적는 칸 */
   .gti { display: block; width: 100%; margin-top: 3px; text-align: center;
          background: var(--bg); color: var(--fg); border: 1px solid var(--accent);
