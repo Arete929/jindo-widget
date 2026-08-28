@@ -2588,7 +2588,7 @@ function lbTile(x, i) {
   var sub = (link && (x.d || host))
     ? (x.d || host)
     : [(link ? '' : (x.version || '버전 없음')),
-       (x.updated ? lbDay(x.updated) + ' 고침' : ''),
+       (x.updated ? lbDay(x.updated) : ''),
        (x.u ? '' : '주소 없음')].filter(Boolean).join('  ·  ');
   var editing = lbEdit && lbAdmin();
   var sz = lbSizeOf(x);

@@ -1268,7 +1268,20 @@
   .lgrp.lgh { cursor: pointer; border-radius: 8px; padding: 6px 5px 5px; }
   .lgrp.lgh:hover { background: var(--card2); }
   .lgrp.lgh .fold { font-style: normal; font-size: calc(9px * var(--wf)); opacity: .55; width: 11px; }
-  .lgrp.lgh .gt { font-weight: 800; }
+  /* ★ 묶음 이름(기타·모둠편성…)이 10px 흐린 글자라 눈에 안 들어왔다.
+     타일이 수십 개라 «어디서 어디까지가 한 묶음인지» 가 가장 중요한데도
+     이름이 배경에 묻혀 있었다. 글자를 키우고 왼쪽에 강조색 막대를 세운다. */
+  .lgrp.lgh .gt {
+    font-weight: 800; font-size: calc(12.5px * var(--wf)); color: var(--fg2);
+    letter-spacing: -.2px; padding-left: calc(7px * var(--wf));
+    border-left: 3px solid var(--accent); line-height: 1.15;
+  }
+  .lgrp.lgh small {
+    font-size: calc(10px * var(--wf)); font-weight: 800; opacity: 1;
+    color: var(--dim); background: var(--card2);
+    border-radius: 999px; padding: 1px calc(6px * var(--wf));
+  }
+  .lgrp.lgh .fold { opacity: .8; }
   .lgrp.lgh.folded { opacity: .7; }
   .lgrp.lgh.over {
     background: color-mix(in srgb, var(--accent) 18%, transparent);

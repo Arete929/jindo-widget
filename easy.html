@@ -93,7 +93,7 @@
   /* 여섯 칸 격자. 칸마다 가로·세로를 정하고, 자리는 알아서 흘려 채운다.
      ★ dense 라 앞에 생긴 빈틈도 메운다. */
   .dcs { display: grid; grid-template-columns: repeat(6, 1fr);
-         grid-auto-rows: minmax(84px, auto); grid-auto-flow: row dense;
+         grid-auto-rows: 84px; grid-auto-flow: row dense;
          gap: 10px; margin: 8px 0 4px; align-items: stretch; }
   @media (max-width: 1100px) { .dcs { grid-template-columns: repeat(4, 1fr); } }
   @media (max-width: 760px) { .dcs { grid-template-columns: repeat(2, 1fr); } }
@@ -106,6 +106,36 @@
           font-size: calc(11px * var(--wf)); font-weight: 700; }
   .dced.on { background: var(--accent); border-color: var(--accent); color: var(--on); }
   .dcsw { display: flex; gap: 5px; flex-wrap: wrap; }
+  /* ★ 스위치 모양은 ui.css 에 «.wkb.sw» 로만 있다 — 여기는 .sw 뿐이라
+     맨 브라우저 기본 단추로 나왔다. 제 모양을 여기서 준다. */
+  .dcsw .sw {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--card); border: 1px solid var(--line); color: var(--dim);
+    border-radius: 999px; padding: 4px 11px 4px 7px; cursor: pointer;
+    font-family: inherit; font-size: calc(10.5px * var(--wf)); font-weight: 700;
+  }
+  .dcsw .sw:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+  .dcsw .sw .track {
+    position: relative; flex: 0 0 auto; width: 24px; height: 13px;
+    border-radius: 999px; background: color-mix(in srgb, var(--fg) 16%, var(--card));
+    transition: background .15s;
+  }
+  .dcsw .sw .knob {
+    position: absolute; top: 2px; left: 2px; width: 9px; height: 9px;
+    border-radius: 999px; transition: left .15s;
+    background: color-mix(in srgb, var(--fg) 55%, var(--card));
+    box-shadow: 0 1px 2px rgba(0,0,0,.35);
+  }
+  /* ★ 켰다고 단추를 통째로 강조색으로 채우지 않는다 —
+     --on 과 --accent 의 대비가 테마에 따라 3.7 밖에 안 된다(칠화이트).
+     10.5px 글자에는 얇다. 켠 것은 «띠» 와 테두리로 알리고,
+     글자는 늘 제 색(--fg)이라 어느 테마에서든 또렷하다. */
+  .dcsw .sw.on {
+    background: color-mix(in srgb, var(--accent) 12%, var(--card));
+    border-color: var(--accent); color: var(--fg);
+  }
+  .dcsw .sw.on .track { background: var(--accent); }
+  .dcsw .sw.on .knob { left: 13px; background: var(--on); }
   .dchint { margin: 6px 2px 0; font-size: calc(10.5px * var(--wf)); color: var(--dim); }
 
   /* 편집할 때 — 배경에 아주 흐릿한 격자 */
@@ -119,6 +149,8 @@
     outline-offset: 4px;
   }
   .dcs.editing .dc { opacity: .97; }
+  /* 크기를 잡는 동안에는 몸이 굴러가면 겨냥이 흔들린다 */
+  .dc.sizing .dcb { overflow: hidden; }
   .dcgrip { position: absolute; top: 6px; left: 9px; z-index: 2; cursor: grab;
             font-size: calc(11px * var(--wf)); color: var(--dim); letter-spacing: 1px;
             user-select: none; }
@@ -127,10 +159,11 @@
   .dcwh { margin-left: auto; font-style: normal; font-size: calc(9.5px * var(--wf));
           font-weight: 800; color: var(--accent); background: var(--card2);
           border-radius: 5px; padding: 1px 6px; }
-  .dccor { position: absolute; right: 3px; bottom: 3px; width: 13px; height: 13px;
+  .dccor { position: absolute; right: 2px; bottom: 2px; width: 18px; height: 18px;
            border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent);
-           border-radius: 0 0 4px 0; cursor: nwse-resize; z-index: 2;
+           border-radius: 0 0 6px 0; cursor: nwse-resize; z-index: 3;
            touch-action: none; }
+  .dccor:hover { border-width: 3px; }
   .dc.dragging { opacity: .5; }
   .dc.over { box-shadow: inset 0 0 0 2px var(--accent); }
   .dc.sizing { box-shadow: 0 0 0 2px var(--accent); }
@@ -142,7 +175,17 @@
   .dcgo { margin-left: auto; background: none; border: 0; cursor: pointer;
           font-family: inherit; font-size: calc(10px * var(--wf)); font-weight: 800;
           color: var(--accent); padding: 0; }
-  .dcb { padding: 0 12px 11px; }
+  /* ★ 카드는 머리(.dch) + 몸(.dcb) 두 층이다. 몸이 넘치면 그 안에서 굴러간다 —
+     세로를 짧게 잡아도 내용이 잘려 나가지 않는다. min-height:0 이 없으면
+     flex 자식은 «줄어들지 않아» 스크롤이 안 생긴다. */
+  .dc { display: flex; flex-direction: column; }
+  .dcb { padding: 0 12px 11px; flex: 1; min-height: 0; overflow-y: auto;
+         overscroll-behavior: contain; }
+  .dcb::-webkit-scrollbar { width: 7px; }
+  .dcb::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--fg) 18%, transparent); border-radius: 4px; }
+  .dcb::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--fg) 32%, transparent); }
   .dbig { font-size: calc(17px * var(--wf)); font-weight: 800; color: var(--fg);
           line-height: 1.35; }
   /* 학년부 줄 */

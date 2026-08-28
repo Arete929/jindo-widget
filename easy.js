@@ -200,15 +200,23 @@ function tile(m) {
      좌표로 못박으면 창 폭이 바뀔 때마다 어긋난다. */
 var dashEdit = false;
 var DCOLS = 6;   // 격자 가로 칸 수
-/* 칸 크기 — [가로, 세로]. 안 정했으면 3×1(반 폭 한 줄) */
+var DROWH = 84;  // 격자 한 줄 높이(px) — easy.html 의 grid-auto-rows 와 같아야 한다
+var DGAP = 10;   // 칸 사이(px) — 같은 곳의 gap
+var DMAXH = 8;   // 세로 최대 칸수. 내 앱은 서른 몇 개라 3칸으로는 모자랐다
+/* 칸 크기 — [가로, 세로].
+   ★ 안 정한 칸은 내용 양에 맞춰 다르게 준다 — 모두 1칸이면 처음 켤 때
+     급식도 내 앱도 한 줄만 보여 «망가진 것» 처럼 보인다. */
+var DDEF = { today: [3, 1], lesson: [3, 2], meal: [3, 2], next: [3, 2],
+             link: [3, 3], feed: [3, 3] };
 function dcSize(k) {
-  var m = String(DASHSIZE[k] || '').match(/^(\d)[,x](\d)$/);
-  if (!m) return [3, 1];
+  var m = String(DASHSIZE[k] || '').match(/^(\d+)[,x](\d+)$/);
+  if (!m) return (DDEF[k] || [3, 1]).slice();
   return [Math.max(1, Math.min(DCOLS, Number(m[1]))),
-          Math.max(1, Math.min(3, Number(m[2])))];
+          Math.max(1, Math.min(DMAXH, Number(m[2])))];
 }
 function dcSetSize(k, w, h) {
-  DASHSIZE[k] = Math.max(1, Math.min(DCOLS, w)) + ',' + Math.max(1, Math.min(3, h));
+  DASHSIZE[k] = Math.max(1, Math.min(DCOLS, w)) + ','
+    + Math.max(1, Math.min(DMAXH, h));
   widgetAPI.setUi({ dashSize: DASHSIZE });
 }
 function dcard(title, body, goTo, key) {
@@ -353,8 +361,14 @@ function wireDashEdit() {
       var key = card.dataset.dck;
       if (!key) return;
       var cell = dashCellW(grid);
-      var rowH = parseFloat(getComputedStyle(grid).gridAutoRows) || 0;
-      var gapY = parseFloat(getComputedStyle(grid).rowGap) || 0;
+      /* ★ 여기가 세로가 아예 안 먹던 자리다.
+         gridAutoRows 가 «minmax(84px, auto)» 라 parseFloat 이 NaN 을 냈고,
+         바로 아래 «rowH ? … : s0[1]» 에서 늘 처음 값으로 빠져나갔다.
+         이제 줄 높이가 한 값으로 못박혀 있으니 그대로 읽되,
+         혹시 못 읽으면 아는 값(DROWH)으로 받친다. */
+      var rowH = parseFloat(getComputedStyle(grid).gridAutoRows) || DROWH;
+      var gapY = parseFloat(getComputedStyle(grid).rowGap);
+      if (!(gapY >= 0)) gapY = DGAP;
       var r0 = card.getBoundingClientRect();
       var s0 = dcSize(key);
       var lab = card.querySelector('.dcwh');
@@ -365,9 +379,9 @@ function wireDashEdit() {
       function move(ev) {
         var dx = ev.clientX - e.clientX, dy = ev.clientY - e.clientY;
         var w = Math.round((r0.width + dx + cell.gap) / (cell.w + cell.gap));
-        var h = rowH ? Math.round((r0.height + dy + gapY) / (rowH + gapY)) : s0[1];
+        var h = Math.round((r0.height + dy + gapY) / (rowH + gapY));
         w = Math.max(1, Math.min(cell.n, w));
-        h = Math.max(1, Math.min(3, h));
+        h = Math.max(1, Math.min(DMAXH, h));
         if (w === last[0] && h === last[1]) return;
         last = [w, h];
         card.style.gridColumn = 'span ' + w;
@@ -380,6 +394,10 @@ function wireDashEdit() {
         cor.removeEventListener('pointerup', up);
         cor.removeEventListener('pointercancel', up);
         dcSetSize(key, last[0], last[1]);
+        /* ★ 잡아 늘이는 동안 붙여 둔 인라인 자리를 걷어내고 다시 그린다 —
+           안 그러면 저장한 값과 화면이 어긋난 채로 남는다. */
+        card.style.gridColumn = ''; card.style.gridRow = '';
+        render();
       }
       cor.addEventListener('pointermove', move);
       cor.addEventListener('pointerup', up);
