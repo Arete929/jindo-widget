@@ -150,6 +150,18 @@ function noteLines(note) {
     + parts.map(function (t) { return '<em>' + esc(t) + '</em>'; }).join('') + '</i>';
 }
 
+/* 칸 색 — «차시» 로 고른다.
+   ★ 전에는 단원(l.u)으로 칠했다. 그러면 한 주가 통째로 같은 색이라
+     «몇 차시를 하고 있나» 가 안 보였다.
+   ★ 차시로 칠하면 주를 넘겨도 같은 차시는 늘 같은 색이다 —
+     번호만 보면 되니 이전 주·다음 주와 견주기 쉽다.
+   ★ 열 가지로 돌린다. 11차시는 1차시와 같은 색이 되지만,
+     한 화면에 열 차시가 넘게 보이는 일은 없다.
+   ★ 차시가 안 정해진 칸은 색을 주지 않는다 — 색이 있으면 정해진 것처럼 보인다. */
+function lessonHue(l) {
+  var n = Number(l && l.n);
+  return (n >= 1) ? ('n' + ((n - 1) % 10)) : 'nx';
+}
 function viewWeek(d) {
   if (!WK) {
     if (!wkBusy) loadWeek(WEEKOFF);
@@ -198,7 +210,7 @@ function viewWeek(d) {
         var extra = l.topic || l.detail || '';
         if (extra) what += (what ? ' ' : '') + extra;
         if (!what) what = '차시미정';
-        h += '<td class="c u' + (l.u % 6) + klass + '" title="' + esc(cellTip(c, l)) + '">'
+        h += '<td class="c ' + lessonHue(l) + klass + '" title="' + esc(cellTip(c, l)) + '">'
           + '<b>' + esc(l.cls) + '</b><u>' + esc(what) + '</u>'
           + (l.movedIn || l.assigned || l.shifted ? '<s></s>' : '') + '</td>';
         return;

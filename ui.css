@@ -739,8 +739,26 @@
                line-height: 1.15; max-height: 20px; overflow: hidden; word-break: break-all; }
   .gr td.c s { position: absolute; top: 2px; right: 2px; width: 4px; height: 4px;
                border-radius: 999px; background: #fff; opacity: .9; }
-  .gr td.u0 { background: #3a2f8f; } .gr td.u1 { background: #12708a; } .gr td.u2 { background: #96491a; }
-  .gr td.u3 { background: #1d7440; } .gr td.u4 { background: #8a2456; } .gr td.u5 { background: #5c3aad; }
+  /* ── 칸 색 = 차시 ─────────────────────────────────────────
+     전에는 단원으로 칠해 한 주가 통째로 같은 색이었다.
+     이제 차시마다 달라서 «몇 차시를 하고 있나» 가 눈에 들어오고,
+     주를 넘겨도 같은 차시는 같은 색이라 견주기 쉽다.
+     열 가지를 돌려 쓴다 — 이웃한 차시끼리 확실히 갈리게 색을 골랐다. */
+  .gr td.n0 { background: #3a2f8f; }   /*  1차시  남보라 */
+  .gr td.n1 { background: #12708a; }   /*  2차시  청록   */
+  .gr td.n2 { background: #96491a; }   /*  3차시  주황갈 */
+  .gr td.n3 { background: #1d7440; }   /*  4차시  초록   */
+  .gr td.n4 { background: #8a2456; }   /*  5차시  자주   */
+  .gr td.n5 { background: #2c5aa8; }   /*  6차시  파랑   */
+  .gr td.n6 { background: #7a5c10; }   /*  7차시  올리브 */
+  .gr td.n7 { background: #6b2f8a; }   /*  8차시  보라   */
+  .gr td.n8 { background: #a03a2a; }   /*  9차시  벽돌   */
+  .gr td.n9 { background: #2d6f6a; }   /* 10차시  청록초록 */
+  /* 차시가 안 정해진 칸 — 차시 색을 주지 않는다(정해진 것처럼 보이면 안 된다).
+     ★ .gr td.c 는 글씨가 흰색이다 — 옅은 바탕을 주면 안 읽힌다. 글씨도 같이 바꾼다. */
+  .gr td.nx { background: var(--card2); color: var(--dim); }
+  .gr td.nx b { color: var(--fg2); }
+  .gr td.nx u { opacity: .8; }
   /* 학사일정(동아리 등)으로 수업이 없어진 칸 — 수업 색을 쓰지 않는다 */
   .gr td.blk { background: color-mix(in srgb, var(--warnfg) 22%, var(--bg)); color: var(--warnfg); }
   .gr td.blk b { opacity: .75; }
