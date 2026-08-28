@@ -180,17 +180,35 @@ function helpParts(flavor, appName) {
       + shot('고치기 — 스위치를 켜면 ' + other + ' 에 보입니다', '<div class="shotrow">'
           + hSw('공유 켜짐', 1) + hSw('나만 보기', 0) + '</div>')
       + '<ul>'
-      + '<li><b>＋ 앱 담기</b> — 이름·주소·묶음·버전을 적어 담습니다</li>'
+      + '<li><b>＋ 앱 담기</b> / <b>＋ 바로가기 담기</b> — 담을 것을 적습니다</li>'
       + '<li><b>⟳ 내 GAS 앱 가져오기</b> — 구글 드라이브를 훑어 <b>새로 만든 앱</b>을 「나만」으로 담습니다. '
       + '누를 때만 합니다</li>'
       + '<li><b>✕</b> — 시트에서 지워지므로 <b>한 번 더 묻습니다</b>. 「정말?」이 뜨면 다시 누릅니다</li>'
       + '<li>검색칸에 글자를 넣으면 묶음을 무시하고 걸린 것만 보입니다</li>'
       + '</ul>'
+      + '<p><b>내가 만든 앱</b>과 <b>바로가기</b>는 갈라서 보여 줍니다. '
+      + '나이스·업무포털 같은 평범한 주소도 담을 수 있고, <b>나만/공유는 똑같이</b> 씁니다.</p>'
+      + shot('담기·고치기 칸 — 종류와 묶음은 단추로 고릅니다',
+          '<div style="font-size:11.5px;color:var(--sub);font-weight:700;margin-bottom:5px">종류</div>'
+        + '<div class="shotrow" style="margin-bottom:9px">'
+        + '<button class="on" style="padding:4px 10px;font-size:11.5px">내가 만든 앱</button>'
+        + '<button style="padding:4px 10px;font-size:11.5px">바로가기</button></div>'
+        + '<div style="font-size:11.5px;color:var(--sub);font-weight:700;margin-bottom:5px">묶음</div>'
+        + '<div class="shotrow">'
+        + '<button style="padding:4px 10px;font-size:11.5px">평가</button>'
+        + '<button class="on" style="padding:4px 10px;font-size:11.5px">대회</button>'
+        + '<button style="padding:4px 10px;font-size:11.5px">출결</button>'
+        + '<button style="padding:4px 10px;font-size:11.5px">기타</button></div>')
+      + '<p class="sub">없는 묶음을 쓰려면 <b>새 묶음</b> 칸에 적습니다 — 그러면 시트에도 등록됩니다. '
+      + '단추로 고르면 <b>오타로 묶음이 갈리는 일</b>이 없습니다.</p>'
       + '<div class="tip"><b>⟳ 로 담긴 앱은 주소가 비어 있습니다.</b> '
       + '드라이브는 웹앱 <code>/exec</code> 주소를 모릅니다 — 배포한 앱은 <b>✎</b> 로 한 번 넣어 주세요. '
       + '넣기 전에는 타일이 흐리게 보입니다.</div>'
-      + '<p class="sub"><b>내 바로가기</b>는 그대로 맨 위에 있습니다. 그건 <b>이 PC 것</b>이라 '
-      + '시트에 안 올라가고 남에게도 안 보입니다.</p>' });
+      + '<p><b>내 바로가기</b>는 그대로 맨 위에 있습니다. 그건 <b>이 PC 것</b>이라 '
+      + '시트에 안 올라가고, <b>다른 PC 에서도 안 보입니다</b>.</p>'
+      + '<div class="tip">두 PC 에서 같이 쓰려면 <b>✎ 고치기</b> 로 들어가 '
+      + '<b>↑ 런처보드로</b> 를 누르세요. 그 자리에서 런처보드의 <b>바로가기</b> 묶음으로 옮겨 담깁니다'
+      + '(공유는 꺼진 「나만」 상태라 ' + other + ' 에는 안 갑니다).</div>' });
   } else {
     P.push({ id: 'lb', t: '바로가기', body:
         '<p>자주 가는 곳을 타일로 담아 두고 한 번에 엽니다. <b>✎ 고치기</b> 로 담고 '

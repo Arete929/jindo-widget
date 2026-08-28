@@ -1164,3 +1164,21 @@
   /* 런처보드 타일도 «제 이름만큼» — .lbt 가 흐름의 한 칸이다 */
   .lbt { display: flex; }
   .lbt .lnk { flex: 1; }
+
+  /* ── 런처보드: 종류 가름 ─────────────────────────────────
+     내가 만든 앱과 그냥 담아 둔 주소는 성격이 달라 크게 가른다.
+     묶음(.lgrp)은 그 아래 한 단 더 들어간다. */
+  .lbkind {
+    display: flex; align-items: baseline; gap: 7px;
+    margin: 12px 0 2px; padding: 0 2px 5px;
+    border-bottom: 1.5px solid var(--line);
+    font-size: calc(12px * var(--wf)); font-weight: 800; color: var(--fg2);
+  }
+  .lbkind small { font-weight: 600; font-size: calc(10px * var(--wf)); opacity: .55; }
+  .lbkind + .lgrp { padding-top: 5px; }
+
+  /* 칸 안의 고르개 — 드롭다운 대신 단추 팔레트 */
+  .lbfr.pal { align-items: flex-start; }
+  .lbfr.pal i { padding-top: calc(5px * var(--wf)); }
+  .palw { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+  .palw .wkb { padding: calc(4px * var(--wf)) calc(9px * var(--wf)); }

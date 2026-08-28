@@ -1945,6 +1945,25 @@ function lbOn() { return FLAVOR === 'jinho' && !!FEED; }
 /* 런처에서 온 앱 묶음의 이름 — 갈래마다 «누구 것인가» 가 다르다.
    진호알리미는 내가 담은 «내 앱», 혜원이지는 내가 나눠 준 것을 «선생님들이» 본다. */
 function feedName() { return FLAVOR === 'jinho' ? '내 앱' : '함께 쓰는 앱'; }
+/* 런처보드는 두 가지를 담는다 — 내가 만든 앱, 그리고 그냥 담아 둔 주소.
+   ★ 갈라 보여 주되 나만/공유는 똑같이 쓴다. */
+var LBKIND = [
+  { k: 'app',  t: '내가 만든 앱' },
+  { k: 'link', t: '바로가기' }
+];
+function lbKindOf(x) { return x.kind === 'link' ? 'link' : 'app'; }
+function lbKindName(k) { return k === 'link' ? '바로가기' : '내가 만든 앱'; }
+/* 지금 시트에 있는 묶음들 — 팔레트로 고르게 한다(손으로 적으면 오타로 갈린다) */
+function lbCats() {
+  var out = [];
+  ((FEED && FEED.cats) || []).forEach(function (c) { if (c && out.indexOf(c) < 0) out.push(c); });
+  ((FEED && FEED.apps) || []).forEach(function (x) {
+    var c = x.tab || '기타';
+    if (out.indexOf(c) < 0) out.push(c);
+  });
+  if (out.indexOf('기타') < 0) out.push('기타');
+  return out;
+}
 function lbAdmin() { return !!(FEED && FEED.admin); }
 /* 이 앱을 가리키는 열쇠 — 런처 시트에서 줄을 찾을 때 쓴다 */
 function lbKey(x) { return { name: x.t, appUrl: x.u }; }
@@ -1977,23 +1996,30 @@ function lbOpenForm(x) {
   lbForm = x
     ? { key: lbKey(x), name: x.t, appUrl: x.u, desc: x.d, tab: x.tab,
         icon: x.icon, version: x.version, gasUrl: x.gas, sheetUrl: x.sheet,
-        visibility: x.shared ? '공유' : '나만' }
+        kind: lbKindOf(x), visibility: x.shared ? '공유' : '나만' }
     : { key: null, name: '', appUrl: '', desc: '', tab: '', icon: '',
-        version: '', gasUrl: '', sheetUrl: '', visibility: '나만' };
+        version: '', gasUrl: '', sheetUrl: '',
+        kind: (arguments.length > 1 && arguments[1]) || 'app', visibility: '나만' };
   lbEdit = true;
   render();
+}
+/* 칸에 적어 둔 것을 먼저 챙긴다 — 고르개를 눌러 다시 그려도 안 잃는다 */
+function lbGrab(root) {
+  if (!lbForm) return;
+  ['name', 'appUrl', 'desc', 'tab', 'version', 'gasUrl', 'sheetUrl'].forEach(function (k) {
+    var e = root.querySelector('#lbf_' + k);
+    if (e) lbForm[k] = e.value.trim();
+  });
 }
 function lbSaveForm(app) {
   var f = lbForm;
   if (!f) return;
-  ['name', 'appUrl', 'desc', 'tab', 'version', 'gasUrl', 'sheetUrl'].forEach(function (k) {
-    var e = app.querySelector('#lbf_' + k);
-    if (e) f[k] = e.value.trim();
-  });
+  lbGrab(app);
   if (!f.name) { var n = app.querySelector('#lbf_name'); if (n) n.focus(); return; }
   var data = {
     name: f.name, appUrl: f.appUrl, desc: f.desc, tab: f.tab || '기타',
     icon: f.icon, version: f.version, gasUrl: f.gasUrl, sheetUrl: f.sheetUrl,
+    kind: f.kind === 'link' ? 'link' : 'app',
     visibility: f.visibility
   };
   if (f.key) lbDo('edit', { key: f.key, data: data }, '고치는 중');
@@ -2108,6 +2134,11 @@ function viewLinks() {
           // 고치는 동안에는 타일 대신 «옮기고 빼는» 줄로 보여 준다
           return '<div class="lked">'
             + '<span class="lnm"><b>' + esc(x.t) + '</b><i>' + esc(linkHost(x.u)) + '</i></span>'
+            // ★ 이 PC 것을 런처보드로 옮기면 두 PC 에서 같이 보인다(공유는 따로 켠다)
+            + (lbOn() && lbAdmin()
+              ? '<button class="wkb" data-lkpush="' + i + '" '
+                + 'title="런처보드로 옮겨 담기 — 두 PC 에서 같이 보입니다">↑ 런처보드로</button>'
+              : '')
             + '<button class="wkb" data-lkup="' + i + '"' + (i === 0 ? ' disabled' : '') + '>▲</button>'
             + '<button class="wkb" data-lkdn="' + i + '"'
             + (i === LINKS.length - 1 ? ' disabled' : '') + '>▼</button>'
@@ -2173,15 +2204,16 @@ function lbListHtml() {
   var fav = all.filter(function (x) { return lbFav(x.t); });
   if (fav.length) h += lbGroup('★ 즐겨찾기', fav, all);
   var rest = all.filter(function (x) { return !lbFav(x.t); });
-  var cats = [];
-  (FEED.cats || []).forEach(function (c) { if (c) cats.push(c); });
-  rest.forEach(function (x) {
-    var c = x.tab || '기타';
-    if (cats.indexOf(c) < 0) cats.push(c);
-  });
-  cats.forEach(function (c) {
-    var got = rest.filter(function (x) { return (x.tab || '기타') === c; });
-    if (got.length) h += lbGroup(c, got, all);
+  var cats = lbCats();
+  // ★ 종류로 먼저 가른다 — 내가 만든 앱과 그냥 담아 둔 주소는 성격이 다르다
+  LBKIND.forEach(function (kd) {
+    var mine = rest.filter(function (x) { return lbKindOf(x) === kd.k; });
+    if (!mine.length) return;
+    h += '<div class="lbkind">' + esc(kd.t) + '<small>' + mine.length + '</small></div>';
+    cats.forEach(function (c) {
+      var got = mine.filter(function (x) { return (x.tab || '기타') === c; });
+      if (got.length) h += lbGroup(c, got, all);
+    });
   });
   return h;
 }
@@ -2190,6 +2222,7 @@ function lbListHtml() {
 function lbTools() {
   return '<div class="lbtools">'
     + '<button class="ntb" id="lbAdd">＋ 앱 담기</button>'
+    + '<button class="wkb" id="lbAddLink">＋ 바로가기 담기</button>'
     + '<button class="wkb" id="lbScan" title="구글 드라이브를 훑어 새 앱을 담습니다">'
     + '⟳ 내 GAS 앱 가져오기</button>'
     + '<span class="lbhint">스위치를 켠 앱만 <b>혜원이지</b> 에 보입니다.</span>'
@@ -2204,15 +2237,31 @@ function lbFormHtml() {
       + '<input id="lbf_' + k + '" value="' + esc(f[k] || '') + '"'
       + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '></label>';
   }
+  var isLink = f.kind === 'link';
+  // 고르개 — 드롭다운 대신 단추 팔레트. 고른 것은 색이 채워진다.
+  function pal(lab, list, now, attr) {
+    return '<div class="lbfr pal"><i>' + esc(lab) + '</i><span class="palw">'
+      + list.map(function (o) {
+          return '<button class="wkb' + (o.v === now ? ' now' : '') + '" '
+            + attr + '="' + esc(o.v) + '">' + esc(o.t) + '</button>';
+        }).join('') + '</span></div>';
+  }
   return '<div class="lbform">'
-    + '<div class="lbfh">' + (f.key ? '앱 고치기' : '앱 담기') + '</div>'
-    + row('name', '이름', '과세특 작성 도우미')
-    + row('appUrl', '웹앱 주소', 'https://script.google.com/macros/s/…/exec')
-    + row('desc', '설명', '무엇에 쓰는 앱인지 한 줄')
-    + row('tab', '묶음', '평가 · 대회 · 출결 …')
-    + row('version', '버전', 'v1.0')
-    + row('gasUrl', '편집기 주소', 'https://script.google.com/d/…/edit')
-    + row('sheetUrl', '시트 주소', '')
+    + '<div class="lbfh">' + (f.key ? '고치기' : '담기') + '</div>'
+    + pal('종류', LBKIND.map(function (k) { return { v: k.k, t: k.t }; }),
+        isLink ? 'link' : 'app', 'data-lbkind')
+    + row('name', '이름', isLink ? '나이스' : '과세특 작성 도우미')
+    + row('appUrl', '주소', isLink ? 'neis.go.kr 처럼 적어도 됩니다'
+        : 'https://script.google.com/macros/s/…/exec')
+    + row('desc', '설명', '무엇에 쓰는 것인지 한 줄')
+    + pal('묶음', lbCats().map(function (c) { return { v: c, t: c }; }),
+        f.tab || '기타', 'data-lbtab')
+    + '<div class="lbfr"><i>새 묶음</i>'
+    + '<input id="lbf_tab" value="' + esc(f.tab || '') + '" placeholder="없는 묶음을 적으면 새로 생깁니다"></div>'
+    + (isLink ? ''
+      : row('version', '버전', 'v1.0')
+        + row('gasUrl', '편집기 주소', 'https://script.google.com/d/…/edit')
+        + row('sheetUrl', '시트 주소', ''))
     + '<div class="lbfb">'
     + '<button class="ntb" id="lbSave">저장</button>'
     + '<button class="wkb" id="lbCancel">그만두기</button>'
@@ -2233,7 +2282,7 @@ function lbGroup(title, list, all) {
       + '<button class="wkb sw' + (x.shared ? ' now' : '') + '" data-lbsh="' + i + '"'
       + ' title="켜면 혜원이지에 보입니다">'
       + '<span class="track"><span class="knob"></span></span></button>'
-      + '<span class="lbnm"><b>' + esc(x.t) + '</b>'
+      + '<span class="lnm"><b>' + esc(x.t) + '</b>'
       + '<i>' + esc(x.version || '') + (x.version && x.u ? ' · ' : '')
       + esc(x.u ? linkHost(x.u) : '주소 없음') + '</i></span>'
       + '<button class="wkb" data-lbfav="' + i + '" title="즐겨찾기">'
@@ -2283,7 +2332,24 @@ function wireBoardBar(root) {
     lbEdit = !lbEdit; if (!lbEdit) lbForm = null; render();
   });
   var ad = root.querySelector('#lbAdd');
-  if (ad) ad.addEventListener('click', function () { lbOpenForm(null); });
+  if (ad) ad.addEventListener('click', function () { lbOpenForm(null, 'app'); });
+  var al = root.querySelector('#lbAddLink');
+  if (al) al.addEventListener('click', function () { lbOpenForm(null, 'link'); });
+  // 칸 안의 고르개 — 누르면 그 자리에서 다시 그린다(적던 글자는 먼저 챙긴다)
+  root.querySelectorAll('[data-lbkind]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      lbGrab(root);
+      lbForm.kind = b.dataset.lbkind;
+      render();
+    });
+  });
+  root.querySelectorAll('[data-lbtab]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      lbGrab(root);
+      lbForm.tab = b.dataset.lbtab;
+      render();
+    });
+  });
   var sc = root.querySelector('#lbScan');
   if (sc) sc.addEventListener('click', function () { lbDo('scan', {}, '드라이브를 훑는 중'); });
   var sv = root.querySelector('#lbSave');
@@ -3294,6 +3360,15 @@ function wireViews(app) {
   });
   app.querySelectorAll('[data-lkx]').forEach(function (b) {
     b.addEventListener('click', function () { lkDrop(Number(b.dataset.lkx)); });
+  });
+  app.querySelectorAll('[data-lkpush]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var i = Number(b.dataset.lkpush), x = LINKS[i];
+      if (!x || lbBusy) return;
+      lbDo('add', { app: { name: x.t, appUrl: x.u, desc: '', tab: '바로가기',
+        kind: 'link', visibility: '나만' } }, '런처보드로 옮기는 중');
+      lkDrop(i);   // 옮겼으니 이 PC 목록에서는 뺀다
+    });
   });
   var fdb = app.querySelector('#fdGet');
   if (fdb) fdb.addEventListener('click', function () {

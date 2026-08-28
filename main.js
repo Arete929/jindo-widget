@@ -287,7 +287,9 @@ function feedApp(a) {
     icon: String(a.icon || '').trim(), tab: String(a.tab || '').trim(),
     version: String(a.version || '').trim(), updated: String(a.updated || '').trim(),
     gas: tidyUrl(a.gas), sheet: tidyUrl(a.sheet),
-    shared: !!a.shared, hidden: !!a.hidden
+    shared: !!a.shared, hidden: !!a.hidden,
+    // 종류 — 'link' 면 담아 둔 주소, 아니면 내가 만든 앱
+    kind: a.kind === 'link' ? 'link' : 'app'
   };
 }
 function getFeedUrl() {
