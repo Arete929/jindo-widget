@@ -2084,6 +2084,11 @@ function lbFavToggle(t) {
 var lbQ2 = [], lbSending = false, lbWait = {};
 /* 접어 둔 묶음 · 지금 그 자리에서 고치고 있는 줄 · 이름을 고치는 묶음 */
 var LBFOLD = [], lbRow = '', lbCatEdit = '', lbNewCat = false;
+/* 줄을 펼쳐 고치는 동안 적은 것 — 어쩌다 다시 그려져도 안 잃는다.
+   ★ 화면(DOM)만 믿으면 안 된다. 다시 그리는 순간 옛 값으로 되돌아간다. */
+var lbRowVals = null;
+/* 고치는 칸이 열려 있나 — 열려 있으면 자료가 와도 다시 그리지 않는다 */
+function lbOpen() { return !!(lbForm || lbRow || lbCatEdit); }
 function lbFolded(k) { return LBFOLD.indexOf(k) >= 0; }
 function lbFoldToggle(k) {
   var i = LBFOLD.indexOf(k);
@@ -2541,16 +2546,19 @@ function lbGroup(title, list, all, key) {
 /* 편집판의 줄 하나. ✎ 를 누른 줄은 그 자리에서 입력칸이 된다. */
 function lbRowHtml(x, i) {
   {
+    /* ★ 적어 둔 것이 있으면 그것을 보여 준다 — 다시 그려도 글자가 안 날아간다 */
+    var v = lbRowVals || {};
+    var vv = function (k, dflt) { return v[k] !== undefined ? v[k] : (dflt || ''); };
     return '<div class="lbrow open">'
       + '<div class="lbin"><i>이름</i>'
-      + '<input id="lbr_name" value="' + esc(x.t) + '"></div>'
+      + '<input id="lbr_name" data-lbrv="name" value="' + esc(vv('name', x.t)) + '"></div>'
       + '<div class="lbin"><i>주소</i>'
-      + '<input id="lbr_url" value="' + esc(x.u || '') + '" '
+      + '<input id="lbr_url" data-lbrv="url" value="' + esc(vv('url', x.u)) + '" '
       + 'placeholder="' + (lbKindOf(x) === 'link' ? 'neis.go.kr' : 'https://…/exec') + '"></div>'
       + (lbKindOf(x) === 'link' ? ''
-        : '<div class="lbin"><i>버전</i><input id="lbr_ver" value="' + esc(x.version || '') + '"></div>')
+        : '<div class="lbin"><i>버전</i><input id="lbr_ver" data-lbrv="ver" value="' + esc(vv('ver', x.version)) + '"></div>')
       + '<div class="lbin"><i>설명</i>'
-      + '<input id="lbr_desc" value="' + esc(x.d || '') + '"></div>'
+      + '<input id="lbr_desc" data-lbrv="desc" value="' + esc(vv('desc', x.d)) + '"></div>'
       + '<div class="lbrb">'
       + '<button class="ntb" data-lbrsave="' + i + '">저장</button>'
       + '<button class="wkb" data-lbrcancel="1">그만</button>'
@@ -2752,7 +2760,7 @@ function wireBoardList(root) {
       e.stopPropagation();
       var x = at(b, 'lbtedit');
       if (!x) return;
-      lbEdit = true; lbRow = x.t;
+      lbEdit = true; lbRow = x.t; lbRowVals = null;
       // 접혀 있으면 펼쳐야 그 줄이 보인다
       var kk = (x.shared ? 'y' : 'n') + '/' + lbKindOf(x) + '/' + (x.tab || '기타');
       var fi = LBFOLD.indexOf(kk);
@@ -2764,22 +2772,34 @@ function wireBoardList(root) {
     b.addEventListener('click', function (e) {
       e.stopPropagation();
       var x = at(b, 'lbrow');
-      if (x) { lbRow = x.t; render(); }
+      if (x) { lbRow = x.t; lbRowVals = null; render(); }
     });
   });
   var rc = root.querySelector('[data-lbrcancel]');
-  if (rc) rc.addEventListener('click', function () { lbRow = ''; render(); });
+  if (rc) rc.addEventListener('click', function () { lbRow = ''; lbRowVals = null; render(); });
+  /* ★ 적는 족족 담아 둔다 — 저장 단추를 누르는 사이에 다시 그려져도 안 잃는다 */
+  root.querySelectorAll('[data-lbrv]').forEach(function (e) {
+    e.addEventListener('input', function () {
+      lbRowVals = lbRowVals || {};
+      lbRowVals[e.dataset.lbrv] = e.value;
+    });
+  });
   root.querySelectorAll('[data-lbrsave]').forEach(function (b) {
     b.addEventListener('click', function () {
       var x = at(b, 'lbrsave');
       if (!x) return;
-      var g = function (id) { var e = root.querySelector(id); return e ? e.value.trim() : ''; };
+      /* ★ 담아 둔 것 → 없으면 화면. 화면만 믿으면 다시 그려진 «옛 값» 을 읽는다. */
+      var g = function (id, k) {
+        if (lbRowVals && lbRowVals[k] !== undefined) return String(lbRowVals[k]).trim();
+        var e = root.querySelector(id);
+        return e ? e.value.trim() : '';
+      };
       var key = lbKey(x);          // ★ 고치기 «전» 이름·주소로 줄을 찾는다
-      lbRow = '';
+      lbRow = ''; lbRowVals = null;
       lbDo('edit', { key: key, data: {
-        name: g('#lbr_name') || x.t, appUrl: g('#lbr_url'),
-        desc: g('#lbr_desc'), tab: x.tab || '기타', icon: x.icon,
-        version: lbKindOf(x) === 'link' ? '' : g('#lbr_ver'),
+        name: g('#lbr_name', 'name') || x.t, appUrl: g('#lbr_url', 'url'),
+        desc: g('#lbr_desc', 'desc'), tab: x.tab || '기타', icon: x.icon,
+        version: lbKindOf(x) === 'link' ? '' : g('#lbr_ver', 'ver'),
         gasUrl: x.gas, sheetUrl: x.sheet, kind: lbKindOf(x),
         visibility: x.shared ? '공유' : '나만'
       } }, '고치는 중');
@@ -3717,8 +3737,13 @@ function isTyping() {
   var t = (a.type || 'text').toLowerCase();
   return t !== 'checkbox' && t !== 'radio' && t !== 'button';
 }
+/* ★ 고치는 칸이 열려 있는 동안에는 아예 안 그린다.
+   전에는 «칸에서 손을 뗄 때» 미뤄 둔 것을 그렸는데, 저장 단추를 누르면
+   그 손 떼기(focusout)가 누름(click)보다 «먼저» 일어난다.
+   그래서 판이 다시 그려져 입력칸이 옛 이름으로 되돌아간 뒤에야
+   click 이 그 칸을 읽어, 바꿔도 원래대로 저장됐다. */
 function renderSoon() {
-  if (isTyping()) { wantRender = true; return; }
+  if (isTyping() || lbOpen()) { wantRender = true; return; }
   wantRender = false;
   render();
 }
@@ -3726,7 +3751,7 @@ document.addEventListener('focusout', function () {
   if (!wantRender) return;
   // 다른 칸으로 옮겨 간 것뿐이면 그대로 둔다
   setTimeout(function () {
-    if (!wantRender || isTyping()) return;
+    if (!wantRender || isTyping() || lbOpen()) return;
     wantRender = false;
     render();
   }, 0);
