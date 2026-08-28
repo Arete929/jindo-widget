@@ -1614,6 +1614,10 @@ function inOrder(list, order, keyOf) {
    ★ 아이콘은 선으로 그린 것을 코드 안에 넣는다 — 남의 그림 파일을 쓰지 않아
      인터넷이 없어도 나오고, 테마 색을 그대로 따라간다. */
 var OFICON = {
+  trophy: '<path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/><path d="M9 20h6M12 13v7"/>',
+  check: '<rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9.5 3h5v3h-5z"/><path d="M9 13l2 2 4-4"/>',
+  run: '<path d="M3 12h4l2.5-7 4 14 2.5-7h5"/>',
+  star: '<path d="M12 3.5l2.6 5.6 6 .8-4.4 4.2 1.1 6.1L12 17.4 6.7 20.2l1.1-6.1L3.4 9.9l6-.8z"/>',
   folder: '<path d="M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>',
   file: '<path d="M5 3h9l5 5v13H5z"/><path d="M14 3v5h5"/>',
   doc: '<path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M15 4v5h5"/><path d="M8 13h8M8 17h5"/>',
@@ -1641,8 +1645,30 @@ function ofIconOf(x) {
   if (/docs\.google\.com\/spreadsheets/.test(u)) return 'sheet';
   if (/docs\.google\.com\/document/.test(u)) return 'doc';
   if (/docs\.google\.com\/forms/.test(u)) return 'form';
-  if (/script\.google\.com/.test(u)) return 'app';
-  return 'link';
+  // ★ GAS 앱은 주소가 전부 같다 — 이름을 보고 갈라야 아이콘이 하나로 안 몰린다
+  if (/script\.google\.com/.test(u)) return nameIcon(x) || 'app';
+  return nameIcon(x) || 'link';
+}
+/* 이름·묶음·설명에 든 낱말로 아이콘을 고른다. 위에서부터 먼저 걸리는 것을 쓴다. */
+var NAMEICON = [
+  ['trophy', /대회|경기|리그|토너먼트|최강자|선수|종목|넷볼|배구|배드민턴|피클볼|족구|킨볼|베이스볼|발리볼|짝순환/],
+  ['users',  /모둠|짝꿍|짝선정|편성|조편성|팀|임원|주장|자리|배정|역할/],
+  ['run',    /걷기|체력|운동|건강|훈련|처방/],
+  ['chart',  /성적|점수|분석|평가|수행|통계|순위|현황|대시보드/],
+  ['check',  /출결|출석|명렬|점검|확인|체크/],
+  ['pencil', /세특|과세특|기록|일지|작성|생성|도우미|보고서/],
+  ['star',   /칭찬|쿠폰|상점|추천|투표/],
+  ['form',   /설문|신청|접수|조사/],
+  ['calendar', /일정|시간표|진도|학사|달력|주간/],
+  ['book',   /수업|교과|학습|자료|매뉴얼|안내/]
+];
+function nameIcon(x) {
+  var t = String((x && x.t) || '') + ' ' + String((x && x.tab) || '')
+    + ' ' + String((x && x.d) || '');
+  for (var i = 0; i < NAMEICON.length; i++) {
+    if (NAMEICON[i][1].test(t)) return NAMEICON[i][0];
+  }
+  return '';
 }
 /* 파일 이름 끝을 보고 아이콘을 고른다 */
 function ofFileIcon(n) {
@@ -1916,6 +1942,9 @@ var FEED = null, FEEDFAV = [];
      (저절로 하면 앱 켤 때마다 드라이브를 뒤져 느려진다) */
 var lbEdit = false, lbQ = '', lbBusy = '', lbErr = '', lbOkAt = '', lbForm = null;
 function lbOn() { return FLAVOR === 'jinho' && !!FEED; }
+/* 런처에서 온 앱 묶음의 이름 — 갈래마다 «누구 것인가» 가 다르다.
+   진호알리미는 내가 담은 «내 앱», 혜원이지는 내가 나눠 준 것을 «선생님들이» 본다. */
+function feedName() { return FLAVOR === 'jinho' ? '내 앱' : '함께 쓰는 앱'; }
 function lbAdmin() { return !!(FEED && FEED.admin); }
 /* 이 앱을 가리키는 열쇠 — 런처 시트에서 줄을 찾을 때 쓴다 */
 function lbKey(x) { return { name: x.t, appUrl: x.u }; }
@@ -1985,7 +2014,8 @@ function linkColor(t) {
 function linkTile(x, key) {
   // ★ 교무실과 같은 «선 아이콘» 을 쓴다 — 주소를 보고 저절로 고른다.
   //   그래야 한 화면에 이모지와 선 아이콘이 섞이지 않는다.
-  var ico = '<span class="lico">' + ofSvg(ofIconOf(x)) + '</span>';
+  var ico = '<span class="lico" style="--ic:' + linkColor(x.t) + '">'
+    + ofSvg(ofIconOf(x)) + '</span>';
   return '<button class="lnk" data-' + key + '" title="' + esc(x.u) + '">'
     + ico + '<span class="ltx"><b>' + esc(x.t) + '</b>'
     + '<i>' + esc(x.d || linkHost(x.u)) + '</i></span></button>';
@@ -2054,7 +2084,8 @@ function viewLinks() {
     + '<button class="wkb' + (lkEdit ? ' now' : '') + '" id="lkEd">'
     + (lkEdit ? '✓ 다 됐어요' : '✎ 고치기') + '</button>'
     + '<span class="spacer"></span>' + fontBtns('link')
-    + (FEED ? '<button class="wkb" id="fdGet" title="내 앱 다시 읽기">⟳</button>' : '')
+    + (FEED ? '<button class="wkb" id="fdGet" title="' + esc(feedName())
+      + ' 다시 읽기">⟳</button>' : '')
     + '</div></div>';
 
   if (lkEdit) {
@@ -2089,11 +2120,12 @@ function viewLinks() {
 
   if (lbOn()) { h += viewBoardApps(); }
   else if (feed) {
-    h += '<div class="lgrp">내 앱'
+    h += '<div class="lgrp">' + esc(feedName())
       + (FEED.at ? '<small>' + esc(FEED.at) + '</small>' : '') + '</div>'
       + '<div class="lnks">' + feed + '</div>';
   } else if (FEED && FEED.error) {
-    h += '<div class="lgrp">내 앱</div><div class="empty">' + esc(FEED.error) + '</div>';
+    h += '<div class="lgrp">' + esc(feedName()) + '</div>'
+      + '<div class="empty">' + esc(FEED.error) + '</div>';
   }
   return h;
 }
@@ -2214,7 +2246,8 @@ function lbGroup(title, list, all) {
 
 /* 타일 하나 — 바로가기와 같은 선 아이콘을 쓴다 */
 function lbTile(x, i) {
-  var ico = '<span class="lico">' + ofSvg(ofIconOf(x)) + '</span>';
+  var ico = '<span class="lico" style="--ic:' + linkColor(x.t) + '">'
+    + ofSvg(ofIconOf(x)) + '</span>';
   var sub = x.d || (x.u ? linkHost(x.u) : '주소 없음');
   return '<div class="lbt' + (x.u ? '' : ' dead') + '">'
     + '<button class="lnk" data-lbgo="' + i + '" title="' + esc(x.u || '') + '">'
@@ -3045,6 +3078,35 @@ document.addEventListener('keydown', function (e) {
   widgetAPI.escClose();
 });
 
+/* ── 글자를 넣는 동안에는 다시 그리지 않는다 ────────────────
+   ★ 자료는 3초마다 온다(시스템 상태 띠). 그때마다 render() 하면
+     담기 칸에 적던 글자가 통째로 지워진다 — 실제로 그랬다.
+   ★ 한글은 더 나쁘다. 조합 중에 다시 그리면 글자가 깨진다.
+   칸에서 손을 떼면 미뤄 둔 것을 그때 그린다. */
+var wantRender = false;
+function isTyping() {
+  var a = document.activeElement;
+  if (!a) return false;
+  if (a.tagName === 'TEXTAREA') return true;
+  if (a.tagName !== 'INPUT') return false;
+  var t = (a.type || 'text').toLowerCase();
+  return t !== 'checkbox' && t !== 'radio' && t !== 'button';
+}
+function renderSoon() {
+  if (isTyping()) { wantRender = true; return; }
+  wantRender = false;
+  render();
+}
+document.addEventListener('focusout', function () {
+  if (!wantRender) return;
+  // 다른 칸으로 옮겨 간 것뿐이면 그대로 둔다
+  setTimeout(function () {
+    if (!wantRender || isTyping()) return;
+    wantRender = false;
+    render();
+  }, 0);
+});
+
 widgetAPI.onData(function (p) {
   if (p.flavor) FLAVOR = p.flavor;
   STATE = p.data;
@@ -3123,14 +3185,14 @@ widgetAPI.onData(function (p) {
   // 창 제목 — 세 갈래가 각자 제 이름을 단다 (html 의 <title> 은 갈래를 모른다)
   var want = APPNAME + (IS_EASY ? ' — 넓게 보기' : '');
   if (APPNAME && document.title !== want) document.title = want;
-  render();
+  renderSoon();
 });
 
 // 남은 시간·지금 수업 표시는 30초마다 다시 그린다 (자료는 그대로, 시계만 흐른다).
 // 사용량의 «몇 분 남음»도 같이 줄어들어야 해서, 사용량 띠가 보이면 늘 다시 그린다.
 setInterval(function () {
   if (!STATE || STATE.needLogin) return;
-  if (VIEW === 'today' || (USGSHOW && USG)) render();
+  if (VIEW === 'today' || (USGSHOW && USG)) renderSoon();
 }, 30 * 1000);
 
 // 날짜가 바뀌면(자정을 넘기면) 오늘 표시가 어제에 머물지 않도록 자료를 새로 읽는다

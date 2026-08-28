@@ -398,7 +398,7 @@ function viewHome() {
     { k: 'meal', t: '오늘 급식', go: 'meal', body: dcMeal },
     { k: 'next', t: '앞으로 7일', go: 'cal', body: dcNext },
     { k: 'link', t: '바로가기', go: 'link', body: linkTiles },
-    { k: 'feed', t: '내 앱', go: 'link', body: feedTiles }
+    { k: 'feed', t: feedName(), go: 'link', body: feedTiles }
   ];
   var ordered = inOrder(CARDS, DASHORDER, function (c) { return c.k; });
   h += '<div class="dcbar">'

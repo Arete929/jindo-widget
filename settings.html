@@ -95,10 +95,123 @@
   .foot { font-size: 11.5px; color: var(--sub); text-align: center; margin-top: 4px; }
   .maker { display: inline-block; margin-top: 5px; font-size: 10px; font-weight: 800;
            letter-spacing: 1px; color: var(--sub); opacity: .65; }
+
+  /* ── 위쪽 두 갈래 (설정 · 도움말) ─────────────────────────
+     ★ 드롭다운을 쓰지 않는다. 단추 팔레트로 고른다. */
+  .top { position: sticky; top: 0; z-index: 30; background: var(--canvas);
+         padding: 0 0 9px; margin: -16px -18px 0; padding: 14px 18px 9px; }
+  .top h1 { margin: 0 0 9px; }
+  .pal { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pal button { padding: 7px 15px; font-size: 12.5px; }
+
+  /* ── 도움말 ────────────────────────────────────────────── */
+  /* 목차 — 머리에 붙어 있어서 아래로 내려가도 늘 손에 닿는다 */
+  .toc { position: sticky; top: 0; z-index: 20; background: var(--canvas);
+         padding: 10px 0 9px; margin: 0 0 4px;
+         border-bottom: 1px solid var(--border); }
+  .toc .tocw { display: flex; gap: 5px; flex-wrap: wrap; }
+  .toc button { padding: 5px 10px; font-size: 11.5px; font-weight: 700; }
+  .toc button.now { background: var(--energy1); color: #fff; border-color: transparent; }
+  .hsec { scroll-margin-top: var(--tocgap, 118px); }
+  .hsec h2 { display: flex; align-items: center; gap: 7px; font-size: 14.5px;
+             margin-bottom: 3px; }
+  .hsec .only { font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 999px;
+                background: #efedff; color: var(--energy2); }
+  .hsec .only.hy { background: #e6f6ee; color: var(--ok); }
+  .hsec p { font-size: 12.5px; line-height: 1.72; color: var(--ink); margin: 7px 0; }
+  .hsec p.sub { color: var(--sub); }
+  .hsec b { font-weight: 800; }
+  .hsec ol, .hsec ul { margin: 6px 0 6px 18px; font-size: 12.5px; line-height: 1.75; }
+  .hsec li { margin: 3px 0; }
+  .hsec code { background: #f2f0ff; border-radius: 4px; padding: 1px 5px;
+               font-size: 11.5px; font-family: Consolas, monospace; }
+  .tip { background: #fff8ee; border: 1px solid #f2e2c8; border-radius: 9px;
+         padding: 9px 11px; font-size: 12px; line-height: 1.7; margin: 8px 0; }
+  .tip b { color: #8a5a12; }
+  .warnbox { background: #fff1f0; border: 1px solid #f3d3d0; border-radius: 9px;
+             padding: 9px 11px; font-size: 12px; line-height: 1.7; margin: 8px 0; }
+  .warnbox b { color: #a33a2c; }
+
+  /* ── 실제 모습 견본 ─────────────────────────────────────
+     앱에서 정말로 그렇게 보이는 조각을 여기 다시 만들어 둔다.
+     글로만 «스위치를 켜세요» 하면 어느 것인지 못 찾는다. */
+  .shot { background: #f4f3fb; border: 1px solid var(--border); border-radius: 10px;
+          padding: 11px 12px; margin: 9px 0; }
+  .shot .cap { font-size: 10.5px; font-weight: 800; color: var(--sub);
+               letter-spacing: .4px; margin-bottom: 7px; }
+  .shot .in { background: #fff; border: 1px solid var(--border); border-radius: 9px;
+              padding: 9px 10px; }
+  .shotrow { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+
+  /* 선 아이콘 — 앱과 같은 규칙(굵기 1.8, 색은 제목마다 다름) */
+  .ico { width: 26px; height: 26px; border-radius: 8px; background: #f0eefb;
+         display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .ico svg { width: 16px; height: 16px; fill: none; stroke-width: 1.8;
+             stroke-linecap: round; stroke-linejoin: round; }
+  .icogrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+             gap: 7px; }
+  .icogrid div { display: flex; align-items: center; gap: 7px; font-size: 11.5px;
+                 color: var(--sub); font-weight: 700; }
+
+  /* 타일 — 런처보드·바로가기에서 보이는 그 모양 */
+  .tile { display: inline-flex; align-items: center; gap: 8px; background: #fff;
+          border: 1px solid var(--border); border-radius: 10px; padding: 8px 9px;
+          position: relative; }
+  .tile .tx b { display: block; font-size: 12.5px; font-weight: 800; line-height: 1.3; }
+  .tile .tx b em { font-style: normal; font-weight: 600; font-size: 9px;
+                   color: var(--sub); margin-left: 5px; }
+  .tile .tx i { display: block; font-style: normal; font-size: 9.5px; color: var(--sub); }
+  .tile .star { position: absolute; top: 3px; right: 4px; font-size: 12px; opacity: .3; }
+  .tile .star.on { opacity: 1; color: #e0a91e; }
+  .tile .mine { position: absolute; bottom: 4px; right: 5px; font-size: 8.5px;
+                font-weight: 800; color: var(--sub); border: 1px solid var(--border);
+                border-radius: 4px; padding: 0 3px; }
+
+  /* 스위치 — 앱의 그 스위치와 같은 모양 */
+  .sws { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px;
+         font-weight: 700; color: var(--sub); border: 1px solid var(--border);
+         background: #fff; border-radius: 999px; padding: 3px 10px 3px 5px; }
+  .sws .tr { width: 26px; height: 14px; border-radius: 999px; background: #d7d4e8;
+             position: relative; flex: none; }
+  .sws .kn { position: absolute; top: 2px; left: 2px; width: 10px; height: 10px;
+             border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  .sws.on { color: var(--energy1); border-color: #cfc8ff; }
+  .sws.on .tr { background: #bfb4ff; }
+  .sws.on .kn { left: 14px; background: var(--energy1); }
+
+  /* 대시보드 칸 — 꾸미기 설명에 쓴다 */
+  .dgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px;
+           background:
+             repeating-linear-gradient(90deg, var(--border) 0 1px, transparent 1px calc(100%/6));
+           border: 1px dashed var(--border); border-radius: 8px; padding: 5px; }
+  .dgrid div { background: #fff; border: 1px solid var(--border); border-radius: 7px;
+               padding: 9px 8px; font-size: 11px; font-weight: 800; color: var(--sub);
+               position: relative; }
+  .dgrid div .g { position: absolute; left: 4px; top: 3px; font-size: 9px; opacity: .4; }
+  .dgrid div .c { position: absolute; right: 3px; bottom: 3px; width: 9px; height: 9px;
+                  border-right: 2px solid var(--energy2); border-bottom: 2px solid var(--energy2); }
+
+  /* 진도표 격자 견본 */
+  .ggrid { display: grid; grid-template-columns: 20px repeat(5, 1fr); gap: 3px;
+           font-size: 10.5px; text-align: center; }
+  .ggrid span { color: var(--sub); font-weight: 800; padding: 3px 0; }
+  .ggrid b { background: #efedff; color: var(--energy1); border-radius: 5px;
+             padding: 6px 0; font-weight: 800; }
+  .ggrid i { background: #f6f5fb; border-radius: 5px; padding: 6px 0;
+             color: #b9b6cc; font-style: normal; }
+  .ggrid b.ev { background: #fff3e2; color: #8a5a12; }
 </style>
 </head>
 <body>
-<h1 id="h1">⚙️ 설정</h1>
+<div class="top">
+  <h1 id="h1">⚙️ 설정</h1>
+  <div class="pal">
+    <button id="tabSet" class="on">⚙️ 설정</button>
+    <button id="tabHelp">❓ 도움말</button>
+  </div>
+</div>
+
+<div id="panelSet">
 
 <section>
   <h2>컴시간알리미</h2>
@@ -512,7 +625,15 @@
   </div>
 </section>
 <div class="foot">설정은 바로 저장됩니다.<br><span class="maker">made by KIMJINHO</span></div>
+</div>
 
+<div id="panelHelp" hidden>
+  <div class="toc"><div class="tocw" id="tocw"></div></div>
+  <div id="helpBody"></div>
+  <div class="foot">찾는 것이 없으면 알려 주세요 — 도움말도 같이 고칩니다.<br><span class="maker">made by KIMJINHO</span></div>
+</div>
+
+<script src="help.js"></script>
 <script>
 var CFG = { school: null, wantTeacher: true, wantClasses: false, teacher: '', teacherIdx: 0 };
 var UI = { size: 'medium', opacity: 1, alwaysOnTop: true, autoLaunch: false, version: '', loggedIn: false };
@@ -1303,6 +1424,82 @@ $('roGet').onclick = function () {
 
 $('updBtn').onclick = function () { widgetAPI.checkUpdate(); };
 $('logBtn').onclick = function () { widgetAPI.openLog(); };
+
+/* ── 도움말 ──────────────────────────────────────────────
+   ★ 목차는 머리에 붙어 있어서(sticky) 아래로 내려가도 늘 손에 닿는다.
+     보다가 다른 단추를 누르면 그 자리로 바로 옮겨 간다.
+   ★ 지금 보고 있는 자리는 목차에서 색이 채워진다. */
+var helpDrawn = false;
+function drawHelp() {
+  if (helpDrawn) return;
+  var parts = helpParts(UI.flavor || "jinho", UI.appName || "진호알리미");
+  $("tocw").innerHTML = parts.map(function (p, i) {
+    return '<button type="button" data-go="' + p.id + '"'
+      + (i === 0 ? ' class="now"' : '') + '>' + esc(p.t) + '</button>';
+  }).join("");
+  $("helpBody").innerHTML = parts.map(function (p) {
+    return '<section class="hsec" id="h_' + p.id + '">'
+      + '<h2>' + esc(p.t)
+      + (p.only === "jinho" ? '<span class="only">진호알리미</span>' : "")
+      + (p.only === "hyewon" ? '<span class="only hy">혜원이지</span>' : "")
+      + '</h2>' + p.body + '</section>';
+  }).join("");
+
+  var btns = $("tocw").querySelectorAll("[data-go]");
+  [].forEach.call(btns, function (b) {
+    b.addEventListener("click", function () {
+      var el = $("h_" + b.dataset.go);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      mark(b.dataset.go);
+    });
+  });
+  function mark(id) {
+    [].forEach.call(btns, function (b) { b.classList.toggle("now", b.dataset.go === id); });
+  }
+  /* 굴리는 대로 목차도 따라간다 — 머리(목차+갈래) 높이만큼 위를 비워 두고 본다 */
+  var spy = null;
+  window.addEventListener("scroll", function () {
+    if ($("panelHelp").hidden || spy) return;
+    spy = setTimeout(function () {
+      spy = null;
+      var top = 130, best = parts[0].id;
+      parts.forEach(function (p) {
+        var el = $("h_" + p.id);
+        if (el && el.getBoundingClientRect().top <= top) best = p.id;
+      });
+      mark(best);
+    }, 90);
+  }, { passive: true });
+  helpDrawn = true;
+}
+/* 목차를 «갈래 단추 띠 바로 밑» 에 붙인다.
+   ★ 둘 다 top:0 으로 두면 목차가 띠 뒤로 숨어 버린다 — 높이를 재서 내려 준다.
+   ★ 꼭지로 옮겨 갈 때 가려지지 않게 scroll-margin 도 같은 값으로 맞춘다. */
+function fitToc() {
+  var top = document.querySelector(".top");
+  var toc = document.querySelector(".toc");
+  if (!top || !toc) return;
+  var h = Math.round(top.getBoundingClientRect().height);
+  toc.style.top = h + "px";
+  var all = Math.round(h + toc.getBoundingClientRect().height) + 10;
+  document.documentElement.style.setProperty("--tocgap", all + "px");
+}
+window.addEventListener("resize", function () { if (helpDrawn) fitToc(); });
+function showPanel(which) {
+  var help = which === "help";
+  if (help) drawHelp();
+  $("panelSet").hidden = help;
+  $("panelHelp").hidden = !help;
+  $("tabSet").classList.toggle("on", !help);
+  $("tabHelp").classList.toggle("on", help);
+  $("h1").textContent = help ? "❓ 도움말" : "⚙️ 설정";
+  window.scrollTo(0, 0);
+  // ★ 숨어 있는 동안에는 높이가 0 이라 못 잰다 — 보인 뒤에 잰다
+  if (help) fitToc();
+}
+$("tabSet").onclick = function () { showPanel("set"); };
+$("tabHelp").onclick = function () { showPanel("help"); };
 
 function load() {
   widgetAPI.getSettings().then(function (s) {

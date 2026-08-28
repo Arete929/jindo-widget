@@ -14,6 +14,7 @@ extraMetadata:
 files:
   - main.js
   - preload.js
+  - help.js      # 도움말 글 (설정 창의 ❓ 도움말 판)
   - widget.html
   - ui.css        # 색·모양 (위젯과 혜원이지가 함께 쓴다)
   - views.js      # 화면을 만드는 코드 (마찬가지)
