@@ -165,7 +165,8 @@
      그림은 브라우저가 «그림 끌어다 놓기» 로 먼저 채가서 창 이동이 막힌다.
      그림 자체의 끌기를 끄고, 마우스를 아예 통과시켜 뒤의 제목 줄이 받게 한다. */
   .tlogo {
-    width: 26px; height: 26px; object-fit: contain; flex: 0 0 auto;
+    /* 로고를 키운다 — 26px 은 얼굴이 뭉개져 누군지 안 보였다 */
+    width: 34px; height: 34px; object-fit: contain; flex: 0 0 auto;
     -webkit-user-drag: none; user-select: none; pointer-events: none;
   }
   .ttl { font-size: 17px; font-weight: 800; letter-spacing: -.3px; color: var(--fg); }
@@ -1269,3 +1270,9 @@
   .seg.wait { opacity: .5; }
   .lbt .tseg { position: absolute; left: 6px; bottom: 4px; }
   .lbt .lnk { padding-bottom: calc(22px * var(--wf)); }
+
+  /* 타일도 끌어서 묶음을 옮긴다 */
+  .lbt.pick { cursor: grab; }
+  .lbt.pick:active { cursor: grabbing; }
+  .lbt.pick .lnk, .lbt.pick .lbstar, .lbt.pick .seg button { -webkit-user-drag: none; }
+  .lbt.dragging { opacity: .4; }

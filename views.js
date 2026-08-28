@@ -2360,7 +2360,8 @@ function lbGroup(title, list, all, key) {
 
   var h = '<div class="lgrp lgh' + (folded ? ' folded' : '') + '"'
     + (canFold ? ' data-lbfold="' + esc(key) + '"' : '')
-    + (editing && cat ? ' data-lbdrop="' + esc(cat) + '"' : '') + '>';
+    // ★ 받는 자리는 평소에도 열어 둔다 — 타일을 그냥 끌어 옮길 수 있어야 한다
+    + (lbAdmin() && cat ? ' data-lbdrop="' + esc(cat) + '"' : '') + '>';
   if (canFold) h += '<em class="fold">' + (folded ? '▶' : '▼') + '</em>';
   if (editing && cat && lbCatEdit === cat) {
     /* 묶음 이름을 그 자리에서 고친다 */
@@ -2437,7 +2438,8 @@ function lbTile(x, i) {
   var ico = '<span class="lico" style="--ic:' + linkColor(x.t) + '">'
     + ofSvg(ofIconOf(x)) + '</span>';
   var sub = x.d || (x.u ? linkHost(x.u) : '주소 없음');
-  return '<div class="lbt' + (x.u ? '' : ' dead') + '">'
+  return '<div class="lbt' + (x.u ? '' : ' dead') + (lbAdmin() ? ' pick' : '') + '"'
+    + (lbAdmin() ? ' draggable="true" data-lbdrag="' + i + '"' : '') + '>'
     + '<button class="lnk" data-lbgo="' + i + '" title="' + esc(x.u || '') + '">'
     + ico + '<span class="ltx"><b>' + esc(x.t)
     + (x.version ? '<em class="lbv">' + esc(x.version) + '</em>' : '') + '</b>'
@@ -2630,6 +2632,10 @@ function wireBoardList(root) {
       var to = g.dataset.lbdrop;
       if (!x || !to || (x.tab || '기타') === to) return;
       x.tab = to;                    // 먼저 옮겨 보여 준다
+      // 접힌 묶음으로 옮겼으면 펼쳐서 «어디로 갔는지» 보여 준다
+      var kk = (x.shared ? 'y' : 'n') + '/' + lbKindOf(x) + '/' + to;
+      var fi = LBFOLD.indexOf(kk);
+      if (fi >= 0) { LBFOLD.splice(fi, 1); widgetAPI.setUi({ feedFold: LBFOLD }); }
       render();
       lbDo('edit', { key: lbKey(x), data: {
         name: x.t, appUrl: x.u, desc: x.d, tab: to, icon: x.icon,
