@@ -3446,10 +3446,11 @@ function render() {
         // ★ 진호알리미의 «바로가기» 는 런처보드다 — 이름만 다르고 화면 값(link)은 같다
         HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,런처보드']
                : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,바로가기'],
-        TABORDER, function (s) { return s.split(',')[0]; }).map(function (s) {
+        TABORDER, function (s) { return s.split(',')[0]; }).map(function (s, i) {
         var p = s.split(',');
         return '<button class="chip nav' + NAVSTYLE + (tab === p[0] ? ' on' : '')
-          + '" data-v="' + p[0] + '" title="' + esc(p[1]) + '">' + chipInner(p[0], p[1]) + '</button>';
+          + '" data-v="' + p[0] + '" title="' + esc(p[1]) + ' — 숫자 ' + (i + 1) + '">'
+          + chipInner(p[0], p[1]) + '</button>';
       }).join('') + '</div>';
 
   if (tab === 'tt') {
@@ -3644,6 +3645,46 @@ widgetAPI.onMealsChanged(function () { ML = null; if (VIEW === 'meal') render();
 /* ESC — 적고 있으면 그 적기만 그만두고, 아니면 창을 닫는다.
    ★ 「닫기」 이지 「끄기」 가 아니다 — 뒤에서는 계속 돈다.
    ★ 적기 칸이 스스로 ESC 를 처리하고 e.stopPropagation() 하므로 여기까지 안 온다. */
+/* ── 탭 단축키 ─────────────────────────────────────────────
+   1~9 : 그 자리 탭으로 바로
+   Tab / Shift+Tab : 다음 · 이전 탭
+   ★ 글을 넣는 중에는 안 먹는다(Tab 은 원래 «다음 칸» 열쇠다). */
+function tabBtns() {
+  // 넓게 보기는 왼쪽 차림표, 위젯은 위쪽 칩
+  var list = document.querySelectorAll('.side .nav[data-go]');
+  if (!list.length) list = document.querySelectorAll('.chips:not(.sub) .chip[data-v]');
+  return [].slice.call(list);
+}
+function typingNow() {
+  var a = document.activeElement;
+  if (!a) return false;
+  if (a.isContentEditable) return true;
+  if (a.tagName === 'TEXTAREA') return true;
+  if (a.tagName !== 'INPUT') return false;
+  var t = (a.type || 'text').toLowerCase();
+  return t !== 'checkbox' && t !== 'radio' && t !== 'button';
+}
+document.addEventListener('keydown', function (e) {
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  if (typingNow()) return;
+  var btns = tabBtns();
+  if (!btns.length) return;
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    var i = btns.findIndex(function (b) { return b.classList.contains('on'); });
+    if (i < 0) i = 0;
+    var j = (i + (e.shiftKey ? -1 : 1) + btns.length) % btns.length;
+    btns[j].click();
+    return;
+  }
+  if (e.key >= '1' && e.key <= '9') {
+    var n = Number(e.key) - 1;
+    if (n >= btns.length) return;
+    e.preventDefault();
+    btns[n].click();
+  }
+});
+
 document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape') return;
   var t = e.target;

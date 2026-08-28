@@ -125,9 +125,10 @@ function drawSide() {
     + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
     + '<span><b>' + brandHtml() + '</b></span></div>';
   h += sideUsage();
-  h += menus().map(function (m) {
+  h += menus().map(function (m, i) {
     return '<button class="nav nav' + NAVSTYLE + (VIEW === m.v ? ' on' : '')
-      + '" data-go="' + m.v + '" title="' + esc(m.t) + '">'
+      + '" data-go="' + m.v + '" title="' + esc(m.t)
+      + (i < 9 ? ' — 숫자 ' + (i + 1) : '') + '">'
       + (NAVSTYLE === 'text' ? '' : navImg(m))
       + (NAVSTYLE === 'icon' ? '' : esc(m.t)) + '</button>';
   }).join('');

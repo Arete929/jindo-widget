@@ -71,6 +71,18 @@ function helpParts(flavor, appName) {
     + '</ul>'
     + '<p>창을 닫아도 앱은 <b>트레이(작업표시줄 오른쪽 아래)</b>에 남습니다. '
     + '완전히 끄려면 트레이 아이콘을 오른쪽 눌러 <b>종료</b>를 고릅니다.</p>'
+    + shot('탭을 손 안 대고 옮기기',
+        '<div class="keyrow">'
+      + '<span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span>'
+      + '<span class="kmemo">그 자리 탭으로 바로</span>'
+      + '<span class="kbd wide">Tab</span><span class="kmemo">다음 탭</span>'
+      + '<span class="kbd wide">Shift + Tab</span><span class="kmemo">이전 탭</span>'
+      + '</div>')
+    + '<p><b>숫자 1~9</b> 를 누르면 그 자리의 탭으로 바로 갑니다 — 탭에 마우스를 올리면 '
+    + '몇 번인지 알려 줍니다. <b>Tab</b> 은 다음, <b>Shift+Tab</b> 은 이전이고 '
+    + '끝에서 누르면 처음으로 돌아옵니다.</p>'
+    + '<p class="sub">글을 적고 있을 때는 안 먹습니다 — Tab 은 원래 «다음 칸으로» 가는 열쇠라 '
+    + '입력칸 안에서 뺏으면 칸을 못 옮깁니다.</p>'
     + '<div class="tip"><b>ESC</b> 를 누르면 창이 닫힙니다(끄는 것이 아니라 감추는 것입니다). '
     + '글을 적고 있을 때 누르면 먼저 <b>입력칸에서만</b> 빠져나옵니다.</div>'
     + '<p class="sub">' + (isJinho
