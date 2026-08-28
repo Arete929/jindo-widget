@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   printWork: (p) => ipcRenderer.invoke('work-print', p),
   onWorkChanged: (cb) => ipcRenderer.on('work-changed', () => cb()),
   setView: (view) => ipcRenderer.send('set-view', view),
+  toggleFull: () => ipcRenderer.send('toggle-full'),
   reportHeight: (h) => ipcRenderer.send('content-height', h),
 
   /* AI 사용량 (클로드·제미나이) */

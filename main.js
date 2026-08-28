@@ -2173,6 +2173,15 @@ ipcMain.handle('get-weeks', async (_e, o) => {
   }
 });
 app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch (e) {} });
+/* 전체화면 ↔ 원래 크기 — 백틱(`) 으로 오간다.
+   ★ 어느 창에서 눌렀는지 보고 그 창만 바꾼다. 위젯과 넓게 보기가 따로 논다. */
+ipcMain.on('toggle-full', (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win || win.isDestroyed()) return;
+  const want = !win.isFullScreen();
+  win.setFullScreen(want);
+  debugLog('전체화면 ' + (want ? '켬' : '끔'));
+});
 ipcMain.on('open-app', () => openInBrowser(APP_URL));
 // 주간업무 글 안에 걸린 링크 — 크롬으로 연다.
 // 어디로든 열어 주면 안 되므로 http(s) 인지 한 번 보고 연다.

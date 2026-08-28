@@ -77,6 +77,7 @@ function helpParts(flavor, appName) {
       + '<span class="kmemo">그 자리 탭으로 바로</span>'
       + '<span class="kbd wide">Tab</span><span class="kmemo">다음 탭</span>'
       + '<span class="kbd wide">Shift + Tab</span><span class="kmemo">이전 탭</span>'
+      + '<span class="kbd">`</span><span class="kmemo">전체화면 ↔ 원래 크기</span>'
       + '</div>')
     + '<p><b>숫자 1~9</b> 를 누르면 그 자리의 탭으로 바로 갑니다 — 탭에 마우스를 올리면 '
     + '몇 번인지 알려 줍니다. <b>Tab</b> 은 다음, <b>Shift+Tab</b> 은 이전이고 '
@@ -85,6 +86,8 @@ function helpParts(flavor, appName) {
     + '입력칸 안에서 뺏으면 칸을 못 옮깁니다.</p>'
     + '<p class="sub">이 숫자는 <b>이 창 안에서만</b> 먹습니다. 구글 캘린더처럼 숫자를 쓰는 '
     + '다른 프로그램과 부딪치지 않습니다 — 키는 «지금 앞에 있는 창» 에만 갑니다.</p>'
+    + '<p><b>백틱 `</b> (숫자 1 왼쪽) 을 누르면 <b>전체화면</b> 과 원래 크기를 오갑니다. '
+    + '위젯 보기·넓게 보기 각각 따로 기억합니다.</p>'
     + '<p><b>전역 단축키</b> — 다른 프로그램을 쓰다가도 창을 부르고 감춥니다. '
     + '설정 → <b>단축키</b> 에서 <b>키 누르기</b> 를 누르고 원하는 키를 누르면 정해집니다.</p>'
     + shot('부르기와 감추기를 따로',
@@ -107,6 +110,12 @@ function helpParts(flavor, appName) {
           + '진도표는 ' + other + ' 쪽에 있습니다(여기는 수업진도 대시보드를 따로 씁니다).'
         : '혜원이지에는 <b>진도표</b>가 있습니다. 런처보드는 ' + other + ' 쪽에 있습니다.')
     + '</p>' });
+
+  P.push({ id: 'setting', t: '설정 창', body:
+      '<p>설정 창 위쪽에 <b>⚙️ 설정</b> 과 <b>❓ 도움말</b> 두 갈래가 있습니다.</p>'
+    + '<p>그 아래 <b>목차</b> 가 붙어 있어, 아래로 내려가도 늘 보입니다. '
+    + '단추를 누르면 그 칸으로 <b>바로</b> 갑니다. 굴리면 지금 보고 있는 칸이 색으로 표시됩니다.</p>'
+    + '<p class="sub">칸이 열다섯이라 찾아 내려가기 힘들어 붙였습니다.</p>' });
 
   P.push({ id: 'look', t: '모양·글자', body:
       '<p>설정의 <b>모양</b> 칸에서 정합니다.</p>'

@@ -3674,6 +3674,9 @@ document.addEventListener('keydown', function (e) {
   if (typingNow()) return;
   var btns = tabBtns();
   if (!btns.length) return;
+  // ★ 백틱(`) — 전체화면과 원래 크기를 오간다.
+  //   숫자·Tab 과 같은 자리에 둔다(글 넣는 중에는 안 먹는 것도 같다).
+  if (e.key === '`' && widgetAPI.toggleFull) { e.preventDefault(); widgetAPI.toggleFull(); return; }
   if (e.key === 'Tab') {
     e.preventDefault();
     var i = btns.findIndex(function (b) { return b.classList.contains('on'); });

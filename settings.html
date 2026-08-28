@@ -245,6 +245,7 @@
 </div>
 
 <div id="panelSet">
+  <div class="toc"><div class="tocw" id="tocSetW"></div></div>
 
 <section>
   <h2>컴시간알리미</h2>
@@ -1562,9 +1563,7 @@ function drawHelp() {
   var btns = $("tocw").querySelectorAll("[data-go]");
   [].forEach.call(btns, function (b) {
     b.addEventListener("click", function () {
-      var el = $("h_" + b.dataset.go);
-      if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      gotoSec($("h_" + b.dataset.go));
       mark(b.dataset.go);
     });
   });
@@ -1577,7 +1576,7 @@ function drawHelp() {
     if ($("panelHelp").hidden || spy) return;
     spy = setTimeout(function () {
       spy = null;
-      var top = 130, best = parts[0].id;
+      var top = tocGap() + 8, best = parts[0].id;
       parts.forEach(function (p) {
         var el = $("h_" + p.id);
         if (el && el.getBoundingClientRect().top <= top) best = p.id;
@@ -1590,16 +1589,37 @@ function drawHelp() {
 /* 목차를 «갈래 단추 띠 바로 밑» 에 붙인다.
    ★ 둘 다 top:0 으로 두면 목차가 띠 뒤로 숨어 버린다 — 높이를 재서 내려 준다.
    ★ 꼭지로 옮겨 갈 때 가려지지 않게 scroll-margin 도 같은 값으로 맞춘다. */
-function fitToc() {
+/* 그 칸으로 굴려 간다.
+   ★ scrollIntoView 는 붙어 있는 머리(sticky) 때문에 자리를 잘 못 잡는다.
+     머리 높이(--tocgap)를 빼고 우리가 직접 셈한다. */
+/* 붙어 있는 머리(갈래 띠 + 목차)의 높이 */
+function tocGap() {
+  return parseInt(getComputedStyle(document.documentElement)
+    .getPropertyValue("--tocgap"), 10) || 120;
+}
+function gotoSec(el) {
+  if (!el) return;
+  var gap = tocGap();
+  var y = Math.max(0, window.scrollY + el.getBoundingClientRect().top - gap);
+  // ★ behavior:"smooth" 는 이 창에서 «가끔» 통째로 무시된다(먼 거리일수록).
+  //   목차는 «바로 가는» 것이 일이라 곧바로 옮긴다.
+  window.scrollTo(0, y);
+}
+function fitToc(toc) {
   var top = document.querySelector(".top");
-  var toc = document.querySelector(".toc");
+  if (!toc) toc = document.querySelector("#panelHelp .toc");
   if (!top || !toc) return;
   var h = Math.round(top.getBoundingClientRect().height);
   toc.style.top = h + "px";
   var all = Math.round(h + toc.getBoundingClientRect().height) + 10;
   document.documentElement.style.setProperty("--tocgap", all + "px");
 }
-window.addEventListener("resize", function () { if (helpDrawn) fitToc(); });
+window.addEventListener("resize", function () { fitToc(curToc()); });
+/* 지금 보이는 판의 목차 */
+function curToc() {
+  var help = !$("panelHelp").hidden;
+  return document.querySelector(help ? "#panelHelp .toc" : "#panelSet .toc");
+}
 function showPanel(which) {
   var help = which === "help";
   if (help) drawHelp();
@@ -1610,10 +1630,57 @@ function showPanel(which) {
   $("h1").textContent = help ? "❓ 도움말" : "⚙️ 설정";
   window.scrollTo(0, 0);
   // ★ 숨어 있는 동안에는 높이가 0 이라 못 잰다 — 보인 뒤에 잰다
-  if (help) fitToc();
+  fitToc(curToc());
+  markToc();
 }
 $("tabSet").onclick = function () { showPanel("set"); };
 $("tabHelp").onclick = function () { showPanel("help"); };
+
+/* ── 설정 목차 ─────────────────────────────────────────────
+   칸 이름은 HTML 의 <h2> 를 그대로 읽는다 — 목록을 따로 들고 있으면
+   칸을 더할 때 어긋난다. */
+var setSecs = [];
+function buildSetToc() {
+  setSecs = [].slice.call(document.querySelectorAll("#panelSet > section"))
+    .map(function (sec, i) {
+      var h = sec.querySelector("h2");
+      sec.id = "s_" + i;
+      sec.classList.add("hsec");        // 머리에 안 가리게 자리를 비운다
+      return { id: sec.id, t: h ? h.textContent.trim() : ("칸 " + (i + 1)) };
+    });
+  $("tocSetW").innerHTML = setSecs.map(function (x, i) {
+    return '<button type="button" data-sgo="' + x.id + '"'
+      + (i === 0 ? ' class="now"' : '') + '>' + esc(x.t) + '</button>';
+  }).join("");
+  $("tocSetW").querySelectorAll("[data-sgo]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      gotoSec($(b.dataset.sgo));
+      markToc(b.dataset.sgo);
+    });
+  });
+}
+/* 굴리는 대로 목차도 따라간다 */
+function markToc(id) {
+  if ($("panelHelp") && !$("panelHelp").hidden) return;
+  if (!setSecs.length) return;
+  if (!id) {
+    var top = tocGap() + 8; id = setSecs[0].id;
+    setSecs.forEach(function (x) {
+      var el = $(x.id);
+      if (el && el.getBoundingClientRect().top <= top) id = x.id;
+    });
+  }
+  $("tocSetW").querySelectorAll("[data-sgo]").forEach(function (b) {
+    b.classList.toggle("now", b.dataset.sgo === id);
+  });
+}
+var setSpy = null;
+window.addEventListener("scroll", function () {
+  if (setSpy) return;
+  setSpy = setTimeout(function () { setSpy = null; markToc(); }, 90);
+}, { passive: true });
+buildSetToc();
+fitToc(curToc());
 
 function load() {
   widgetAPI.getSettings().then(function (s) {
