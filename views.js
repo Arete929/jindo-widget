@@ -1908,7 +1908,68 @@ var LINKS = [];
 var TERMSTART = '';
 var NAVSTYLE = 'both';
 var TABORDER = [], DASHORDER = [], DASHOFF = [], DASHSIZE = {};
-var FEED = null;
+var FEED = null, FEEDFAV = [];
+/* ── 런처보드 ──────────────────────────────────────────────
+   런처 GAS(내 앱 대시보드) 시트를 이 화면에서 바로 고친다.
+   ★ «공유» 를 켠 것만 혜원이지에 나타난다. 꺼 두면 나만 본다.
+   ★ ⟳ 는 구글 드라이브를 훑어 새로 만든 앱을 담아 온다 — 누를 때만 한다.
+     (저절로 하면 앱 켤 때마다 드라이브를 뒤져 느려진다) */
+var lbEdit = false, lbQ = '', lbBusy = '', lbErr = '', lbOkAt = '', lbForm = null;
+function lbOn() { return FLAVOR === 'jinho' && !!FEED; }
+function lbAdmin() { return !!(FEED && FEED.admin); }
+/* 이 앱을 가리키는 열쇠 — 런처 시트에서 줄을 찾을 때 쓴다 */
+function lbKey(x) { return { name: x.t, appUrl: x.u }; }
+function lbFav(t) { return FEEDFAV.indexOf(t) >= 0; }
+function lbFavToggle(t) {
+  var i = FEEDFAV.indexOf(t);
+  if (i >= 0) FEEDFAV.splice(i, 1); else FEEDFAV.push(t);
+  widgetAPI.setUi({ feedFav: FEEDFAV });
+  render();
+}
+/* 런처에 시키기 — 하는 동안 단추를 잠그고, 끝나면 저장시각을 남긴다 */
+function lbDo(act, body, tag) {
+  if (lbBusy) return;
+  lbBusy = tag || act; lbErr = '';
+  render();
+  widgetAPI.feedAct(Object.assign({ act: act }, body || {})).then(function (r) {
+    lbBusy = '';
+    if (!r || !r.ok) { lbErr = (r && r.error) || '하지 못했습니다'; render(); return; }
+    lbOkAt = r.at || '';
+    if (act === 'scan') {
+      lbErr = '';
+      lbOkAt = (r.at || '') + '  (새로 ' + (r.added || 0) + '개 · 최신화 ' + (r.touched || 0) + '개)';
+    }
+    if (act === 'add' || act === 'edit') lbForm = null;
+    render();
+  });
+}
+/* 담기·고치기 칸 — 새로 담을 때는 x 가 없다 */
+function lbOpenForm(x) {
+  lbForm = x
+    ? { key: lbKey(x), name: x.t, appUrl: x.u, desc: x.d, tab: x.tab,
+        icon: x.icon, version: x.version, gasUrl: x.gas, sheetUrl: x.sheet,
+        visibility: x.shared ? '공유' : '나만' }
+    : { key: null, name: '', appUrl: '', desc: '', tab: '', icon: '',
+        version: '', gasUrl: '', sheetUrl: '', visibility: '나만' };
+  lbEdit = true;
+  render();
+}
+function lbSaveForm(app) {
+  var f = lbForm;
+  if (!f) return;
+  ['name', 'appUrl', 'desc', 'tab', 'version', 'gasUrl', 'sheetUrl'].forEach(function (k) {
+    var e = app.querySelector('#lbf_' + k);
+    if (e) f[k] = e.value.trim();
+  });
+  if (!f.name) { var n = app.querySelector('#lbf_name'); if (n) n.focus(); return; }
+  var data = {
+    name: f.name, appUrl: f.appUrl, desc: f.desc, tab: f.tab || '기타',
+    icon: f.icon, version: f.version, gasUrl: f.gasUrl, sheetUrl: f.sheetUrl,
+    visibility: f.visibility
+  };
+  if (f.key) lbDo('edit', { key: f.key, data: data }, '고치는 중');
+  else lbDo('add', { app: data }, '담는 중');
+}
 /* 이름에서 한 글자 — 한글이면 첫 글자, 영문이면 대문자 한 자 */
 function linkLetter(t) {
   var s = String(t || '').replace(/^[\s\[({<]+/, '');
@@ -1938,8 +1999,9 @@ function linkTiles() {
 /* 런처에서 온 것 — 내가 만든 것과 섞지 않고 따로 묶는다 */
 function feedTiles() {
   if (!FEED || !FEED.apps || !FEED.apps.length) return '';
+  // 가려 둔 것은 안 보인다 — 열쇠가 있어 «전부» 를 받아 왔을 때를 위한 거름망
   return FEED.apps.map(function (x, i) {
-    return linkTile(x, 'fd="' + i);
+    return x.hidden ? '' : linkTile(x, 'fd="' + i);
   }).join('');
 }
 /* 주소에서 «어디인지» 만 짧게 보여 준다 */
@@ -2025,7 +2087,8 @@ function viewLinks() {
       + '위의 <b>✎ 고치기</b> 를 눌러 담아 보세요.</div>';
   }
 
-  if (feed) {
+  if (lbOn()) { h += viewBoardApps(); }
+  else if (feed) {
     h += '<div class="lgrp">내 앱'
       + (FEED.at ? '<small>' + esc(FEED.at) + '</small>' : '') + '</div>'
       + '<div class="lnks">' + feed + '</div>';
@@ -2033,6 +2096,221 @@ function viewLinks() {
     h += '<div class="lgrp">내 앱</div><div class="empty">' + esc(FEED.error) + '</div>';
   }
   return h;
+}
+
+/* ── 런처보드 본문 ─────────────────────────────────────────
+   묶음(카테고리)별로 늘어놓되 ★ 표시한 것은 맨 위로 뺀다.
+   검색칸에 글자가 있으면 묶음을 무시하고 걸린 것만 보여 준다. */
+function viewBoardApps() {
+  var all = (FEED.apps || []).filter(function (x) { return !x.hidden; });
+  var h = '<div class="lbbar">'
+    + '<input id="lbQ" class="lbq" placeholder="앱 찾기" value="' + esc(lbQ) + '">';
+  if (lbAdmin()) {
+    h += '<button class="wkb' + (lbEdit ? ' now' : '') + '" id="lbEd">'
+      + (lbEdit ? '✓ 다 됐어요' : '✎ 고치기') + '</button>';
+  }
+  h += '</div>';
+
+  if (lbBusy) h += '<div class="lbmsg">' + esc(lbBusy) + '…</div>';
+  if (lbErr) h += '<div class="lbmsg bad">' + esc(lbErr) + '</div>';
+  else if (lbOkAt) h += '<div class="lbmsg ok">✅ 저장됨 · ' + esc(lbOkAt) + '</div>';
+
+  if (lbEdit && lbAdmin()) h += lbTools();
+  if (lbForm && lbAdmin()) h += lbFormHtml();
+  return h + '<div id="lbList">' + lbListHtml() + '</div>';
+}
+
+/* 목록만 — 검색칸을 건드리지 않고 이것만 갈아 끼운다.
+   ★ 한글을 넣는 도중에 입력칸을 다시 그리면 글자가 깨진다(조합 중이라서). */
+function lbListHtml() {
+  var all = (FEED.apps || []).filter(function (x) { return !x.hidden; });
+  if (!all.length) {
+    return '<div class="lgrp">런처보드</div><div class="empty">'
+      + (lbAdmin()
+        ? '담긴 앱이 없습니다.<br>위의 <b>⟳ 내 GAS 앱 가져오기</b> 를 눌러 보세요.'
+        : '공유로 켜 둔 앱이 없습니다.') + '</div>';
+  }
+  var h = '';
+  var q = lbQ.trim().toLowerCase();
+  if (q) {
+    var hit = all.filter(function (x) {
+      return (x.t + ' ' + x.d + ' ' + x.tab + ' ' + x.version).toLowerCase().indexOf(q) >= 0;
+    });
+    return lbGroup('찾은 것 ' + hit.length + '개', hit, all);
+  }
+  var fav = all.filter(function (x) { return lbFav(x.t); });
+  if (fav.length) h += lbGroup('★ 즐겨찾기', fav, all);
+  var rest = all.filter(function (x) { return !lbFav(x.t); });
+  var cats = [];
+  (FEED.cats || []).forEach(function (c) { if (c) cats.push(c); });
+  rest.forEach(function (x) {
+    var c = x.tab || '기타';
+    if (cats.indexOf(c) < 0) cats.push(c);
+  });
+  cats.forEach(function (c) {
+    var got = rest.filter(function (x) { return (x.tab || '기타') === c; });
+    if (got.length) h += lbGroup(c, got, all);
+  });
+  return h;
+}
+
+/* 고치는 동안 쓰는 단추들 */
+function lbTools() {
+  return '<div class="lbtools">'
+    + '<button class="ntb" id="lbAdd">＋ 앱 담기</button>'
+    + '<button class="wkb" id="lbScan" title="구글 드라이브를 훑어 새 앱을 담습니다">'
+    + '⟳ 내 GAS 앱 가져오기</button>'
+    + '<span class="lbhint">스위치를 켠 앱만 <b>혜원이지</b> 에 보입니다.</span>'
+    + '</div>';
+}
+
+/* 담기·고치기 칸 */
+function lbFormHtml() {
+  var f = lbForm;
+  function row(k, lab, ph) {
+    return '<label class="lbfr"><i>' + esc(lab) + '</i>'
+      + '<input id="lbf_' + k + '" value="' + esc(f[k] || '') + '"'
+      + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '></label>';
+  }
+  return '<div class="lbform">'
+    + '<div class="lbfh">' + (f.key ? '앱 고치기' : '앱 담기') + '</div>'
+    + row('name', '이름', '과세특 작성 도우미')
+    + row('appUrl', '웹앱 주소', 'https://script.google.com/macros/s/…/exec')
+    + row('desc', '설명', '무엇에 쓰는 앱인지 한 줄')
+    + row('tab', '묶음', '평가 · 대회 · 출결 …')
+    + row('version', '버전', 'v1.0')
+    + row('gasUrl', '편집기 주소', 'https://script.google.com/d/…/edit')
+    + row('sheetUrl', '시트 주소', '')
+    + '<div class="lbfb">'
+    + '<button class="ntb" id="lbSave">저장</button>'
+    + '<button class="wkb" id="lbCancel">그만두기</button>'
+    + '</div></div>';
+}
+
+/* 묶음 하나 — 평소엔 타일, 고칠 때는 줄 */
+function lbGroup(title, list, all) {
+  var h = '<div class="lgrp">' + esc(title) + '<small>' + list.length + '</small></div>';
+  if (!lbEdit || !lbAdmin()) {
+    return h + '<div class="lnks">' + list.map(function (x) {
+      return lbTile(x, all.indexOf(x));
+    }).join('') + '</div>';
+  }
+  return h + '<div class="lbrows">' + list.map(function (x) {
+    var i = all.indexOf(x);
+    return '<div class="lbrow' + (x.shared ? ' on' : '') + '">'
+      + '<button class="wkb sw' + (x.shared ? ' now' : '') + '" data-lbsh="' + i + '"'
+      + ' title="켜면 혜원이지에 보입니다">'
+      + '<span class="track"><span class="knob"></span></span></button>'
+      + '<span class="lbnm"><b>' + esc(x.t) + '</b>'
+      + '<i>' + esc(x.version || '') + (x.version && x.u ? ' · ' : '')
+      + esc(x.u ? linkHost(x.u) : '주소 없음') + '</i></span>'
+      + '<button class="wkb" data-lbfav="' + i + '" title="즐겨찾기">'
+      + (lbFav(x.t) ? '★' : '☆') + '</button>'
+      + '<button class="wkb" data-lbed="' + i + '" title="고치기">✎</button>'
+      + '<button class="wkb" data-lbdel="' + i + '" title="빼기">✕</button>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+/* 타일 하나 — 바로가기와 같은 선 아이콘을 쓴다 */
+function lbTile(x, i) {
+  var ico = '<span class="lico">' + ofSvg(ofIconOf(x)) + '</span>';
+  var sub = x.d || (x.u ? linkHost(x.u) : '주소 없음');
+  return '<div class="lbt' + (x.u ? '' : ' dead') + '">'
+    + '<button class="lnk" data-lbgo="' + i + '" title="' + esc(x.u || '') + '">'
+    + ico + '<span class="ltx"><b>' + esc(x.t)
+    + (x.version ? '<em class="lbv">' + esc(x.version) + '</em>' : '') + '</b>'
+    + '<i>' + esc(sub) + '</i></span></button>'
+    + '<button class="lbstar' + (lbFav(x.t) ? ' on' : '') + '" data-lbfav="' + i + '"'
+    + ' title="즐겨찾기">' + (lbFav(x.t) ? '★' : '☆') + '</button>'
+    + (lbAdmin() && !x.shared ? '<em class="lbmine">나만</em>' : '')
+    + '</div>';
+}
+
+/* 런처보드 단추 잇기 — 위젯과 넓게 보기가 각각 부른다.
+   ★ 검색칸은 «다시 그리지 않고» 목록만 갈아 끼운다.
+     한글을 넣는 도중에 입력칸을 다시 그리면 글자가 깨진다(조합 중이라서). */
+function wireBoardApps(root) {
+  if (!lbOn()) return;
+  wireBoardBar(root);
+  wireBoardList(root);
+}
+/* 머리의 단추들 — 화면을 다시 그릴 때만 잇는다.
+   ★ 목록만 갈아 끼울 때 이것까지 다시 이으면 한 번 눌러도 두 번 먹는다. */
+function wireBoardBar(root) {
+  var q = root.querySelector('#lbQ');
+  if (q) {
+    q.addEventListener('input', function () { lbQ = q.value; lbPaint(root); });
+    if (lbQ && document.activeElement !== q) {
+      q.focus(); q.setSelectionRange(lbQ.length, lbQ.length);
+    }
+  }
+  var ed = root.querySelector('#lbEd');
+  if (ed) ed.addEventListener('click', function () {
+    lbEdit = !lbEdit; if (!lbEdit) lbForm = null; render();
+  });
+  var ad = root.querySelector('#lbAdd');
+  if (ad) ad.addEventListener('click', function () { lbOpenForm(null); });
+  var sc = root.querySelector('#lbScan');
+  if (sc) sc.addEventListener('click', function () { lbDo('scan', {}, '드라이브를 훑는 중'); });
+  var sv = root.querySelector('#lbSave');
+  if (sv) sv.addEventListener('click', function () { lbSaveForm(root); });
+  var cn = root.querySelector('#lbCancel');
+  if (cn) cn.addEventListener('click', function () { lbForm = null; render(); });
+}
+/* 목록 안쪽 단추 — 목록을 갈아 끼울 때마다 다시 잇는다 */
+function wireBoardList(root) {
+  var apps = (FEED.apps || []).filter(function (x) { return !x.hidden; });
+  function at(e, k) { return apps[Number(e.dataset[k])]; }
+  root.querySelectorAll('[data-lbgo]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var x = at(b, 'lbgo');
+      if (x && x.u) widgetAPI.openUrl(x.u);
+    });
+  });
+  root.querySelectorAll('[data-lbfav]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var x = at(b, 'lbfav');
+      if (x) lbFavToggle(x.t);
+    });
+  });
+  root.querySelectorAll('[data-lbsh]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var x = at(b, 'lbsh');
+      if (x) lbDo('share', { key: lbKey(x), shared: !x.shared },
+        (x.shared ? '숨기는 중' : '공유하는 중'));
+    });
+  });
+  root.querySelectorAll('[data-lbed]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var x = at(b, 'lbed');
+      if (x) lbOpenForm(x);
+    });
+  });
+  root.querySelectorAll('[data-lbdel]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var x = at(b, 'lbdel');
+      if (!x) return;
+      /* ★ 시트에서 «지워지는» 일이라 한 번 더 묻는다 */
+      if (b.dataset.sure !== '1') {
+        b.dataset.sure = '1'; b.textContent = '정말?'; b.classList.add('now');
+        setTimeout(function () {
+          if (!b.isConnected) return;
+          b.dataset.sure = ''; b.textContent = '✕'; b.classList.remove('now');
+        }, 3000);
+        return;
+      }
+      lbDo('del', { key: lbKey(x) }, '빼는 중');
+    });
+  });
+}
+/* 검색칸이 바뀔 때 — 목록만 갈아 끼운다 */
+function lbPaint(root) {
+  var box = root.querySelector('#lbList');
+  if (!box) { render(); return; }
+  box.innerHTML = lbListHtml();
+  wireBoardList(root);   // ★ 바 단추는 다시 잇지 않는다
 }
 
 /* ── 진도표 ────────────────────────────────────────────────
@@ -2558,7 +2836,8 @@ function render() {
   var tab = TT_SUB.indexOf(VIEW) >= 0 ? 'tt' : VIEW;
   html += '<div class="chips">'
     + inOrder(
-        HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,바로가기']
+        // ★ 진호알리미의 «바로가기» 는 런처보드다 — 이름만 다르고 화면 값(link)은 같다
+        HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,런처보드']
                : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,바로가기'],
         TABORDER, function (s) { return s.split(',')[0]; }).map(function (s) {
         var p = s.split(',');
@@ -2783,6 +3062,7 @@ widgetAPI.onData(function (p) {
   DASHOFF = p.dashOff || [];
   DASHSIZE = p.dashSize || {};
   FEED = (p.feed && p.feed.show && p.feed.data) ? p.feed.data : null;
+  if (p.feed && p.feed.fav) FEEDFAV = p.feed.fav;
   if (p.font && p.font !== FONT) {
     FONT = p.font;
     if (FONT === 'pretendard') delete document.documentElement.dataset.font;
@@ -2957,6 +3237,7 @@ function wireViews(app) {
   if (fdb) fdb.addEventListener('click', function () {
     fdb.textContent = '…'; widgetAPI.feedRefresh();
   });
+  wireBoardApps(app);
   // ★ .rach 도 함께 훑는다 — 학생기록 아코디언의 «머리» 단추다.
   //   .wkb 만 훑던 때에는 눌러도 아무 일이 없어서 «펼쳐지지 않는다» 였다.
   app.querySelectorAll('.wkb, .rach, .gph').forEach(function (b) {

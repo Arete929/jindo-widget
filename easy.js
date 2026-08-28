@@ -21,13 +21,22 @@ var MENU = [
   { v: 'rec', p: 'nav-rec', t: '학생기록', d: '학급 → 학생 → 분류로 쓰고 모아 보기', g: '기록' },
   { v: 'office', p: 'nav-office', t: '교무실', d: '부서별 자료·서식·링크', g: '오늘 볼 것' },
   { v: 'link', p: 'nav-link', t: '바로가기', d: '자주 가는 곳을 담아 두고 한 번에', g: '바로가기' },
+  // ★ 진호알리미에서는 이 칸이 «런처보드» 다 — 이름만 갈아 끼운다(menus 에서).
   // ★ 진도표는 혜원이지에만 — 진호알리미에는 수업진도 대시보드가 따로 있다
   { v: 'grid', p: 'nav-comci', t: '진도표', d: '칸을 눌러 그 자리에서 적습니다', g: '기록', hyewon: true }
 ];
 function navImg(m) { return '<img src="assets/' + m.p + '.png" alt="">'; }
 /* 이 갈래에서 쓸 수 있는 화면만 — 진도표는 혜원이지 것이다 */
 function menus() {
-  var list = MENU.filter(function (m) { return !(m.hyewon && HAS_TT); });
+  var list = MENU.filter(function (m) { return !(m.hyewon && HAS_TT); })
+    .map(function (m) {
+      // 진호알리미의 «바로가기» 는 런처보드다 — 내 앱을 담고 고치는 곳
+      if (m.v === 'link' && FLAVOR === 'jinho') {
+        return { v: m.v, p: m.p, t: '런처보드', g: m.g,
+                 d: '내 GAS 앱을 담고 고치고, 공유를 켜면 혜원이지에도' };
+      }
+      return m;
+    });
   // 대시보드는 늘 맨 앞에 둔다 — 순서를 바꿔도 «집» 은 첫 자리다
   var home = list.filter(function (m) { return m.v === 'home'; });
   var rest = inOrder(list.filter(function (m) { return m.v !== 'home'; }),
@@ -184,27 +193,35 @@ function tile(m) {
 
 /* ── 대시보드 칸 ──────────────────────────────────────────
    내용이 없으면 그 칸은 아예 안 나온다. 빈 상자는 자리만 먹는다. */
-/* 칸 폭 — 좁게(1) · 보통(2) · 넓게(3). 여섯 칸 격자에 1·2·3 칸씩 차지한다.
-   ★ 머리의 좁·보·넓 을 눌러 그 자리에서 바로 바꾼다. 설정까지 안 가도 된다. */
+/* ── 대시보드 꾸미기 ──────────────────────────────────────
+   ✎ 편집하기를 켜면 ⠿ 로 차례를 바꾸고 ◢ 로 크기를 늘인다.
+   ★ 자리는 «차례» 로만 기억한다 — 격자가 알아서 흘려 채운다.
+     좌표로 못박으면 창 폭이 바뀔 때마다 어긋난다. */
+var dashEdit = false;
+var DCOLS = 6;   // 격자 가로 칸 수
+/* 칸 크기 — [가로, 세로]. 안 정했으면 3×1(반 폭 한 줄) */
 function dcSize(k) {
-  var n = Number(DASHSIZE[k]);
-  return (n >= 1 && n <= 3) ? n : 2;
+  var m = String(DASHSIZE[k] || '').match(/^(\d)[,x](\d)$/);
+  if (!m) return [3, 1];
+  return [Math.max(1, Math.min(DCOLS, Number(m[1]))),
+          Math.max(1, Math.min(3, Number(m[2])))];
+}
+function dcSetSize(k, w, h) {
+  DASHSIZE[k] = Math.max(1, Math.min(DCOLS, w)) + ',' + Math.max(1, Math.min(3, h));
+  widgetAPI.setUi({ dashSize: DASHSIZE });
 }
 function dcard(title, body, goTo, key) {
   if (!body) return '';
-  var sz = key ? dcSize(key) : 2;
-  return '<div class="dc w' + sz + '"><div class="dch">' + esc(title)
-    + (key
-      ? '<span class="dcsz">'
-        + [1, 2, 3].map(function (n) {
-            return '<button class="' + (sz === n ? 'on' : '') + '" data-dcsz="'
-              + key + ',' + n + '" title="' + ['좁게', '보통', '넓게'][n - 1] + '">'
-              + ['좁', '보', '넓'][n - 1] + '</button>';
-          }).join('')
-        + '</span>'
-      : '')
-    + (goTo ? '<button class="dcgo" data-go="' + goTo + '">더 보기 ›</button>' : '')
-    + '</div><div class="dcb">' + body + '</div></div>';
+  var s = key ? dcSize(key) : [3, 1];
+  var st = ' style="grid-column:span ' + s[0] + ';grid-row:span ' + s[1] + '"';
+  return '<div class="dc" data-dck="' + (key || '') + '"' + st + '>'
+    + (dashEdit && key ? '<span class="dcgrip" draggable="true">⠿</span>' : '')
+    + '<div class="dch">' + esc(title)
+    + (dashEdit && key ? '<em class="dcwh">' + s[0] + '×' + s[1] + '</em>' : '')
+    + (goTo && !dashEdit ? '<button class="dcgo" data-go="' + goTo + '">더 보기 ›</button>' : '')
+    + '</div><div class="dcb">' + body + '</div>'
+    + (dashEdit && key ? '<span class="dccor"></span>' : '')
+    + '</div>';
 }
 /* ① 오늘 일정 — 학사일정 + 켜 놓은 학년부 일지 */
 function dcToday() {
@@ -263,12 +280,118 @@ function dcNext() {
   }).join('') + '</div>';
 }
 
+
+/* ── 꾸미기 — 끌어 옮기고 늘이기 ──────────────────────────
+   ★ 차례만 기억한다. 격자는 알아서 흘려 채운다.
+   ★ 크기는 «칸 단위» 로 딱딱 붙는다 — 픽셀로 두면 창 폭이 바뀔 때 어긋난다. */
+function dashKeys() {
+  var el = document.getElementById('main');
+  if (!el) return [];
+  return [].map.call(el.querySelectorAll('.dc[data-dck]'), function (d) {
+    return d.dataset.dck;
+  }).filter(Boolean);
+}
+/* 지금 보이는 차례를 그대로 담는다. 안 보이는(접은) 것은 뒤에 붙여 안 잃는다. */
+function dashSaveOrder(keys) {
+  var tail = (DASHORDER || []).filter(function (k) { return keys.indexOf(k) < 0; });
+  DASHORDER = keys.concat(tail);
+  widgetAPI.setUi({ dashOrder: DASHORDER });
+}
+/* 격자 한 칸의 폭 — 창 크기에 따라 달라지므로 그때그때 잰다 */
+function dashCellW(grid) {
+  var cs = getComputedStyle(grid);
+  var cols = cs.gridTemplateColumns.split(' ').filter(Boolean);
+  var gap = parseFloat(cs.columnGap) || 0;
+  if (!cols.length) return { w: 200, gap: gap, n: DCOLS };
+  return { w: parseFloat(cols[0]) || 200, gap: gap, n: cols.length };
+}
+
+function wireDashEdit() {
+  var grid = document.querySelector('#main .dcs');
+  if (!grid) return;
+
+  /* ① ⠿ 를 끌어 차례 바꾸기 */
+  var dragKey = null;
+  grid.querySelectorAll('.dcgrip').forEach(function (g) {
+    var card = g.closest('.dc');
+    g.addEventListener('dragstart', function (e) {
+      dragKey = card.dataset.dck;
+      card.classList.add('dragging');
+      try { e.dataTransfer.setData('text/plain', dragKey); } catch (err) { /* 무시 */ }
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    g.addEventListener('dragend', function () {
+      card.classList.remove('dragging');
+      grid.querySelectorAll('.dc').forEach(function (d) { d.classList.remove('over'); });
+      if (dragKey) { dashSaveOrder(dashKeys()); dragKey = null; render(); }
+    });
+  });
+  grid.querySelectorAll('.dc[data-dck]').forEach(function (card) {
+    card.addEventListener('dragover', function (e) {
+      if (!dragKey || card.dataset.dck === dragKey) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      var from = grid.querySelector('.dc.dragging');
+      if (!from || from === card) return;
+      // 마우스가 카드의 앞쪽이면 앞에, 뒤쪽이면 뒤에 끼운다
+      var r = card.getBoundingClientRect();
+      var before = (e.clientX - r.left) < r.width / 2;
+      grid.insertBefore(from, before ? card : card.nextSibling);
+      card.classList.add('over');
+    });
+    card.addEventListener('dragleave', function () { card.classList.remove('over'); });
+    card.addEventListener('drop', function (e) { e.preventDefault(); });
+  });
+
+  /* ② ◢ 를 끌어 크기 늘이기 — 칸 단위로 딱딱 붙는다 */
+  grid.querySelectorAll('.dccor').forEach(function (cor) {
+    var card = cor.closest('.dc');
+    cor.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var key = card.dataset.dck;
+      if (!key) return;
+      var cell = dashCellW(grid);
+      var rowH = parseFloat(getComputedStyle(grid).gridAutoRows) || 0;
+      var gapY = parseFloat(getComputedStyle(grid).rowGap) || 0;
+      var r0 = card.getBoundingClientRect();
+      var s0 = dcSize(key);
+      var lab = card.querySelector('.dcwh');
+      cor.setPointerCapture(e.pointerId);
+      card.classList.add('sizing');
+
+      var last = s0.slice();
+      function move(ev) {
+        var dx = ev.clientX - e.clientX, dy = ev.clientY - e.clientY;
+        var w = Math.round((r0.width + dx + cell.gap) / (cell.w + cell.gap));
+        var h = rowH ? Math.round((r0.height + dy + gapY) / (rowH + gapY)) : s0[1];
+        w = Math.max(1, Math.min(cell.n, w));
+        h = Math.max(1, Math.min(3, h));
+        if (w === last[0] && h === last[1]) return;
+        last = [w, h];
+        card.style.gridColumn = 'span ' + w;
+        card.style.gridRow = 'span ' + h;
+        if (lab) lab.textContent = w + '×' + h;
+      }
+      function up() {
+        card.classList.remove('sizing');
+        cor.removeEventListener('pointermove', move);
+        cor.removeEventListener('pointerup', up);
+        cor.removeEventListener('pointercancel', up);
+        dcSetSize(key, last[0], last[1]);
+      }
+      cor.addEventListener('pointermove', move);
+      cor.addEventListener('pointerup', up);
+      cor.addEventListener('pointercancel', up);
+    });
+  });
+}
+
 function viewHome() {
   var h = todayLine();
   h += wxCard();   // 사용량은 사이드바에 있다
 
   // ★ 여기가 «대시보드다운» 부분 — 사이드바에 없는 것들이다.
-  //   순서는 설정에서 바꾸고, 안 볼 것은 접어 둔다.
   var CARDS = [
     { k: 'today', t: '오늘 일정', go: 'cal', body: dcToday },
     { k: 'lesson', t: '오늘 수업', go: '', body: dcLesson },
@@ -277,11 +400,26 @@ function viewHome() {
     { k: 'link', t: '바로가기', go: 'link', body: linkTiles },
     { k: 'feed', t: '내 앱', go: 'link', body: feedTiles }
   ];
-  var cards = inOrder(CARDS, DASHORDER, function (c) { return c.k; })
+  var ordered = inOrder(CARDS, DASHORDER, function (c) { return c.k; });
+  h += '<div class="dcbar">'
+    + '<button class="dced' + (dashEdit ? ' on' : '') + '" id="dcEdit">'
+    + (dashEdit ? '✓ 다 됐어요' : '✎ 편집하기') + '</button>';
+  if (dashEdit) {
+    h += '<span class="dcsw">' + ordered.map(function (c) {
+      var on = DASHOFF.indexOf(c.k) < 0;
+      return '<button class="sw' + (on ? ' on' : '') + '" data-dcoff="' + c.k + '">'
+        + '<span class="track"><span class="knob"></span></span>' + esc(c.t) + '</button>';
+    }).join('') + '</span>';
+  }
+  h += '</div>';
+  if (dashEdit) {
+    h += '<div class="dchint">⠿ 를 끌어 차례를 바꾸고, 오른쪽 아래 모서리를 끌어 크기를 정합니다.</div>';
+  }
+  var cards = ordered
     .filter(function (c) { return DASHOFF.indexOf(c.k) < 0; })
     .map(function (c) { return dcard(c.t, c.body(), c.go, c.k); })
     .join('');
-  if (cards) h += '<div class="dcs">' + cards + '</div>';
+  if (cards) h += '<div class="dcs' + (dashEdit ? ' editing' : '') + '">' + cards + '</div>';
 
   var favs = EASYFAV.filter(known).map(menuOf).filter(function (m) { return m.v !== 'home'; });
   if (favs.length) {
@@ -335,17 +473,19 @@ render = function () {
   var et = MAIN.querySelector('.top2');
   if (eh && et) eh.appendChild(et);
 
-  // 즐겨찾기 별표 — 타일을 여는 것보다 «먼저» 가로챈다
-  // 칸 폭 — 좁·보·넓
-  MAIN.querySelectorAll('[data-dcsz]').forEach(function (b) {
-    b.addEventListener('click', function (e) {
-      e.stopPropagation();
-      var p = b.dataset.dcsz.split(',');
-      DASHSIZE[p[0]] = Number(p[1]);
-      widgetAPI.setUi({ dashSize: DASHSIZE });
+  // 대시보드 꾸미기
+  var de = MAIN.querySelector('#dcEdit');
+  if (de) de.addEventListener('click', function () { dashEdit = !dashEdit; render(); });
+  MAIN.querySelectorAll('[data-dcoff]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var k = b.dataset.dcoff, i = DASHOFF.indexOf(k);
+      if (i >= 0) DASHOFF.splice(i, 1); else DASHOFF.push(k);
+      widgetAPI.setUi({ dashOff: DASHOFF });
       render();
     });
   });
+  if (dashEdit) wireDashEdit();
+  // 즐겨찾기 별표 — 타일을 여는 것보다 «먼저» 가로챈다
   MAIN.querySelectorAll('[data-fav]').forEach(function (b) {
     b.addEventListener('click', function (e) {
       e.stopPropagation();

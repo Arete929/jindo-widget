@@ -217,12 +217,22 @@
     <button id="fdSave">저장</button>
   </div>
   <div class="hint" id="fdMsg" style="margin-top:2px"></div>
+  <div class="row">
+    <label class="lb">관리자 열쇠</label>
+    <input type="password" id="fdKey" placeholder="넣으면 런처보드에서 고칠 수 있습니다"
+           autocomplete="off">
+    <button id="fdKeySave">저장</button>
+  </div>
+  <div class="hint" id="fdKeyMsg" style="margin-top:2px"></div>
   <div class="hint">
     자주 가는 곳을 담아 두면 <b>위젯 보기의 「바로가기」 탭</b>과
     <b>넓게 보기의 「바로가기」</b> 에 타일로 나옵니다.
     누르면 위 <b>「바깥 주소를 열 브라우저」</b> 에서 고른 것으로 열립니다.<br>
     <b>▲▼</b> 로 순서를 바꾸고 <b>✕</b> 로 뺍니다.
-    주소 앞에 <b>https://</b> 를 안 적어도 알아서 붙습니다.
+    주소 앞에 <b>https://</b> 를 안 적어도 알아서 붙습니다.<br><br>
+    <b>관리자 열쇠</b> 를 넣으면 <b>진호알리미의 「런처보드」</b> 에서
+    앱을 담고·고치고·빼고, <b>공유 스위치</b> 로 <b>혜원이지</b> 에 보일지 정할 수 있습니다.
+    열쇠가 없는 PC 는 공유로 켜 둔 앱만 보이고 고치는 단추가 아예 안 나옵니다.
   </div>
 </section>
 
@@ -464,14 +474,9 @@
     자주 쓰시는 것을 <b>▲</b> 로 앞으로 당겨 두세요.
     위젯과 넓게 보기가 <b>같은 순서</b>를 씁니다.
   </div>
-  <div class="row">
-    <label class="lb">대시보드</label>
-    <div id="dashList" style="flex:1;min-width:0"></div>
-  </div>
   <div class="hint">
-    넓게 보기 <b>대시보드</b> 의 칸입니다. <b>▲▼</b> 로 순서를 바꾸고,
-    <b>스위치</b> 로 접어 둡니다. 접은 칸은 아예 안 나옵니다.<br>
-    <b>「오늘 수업」은 진호알리미에만</b> 나옵니다.
+    <b>대시보드</b> 꾸미기(보여줄 것·차례·크기)는 <b>넓게 보기 대시보드</b> 에서
+    <b>✎ 편집하기</b> 를 눌러 하시면 됩니다.
   </div>
   <div class="row">
     <label class="lb">되돌리기</label>
@@ -643,9 +648,8 @@ function __paint() {
   $('autoBtn').classList.toggle('on', !!UI.autoLaunch);
   paintNav();
   paintBd();
-  TABS = null; DASHS = null;   // 새 자료를 받았으니 들고 있던 순서를 버린다
+  TABS = null;   // 새 자료를 받았으니 들고 있던 순서를 버린다
   paintTabs();
-  paintDash();
   $('loginState').innerHTML = UI.loggedIn
     ? '<span class="ok">로그인됨</span>' : '<span class="warn">로그인 필요</span>';
   $('verText').textContent = 'v' + UI.version;
@@ -896,32 +900,6 @@ function paintTabs() {
   });
 }
 
-/* 대시보드 칸 */
-var DASHALL = [
-  { k: 'today', t: '오늘 일정' },
-  { k: 'lesson', t: '오늘 수업 (진호알리미)' },
-  { k: 'meal', t: '오늘 급식' },
-  { k: 'next', t: '앞으로 7일' },
-  { k: 'link', t: '바로가기' },
-  { k: 'feed', t: '내 앱' }
-];
-var DASHS = null;
-function paintDash() {
-  if (!DASHS) DASHS = orderList(DASHALL, UI.dashOrder || []);
-  drawOrder('dashList', DASHS, {
-    tag: 'ds',
-    off: UI.dashOff || [],
-    save: function (ks) { UI.dashOrder = ks; widgetAPI.setUi({ dashOrder: ks }); paintDash(); },
-    toggle: function (k) {
-      var off = (UI.dashOff || []).slice();
-      var i = off.indexOf(k);
-      if (i >= 0) off.splice(i, 1); else off.push(k);
-      UI.dashOff = off;
-      widgetAPI.setUi({ dashOff: off });
-      paintDash();
-    }
-  });
-}
 
 /* ── 차림표 모양 — 아이콘만 / 글자만 / 둘 다 ── */
 function paintNav() {
@@ -950,6 +928,15 @@ function paintFd() {
   else if (d.error) $('fdMsg').innerHTML = '<span class="warn">' + esc(d.error) + '</span>';
   else $('fdMsg').innerHTML = '<span class="ok">' + (d.apps || []).length + '개</span>'
     + (d.at ? ' · 마지막 ' + esc(d.at) : '');
+  // 열쇠는 되돌려 받지 않는다 — «들어 있는가» 만 안다
+  $('fdKey').value = '';
+  $('fdKey').placeholder = f.hasKey
+    ? '넣어 두었습니다 (바꾸려면 새로 적으세요)'
+    : '넣으면 런처보드에서 고칠 수 있습니다';
+  $('fdKeyMsg').innerHTML = f.hasKey
+    ? '<span class="ok">열쇠 있음</span>'
+      + (d && d.admin ? ' · 고칠 수 있습니다' : ' · <span class="warn">런처가 받지 않았습니다</span>')
+    : '열쇠가 없어 보기만 됩니다';
 }
 $('fdSw').onclick = function () {
   var on = !$('fdSw').classList.contains('on');
@@ -958,6 +945,30 @@ $('fdSw').onclick = function () {
   UI.feed.show = on;
   widgetAPI.setUi({ feedShow: on });
 };
+$('fdKeySave').onclick = function () {
+  var v = $('fdKey').value.trim();
+  widgetAPI.setUi({ feedKey: v });
+  $('fdKeyMsg').textContent = '맞춰 보는 중…';
+  setTimeout(function () {
+    widgetAPI.feedRefresh().then(function (d) {
+      if (!UI.feed) UI.feed = {};
+      UI.feed.data = d;
+      UI.feed.hasKey = !!v;
+      paintFd();
+      var at = stampNow();
+      $('fdKeyMsg').innerHTML = (d && d.admin)
+        ? '<span class="ok">✅ 저장됨 · ' + at + ' · 고칠 수 있습니다</span>'
+        : '<span class="warn">열쇠가 맞지 않습니다</span>';
+    });
+  }, 250);
+};
+/* 저장시각 — yyyy.MM.dd HH:mm:ss (KST) */
+function stampNow() {
+  function p2(n) { return n < 10 ? '0' + n : '' + n; }
+  var d = new Date();
+  return d.getFullYear() + '.' + p2(d.getMonth() + 1) + '.' + p2(d.getDate())
+    + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds());
+}
 $('fdSave').onclick = function () {
   widgetAPI.setUi({ feedUrl: $('fdUrl').value.trim() });
   $('fdMsg').textContent = '받는 중…';

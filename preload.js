@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   noteLoad: () => ipcRenderer.invoke('note-load'),
   noteSave: (o) => ipcRenderer.invoke('note-save', o),
   feedRefresh: () => ipcRenderer.invoke('feed-refresh'),
+  feedAct: (o) => ipcRenderer.invoke('feed-act', o),
   /* 사진 액자 */
   photoPick: () => ipcRenderer.invoke('photo-pick'),
   photoList: () => ipcRenderer.invoke('photo-list'),

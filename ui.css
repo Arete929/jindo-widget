@@ -1083,3 +1083,70 @@
   /* 사용량 띠 오른쪽의 작은 단추들 — 원형·막대 고르기 */
   .usgset { display: flex; flex-direction: column; gap: 3px; justify-content: center; }
   .usgset .wkb { padding: 2px 5px; font-size: 11px; line-height: 1.1; }
+
+  /* ── 런처보드 ─────────────────────────────────────────────
+     내 GAS 앱을 담고·고치고·공유를 켜는 곳. 진호알리미에만 있다.
+     ★ 타일은 바로가기(.lnk)와 같은 모양을 쓰고 «별» 과 «나만» 표만 얹는다. */
+  .lbbar { display: flex; align-items: center; gap: 6px; padding: 6px 2px 2px; }
+  .lbq {
+    flex: 1; min-width: 0; background: var(--card); border: 1px solid var(--line);
+    border-radius: 9px; padding: calc(6px * var(--wf)) calc(9px * var(--wf));
+    color: var(--fg); font: inherit; font-size: calc(11.5px * var(--wf));
+  }
+  .lbq:focus { outline: 2px solid var(--on); outline-offset: -1px; border-color: transparent; }
+  .lbmsg {
+    font-size: calc(10.5px * var(--wf)); padding: 5px 3px; opacity: .85;
+  }
+  .lbmsg.ok { color: var(--on); }
+  .lbmsg.bad { color: #d9534f; }
+  .lbtools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 2px 8px; }
+  .lbhint { font-size: calc(10px * var(--wf)); opacity: .6; }
+  .lbhint b { font-weight: 800; opacity: 1; }
+
+  /* 담기·고치기 칸 */
+  .lbform {
+    background: var(--card); border: 1px solid var(--line); border-radius: 11px;
+    padding: 10px 11px; margin: 2px 0 9px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .lbfh { font-size: calc(11.5px * var(--wf)); font-weight: 800; padding-bottom: 2px; }
+  .lbfr { display: flex; align-items: center; gap: 8px; }
+  .lbfr i {
+    flex: 0 0 auto; width: calc(62px * var(--wf)); font-style: normal;
+    font-size: calc(10px * var(--wf)); opacity: .7;
+  }
+  .lbfr input {
+    flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 7px; padding: calc(5px * var(--wf)) calc(8px * var(--wf));
+    color: var(--fg); font: inherit; font-size: calc(11px * var(--wf));
+  }
+  .lbfr input:focus { outline: 2px solid var(--on); outline-offset: -1px; border-color: transparent; }
+  .lbfb { display: flex; gap: 6px; padding-top: 4px; }
+
+  /* 고칠 때 보이는 줄 */
+  .lbrows { display: flex; flex-direction: column; gap: 4px; }
+  .lbrow {
+    display: flex; align-items: center; gap: 5px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 9px; padding: 4px 6px 4px 3px;
+  }
+  .lbrow.on { border-color: color-mix(in srgb, var(--on) 45%, var(--line)); }
+
+  /* 평소에 보이는 타일 */
+  .lbt { position: relative; }
+  .lbt .lnk { width: 100%; padding-right: calc(24px * var(--wf)); }
+  .lbt.dead .lnk { opacity: .5; }
+  .lbv {
+    font-style: normal; font-weight: 600; font-size: calc(9px * var(--wf));
+    opacity: .55; margin-left: 5px;
+  }
+  .lbstar {
+    position: absolute; top: 3px; right: 3px; border: 0; background: none; cursor: pointer;
+    color: var(--fg); opacity: .3; font-size: calc(12px * var(--wf)); line-height: 1;
+    padding: 2px 3px; border-radius: 5px;
+  }
+  .lbstar:hover { opacity: .8; }
+  .lbstar.on { opacity: 1; color: #e0a91e; }
+  .lbmine {
+    position: absolute; bottom: 4px; right: 5px; font-style: normal;
+    font-size: calc(8.5px * var(--wf)); font-weight: 700; opacity: .45;
+    border: 1px solid var(--line); border-radius: 4px; padding: 0 3px;
+  }

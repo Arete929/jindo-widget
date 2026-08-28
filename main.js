@@ -265,8 +265,31 @@ function getGradePick() { const g = Number(loadState().gradePick); return [1, 2,
 const { fetchText, postText } = require('./fetchtext.js');
 const FEED_URL = 'https://script.google.com/macros/s/'
   + 'AKfycbwot9uum8L5CUb6ouJdI03nwg6jS8WPJ0zu91y8EthdYWf0mVSMLws4zV2I6cEWry_0/exec';
-let feedData = null;   // { apps:[{t,u,d,icon,tab}], at, error }
+let feedData = null;   // { apps:[…], at, error, admin, cats }
 function getFeedShow() { return loadState().feedShow !== false; }
+/* 관리자 열쇠 — 런처를 «고칠 수» 있는 PC 에만 넣어 둔다.
+   ★ 이 값은 화면으로 안 내려간다. 화면은 feed.admin(예/아니오) 만 안다. */
+function getFeedKey() { return String(loadState().feedKey || '').trim(); }
+/* 런처에 «고쳐 달라» 고 보내는 통로. 열쇠를 여기서 붙인다. */
+async function feedPost(body) {
+  const url = getFeedUrl(), key = getFeedKey();
+  if (!url) throw new Error('런처 주소가 없습니다');
+  if (!key) throw new Error('관리자 열쇠가 없습니다');
+  const txt = await postText(url, JSON.stringify(Object.assign({ pass: key }, body)));
+  const j = JSON.parse(txt);
+  if (!j || !j.ok) throw new Error((j && j.error) || '런처가 받지 않았습니다');
+  return j;
+}
+/* 런처가 준 줄 하나를 화면이 쓰는 꼴로 */
+function feedApp(a) {
+  return {
+    t: String(a.t || '').trim(), u: tidyUrl(a.u), d: String(a.d || '').trim(),
+    icon: String(a.icon || '').trim(), tab: String(a.tab || '').trim(),
+    version: String(a.version || '').trim(), updated: String(a.updated || '').trim(),
+    gas: tidyUrl(a.gas), sheet: tidyUrl(a.sheet),
+    shared: !!a.shared, hidden: !!a.hidden
+  };
+}
 function getFeedUrl() {
   const v = loadState().feedUrl;
   return v === undefined ? FEED_URL : String(v || '');
@@ -275,14 +298,19 @@ async function refreshFeed() {
   const url = getFeedUrl();
   if (!url || !getFeedShow()) { feedData = null; sendToWidget(); return; }
   try {
-    const txt = await fetchText(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'view=json');
-    const j = JSON.parse(txt);
-    const apps = ((j && j.apps) || [])
-      .map((a) => ({ t: String(a.t || '').trim(), u: tidyUrl(a.u),
-                     d: String(a.d || '').trim(), icon: String(a.icon || '').trim(),
-                     tab: String(a.tab || '').trim() }))
-      .filter((a) => a.t && a.u);
-    feedData = { apps, at: (j && j.at) || '', error: '' };
+    /* ★ 열쇠가 있으면 «나만·숨김까지 전부» 를 받는다(POST). 그게 런처보드다.
+       열쇠가 없으면 예전처럼 «공유로 켠 것» 만 받는다(GET ?view=json). */
+    let j, admin = false;
+    if (getFeedKey()) {
+      try { j = await feedPost({ act: 'list' }); admin = true; }
+      catch (e) { debugLog('런처 열쇠로 못 받음 — ' + (e.message || e)); }
+    }
+    if (!j) {
+      j = JSON.parse(await fetchText(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'view=json'));
+    }
+    const apps = ((j && j.apps) || []).map(feedApp).filter((a) => a.t);
+    feedData = { apps, at: (j && j.at) || '', error: '',
+      admin, cats: ((j && j.cats) || []).map(String) };
 
     // ★ 런처 목록에 «전광판» 이 있으면 그 주소를 스스로 챙긴다.
     //   그러면 다른 선생님은 붙여넣지 않아도 전광판이 켜진다.
@@ -389,6 +417,11 @@ function getOfficeFav() {
   const v = loadState().officeFav;
   return Array.isArray(v) ? v.map(String).slice(0, 60) : [];
 }
+/* 런처보드 즐겨찾기 — 앱 «이름» 으로 담는다. 이 PC 것이라 시트엔 안 올라간다. */
+function getFeedFav() {
+  const v = loadState().feedFav;
+  return Array.isArray(v) ? v.map(String).slice(0, 60) : [];
+}
 function getTabOrder() {
   const v = loadState().tabOrder;
   return Array.isArray(v) ? v.map(String).slice(0, 20) : [];
@@ -401,9 +434,20 @@ function getDashOrder() {
 }
 /* 대시보드 칸 폭 — 칸마다 좁게(1) · 보통(2) · 넓게(3) 중 하나.
    여섯 칸짜리 격자에 1·2·3 칸씩 차지한다. */
+/* 칸 크기 — «가로,세로» 두 숫자로 담는다 (예: {meal:'3,2'}).
+   옛 판은 가로 하나만 숫자로 담았다 — 그것도 읽어 준다. */
 function getDashSize() {
   const v = loadState().dashSize;
-  return (v && typeof v === 'object') ? v : {};
+  if (!v || typeof v !== 'object') return {};
+  const out = {};
+  Object.keys(v).slice(0, 20).forEach((k) => {
+    const s = String(v[k] || '');
+    const m = s.match(/^(\d)[,x](\d)$/);
+    if (m) { out[k] = m[1] + ',' + m[2]; return; }
+    const n = Number(s);                       // 옛 판 — 가로만
+    if (n >= 1 && n <= 3) out[k] = (n === 1 ? 2 : n === 2 ? 3 : 6) + ',1';
+  });
+  return out;
 }
 function getDashOff() {
   const v = loadState().dashOff;
@@ -702,7 +746,8 @@ function sendToWidget() {
              data: boardData },                  // 전광판
     dashOrder: getDashOrder(), dashOff: getDashOff(),   // 대시보드 칸
     photo: { dir: getPhotoDir(), sec: getPhotoSec() },  // 사진 액자
-    feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },   // 런처 목록
+    feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData,
+           hasKey: !!getFeedKey(), fav: getFeedFav() },   // 런처 목록
     update: { state: updateState, version: updateVersion }
   };
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
@@ -1394,7 +1439,8 @@ ipcMain.handle('get-settings', () => ({
     board: { url: getBoardUrl(), nick: getBoardNick(), school: mySchoolCode(),
              data: boardData },
     photo: { dir: getPhotoDir(), sec: getPhotoSec(), count: photoList().length },
-    feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData },
+    feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData,
+           hasKey: !!getFeedKey(), fav: getFeedFav() },
     browsers: browserList().map((b) => ({ key: b.key, label: b.label })),
     browser: getBrowserPick(),
     meals: loadMeals(),
@@ -1467,6 +1513,11 @@ ipcMain.on('set-ui', (_e, v) => {
     saveState({ feedShow: !!v.feedShow });
     refreshFeed();
   }
+  if (v.feedKey !== undefined) {
+    saveState({ feedKey: String(v.feedKey || '').trim().slice(0, 80) });
+    sendToWidget();
+    refreshFeed();
+  }
   if (v.feedUrl !== undefined) {
     saveState({ feedUrl: String(v.feedUrl || '') });
     debugLog('런처 주소 바꿈');
@@ -1492,6 +1543,10 @@ ipcMain.on('set-ui', (_e, v) => {
     saveState({ officeFav: (v.officeFav || []).map(String).slice(0, 60) });
     sendToWidget();
   }
+  if (v.feedFav !== undefined) {
+    saveState({ feedFav: (v.feedFav || []).map(String).slice(0, 60) });
+    sendToWidget();
+  }
   if (v.tabOrder !== undefined) {
     saveState({ tabOrder: (v.tabOrder || []).map(String).slice(0, 20) });
     sendToWidget();
@@ -1503,8 +1558,11 @@ ipcMain.on('set-ui', (_e, v) => {
   if (v.dashSize !== undefined) {
     const out = {};
     Object.keys(v.dashSize || {}).slice(0, 20).forEach((k) => {
-      const n = Number(v.dashSize[k]);
-      if (n >= 1 && n <= 3) out[String(k)] = n;
+      const m = String(v.dashSize[k] || '').match(/^(\d)[,x](\d)$/);
+      if (!m) return;
+      const w = Math.max(1, Math.min(6, Number(m[1])));
+      const h = Math.max(1, Math.min(3, Number(m[2])));
+      out[String(k)] = w + ',' + h;
     });
     saveState({ dashSize: out });
     sendToWidget();
@@ -1756,6 +1814,25 @@ ipcMain.handle('board-del', async (_e, at) => {
 ipcMain.handle('board-refresh', async () => { await refreshBoard(); return boardData; });
 ipcMain.on('open-easy', () => openEasyWindow());
 ipcMain.handle('feed-refresh', async () => { await refreshFeed(); return feedData; });
+/* 런처보드에서 고친 것 — 열쇠가 있는 PC 에서만 통한다.
+   ★ 고친 뒤에는 곧바로 다시 받아 화면을 맞춘다. */
+ipcMain.handle('feed-act', async (_e, o) => {
+  const act = String((o && o.act) || '');
+  if (['add', 'edit', 'del', 'share', 'hide', 'scan'].indexOf(act) < 0) {
+    return { ok: false, error: '모르는 일입니다' };
+  }
+  try {
+    const j = await feedPost(o);
+    feedData = { apps: ((j.apps) || []).map(feedApp).filter((a) => a.t),
+      at: j.at || '', error: '', admin: true, cats: (j.cats || []).map(String) };
+    debugLog('런처보드 ' + act + ' — 앱 ' + feedData.apps.length + '개');
+    sendToWidget();
+    return { ok: true, added: j.added, touched: j.touched, at: j.at || '' };
+  } catch (e) {
+    debugLog('런처보드 ' + act + ' 실패 — ' + (e.message || e));
+    return { ok: false, error: (e && e.message) || String(e) };
+  }
+});
 ipcMain.on('show-widget', () => showWidgetOnly());
 
 /* 학년부 일지 — 받아 둔 것 주기 / 새로 받기 */
