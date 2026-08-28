@@ -68,9 +68,11 @@ function human(min) {
    ★ 예전에는 «오늘» 과 «이번주» 가 다른 탭이라 오갈 때마다
      «오늘이 몇 교시더라» 를 다시 세야 했다. */
 function viewToday(d) {
+  var bars = progressBars(d);
   return viewWeek(d)
     + '<div class="tdhd">오늘 수업<small>' + esc(todayLabel(d)) + '</small></div>'
-    + todayLessons(d);
+    + todayLessons(d)
+    + (bars ? '<div class="tdhd">학급별 진도<small>어느 반이 뒤처졌나</small></div>' + bars : '');
 }
 /* 오늘이 며칠·무슨 요일인지 — 주간표 아래 이음말 */
 function todayLabel(d) {
@@ -1038,27 +1040,30 @@ function loadAllWeeks() {
     render();
   });
 }
+/* 학급별 진도 막대 — «어느 반이 뒤처졌나» 를 한눈에.
+   ★ 진도표 탭이 아니라 «오늘» 맨 아래에 둔다.
+     진도표는 말 그대로 주간표만 있는 곳이다. */
+function progressBars(d) {
+  var ps = (d.progress || []).filter(function (p) { return p.total > 0; });
+  if (!ps.length) return '';
+  var max = Math.max.apply(null, ps.map(function (p) { return p.total; }));
+  return ps.map(function (p) {
+    var w = max ? Math.round(p.done / max * 100) : 0;
+    var gap = p.gap < 0 ? '<span class="gap"> ' + p.gap + '</span>' : '';
+    return '<div class="pg"><div class="pgc">' + esc(p.cls) + '</div>'
+      + '<div class="bar"><i style="width:' + w + '%"></i></div>'
+      + '<div class="pgn"><em>' + p.done + '</em>/' + p.total + '차시' + gap + '</div></div>';
+  }).join('');
+}
+/* 진도표 — 학기 전체를 주차별 주간표로. 여기엔 표만 있다. */
 function viewProgress(d) {
   var h = '';
-  /* 학급별 요약 — 어느 반이 뒤처졌나 */
-  var ps = (d.progress || []).filter(function (p) { return p.total > 0; });
-  if (ps.length) {
-    var max = Math.max.apply(null, ps.map(function (p) { return p.total; }));
-    h += ps.map(function (p) {
-      var w = max ? Math.round(p.done / max * 100) : 0;
-      var gap = p.gap < 0 ? '<span class="gap"> ' + p.gap + '</span>' : '';
-      return '<div class="pg"><div class="pgc">' + esc(p.cls) + '</div>'
-        + '<div class="bar"><i style="width:' + w + '%"></i></div>'
-        + '<div class="pgn"><em>' + p.done + '</em>/' + p.total + '차시' + gap + '</div></div>';
-    }).join('');
-  }
-  /* 주차별 주간표 */
   if (!ALLW) {
     if (!allwBusy) loadAllWeeks();
-    return h + '<div class="empty">학기 진도표를 불러오는 중…</div>';
+    return '<div class="empty">학기 진도표를 불러오는 중…</div>';
   }
-  if (allwErr) return h + '<div class="empty">' + esc(allwErr) + '</div>';
-  if (!ALLW.length) return h + '<div class="empty">진도 자료가 아직 없습니다.</div>';
+  if (allwErr) return '<div class="empty">' + esc(allwErr) + '</div>';
+  if (!ALLW.length) return '<div class="empty">진도 자료가 아직 없습니다.</div>';
   h += '<div class="pwtop">학기 진도표<small>' + ALLW.length + '주</small>'
     + '<button class="wkb" id="pwGet" title="다시 읽기">⟳</button></div>';
   var nowD = new Date(), tMD = (nowD.getMonth() + 1) + '/' + nowD.getDate();
