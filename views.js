@@ -2263,7 +2263,9 @@ function lbListHtml() {
    { k: 'n', t: '나만 보기', d: '나에게만 보입니다' }].forEach(function (band) {
     var mine = rest.filter(function (x) { return (band.k === 'y') === !!x.shared; });
     if (!mine.length) return;
-    h += '<div class="lbband ' + band.k + '"><b>' + esc(band.t) + '</b>'
+    /* ★ 선이 아니라 «상자» 로 감싼다 — 어디까지가 그 갈래인지 한눈에 보이게 */
+    h += '<section class="lbpanel ' + band.k + '">'
+      + '<div class="lbband"><b>' + esc(band.t) + '</b>'
       + '<small>' + mine.length + '</small><i>' + esc(band.d) + '</i></div>';
     /* 종류 띠는 «둘 다» 있을 때만 — 하나뿐이면 자리만 먹는다 */
     var kinds = LBKIND.filter(function (kd) {
@@ -2279,6 +2281,7 @@ function lbListHtml() {
         if (got.length) h += lbGroup(c, got, all, band.k + '/' + kd.k + '/' + c);
       });
     });
+    h += '</section>';
   });
   return h;
 }

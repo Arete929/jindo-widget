@@ -1207,15 +1207,38 @@
 
   /* ── 런처보드: 공유/나만 띠 ─────────────────────────────
      «지금 남이 뭘 보나» 가 맨 위에 온다. 그게 스위치를 만지는 이유다. */
-  .lbband {
-    display: flex; align-items: baseline; gap: 8px; margin: 14px 0 4px; padding: 4px 3px 6px;
-    border-bottom: 2px solid var(--line);
+  /* ── 함께 / 나만 — 선이 아니라 «은은한 색 상자» ────────────
+     선 하나로는 어디까지가 그 갈래인지 눈에 안 들어왔다.
+     상자로 감싸면 내려가면서도 «지금 어느 쪽» 인지 늘 보인다.
+     ★ 색은 아주 옅게 — 타일이 주인공이고 상자는 바탕이다. */
+  .lbpanel {
+    display: block; margin: 12px 0 0; padding: calc(10px * var(--wf)) calc(12px * var(--wf))
+      calc(12px * var(--wf));
+    border-radius: 16px; border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--fg) 3.5%, var(--bg));
   }
-  .lbband b { font-size: calc(13px * var(--wf)); font-weight: 800; }
-  .lbband small { font-size: calc(10px * var(--wf)); font-weight: 700; opacity: .6; }
+  .lbpanel.y {
+    border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+    background: color-mix(in srgb, var(--accent) 7%, var(--bg));
+  }
+  .lbband {
+    display: flex; align-items: baseline; gap: 8px; padding: 0 2px calc(6px * var(--wf));
+  }
+  .lbband b { font-size: calc(13.5px * var(--wf)); font-weight: 800; }
+  .lbband small {
+    font-size: calc(10px * var(--wf)); font-weight: 700; opacity: .75;
+    background: color-mix(in srgb, var(--fg) 12%, transparent);
+    border-radius: 999px; padding: 1px calc(7px * var(--wf));
+  }
   .lbband i { margin-left: auto; font-style: normal; font-size: calc(9.5px * var(--wf)); opacity: .5; }
-  .lbband.y { border-bottom-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
-  .lbband.y b { color: var(--accent); }
+  .lbpanel.y .lbband b { color: var(--accent); }
+  .lbpanel.y .lbband small {
+    background: color-mix(in srgb, var(--accent) 22%, transparent); opacity: 1;
+  }
+  /* 상자 안에서는 묶음 머리와 타일이 상자 색 위에 얹힌다 */
+  .lbpanel .lgrp.lgh:hover { background: color-mix(in srgb, var(--fg) 7%, transparent); }
+  .lbpanel .lnks { padding-bottom: 2px; }
+  .lbpanel > .lgrp.lgh:first-of-type { margin-top: 0; }
 
   /* 묶음 머리 — 접기·펼치기, 끌어다 놓는 자리 */
   .lgrp.lgh { cursor: pointer; border-radius: 8px; padding: 6px 5px 5px; }
