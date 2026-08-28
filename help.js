@@ -175,11 +175,12 @@ function helpParts(flavor, appName) {
       + '<p><b>☆</b> 를 누르면 맨 위 <b>★ 즐겨찾기</b> 묶음으로 올라갑니다(이 PC 것입니다).</p>'
       + '<p><b>함께 쓰는 중</b>인 것이 <b>맨 위</b>에 모여 나옵니다. '
       + '「지금 다른 선생님이 뭘 보고 있나」가 한눈에 들어옵니다. 그 아래가 <b>나만 보기</b>입니다.</p>'
-      + shot('나만 | 함께 — 두 칸 단추. 타일에서 바로 누릅니다',
-          '<div class="shotrow"><span class="seg2"><b class="on">나만</b><b>함께</b></span>'
-        + '<span class="seg2"><b>나만</b><b class="on gr">함께</b></span>'
-        + '<span style="font-size:11.5px;color:var(--sub)">누르면 곧바로 바뀌고, '
-        + '보내는 동안 <b>보내는 중</b> 이 붙습니다</span></div>')
+      + shot('나만 | 함께 — 자물쇠와 사람 그림. 고른 쪽만 색이 채워집니다',
+          '<div class="shotrow"><span class="seg2"><b class="on">🔒</b><b>👥</b></span>'
+        + '<span style="font-size:11.5px;color:var(--sub)">나만 보기</span>'
+        + '<span class="seg2" style="margin-left:14px"><b>🔒</b><b class="on gr">👥</b></span>'
+        + '<span style="font-size:11.5px;color:var(--sub)">함께 쓰기</span></div>')
+      + '<p>타일에서 <b>바로</b> 누릅니다. 누르면 곧바로 바뀌고, 보내는 동안 잠깐 옅어집니다.</p>'
       + '<p>고치려면 <b>관리자 열쇠</b>가 있어야 합니다 — 설정 → <b>내 앱</b> 칸에 넣습니다. '
       + '열쇠가 없는 PC 는 공유로 켠 앱만 보이고 고치는 단추가 아예 안 나옵니다.</p>'
       + '<div class="warnbox">고치기 단추가 <b>둘</b> 입니다. 맨 위 <b>✎ 내 바로가기</b> 는 '
@@ -198,9 +199,12 @@ function helpParts(flavor, appName) {
         + '▶ 대회 <span style="opacity:.6">9</span> &nbsp;<span style="opacity:.5">(접힘)</span></div>')
       + '<ul>'
       + '<li><b>▼ / ▶</b> — 묶음 머리를 눌러 접고 펼칩니다. 접어 둔 것은 이 PC 에 기억합니다</li>'
+      + '<li><b>⊖</b> — 타일 왼쪽 위. 시트에서 빼냅니다(한 번 더 묻습니다)</li>'
+      + '<li><b>칸 1 2 3</b> — 타일이 몇 칸을 차지할지 정합니다. 자주 쓰는 앱을 넓게</li>'
       + '<li><b>끌어서 옮기기</b> — 고치기로 안 들어가고 <b>평소 화면에서 타일을 그냥 끌면</b> 됩니다.'
       + '<br>다른 <b>묶음 상자</b> 에 떨구면 그 묶음으로, 다른 <b>타일 위</b> 에 떨구면 그 앞으로 갑니다(차례 바꾸기)</li>'
-      + '<li>타일의 <b>연필</b> 을 누르면 그 자리에서 이름·주소·버전을 고칩니다</li>'
+      + '<li>타일에 마우스를 올리면 오른쪽 아래에 <b>◀ ▶ ✎</b> 가 뜹니다 — '
+      + '◀ ▶ 는 한 칸씩 옮기고, <b>연필</b> 은 그 자리에서 이름·주소·버전을 고칩니다</li>'
       + '<li><b>✎</b> — 그 줄이 그 자리에서 펼쳐져 이름·주소·버전을 바로 고칩니다</li>'
       + '<li>묶음 머리의 <b>✎</b> — 묶음 <b>이름</b>을 고치거나 뺍니다. '
       + '뺀 묶음에 있던 것은 <b>기타</b> 로 갑니다</li>'

@@ -1614,6 +1614,10 @@ function inOrder(list, order, keyOf) {
    ★ 아이콘은 선으로 그린 것을 코드 안에 넣는다 — 남의 그림 파일을 쓰지 않아
      인터넷이 없어도 나오고, 테마 색을 그대로 따라간다. */
 var OFICON = {
+  lock: '<rect x="5" y="10.5" width="14" height="10" rx="2.5"/>'
+    + '<path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
+  left: '<path d="M14.5 5.5 8 12l6.5 6.5"/>',
+  right: '<path d="M9.5 5.5 16 12l-6.5 6.5"/>',
   trophy: '<path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/><path d="M9 20h6M12 13v7"/>',
   check: '<rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9.5 3h5v3h-5z"/><path d="M9 13l2 2 4-4"/>',
   run: '<path d="M3 12h4l2.5-7 4 14 2.5-7h5"/>',
@@ -1953,6 +1957,13 @@ var LBKIND = [
 ];
 function lbKindOf(x) { return x.kind === 'link' ? 'link' : 'app'; }
 function lbKindName(k) { return k === 'link' ? '바로가기' : '내가 만든 앱'; }
+/* 2026-08-20 → 26.08.20 (올해면 08.20) */
+function lbDay(v) {
+  var m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return String(v || '');
+  var now = String(new Date().getFullYear());
+  return (m[1] === now ? '' : m[1].slice(2) + '.') + m[2] + '.' + m[3];
+}
 /* 지금 시트에 있는 묶음들 — 팔레트로 고르게 한다(손으로 적으면 오타로 갈린다) */
 function lbCats() {
   var out = [];
@@ -2025,6 +2036,20 @@ function lbMoveCat(x, to) {
     version: x.version, gasUrl: x.gas, sheetUrl: x.sheet,
     kind: lbKindOf(x), visibility: x.shared ? '공유' : '나만'
   } }, '옮기는 중');
+}
+/* 같은 묶음 안에서 한 칸 앞뒤로. 끌기보다 이쪽이 확실하다. */
+function lbNudge(x, dir) {
+  var mine = (FEED.apps || []).filter(function (a) {
+    return !a.hidden && !!a.shared === !!x.shared
+      && lbKindOf(a) === lbKindOf(x)
+      && (a.tab || '기타') === (x.tab || '기타')
+      && lbFav(a.t) === lbFav(x.t);
+  });
+  var i = mine.indexOf(x), j = i + dir;
+  if (i < 0 || j < 0 || j >= mine.length) return;
+  // 앞으로면 «그 앞» 으로, 뒤로면 «뒤엣것을 내 앞» 으로 — 서로 자리를 바꾼다
+  if (dir < 0) lbReorder(x, mine[j]);
+  else lbReorder(mine[j], x);
 }
 /* 차례 바꾸기 — a 를 b «앞» 으로 옮긴다.
    ★ 시트 줄을 통째로 다시 놓는 일이라 «전부» 의 차례를 보낸다.
@@ -2414,21 +2439,17 @@ function lbGroup(title, list, all, key) {
   h += '</div>';
   if (folded) return h + '</section>';
 
-  if (!editing) {
-    return h + '<div class="lnks">' + list.map(function (x) {
-      return lbTile(x, all.indexOf(x));
-    }).join('') + '</div></section>';
-  }
-  /* ★ 편집판 — 2열 다단. 한 줄은 2행(이름·버전 / 주소) */
-  return h + '<div class="lbrows two">' + list.map(function (x) {
-    return lbRowHtml(x, all.indexOf(x));
+  /* ★ 편집이든 아니든 «타일 격자» 하나다.
+     줄 목록과 타일을 오가면 눈이 자리를 잃는다 — 배지만 붙였다 뗀다. */
+  return h + '<div class="lbgrid">' + list.map(function (x) {
+    var i = all.indexOf(x);
+    return lbRow === x.t ? lbRowHtml(x, i) : lbTile(x, i);
   }).join('') + '</div></section>';
 }
 
 /* 편집판의 줄 하나. ✎ 를 누른 줄은 그 자리에서 입력칸이 된다. */
 function lbRowHtml(x, i) {
-  var waiting = !!lbWait[x.t];
-  if (lbRow === x.t) {
+  {
     return '<div class="lbrow open">'
       + '<div class="lbin"><i>이름</i>'
       + '<input id="lbr_name" value="' + esc(x.t) + '"></div>'
@@ -2446,52 +2467,86 @@ function lbRowHtml(x, i) {
       + '<button class="wkb" data-lbdel="' + i + '" title="빼기">✕</button>'
       + '</div></div>';
   }
-  return '<div class="lbrow' + (x.shared ? ' on' : '') + (waiting ? ' wait' : '') + '"'
-    + ' draggable="true" data-lbdrag="' + i + '" data-lbord="' + i + '">'
-    + '<span class="grip">⠿</span>'
-    + lbSeg(x, i)
-    + '<span class="lnm"><b>' + esc(x.t)
-    + (x.version ? '<em class="lbv">' + esc(x.version) + '</em>' : '') + '</b>'
-    + '<i>' + esc(x.u ? linkHost(x.u) : '주소 없음') + '</i></span>'
-    + '<button class="wkb" data-lbfav="' + i + '" title="즐겨찾기">'
-    + (lbFav(x.t) ? '★' : '☆') + '</button>'
-    + '<button class="wkb" data-lbrow="' + i + '" title="그 자리에서 고치기">✎</button>'
-    + '</div>';
 }
 
 /* 나만 | 함께 — 두 칸 단추. 지금 것에 색이 채워진다. */
 function lbSeg(x, i) {
   var w = !!lbWait[x.t];
-  return '<span class="seg' + (w ? ' wait' : '') + '" title="'
-    + (x.shared ? '지금 혜원이지에 보입니다' : '지금 나에게만 보입니다') + '">'
-    + '<button class="' + (x.shared ? '' : 'on') + '" data-lbset="' + i + ',n">나만</button>'
-    + '<button class="' + (x.shared ? 'on' : '') + '" data-lbset="' + i + ',y">함께</button>'
+  return '<span class="seg' + (w ? ' wait' : '') + '">'
+    + '<button class="' + (x.shared ? '' : 'on') + '" data-lbset="' + i + ',n"'
+    + ' title="나만 보기" aria-label="나만 보기">' + ofSvg('lock') + '</button>'
+    + '<button class="' + (x.shared ? 'on' : '') + '" data-lbset="' + i + ',y"'
+    + ' title="함께 쓰기 — 혜원이지에 보입니다" aria-label="함께 쓰기">'
+    + ofSvg('users') + '</button>'
     + '</span>';
 }
 
-/* 타일 하나 — 바로가기와 같은 선 아이콘을 쓴다 */
+/* 타일 하나.
+   윗줄 — 아이콘 … (도구) 나만|함께 ☆
+   아래 — 이름(굵게) / 버전 · 마지막 고친 날(옅게)
+   ★ 여는 곳은 «이름 덩이» 다. 도구 단추와 안 부딪치게 자리를 갈랐다. */
 function lbTile(x, i) {
   var ico = '<span class="lico" style="--ic:' + linkColor(x.t) + '">'
     + ofSvg(ofIconOf(x)) + '</span>';
-  var sub = x.d || (x.u ? linkHost(x.u) : '주소 없음');
-  return '<div class="lbt' + (x.u ? '' : ' dead') + (lbAdmin() ? ' pick' : '') + '"'
+  var link = lbKindOf(x) === 'link';
+  /* 아래 한 줄 — 앱은 주소가 모두 같아 뜻이 없다. 마지막 고친 날을 둔다. */
+  /* ★ script.google.com 은 어디서도 안 보여 준다 — 서른 몇 개가 모두 같아 뜻이 없다.
+     바로가기라도 주소가 그것이면 버전·날짜로 되돌아간다. */
+  var host = x.u ? linkHost(x.u) : '';
+  if (/script.google.com/.test(host)) host = '';
+  var sub = (link && (x.d || host))
+    ? (x.d || host)
+    : [(link ? '' : (x.version || '버전 없음')),
+       (x.updated ? lbDay(x.updated) + ' 고침' : ''),
+       (x.u ? '' : '주소 없음')].filter(Boolean).join('  ·  ');
+  var editing = lbEdit && lbAdmin();
+  var sz = lbSizeOf(x);
+
+  var h = '<div class="lbt' + (x.u ? '' : ' dead') + (lbAdmin() ? ' pick' : '')
+    + (editing ? ' editing' : '') + '" style="grid-column:span ' + sz + '"'
     + (lbAdmin() ? ' draggable="true" data-lbdrag="' + i + '" data-lbord="' + i + '"' : '')
-    + '>'
-    + '<button class="lnk" data-lbgo="' + i + '" title="' + esc(x.u || '') + '">'
-    + ico + '<span class="ltx"><b>' + esc(x.t)
-    + (x.version ? '<em class="lbv">' + esc(x.version) + '</em>' : '') + '</b>'
-    + '<i>' + esc(sub) + '</i></span></button>'
-    /* 아랫줄 — 다루는 것들. 윗줄에 겹쳐 놓으면 글자와 부딪친다. */
-    + (lbAdmin()
-      ? '<div class="lbtf">' + lbSeg(x, i)
-        // 선 아이콘 연필 — 누르면 이 줄이 그 자리에서 펼쳐진다
-        + '<button class="tico" data-lbtedit="' + i + '" title="고치기">'
-        + ofSvg('pencil') + '</button>'
-        + '<button class="lbstar' + (lbFav(x.t) ? ' on' : '') + '" data-lbfav="' + i + '"'
-        + ' title="즐겨찾기">' + (lbFav(x.t) ? '★' : '☆') + '</button></div>'
-      : '<button class="lbstar solo' + (lbFav(x.t) ? ' on' : '') + '" data-lbfav="' + i + '"'
-        + ' title="즐겨찾기">' + (lbFav(x.t) ? '★' : '☆') + '</button>')
+    + '>';
+  /* 편집 모드 — 왼쪽 위 ⊖ 로 뺀다 (빠른 설정창처럼) */
+  if (editing) {
+    h += '<button class="tminus" data-lbdel="' + i + '" title="빼기">−</button>';
+  }
+  h += '<div class="lbth">' + ico;
+  if (lbAdmin()) {
+    h += '<span class="lbtools">'
+      + '<button class="tico" data-lbmv="' + i + ',-1" title="앞으로">' + ofSvg('left') + '</button>'
+      + '<button class="tico" data-lbmv="' + i + ',1" title="뒤로">' + ofSvg('right') + '</button>'
+      + '<button class="tico" data-lbtedit="' + i + '" title="고치기">' + ofSvg('pencil') + '</button>'
+      + '</span>'
+      + lbSeg(x, i);
+  }
+  h += '<button class="lbstar' + (lbFav(x.t) ? ' on' : '') + '" data-lbfav="' + i + '"'
+    + ' title="즐겨찾기">' + (lbFav(x.t) ? '★' : '☆') + '</button>'
     + '</div>';
+
+  h += '<button class="lnk" data-lbgo="' + i + '" title="' + esc(x.u || '') + '">'
+    + '<b>' + esc(x.t) + '</b>'
+    + '<i>' + esc(sub) + '</i></button>';
+
+  /* 편집 모드 — 칸 수 (그리드에서 몇 칸을 차지하나) */
+  if (editing) {
+    h += '<div class="tsize"><i>칸</i>'
+      + [1, 2, 3].map(function (n) {
+          return '<button class="' + (sz === n ? 'on' : '') + '" data-lbsz="'
+            + i + ',' + n + '">' + n + '</button>';
+        }).join('') + '</div>';
+  }
+  return h + '</div>';
+}
+/* 타일이 몇 칸을 차지하나 — 1~3 */
+function lbSizeOf(x) {
+  var n = Number(x && x.size);
+  return (n >= 1 && n <= 3) ? n : 1;
+}
+function lbSetSize(x, n) {
+  if (lbSizeOf(x) === n) return;
+  x.size = n;              // 먼저 바꿔 보여 준다
+  render();
+  lbDo('size', { key: lbKey(x), size: n }, '크기 바꾸는 중');
 }
 
 /* 런처보드 단추 잇기 — 위젯과 넓게 보기가 각각 부른다.
@@ -2584,6 +2639,22 @@ function wireBoardList(root) {
     });
   });
   /* 그 자리에서 고치기 */
+  root.querySelectorAll('[data-lbsz]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var p = b.dataset.lbsz.split(',');
+      var x = apps[Number(p[0])];
+      if (x) lbSetSize(x, Number(p[1]));
+    });
+  });
+  root.querySelectorAll('[data-lbmv]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var p = b.dataset.lbmv.split(',');
+      var x = apps[Number(p[0])];
+      if (x) lbNudge(x, Number(p[1]));
+    });
+  });
   /* 타일의 연필 — 편집판으로 들어가면서 그 줄을 펼친다 */
   root.querySelectorAll('[data-lbtedit]').forEach(function (b) {
     b.addEventListener('click', function (e) {

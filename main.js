@@ -289,7 +289,9 @@ function feedApp(a) {
     gas: tidyUrl(a.gas), sheet: tidyUrl(a.sheet),
     shared: !!a.shared, hidden: !!a.hidden,
     // 종류 — 'link' 면 담아 둔 주소, 아니면 내가 만든 앱
-    kind: a.kind === 'link' ? 'link' : 'app'
+    kind: a.kind === 'link' ? 'link' : 'app',
+    // 타일이 몇 칸을 차지하나 — 1~3
+    size: (function () { const n = Number(a.size); return (n >= 1 && n <= 3) ? n : 1; })()
   };
 }
 function getFeedUrl() {
@@ -1829,7 +1831,7 @@ ipcMain.handle('feed-refresh', async () => { await refreshFeed(); return feedDat
    ★ 고친 뒤에는 곧바로 다시 받아 화면을 맞춘다. */
 ipcMain.handle('feed-act', async (_e, o) => {
   const act = String((o && o.act) || '');
-  if (['add', 'edit', 'del', 'share', 'hide', 'scan', 'order',
+  if (['add', 'edit', 'del', 'share', 'hide', 'scan', 'order', 'size',
         'catAdd', 'catRename', 'catDel'].indexOf(act) < 0) {
     return { ok: false, error: '모르는 일입니다' };
   }

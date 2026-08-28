@@ -1316,14 +1316,6 @@
   .lbt.pick .lnk, .lbt.pick .lbstar, .lbt.pick .seg button { -webkit-user-drag: none; }
   .lbt.dragging { opacity: .4; }
 
-  /* 타일을 조금 더 넉넉하게 — 빡빡하다는 말이 있었다 */
-  .lnks { gap: 9px; }
-  .lnks > .lnk, .lnks > .lbt { min-width: calc(184px * var(--wf)); }
-  .lbt .lico { width: calc(30px * var(--wf)); height: calc(30px * var(--wf)); border-radius: 9px; }
-  .lbt .lico svg { width: calc(18px * var(--wf)); height: calc(18px * var(--wf)); }
-  .lbt .ltx b { font-size: calc(13.5px * var(--wf)); line-height: 1.35; }
-  .lbt .ltx i { font-size: calc(10px * var(--wf)); margin-top: 2px; }
-  .lbt .lbv { font-size: calc(9.5px * var(--wf)); }
 
   /* 타일 아랫줄의 선 아이콘 단추 (고치기) */
   .tico {
@@ -1336,9 +1328,6 @@
     stroke-linecap: round; stroke-linejoin: round;
   }
   .tico:hover { opacity: 1; background: color-mix(in srgb, var(--fg) 12%, transparent); }
-  /* 별은 맨 오른쪽으로 밀고, 연필은 그 앞에 */
-  .lbtf .tico { margin-left: auto; }
-  .lbtf .lbstar { margin-left: 0; }
 
   /* ── 묶음마다 다시 작은 상자 ─────────────────────────────
      머리 줄만으로는 어디까지가 «기타» 이고 어디부터 «모둠편성» 인지 흐릿했다. */
@@ -1361,3 +1350,127 @@
     box-shadow: inset 3px 0 0 var(--accent);
     border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
   }
+
+  /* 버전 — 없으면 «버전 없음» 을 옅게 (채우라는 뜻) */
+  .lbv.none { opacity: .45; font-weight: 500; }
+
+  /* ══ 런처보드 타일 (다시 씀) ═══════════════════════════════
+     윗줄 — 아이콘 … (도구) 나만|함께 ☆
+     아래 — 이름(굵게) / 버전 · 마지막 고친 날(옅게)
+     ★ 격자다. 타일이 1~3칸을 차지할 수 있어야 한다. */
+  .lbgrid {
+    display: grid; gap: calc(9px * var(--wf));
+    grid-template-columns: repeat(auto-fill, minmax(calc(210px * var(--wf)), 1fr));
+    padding: calc(4px * var(--wf)) 0 0;
+  }
+  .lbt {
+    position: relative; display: flex; flex-direction: column;
+    gap: calc(10px * var(--wf)); min-width: 0;
+    padding: calc(13px * var(--wf)) calc(14px * var(--wf)) calc(12px * var(--wf));
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    transition: border-color .12s, background .12s;
+  }
+  .lbt:hover { background: var(--card2); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+  .lbt.dead { opacity: .55; }
+
+  /* 윗줄 */
+  .lbth { display: flex; align-items: center; gap: calc(6px * var(--wf)); flex-wrap: nowrap; }
+  .lbt .lico {
+    width: calc(34px * var(--wf)); height: calc(34px * var(--wf)); border-radius: 11px;
+    background: color-mix(in srgb, var(--ic, var(--accent)) 15%, transparent);
+  }
+  .lbt .lico svg { width: calc(19px * var(--wf)); height: calc(19px * var(--wf)); }
+
+  /* 도구 — 자리를 안 차지하게 띄워 둔다.
+     윗줄에 같이 놓으니 좁은 타일에서 아랫줄로 밀렸다.
+     평소엔 안 보이고 마우스를 올리면 오른쪽 아래에 뜬다. */
+  .lbtools {
+    position: absolute; right: calc(9px * var(--wf)); bottom: calc(9px * var(--wf));
+    display: flex; gap: 1px; z-index: 2;
+    background: var(--card2); border: 1px solid var(--line); border-radius: 9px;
+    padding: 1px; opacity: 0; pointer-events: none; transition: opacity .12s;
+  }
+  .lbt:hover .lbtools, .lbt.editing .lbtools { opacity: 1; pointer-events: auto; }
+  .lbtools .tico:hover { opacity: 1; }
+  .tico {
+    flex: 0 0 auto; border: 0; background: none; cursor: pointer; padding: calc(3px * var(--wf));
+    border-radius: 7px; display: inline-flex; align-items: center; opacity: .8;
+  }
+  .tico svg {
+    width: calc(14px * var(--wf)); height: calc(14px * var(--wf));
+    stroke: var(--fg); fill: none; stroke-width: 1.9;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .tico:hover { background: color-mix(in srgb, var(--fg) 14%, transparent); }
+
+  /* ── 나만 | 함께 — 글자 대신 선 아이콘 ─────────────────────
+     고른 쪽만 색을 채운다. 안 고른 쪽은 테두리도 없이 옅게 —
+     둘 다 상자를 두르면 «어느 쪽인지» 가 흐려진다. */
+  .seg {
+    display: inline-flex; flex: none; gap: 2px; padding: 2px; border: 0; margin-left: auto;
+    border-radius: 999px; background: color-mix(in srgb, var(--fg) 8%, transparent);
+  }
+  .seg button {
+    border: 0; background: none; cursor: pointer; padding: calc(3px * var(--wf)) calc(7px * var(--wf));
+    border-radius: 999px; display: inline-flex; align-items: center; line-height: 1;
+  }
+  .seg button svg {
+    width: calc(14px * var(--wf)); height: calc(14px * var(--wf));
+    stroke: var(--dim); fill: none; stroke-width: 1.8;
+    stroke-linecap: round; stroke-linejoin: round; opacity: .6;
+  }
+  .seg button:hover svg { opacity: 1; }
+  .seg button.on svg { stroke: var(--on); opacity: 1; }
+  /* 함께 = 강조색으로 채운다. 나만 = 차분한 회색. */
+  .seg button.on { background: var(--accent); }
+  .seg button:first-child.on { background: color-mix(in srgb, var(--fg) 55%, var(--bg)); }
+  .seg button:first-child.on svg { stroke: var(--bg); }
+  .seg.wait { opacity: .45; }
+
+  .lbt .lbstar {
+    position: static; flex: none; border: 0; background: none; cursor: pointer;
+    color: var(--fg); opacity: .28; font-size: calc(13px * var(--wf)); line-height: 1;
+    padding: calc(2px * var(--wf)) calc(3px * var(--wf)); border-radius: 6px;
+  }
+  .lbt .lbstar:hover { opacity: .85; }
+  .lbt .lbstar.on { opacity: 1; color: #e0a91e; }
+
+  /* 이름 덩이 = 여는 곳 */
+  .lbt .lnk {
+    display: flex; flex-direction: column; align-items: flex-start; gap: calc(3px * var(--wf));
+    width: 100%; background: none; border: 0; padding: 0; text-align: left; min-width: 0;
+  }
+  .lbt .lnk:hover { background: none; }
+  .lbt .lnk b {
+    display: block; width: 100%; font-size: calc(14px * var(--wf)); font-weight: 800;
+    color: var(--fg2); line-height: 1.35; word-break: keep-all; overflow-wrap: anywhere;
+  }
+  .lbt .lnk i {
+    display: block; width: 100%; font-style: normal; font-size: calc(10.5px * var(--wf));
+    color: var(--dim); line-height: 1.4;
+  }
+
+  /* ── 편집 모드 — 빠른 설정창처럼 ─────────────────────────── */
+  .lbt.editing { border-style: dashed; }
+  .tminus {
+    position: absolute; left: calc(-6px * var(--wf)); top: calc(-6px * var(--wf));
+    width: calc(20px * var(--wf)); height: calc(20px * var(--wf)); border-radius: 999px;
+    border: 0; cursor: pointer; z-index: 2; line-height: 1;
+    background: var(--card2); color: var(--fg); font-size: calc(14px * var(--wf));
+    font-weight: 800; box-shadow: 0 0 0 1px var(--line);
+  }
+  .tminus:hover, .tminus.now { background: #c0392b; color: #fff; box-shadow: none; }
+  .tsize { display: flex; align-items: center; gap: 3px; }
+  .tsize i {
+    font-style: normal; font-size: calc(9.5px * var(--wf)); color: var(--dim);
+    margin-right: 3px;
+  }
+  .tsize button {
+    border: 1px solid var(--line); background: none; cursor: pointer; color: var(--dim);
+    font-family: inherit; font-size: calc(10px * var(--wf)); font-weight: 700;
+    border-radius: 6px; padding: calc(2px * var(--wf)) calc(8px * var(--wf));
+  }
+  .tsize button.on { background: var(--accent); border-color: var(--accent); color: var(--on); }
+
+  /* 그 자리에서 고치기 — 격자에서 한 줄을 다 쓴다 */
+  .lbrow.open { grid-column: 1 / -1; }
