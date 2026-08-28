@@ -1829,7 +1829,7 @@ ipcMain.handle('feed-refresh', async () => { await refreshFeed(); return feedDat
    ★ 고친 뒤에는 곧바로 다시 받아 화면을 맞춘다. */
 ipcMain.handle('feed-act', async (_e, o) => {
   const act = String((o && o.act) || '');
-  if (['add', 'edit', 'del', 'share', 'hide', 'scan',
+  if (['add', 'edit', 'del', 'share', 'hide', 'scan', 'order',
         'catAdd', 'catRename', 'catDel'].indexOf(act) < 0) {
     return { ok: false, error: '모르는 일입니다' };
   }

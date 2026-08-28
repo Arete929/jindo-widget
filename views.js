@@ -2011,6 +2011,36 @@ function lbPump() {
     lbPump();
   });
 }
+/* 묶음 옮기기 — 먼저 옮겨 보여 주고 뒤에 시킨다 */
+function lbMoveCat(x, to) {
+  if ((x.tab || '기타') === to) return;
+  x.tab = to;
+  // 접힌 묶음으로 옮겼으면 펼쳐서 «어디로 갔는지» 보여 준다
+  var kk = (x.shared ? 'y' : 'n') + '/' + lbKindOf(x) + '/' + to;
+  var fi = LBFOLD.indexOf(kk);
+  if (fi >= 0) { LBFOLD.splice(fi, 1); widgetAPI.setUi({ feedFold: LBFOLD }); }
+  render();
+  lbDo('edit', { key: lbKey(x), data: {
+    name: x.t, appUrl: x.u, desc: x.d, tab: to, icon: x.icon,
+    version: x.version, gasUrl: x.gas, sheetUrl: x.sheet,
+    kind: lbKindOf(x), visibility: x.shared ? '공유' : '나만'
+  } }, '옮기는 중');
+}
+/* 차례 바꾸기 — a 를 b «앞» 으로 옮긴다.
+   ★ 시트 줄을 통째로 다시 놓는 일이라 «전부» 의 차례를 보낸다.
+     보낸 목록에 없는 줄은 뒤에 그대로 붙는다(런처가 챙긴다). */
+function lbReorder(a, b) {
+  var arr = (FEED.apps || []).slice();
+  var ia = arr.indexOf(a);
+  if (ia < 0) return;
+  arr.splice(ia, 1);
+  var ib = arr.indexOf(b);
+  if (ib < 0) return;
+  arr.splice(ib, 0, a);
+  FEED.apps = arr;               // 먼저 옮겨 보여 준다
+  render();
+  lbDo('order', { keys: arr.map(lbKey) }, '차례 바꾸는 중');
+}
 function lbToggleShare(x) {
   var want = !x.shared;
   x.shared = want;            // 먼저 뒤집는다 — 누른 티가 곧바로 난다
@@ -2362,10 +2392,12 @@ function lbGroup(title, list, all, key) {
   var cat = canFold ? key.split('/')[2] : '';
   var editing = lbEdit && lbAdmin();
 
-  var h = '<div class="lgrp lgh' + (folded ? ' folded' : '') + '"'
-    + (canFold ? ' data-lbfold="' + esc(key) + '"' : '')
-    // ★ 받는 자리는 평소에도 열어 둔다 — 타일을 그냥 끌어 옮길 수 있어야 한다
-    + (lbAdmin() && cat ? ' data-lbdrop="' + esc(cat) + '"' : '') + '>';
+  /* ★ 묶음 하나가 «작은 상자» 다. 받는 자리도 상자 전체 —
+     머리 줄만 받으면 겨냥하기가 어렵다. */
+  var h = '<section class="lbcat' + (folded ? ' folded' : '') + '"'
+    + (lbAdmin() && cat ? ' data-lbdrop="' + esc(cat) + '"' : '') + '>'
+    + '<div class="lgrp lgh' + (folded ? ' folded' : '') + '"'
+    + (canFold ? ' data-lbfold="' + esc(key) + '"' : '') + '>';
   if (canFold) h += '<em class="fold">' + (folded ? '▶' : '▼') + '</em>';
   if (editing && cat && lbCatEdit === cat) {
     /* 묶음 이름을 그 자리에서 고친다 */
@@ -2380,17 +2412,17 @@ function lbGroup(title, list, all, key) {
     }
   }
   h += '</div>';
-  if (folded) return h;
+  if (folded) return h + '</section>';
 
   if (!editing) {
     return h + '<div class="lnks">' + list.map(function (x) {
       return lbTile(x, all.indexOf(x));
-    }).join('') + '</div>';
+    }).join('') + '</div></section>';
   }
   /* ★ 편집판 — 2열 다단. 한 줄은 2행(이름·버전 / 주소) */
   return h + '<div class="lbrows two">' + list.map(function (x) {
     return lbRowHtml(x, all.indexOf(x));
-  }).join('') + '</div>';
+  }).join('') + '</div></section>';
 }
 
 /* 편집판의 줄 하나. ✎ 를 누른 줄은 그 자리에서 입력칸이 된다. */
@@ -2415,7 +2447,7 @@ function lbRowHtml(x, i) {
       + '</div></div>';
   }
   return '<div class="lbrow' + (x.shared ? ' on' : '') + (waiting ? ' wait' : '') + '"'
-    + ' draggable="true" data-lbdrag="' + i + '">'
+    + ' draggable="true" data-lbdrag="' + i + '" data-lbord="' + i + '">'
     + '<span class="grip">⠿</span>'
     + lbSeg(x, i)
     + '<span class="lnm"><b>' + esc(x.t)
@@ -2443,7 +2475,8 @@ function lbTile(x, i) {
     + ofSvg(ofIconOf(x)) + '</span>';
   var sub = x.d || (x.u ? linkHost(x.u) : '주소 없음');
   return '<div class="lbt' + (x.u ? '' : ' dead') + (lbAdmin() ? ' pick' : '') + '"'
-    + (lbAdmin() ? ' draggable="true" data-lbdrag="' + i + '"' : '') + '>'
+    + (lbAdmin() ? ' draggable="true" data-lbdrag="' + i + '" data-lbord="' + i + '"' : '')
+    + '>'
     + '<button class="lnk" data-lbgo="' + i + '" title="' + esc(x.u || '') + '">'
     + ico + '<span class="ltx"><b>' + esc(x.t)
     + (x.version ? '<em class="lbv">' + esc(x.version) + '</em>' : '') + '</b>'
@@ -2451,6 +2484,9 @@ function lbTile(x, i) {
     /* 아랫줄 — 다루는 것들. 윗줄에 겹쳐 놓으면 글자와 부딪친다. */
     + (lbAdmin()
       ? '<div class="lbtf">' + lbSeg(x, i)
+        // 선 아이콘 연필 — 누르면 이 줄이 그 자리에서 펼쳐진다
+        + '<button class="tico" data-lbtedit="' + i + '" title="고치기">'
+        + ofSvg('pencil') + '</button>'
         + '<button class="lbstar' + (lbFav(x.t) ? ' on' : '') + '" data-lbfav="' + i + '"'
         + ' title="즐겨찾기">' + (lbFav(x.t) ? '★' : '☆') + '</button></div>'
       : '<button class="lbstar solo' + (lbFav(x.t) ? ' on' : '') + '" data-lbfav="' + i + '"'
@@ -2526,6 +2562,8 @@ function wireBoardBar(root) {
 function wireBoardList(root) {
   var apps = (FEED.apps || []).filter(function (x) { return !x.hidden; });
   function at(e, k) { return apps[Number(e.dataset[k])]; }
+  /* 끌고 있는 것 — 타일과 상자가 함께 본다 */
+  var dragIdx = -1;
   /* 묶음 접기·펼치기 — 머리 아무 데나 눌러도 된다(단추 위는 빼고) */
   root.querySelectorAll('[data-lbfold]').forEach(function (g) {
     g.addEventListener('click', function (e) {
@@ -2546,6 +2584,20 @@ function wireBoardList(root) {
     });
   });
   /* 그 자리에서 고치기 */
+  /* 타일의 연필 — 편집판으로 들어가면서 그 줄을 펼친다 */
+  root.querySelectorAll('[data-lbtedit]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var x = at(b, 'lbtedit');
+      if (!x) return;
+      lbEdit = true; lbRow = x.t;
+      // 접혀 있으면 펼쳐야 그 줄이 보인다
+      var kk = (x.shared ? 'y' : 'n') + '/' + lbKindOf(x) + '/' + (x.tab || '기타');
+      var fi = LBFOLD.indexOf(kk);
+      if (fi >= 0) { LBFOLD.splice(fi, 1); widgetAPI.setUi({ feedFold: LBFOLD }); }
+      render();
+    });
+  });
   root.querySelectorAll('[data-lbrow]').forEach(function (b) {
     b.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -2609,8 +2661,6 @@ function wireBoardList(root) {
       lbDo('catDel', { name: b.dataset.lbcdel }, '묶음 빼는 중');
     });
   });
-  /* 줄을 끌어 다른 묶음 머리에 떨구면 묶음이 바뀐다 */
-  var dragIdx = -1;
   root.querySelectorAll('[data-lbdrag]').forEach(function (r) {
     r.addEventListener('dragstart', function (e) {
       dragIdx = Number(r.dataset.lbdrag);
@@ -2621,6 +2671,28 @@ function wireBoardList(root) {
     r.addEventListener('dragend', function () {
       dragIdx = -1; r.classList.remove('dragging');
       root.querySelectorAll('.lgh.over').forEach(function (g) { g.classList.remove('over'); });
+    });
+  });
+  /* 타일·줄 위에 떨구면 «그 앞» 으로 끼워 넣는다(차례 바꾸기).
+     ★ 상자에도 받는 자리가 있으니 여기서 번짐을 막아야 한다 —
+       안 막으면 차례를 바꾸자마자 묶음까지 바뀐다. */
+  root.querySelectorAll('[data-lbord]').forEach(function (t) {
+    t.addEventListener('dragover', function (e) {
+      if (dragIdx < 0 || Number(t.dataset.lbord) === dragIdx) return;
+      e.preventDefault(); e.stopPropagation();
+      t.classList.add('over');
+    });
+    t.addEventListener('dragleave', function () { t.classList.remove('over'); });
+    t.addEventListener('drop', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      t.classList.remove('over');
+      var from = dragIdx;
+      if (from < 0 && e.dataTransfer) from = Number(e.dataTransfer.getData('text/plain'));
+      var a = apps[from], b = apps[Number(t.dataset.lbord)];
+      if (!a || !b || a === b) return;
+      var ca = a.tab || '기타', cb = b.tab || '기타';
+      if (ca !== cb) { lbMoveCat(a, cb); return; }   // 묶음이 다르면 옮기기가 먼저다
+      lbReorder(a, b);
     });
   });
   root.querySelectorAll('[data-lbdrop]').forEach(function (g) {
@@ -2637,18 +2709,8 @@ function wireBoardList(root) {
       if (i < 0 && e.dataTransfer) i = Number(e.dataTransfer.getData('text/plain'));
       var x = apps[i];
       var to = g.dataset.lbdrop;
-      if (!x || !to || (x.tab || '기타') === to) return;
-      x.tab = to;                    // 먼저 옮겨 보여 준다
-      // 접힌 묶음으로 옮겼으면 펼쳐서 «어디로 갔는지» 보여 준다
-      var kk = (x.shared ? 'y' : 'n') + '/' + lbKindOf(x) + '/' + to;
-      var fi = LBFOLD.indexOf(kk);
-      if (fi >= 0) { LBFOLD.splice(fi, 1); widgetAPI.setUi({ feedFold: LBFOLD }); }
-      render();
-      lbDo('edit', { key: lbKey(x), data: {
-        name: x.t, appUrl: x.u, desc: x.d, tab: to, icon: x.icon,
-        version: x.version, gasUrl: x.gas, sheetUrl: x.sheet,
-        kind: lbKindOf(x), visibility: x.shared ? '공유' : '나만'
-      } }, '옮기는 중');
+      if (!x || !to) return;
+      lbMoveCat(x, to);
     });
   });
   root.querySelectorAll('[data-lbgo]').forEach(function (b) {

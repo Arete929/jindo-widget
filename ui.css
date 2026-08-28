@@ -1324,3 +1324,40 @@
   .lbt .ltx b { font-size: calc(13.5px * var(--wf)); line-height: 1.35; }
   .lbt .ltx i { font-size: calc(10px * var(--wf)); margin-top: 2px; }
   .lbt .lbv { font-size: calc(9.5px * var(--wf)); }
+
+  /* 타일 아랫줄의 선 아이콘 단추 (고치기) */
+  .tico {
+    flex: 0 0 auto; border: 0; background: none; cursor: pointer; padding: 2px;
+    border-radius: 7px; display: inline-flex; align-items: center; opacity: .45;
+  }
+  .tico svg {
+    width: calc(15px * var(--wf)); height: calc(15px * var(--wf));
+    stroke: var(--fg); fill: none; stroke-width: 1.8;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .tico:hover { opacity: 1; background: color-mix(in srgb, var(--fg) 12%, transparent); }
+  /* 별은 맨 오른쪽으로 밀고, 연필은 그 앞에 */
+  .lbtf .tico { margin-left: auto; }
+  .lbtf .lbstar { margin-left: 0; }
+
+  /* ── 묶음마다 다시 작은 상자 ─────────────────────────────
+     머리 줄만으로는 어디까지가 «기타» 이고 어디부터 «모둠편성» 인지 흐릿했다. */
+  .lbcat {
+    display: block; margin: calc(8px * var(--wf)) 0 0;
+    padding: calc(6px * var(--wf)) calc(9px * var(--wf)) calc(9px * var(--wf));
+    border-radius: 12px; border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+    background: color-mix(in srgb, var(--card) 55%, transparent);
+  }
+  .lbcat.folded { padding-bottom: calc(5px * var(--wf)); opacity: .8; }
+  .lbcat > .lgrp.lgh { margin: 0; }
+  .lbcat .lnks { padding: 2px 0 0; }
+  /* 끌어 온 것을 받는 중 */
+  .lbcat.over {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  /* 타일·줄 위에 떨구면 «그 앞» 으로 — 왼쪽에 굵은 선 */
+  .lbt.over, .lbrow.over {
+    box-shadow: inset 3px 0 0 var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+  }
