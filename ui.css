@@ -1182,3 +1182,10 @@
   .lbfr.pal i { padding-top: calc(5px * var(--wf)); }
   .palw { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; }
   .palw .wkb { padding: calc(4px * var(--wf)) calc(9px * var(--wf)); }
+
+  /* 공유 스위치 — 보내는 중인 줄 */
+  .lbrow.wait { opacity: .75; }
+  .wkb.sw .wt {
+    font-style: normal; font-size: calc(9px * var(--wf)); font-weight: 700;
+    color: var(--dim); margin-left: 2px;
+  }

@@ -1974,6 +1974,43 @@ function lbFavToggle(t) {
   widgetAPI.setUi({ feedFav: FEEDFAV });
   render();
 }
+/* ── 공유 스위치 ────────────────────────────────────────────
+   ★ 누른 티가 곧바로 나야 한다. GAS 왕복은 1~3초라 그동안 가만히 있으면
+     «안 먹었나» 싶어 또 누르게 된다.
+   → 화면에서 먼저 뒤집고, 부탁은 줄을 세워 하나씩 보낸다.
+     런처가 안 받으면 그 줄만 도로 뒤집는다. */
+var lbQ2 = [], lbSending = false, lbWait = {};
+function lbPump() {
+  if (lbSending || !lbQ2.length) return;
+  lbSending = true;
+  var job = lbQ2.shift();
+  widgetAPI.feedAct(job.body).then(function (r) {
+    lbSending = false;
+    delete lbWait[job.id];
+    if (!r || !r.ok) {
+      job.undo();
+      lbErr = (r && r.error) || '바꾸지 못했습니다';
+    } else {
+      lbErr = ''; lbOkAt = r.at || '';
+    }
+    render();
+    lbPump();
+  });
+}
+function lbToggleShare(x) {
+  var want = !x.shared;
+  x.shared = want;            // 먼저 뒤집는다 — 누른 티가 곧바로 난다
+  lbWait[x.t] = 1;
+  lbErr = '';
+  render();
+  lbQ2.push({
+    id: x.t,
+    body: { act: 'share', key: lbKey(x), shared: want },
+    undo: function () { x.shared = !want; }
+  });
+  lbPump();
+}
+
 /* 런처에 시키기 — 하는 동안 단추를 잠그고, 끝나면 저장시각을 남긴다 */
 function lbDo(act, body, tag) {
   if (lbBusy) return;
@@ -2278,10 +2315,13 @@ function lbGroup(title, list, all) {
   }
   return h + '<div class="lbrows">' + list.map(function (x) {
     var i = all.indexOf(x);
-    return '<div class="lbrow' + (x.shared ? ' on' : '') + '">'
+    var waiting = !!lbWait[x.t];
+    return '<div class="lbrow' + (x.shared ? ' on' : '') + (waiting ? ' wait' : '') + '">'
       + '<button class="wkb sw' + (x.shared ? ' now' : '') + '" data-lbsh="' + i + '"'
-      + ' title="켜면 혜원이지에 보입니다">'
-      + '<span class="track"><span class="knob"></span></span></button>'
+      + ' title="' + (x.shared ? '켜져 있습니다 — 누르면 나만 보기로' : '켜면 혜원이지에 보입니다')
+      + '">'
+      + '<span class="track"><span class="knob"></span></span>'
+      + (waiting ? '<em class="wt">보내는 중</em>' : '') + '</button>'
       + '<span class="lnm"><b>' + esc(x.t) + '</b>'
       + '<i>' + esc(x.version || '') + (x.version && x.u ? ' · ' : '')
       + esc(x.u ? linkHost(x.u) : '주소 없음') + '</i></span>'
@@ -2377,8 +2417,7 @@ function wireBoardList(root) {
   root.querySelectorAll('[data-lbsh]').forEach(function (b) {
     b.addEventListener('click', function () {
       var x = at(b, 'lbsh');
-      if (x) lbDo('share', { key: lbKey(x), shared: !x.shared },
-        (x.shared ? '숨기는 중' : '공유하는 중'));
+      if (x) lbToggleShare(x);
     });
   });
   root.querySelectorAll('[data-lbed]').forEach(function (b) {
