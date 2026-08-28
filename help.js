@@ -267,7 +267,8 @@ function helpParts(flavor, appName) {
         + '<div style="font-size:11px;font-weight:800;color:var(--sub);margin-top:8px">'
         + '▶ 대회 <span style="opacity:.6">9</span> &nbsp;<span style="opacity:.5">(접힘)</span></div>')
       + '<ul>'
-      + '<li><b>▼ / ▶</b> — 묶음 머리를 눌러 접고 펼칩니다. 접어 둔 것은 이 PC 에 기억합니다</li>'
+      + '<li><b>묶음 이름</b>(기타·모둠편성…)을 <b>그냥 누르면</b> 접히고 펼쳐집니다.'
+      + ' 따로 화살표 단추는 없습니다. 접어 둔 것은 이 PC 에 기억합니다</li>'
       + '<li><b>⊖</b> — 타일 왼쪽 위. 시트에서 빼냅니다(한 번 더 묻습니다)</li>'
       + '<li><b>칸 1 2 3</b> — 타일이 몇 칸을 차지할지 정합니다. 자주 쓰는 앱을 넓게</li>'
       + '<li><b>끌어서 옮기기</b> — 고치기로 안 들어가고 <b>평소 화면에서 타일을 그냥 끌면</b> 됩니다.'

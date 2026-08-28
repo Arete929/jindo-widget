@@ -2519,7 +2519,6 @@ function lbGroup(title, list, all, key) {
     + (lbAdmin() && cat ? ' data-lbdrop="' + esc(cat) + '"' : '') + '>'
     + '<div class="lgrp lgh' + (folded ? ' folded' : '') + '"'
     + (canFold ? ' data-lbfold="' + esc(key) + '"' : '') + '>';
-  if (canFold) h += '<em class="fold">' + (folded ? '▶' : '▼') + '</em>';
   if (editing && cat && lbCatEdit === cat) {
     /* 묶음 이름을 그 자리에서 고친다 */
     h += '<input class="lbcn" id="lbCatName" value="' + esc(cat) + '">'
@@ -2527,7 +2526,7 @@ function lbGroup(title, list, all, key) {
       + '<button class="wkb" data-lbccancel="1">그만</button>'
       + '<button class="wkb" data-lbcdel="' + esc(cat) + '" title="이 묶음을 빼면 안에 있던 것은 «기타» 로 갑니다">✕ 묶음 빼기</button>';
   } else {
-    h += '<span class="gt">' + esc(title) + '</span><small>' + list.length + '</small>';
+    h += '<span class="lbgt">' + esc(title) + '</span><small>' + list.length + '</small>';
     if (editing && cat) {
       h += '<button class="wkb gcx" data-lbcedit="' + esc(cat) + '" title="묶음 이름 고치기">✎</button>';
     }
