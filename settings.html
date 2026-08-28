@@ -93,6 +93,11 @@
   button.sw.on .track { background: var(--energy1); }
   button.sw.on .knob { left: 19px; }
   .foot { font-size: 11.5px; color: var(--sub); text-align: center; margin-top: 4px; }
+  .keycap {
+    flex: 1; min-width: 120px; font-family: Consolas, monospace; font-size: 12.5px;
+    font-weight: 800; letter-spacing: .3px;
+  }
+  .keycap.wait { background: #efedff; border-color: var(--energy2); color: var(--energy2); }
   .maker { display: inline-block; margin-top: 5px; font-size: 10px; font-weight: 800;
            letter-spacing: 1px; color: var(--sub); opacity: .65; }
 
@@ -553,6 +558,27 @@
     <b>수업진도 대시보드 · 구글 로그인 · 주간업무 링크</b> 같은 바깥 주소를 열 때 씁니다.<br>
     이 PC 에 깔려 있는 것만 보입니다. <b>«기본 브라우저»</b> 를 고르면 윈도우가 정한 것으로 엽니다.<br>
     (구글 로그인은 앱 안 브라우저를 막아서, 진짜 브라우저를 띄워야 합니다)
+  </div>
+</section>
+
+<section>
+  <h2>단축키</h2>
+  <div class="row">
+    <label class="lb">부르기</label>
+    <button id="hotShowBtn" class="keycap">키 누르기</button>
+    <button id="hotShowClr">지우기</button>
+  </div>
+  <div class="row">
+    <label class="lb">감추기</label>
+    <button id="hotHideBtn" class="keycap">키 누르기</button>
+    <button id="hotHideClr">지우기</button>
+  </div>
+  <div class="hint" id="hotMsg" style="margin-top:2px"></div>
+  <div class="hint">
+    다른 프로그램을 쓰다가도 이 키를 누르면 창이 <b>나오고 감춰집니다</b>.<br>
+    <b>Ctrl · Alt · Shift</b> 중 하나는 꼭 있어야 합니다 — 맨 글자 하나를 잡으면
+    다른 프로그램에서 그 글자를 못 칩니다.<br>
+    <b>부르기와 감추기를 같은 키</b>로 두면 번갈아 됩니다.
   </div>
 </section>
 
@@ -1457,6 +1483,66 @@ $('logBtn').onclick = function () { widgetAPI.openLog(); };
    ★ 목차는 머리에 붙어 있어서(sticky) 아래로 내려가도 늘 손에 닿는다.
      보다가 다른 단추를 누르면 그 자리로 바로 옮겨 간다.
    ★ 지금 보고 있는 자리는 목차에서 색이 채워진다. */
+/* ── 전역 단축키 ───────────────────────────────────────────
+   키를 «눌러서» 정한다. 적어 넣게 하면 Electron 이 아는 이름을
+   사람이 외워야 한다(CommandOrControl 같은 것). */
+var hotWait = null;   // 지금 키를 기다리는 칸 ('show' | 'hide')
+function hotLabel(v) { return v ? v.replace(/CommandOrControl/g, 'Ctrl') : '(없음)'; }
+function paintHot() {
+  var h = (UI.hot || {});
+  $('hotShowBtn').textContent = hotWait === 'show' ? '키를 누르세요…' : hotLabel(h.show);
+  $('hotHideBtn').textContent = hotWait === 'hide' ? '키를 누르세요…' : hotLabel(h.hide);
+  $('hotShowBtn').classList.toggle('wait', hotWait === 'show');
+  $('hotHideBtn').classList.toggle('wait', hotWait === 'hide');
+  // ★ CommandOrControl 은 Electron 이 아는 이름이다 — 사람에게는 Ctrl 로 보여 준다
+  if (h.error) $('hotMsg').innerHTML = '<span class="warn">' + esc(hotLabel(h.error)) + '</span>';
+  else if (h.show && h.show === h.hide) {
+    $('hotMsg').innerHTML = '<span class="ok">같은 키라 번갈아 됩니다</span>';
+  } else if (h.show || h.hide) $('hotMsg').innerHTML = '<span class="ok">걸려 있습니다</span>';
+  else $('hotMsg').textContent = '아직 정하지 않았습니다';
+}
+function hotStamp(which, v) {
+  if (!UI.hot) UI.hot = {};
+  UI.hot[which] = v;
+  UI.hot.error = '';
+  var o = {}; o[which === 'show' ? 'hotShow' : 'hotHide'] = v;
+  widgetAPI.setUi(o);
+  paintHot();
+  var at = stampNow();
+  setTimeout(function () {
+    widgetAPI.getSettings().then(function (st) {
+      if (st && st.ui && st.ui.hot) UI.hot = st.ui.hot;
+      paintHot();
+      if (!(UI.hot || {}).error) {
+        $('hotMsg').innerHTML = '<span class="ok">✅ 저장됨 · ' + at + '</span>';
+      }
+    });
+  }, 250);
+}
+$('hotShowBtn').onclick = function () { hotWait = 'show'; paintHot(); };
+$('hotHideBtn').onclick = function () { hotWait = 'hide'; paintHot(); };
+$('hotShowClr').onclick = function () { hotWait = null; hotStamp('show', ''); };
+$('hotHideClr').onclick = function () { hotWait = null; hotStamp('hide', ''); };
+document.addEventListener('keydown', function (e) {
+  if (!hotWait) return;
+  e.preventDefault(); e.stopPropagation();
+  if (e.key === 'Escape') { hotWait = null; paintHot(); return; }
+  var k = e.key;
+  if (['Control', 'Alt', 'Shift', 'Meta'].indexOf(k) >= 0) return;   // 아직 딸림쇠만
+  var mods = [];
+  if (e.ctrlKey) mods.push('CommandOrControl');
+  if (e.altKey) mods.push('Alt');
+  if (e.shiftKey) mods.push('Shift');
+  if (!mods.length) {
+    $('hotMsg').innerHTML = '<span class="warn">Ctrl · Alt · Shift 중 하나는 꼭 눌러야 합니다</span>';
+    return;
+  }
+  var name = k.length === 1 ? k.toUpperCase()
+    : k.replace(/^Arrow/, '').replace(/^Escape$/, 'Esc');
+  var which = hotWait; hotWait = null;
+  hotStamp(which, mods.join('+') + '+' + name);
+});
+
 var helpDrawn = false;
 function drawHelp() {
   if (helpDrawn) return;
@@ -1536,6 +1622,7 @@ function load() {
     UI = Object.assign(UI, s.ui || {});
     TIMETABLE = s.timetable || null;
     paint();
+    paintHot();
   });
 }
 load();

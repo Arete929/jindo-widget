@@ -8,7 +8,8 @@
 //   앱이 화면을 그릴 때 쓰는 것과 똑같은 계산 결과라서, 앱 화면이 바뀌어도 안 깨진다.
 //   로그인은 진짜 크롬에서 하고 그 결과(구글 ID 토큰)만 127.0.0.1 로 넘겨받는다 — startLogin() 참고.
 
-const { app, BrowserWindow, Tray, Menu, ipcMain, shell, Notification, screen, powerMonitor, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, shell, Notification, screen, powerMonitor, dialog,
+  globalShortcut } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const http = require('http');
@@ -1030,6 +1031,48 @@ function showWidgetOnly() {
   if (rebuildTrayMenu) rebuildTrayMenu();
 }
 
+/* ── 전역 단축키 ───────────────────────────────────────────
+   부르기 · 감추기를 따로 정한다. 같은 키면 번갈아 된다.
+   ★ 윈도우 전체에서 가로채는 것이라, 이미 쓰는 키면 등록이 «조용히» 실패한다.
+     register() 가 false 를 돌려주는데 그걸 놓치면 «왜 안 되지» 가 된다. */
+let hotErr = '';
+function getHot() {
+  const s = loadState();
+  return { show: String(s.hotShow || '').trim(), hide: String(s.hotHide || '').trim() };
+}
+function hideWidgetNow() {
+  if (easyWin && !easyWin.isDestroyed()) easyWin.hide();
+  if (widgetWin && !widgetWin.isDestroyed()) widgetWin.hide();
+}
+function anyShown() {
+  if (easyWin && !easyWin.isDestroyed() && easyWin.isVisible()) return true;
+  return !!(widgetWin && !widgetWin.isDestroyed() && widgetWin.isVisible());
+}
+function applyHotkeys() {
+  try { globalShortcut.unregisterAll(); } catch (e) {}
+  const h = getHot();
+  const bad = [];
+  const put = (key, fn) => {
+    if (!key) return;
+    let ok = false;
+    try { ok = globalShortcut.register(key, fn); } catch (e) { ok = false; }
+    if (!ok) bad.push(key);
+  };
+  if (h.show && h.show === h.hide) {
+    // 같은 키 하나로 번갈아
+    put(h.show, () => { if (anyShown()) hideWidgetNow(); else showWidgetOnly(); });
+  } else {
+    put(h.show, () => showWidgetOnly());
+    put(h.hide, () => hideWidgetNow());
+  }
+  hotErr = bad.length
+    ? bad.join(' , ') + ' 는 다른 프로그램이 이미 쓰고 있습니다'
+    : '';
+  if (bad.length) debugLog('전역 단축키 등록 실패 — ' + bad.join(', '));
+  else if (h.show || h.hide) debugLog('전역 단축키 — 부르기 ' + (h.show || '없음')
+    + ' / 감추기 ' + (h.hide || '없음'));
+}
+
 function createWidgetWindow() {
   const size = widgetSize();
   const pos = safePosition(loadState(), size);
@@ -1450,6 +1493,7 @@ ipcMain.handle('get-settings', () => ({
     photo: { dir: getPhotoDir(), sec: getPhotoSec(), count: photoList().length },
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData,
            hasKey: !!getFeedKey(), fav: getFeedFav(), fold: getFeedFold() },
+    hot: Object.assign(getHot(), { error: hotErr }),
     browsers: browserList().map((b) => ({ key: b.key, label: b.label })),
     browser: getBrowserPick(),
     meals: loadMeals(),
@@ -1550,6 +1594,14 @@ ipcMain.on('set-ui', (_e, v) => {
   }
   if (v.officeFav !== undefined) {
     saveState({ officeFav: (v.officeFav || []).map(String).slice(0, 60) });
+    sendToWidget();
+  }
+  if (v.hotShow !== undefined || v.hotHide !== undefined) {
+    const patch = {};
+    if (v.hotShow !== undefined) patch.hotShow = String(v.hotShow || '').trim().slice(0, 60);
+    if (v.hotHide !== undefined) patch.hotHide = String(v.hotHide || '').trim().slice(0, 60);
+    saveState(patch);
+    applyHotkeys();
     sendToWidget();
   }
   if (v.feedFold !== undefined) {
@@ -2120,6 +2172,7 @@ ipcMain.handle('get-weeks', async (_e, o) => {
     return null;
   }
 });
+app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch (e) {} });
 ipcMain.on('open-app', () => openInBrowser(APP_URL));
 // 주간업무 글 안에 걸린 링크 — 크롬으로 연다.
 // 어디로든 열어 주면 안 되므로 http(s) 인지 한 번 보고 연다.
@@ -2181,6 +2234,7 @@ if (!gotLock) {
     // 지난번에 넓게 보기로 두었으면 그 모습으로 시작한다
     if (getViewMode() === 'easy') openEasyWindow();
     createTray();
+    applyHotkeys();
     if (HAS_TT) {
       getWorkerWindow();
       // 앱이 로그인·자료 불러오기를 끝낼 시간을 조금 준 뒤 첫 조회
