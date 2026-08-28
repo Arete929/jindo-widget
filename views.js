@@ -70,9 +70,7 @@ function human(min) {
 function viewToday(d) {
   return viewWeek(d)
     + '<div class="tdhd">오늘 수업<small>' + esc(todayLabel(d)) + '</small></div>'
-    + todayLessons(d)
-    + '<div class="tdhd">진도<small>학기 전체를 주차별로</small></div>'
-    + viewProgress(d);
+    + todayLessons(d);
 }
 /* 오늘이 며칠·무슨 요일인지 — 주간표 아래 이음말 */
 function todayLabel(d) {
@@ -3454,7 +3452,15 @@ function render() {
           + '" data-v="' + p[0] + '" title="' + esc(p[1]) + '">' + chipInner(p[0], p[1]) + '</button>';
       }).join('') + '</div>';
 
-  // ★ 이번주·진도가 모두 «오늘» 안으로 들어갔다 — 곁가지 탭이 없다
+  if (tab === 'tt') {
+    // ★ «이번주» 만 «오늘» 안으로 들어갔다. 진도는 그대로 제 탭이다.
+    html += '<div class="chips sub">'
+      + ['today,오늘', 'progress,진도표'].map(function (s) {
+          var p = s.split(',');
+          return '<button class="chip' + (VIEW === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">'
+            + p[1] + '</button>';
+        }).join('') + '</div>';
+  }
 
   html += '</div>';   // 머리 끝 — 여기부터는 스크롤된다
   html += VIEW === 'week' ? viewWeek(d)
@@ -3683,7 +3689,7 @@ widgetAPI.onData(function (p) {
   // 혜원이지는 대시보드라는 «위젯에 없는» 화면이 있어서, 보던 화면을 스스로 챙긴다
   if (!IS_EASY) VIEW = p.view || VIEW;
   // ★ «이번주» 는 «오늘» 안으로 들어갔다. 옛 판에서 그걸 보던 사람은 빈 화면이 된다.
-  if (VIEW === 'week' || VIEW === 'progress') { VIEW = 'today'; widgetAPI.setView('today'); }
+  if (VIEW === 'week') { VIEW = 'today'; widgetAPI.setView('today'); }
   VER = p.version || '';
   UPD = p.update || null;
   LINKS = p.links || [];
