@@ -1980,6 +1980,20 @@ function lbFavToggle(t) {
    → 화면에서 먼저 뒤집고, 부탁은 줄을 세워 하나씩 보낸다.
      런처가 안 받으면 그 줄만 도로 뒤집는다. */
 var lbQ2 = [], lbSending = false, lbWait = {};
+/* 접어 둔 묶음 · 지금 그 자리에서 고치고 있는 줄 · 이름을 고치는 묶음 */
+var LBFOLD = [], lbRow = '', lbCatEdit = '', lbNewCat = false;
+function lbFolded(k) { return LBFOLD.indexOf(k) >= 0; }
+function lbFoldToggle(k) {
+  var i = LBFOLD.indexOf(k);
+  if (i >= 0) LBFOLD.splice(i, 1); else LBFOLD.push(k);
+  widgetAPI.setUi({ feedFold: LBFOLD });
+  render();
+}
+function lbFoldAll(on, keys) {
+  LBFOLD = on ? keys.slice() : [];
+  widgetAPI.setUi({ feedFold: LBFOLD });
+  render();
+}
 function lbPump() {
   if (lbSending || !lbQ2.length) return;
   lbSending = true;
@@ -2230,29 +2244,52 @@ function lbListHtml() {
         ? '담긴 앱이 없습니다.<br>위의 <b>⟳ 내 GAS 앱 가져오기</b> 를 눌러 보세요.'
         : '공유로 켜 둔 앱이 없습니다.') + '</div>';
   }
-  var h = '';
   var q = lbQ.trim().toLowerCase();
   if (q) {
     var hit = all.filter(function (x) {
       return (x.t + ' ' + x.d + ' ' + x.tab + ' ' + x.version).toLowerCase().indexOf(q) >= 0;
     });
-    return lbGroup('찾은 것 ' + hit.length + '개', hit, all);
+    return lbGroup('찾은 것 ' + hit.length + '개', hit, all, '');
   }
+  var h = '';
   var fav = all.filter(function (x) { return lbFav(x.t); });
-  if (fav.length) h += lbGroup('★ 즐겨찾기', fav, all);
+  if (fav.length) h += lbGroup('★ 즐겨찾기', fav, all, 'fav');
   var rest = all.filter(function (x) { return !lbFav(x.t); });
   var cats = lbCats();
-  // ★ 종류로 먼저 가른다 — 내가 만든 앱과 그냥 담아 둔 주소는 성격이 다르다
-  LBKIND.forEach(function (kd) {
-    var mine = rest.filter(function (x) { return lbKindOf(x) === kd.k; });
+
+  /* ★ 공유 중인 것을 맨 위로 — «남이 지금 뭘 보나» 가 가장 궁금한 것이다 */
+  [{ k: 'y', t: '함께 쓰는 중', d: '혜원이지에 보입니다' },
+   { k: 'n', t: '나만 보기', d: '나에게만 보입니다' }].forEach(function (band) {
+    var mine = rest.filter(function (x) { return (band.k === 'y') === !!x.shared; });
     if (!mine.length) return;
-    h += '<div class="lbkind">' + esc(kd.t) + '<small>' + mine.length + '</small></div>';
-    cats.forEach(function (c) {
-      var got = mine.filter(function (x) { return (x.tab || '기타') === c; });
-      if (got.length) h += lbGroup(c, got, all);
+    h += '<div class="lbband ' + band.k + '"><b>' + esc(band.t) + '</b>'
+      + '<small>' + mine.length + '</small><i>' + esc(band.d) + '</i></div>';
+    /* 종류 띠는 «둘 다» 있을 때만 — 하나뿐이면 자리만 먹는다 */
+    var kinds = LBKIND.filter(function (kd) {
+      return mine.some(function (x) { return lbKindOf(x) === kd.k; });
+    });
+    kinds.forEach(function (kd) {
+      var got0 = mine.filter(function (x) { return lbKindOf(x) === kd.k; });
+      if (kinds.length > 1) {
+        h += '<div class="lbkind">' + esc(kd.t) + '<small>' + got0.length + '</small></div>';
+      }
+      cats.forEach(function (c) {
+        var got = got0.filter(function (x) { return (x.tab || '기타') === c; });
+        if (got.length) h += lbGroup(c, got, all, band.k + '/' + kd.k + '/' + c);
+      });
     });
   });
   return h;
+}
+/* 지금 화면에 나온 묶음 열쇠들 — «모두 접기» 에 쓴다 */
+function lbFoldKeys() {
+  var all = (FEED.apps || []).filter(function (x) { return !x.hidden && !lbFav(x.t); });
+  var out = [];
+  all.forEach(function (x) {
+    var k = (x.shared ? 'y' : 'n') + '/' + lbKindOf(x) + '/' + (x.tab || '기타');
+    if (out.indexOf(k) < 0) out.push(k);
+  });
+  return out;
 }
 
 /* 고치는 동안 쓰는 단추들 */
@@ -2262,8 +2299,17 @@ function lbTools() {
     + '<button class="wkb" id="lbAddLink">＋ 바로가기 담기</button>'
     + '<button class="wkb" id="lbScan" title="구글 드라이브를 훑어 새 앱을 담습니다">'
     + '⟳ 내 GAS 앱 가져오기</button>'
-    + '<span class="lbhint">스위치를 켠 앱만 <b>혜원이지</b> 에 보입니다.</span>'
-    + '</div>';
+    + '<button class="wkb" id="lbCatNew">＋ 묶음</button>'
+    + '<button class="wkb" id="lbFoldAll">모두 접기</button>'
+    + '<button class="wkb" id="lbOpenAll">모두 펼치기</button>'
+    + '<span class="lbhint"><b>함께</b> 로 둔 것만 <b>혜원이지</b> 에 보입니다. 줄을 끌어 다른 묶음으로 옮길 수 있습니다.</span>'
+    + '</div>'
+    + (lbNewCat
+      ? '<div class="lbform"><div class="lbfr"><i>새 묶음</i>'
+        + '<input id="lbNewCatName" placeholder="평가 · 대회 · 출결 …"></div>'
+        + '<div class="lbfb"><button class="ntb" id="lbNewCatGo">만들기</button>'
+        + '<button class="wkb" id="lbNewCatX">그만</button></div></div>'
+      : '');
 }
 
 /* 담기·고치기 칸 */
@@ -2306,31 +2352,84 @@ function lbFormHtml() {
 }
 
 /* 묶음 하나 — 평소엔 타일, 고칠 때는 줄 */
-function lbGroup(title, list, all) {
-  var h = '<div class="lgrp">' + esc(title) + '<small>' + list.length + '</small></div>';
-  if (!lbEdit || !lbAdmin()) {
+function lbGroup(title, list, all, key) {
+  var canFold = !!key && key !== 'fav';
+  var folded = canFold && lbFolded(key);
+  var cat = canFold ? key.split('/')[2] : '';
+  var editing = lbEdit && lbAdmin();
+
+  var h = '<div class="lgrp lgh' + (folded ? ' folded' : '') + '"'
+    + (canFold ? ' data-lbfold="' + esc(key) + '"' : '')
+    + (editing && cat ? ' data-lbdrop="' + esc(cat) + '"' : '') + '>';
+  if (canFold) h += '<em class="fold">' + (folded ? '▶' : '▼') + '</em>';
+  if (editing && cat && lbCatEdit === cat) {
+    /* 묶음 이름을 그 자리에서 고친다 */
+    h += '<input class="lbcn" id="lbCatName" value="' + esc(cat) + '">'
+      + '<button class="wkb" data-lbcsave="' + esc(cat) + '">저장</button>'
+      + '<button class="wkb" data-lbccancel="1">그만</button>'
+      + '<button class="wkb" data-lbcdel="' + esc(cat) + '" title="이 묶음을 빼면 안에 있던 것은 «기타» 로 갑니다">✕ 묶음 빼기</button>';
+  } else {
+    h += '<span class="gt">' + esc(title) + '</span><small>' + list.length + '</small>';
+    if (editing && cat) {
+      h += '<button class="wkb gcx" data-lbcedit="' + esc(cat) + '" title="묶음 이름 고치기">✎</button>';
+    }
+  }
+  h += '</div>';
+  if (folded) return h;
+
+  if (!editing) {
     return h + '<div class="lnks">' + list.map(function (x) {
       return lbTile(x, all.indexOf(x));
     }).join('') + '</div>';
   }
-  return h + '<div class="lbrows">' + list.map(function (x) {
-    var i = all.indexOf(x);
-    var waiting = !!lbWait[x.t];
-    return '<div class="lbrow' + (x.shared ? ' on' : '') + (waiting ? ' wait' : '') + '">'
-      + '<button class="wkb sw' + (x.shared ? ' now' : '') + '" data-lbsh="' + i + '"'
-      + ' title="' + (x.shared ? '켜져 있습니다 — 누르면 나만 보기로' : '켜면 혜원이지에 보입니다')
-      + '">'
-      + '<span class="track"><span class="knob"></span></span>'
-      + (waiting ? '<em class="wt">보내는 중</em>' : '') + '</button>'
-      + '<span class="lnm"><b>' + esc(x.t) + '</b>'
-      + '<i>' + esc(x.version || '') + (x.version && x.u ? ' · ' : '')
-      + esc(x.u ? linkHost(x.u) : '주소 없음') + '</i></span>'
-      + '<button class="wkb" data-lbfav="' + i + '" title="즐겨찾기">'
-      + (lbFav(x.t) ? '★' : '☆') + '</button>'
-      + '<button class="wkb" data-lbed="' + i + '" title="고치기">✎</button>'
-      + '<button class="wkb" data-lbdel="' + i + '" title="빼기">✕</button>'
-      + '</div>';
+  /* ★ 편집판 — 2열 다단. 한 줄은 2행(이름·버전 / 주소) */
+  return h + '<div class="lbrows two">' + list.map(function (x) {
+    return lbRowHtml(x, all.indexOf(x));
   }).join('') + '</div>';
+}
+
+/* 편집판의 줄 하나. ✎ 를 누른 줄은 그 자리에서 입력칸이 된다. */
+function lbRowHtml(x, i) {
+  var waiting = !!lbWait[x.t];
+  if (lbRow === x.t) {
+    return '<div class="lbrow open">'
+      + '<div class="lbin"><i>이름</i>'
+      + '<input id="lbr_name" value="' + esc(x.t) + '"></div>'
+      + '<div class="lbin"><i>주소</i>'
+      + '<input id="lbr_url" value="' + esc(x.u || '') + '" '
+      + 'placeholder="' + (lbKindOf(x) === 'link' ? 'neis.go.kr' : 'https://…/exec') + '"></div>'
+      + (lbKindOf(x) === 'link' ? ''
+        : '<div class="lbin"><i>버전</i><input id="lbr_ver" value="' + esc(x.version || '') + '"></div>')
+      + '<div class="lbin"><i>설명</i>'
+      + '<input id="lbr_desc" value="' + esc(x.d || '') + '"></div>'
+      + '<div class="lbrb">'
+      + '<button class="ntb" data-lbrsave="' + i + '">저장</button>'
+      + '<button class="wkb" data-lbrcancel="1">그만</button>'
+      + '<span class="sp"></span>'
+      + '<button class="wkb" data-lbdel="' + i + '" title="빼기">✕</button>'
+      + '</div></div>';
+  }
+  return '<div class="lbrow' + (x.shared ? ' on' : '') + (waiting ? ' wait' : '') + '"'
+    + ' draggable="true" data-lbdrag="' + i + '">'
+    + '<span class="grip">⠿</span>'
+    + lbSeg(x, i)
+    + '<span class="lnm"><b>' + esc(x.t)
+    + (x.version ? '<em class="lbv">' + esc(x.version) + '</em>' : '') + '</b>'
+    + '<i>' + esc(x.u ? linkHost(x.u) : '주소 없음') + '</i></span>'
+    + '<button class="wkb" data-lbfav="' + i + '" title="즐겨찾기">'
+    + (lbFav(x.t) ? '★' : '☆') + '</button>'
+    + '<button class="wkb" data-lbrow="' + i + '" title="그 자리에서 고치기">✎</button>'
+    + '</div>';
+}
+
+/* 나만 | 함께 — 두 칸 단추. 지금 것에 색이 채워진다. */
+function lbSeg(x, i) {
+  var w = !!lbWait[x.t];
+  return '<span class="seg' + (w ? ' wait' : '') + '" title="'
+    + (x.shared ? '지금 혜원이지에 보입니다' : '지금 나에게만 보입니다') + '">'
+    + '<button class="' + (x.shared ? '' : 'on') + '" data-lbset="' + i + ',n">나만</button>'
+    + '<button class="' + (x.shared ? 'on' : '') + '" data-lbset="' + i + ',y">함께</button>'
+    + '</span>';
 }
 
 /* 타일 하나 — 바로가기와 같은 선 아이콘을 쓴다 */
@@ -2345,7 +2444,8 @@ function lbTile(x, i) {
     + '<i>' + esc(sub) + '</i></span></button>'
     + '<button class="lbstar' + (lbFav(x.t) ? ' on' : '') + '" data-lbfav="' + i + '"'
     + ' title="즐겨찾기">' + (lbFav(x.t) ? '★' : '☆') + '</button>'
-    + (lbAdmin() && !x.shared ? '<em class="lbmine">나만</em>' : '')
+    // ★ 고치기로 들어가지 않고도 여기서 바로 나만/함께를 정한다
+    + (lbAdmin() ? '<span class="tseg">' + lbSeg(x, i) + '</span>' : '')
     + '</div>';
 }
 
@@ -2390,6 +2490,22 @@ function wireBoardBar(root) {
       render();
     });
   });
+  var fa = root.querySelector('#lbFoldAll');
+  if (fa) fa.addEventListener('click', function () { lbFoldAll(true, lbFoldKeys()); });
+  var oa = root.querySelector('#lbOpenAll');
+  if (oa) oa.addEventListener('click', function () { lbFoldAll(false, []); });
+  var cn = root.querySelector('#lbCatNew');
+  if (cn) cn.addEventListener('click', function () { lbNewCat = true; render(); });
+  var cx = root.querySelector('#lbNewCatX');
+  if (cx) cx.addEventListener('click', function () { lbNewCat = false; render(); });
+  var cg = root.querySelector('#lbNewCatGo');
+  if (cg) cg.addEventListener('click', function () {
+    var e = root.querySelector('#lbNewCatName');
+    var v = e ? e.value.trim() : '';
+    if (!v) { if (e) e.focus(); return; }
+    lbNewCat = false;
+    lbDo('catAdd', { name: v }, '묶음 만드는 중');
+  });
   var sc = root.querySelector('#lbScan');
   if (sc) sc.addEventListener('click', function () { lbDo('scan', {}, '드라이브를 훑는 중'); });
   var sv = root.querySelector('#lbSave');
@@ -2401,6 +2517,127 @@ function wireBoardBar(root) {
 function wireBoardList(root) {
   var apps = (FEED.apps || []).filter(function (x) { return !x.hidden; });
   function at(e, k) { return apps[Number(e.dataset[k])]; }
+  /* 묶음 접기·펼치기 — 머리 아무 데나 눌러도 된다(단추 위는 빼고) */
+  root.querySelectorAll('[data-lbfold]').forEach(function (g) {
+    g.addEventListener('click', function (e) {
+      if (e.target.closest('button') || e.target.closest('input')) return;
+      lbFoldToggle(g.dataset.lbfold);
+    });
+  });
+  /* 나만 | 함께 두 칸 단추 */
+  root.querySelectorAll('[data-lbset]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var p = b.dataset.lbset.split(',');
+      var x = apps[Number(p[0])];
+      if (!x) return;
+      var want = p[1] === 'y';
+      if (!!x.shared === want) return;   // 이미 그 상태다
+      lbToggleShare(x);
+    });
+  });
+  /* 그 자리에서 고치기 */
+  root.querySelectorAll('[data-lbrow]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var x = at(b, 'lbrow');
+      if (x) { lbRow = x.t; render(); }
+    });
+  });
+  var rc = root.querySelector('[data-lbrcancel]');
+  if (rc) rc.addEventListener('click', function () { lbRow = ''; render(); });
+  root.querySelectorAll('[data-lbrsave]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var x = at(b, 'lbrsave');
+      if (!x) return;
+      var g = function (id) { var e = root.querySelector(id); return e ? e.value.trim() : ''; };
+      var key = lbKey(x);          // ★ 고치기 «전» 이름·주소로 줄을 찾는다
+      lbRow = '';
+      lbDo('edit', { key: key, data: {
+        name: g('#lbr_name') || x.t, appUrl: g('#lbr_url'),
+        desc: g('#lbr_desc'), tab: x.tab || '기타', icon: x.icon,
+        version: lbKindOf(x) === 'link' ? '' : g('#lbr_ver'),
+        gasUrl: x.gas, sheetUrl: x.sheet, kind: lbKindOf(x),
+        visibility: x.shared ? '공유' : '나만'
+      } }, '고치는 중');
+    });
+  });
+  /* 묶음 이름 고치기·빼기 */
+  root.querySelectorAll('[data-lbcedit]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation(); lbCatEdit = b.dataset.lbcedit; render();
+    });
+  });
+  var cc = root.querySelector('[data-lbccancel]');
+  if (cc) cc.addEventListener('click', function (e) {
+    e.stopPropagation(); lbCatEdit = ''; render();
+  });
+  root.querySelectorAll('[data-lbcsave]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var el = root.querySelector('#lbCatName');
+      var to = el ? el.value.trim() : '';
+      var from = b.dataset.lbcsave;
+      lbCatEdit = '';
+      if (!to || to === from) { render(); return; }
+      lbDo('catRename', { from: from, to: to }, '묶음 이름 바꾸는 중');
+    });
+  });
+  root.querySelectorAll('[data-lbcdel]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      /* ★ 묶음이 사라지는 일이라 한 번 더 묻는다. 안에 있던 것은 «기타» 로 간다. */
+      if (b.dataset.sure !== '1') {
+        b.dataset.sure = '1'; b.textContent = '정말? (안의 것은 기타로)';
+        b.classList.add('now');
+        setTimeout(function () {
+          if (!b.isConnected) return;
+          b.dataset.sure = ''; b.textContent = '✕ 묶음 빼기'; b.classList.remove('now');
+        }, 3500);
+        return;
+      }
+      lbCatEdit = '';
+      lbDo('catDel', { name: b.dataset.lbcdel }, '묶음 빼는 중');
+    });
+  });
+  /* 줄을 끌어 다른 묶음 머리에 떨구면 묶음이 바뀐다 */
+  var dragIdx = -1;
+  root.querySelectorAll('[data-lbdrag]').forEach(function (r) {
+    r.addEventListener('dragstart', function (e) {
+      dragIdx = Number(r.dataset.lbdrag);
+      r.classList.add('dragging');
+      try { e.dataTransfer.setData('text/plain', String(dragIdx)); } catch (err) {}
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+    });
+    r.addEventListener('dragend', function () {
+      dragIdx = -1; r.classList.remove('dragging');
+      root.querySelectorAll('.lgh.over').forEach(function (g) { g.classList.remove('over'); });
+    });
+  });
+  root.querySelectorAll('[data-lbdrop]').forEach(function (g) {
+    g.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      g.classList.add('over');
+    });
+    g.addEventListener('dragleave', function () { g.classList.remove('over'); });
+    g.addEventListener('drop', function (e) {
+      e.preventDefault();
+      g.classList.remove('over');
+      var i = dragIdx;
+      if (i < 0 && e.dataTransfer) i = Number(e.dataTransfer.getData('text/plain'));
+      var x = apps[i];
+      var to = g.dataset.lbdrop;
+      if (!x || !to || (x.tab || '기타') === to) return;
+      x.tab = to;                    // 먼저 옮겨 보여 준다
+      render();
+      lbDo('edit', { key: lbKey(x), data: {
+        name: x.t, appUrl: x.u, desc: x.d, tab: to, icon: x.icon,
+        version: x.version, gasUrl: x.gas, sheetUrl: x.sheet,
+        kind: lbKindOf(x), visibility: x.shared ? '공유' : '나만'
+      } }, '옮기는 중');
+    });
+  });
   root.querySelectorAll('[data-lbgo]').forEach(function (b) {
     b.addEventListener('click', function () {
       var x = at(b, 'lbgo');
@@ -3230,6 +3467,7 @@ widgetAPI.onData(function (p) {
   DASHSIZE = p.dashSize || {};
   FEED = (p.feed && p.feed.show && p.feed.data) ? p.feed.data : null;
   if (p.feed && p.feed.fav) FEEDFAV = p.feed.fav;
+  if (p.feed && p.feed.fold) LBFOLD = p.feed.fold;
   if (p.font && p.font !== FONT) {
     FONT = p.font;
     if (FONT === 'pretendard') delete document.documentElement.dataset.font;

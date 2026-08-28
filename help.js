@@ -172,13 +172,36 @@ function helpParts(flavor, appName) {
           + hTile({ icon: 'trophy', color: '#5b6ee1', t: '제13회 협회장기', star: 1 })
           + hTile({ icon: 'users', color: '#3f8fc1', t: '2026 짝꿍선정', v: 'v5.9', star: 0, mine: 1 })
           + '</div>')
-      + '<p><b>☆</b> 를 누르면 맨 위 <b>★ 즐겨찾기</b> 묶음으로 올라갑니다(이 PC 것입니다). '
-      + '<b>나만</b> 딱지가 붙은 것은 아직 공유를 안 켠 앱입니다.</p>'
+      + '<p><b>☆</b> 를 누르면 맨 위 <b>★ 즐겨찾기</b> 묶음으로 올라갑니다(이 PC 것입니다).</p>'
+      + '<p><b>함께 쓰는 중</b>인 것이 <b>맨 위</b>에 모여 나옵니다. '
+      + '「지금 다른 선생님이 뭘 보고 있나」가 한눈에 들어옵니다. 그 아래가 <b>나만 보기</b>입니다.</p>'
+      + shot('나만 | 함께 — 두 칸 단추. 타일에서 바로 누릅니다',
+          '<div class="shotrow"><span class="seg2"><b class="on">나만</b><b>함께</b></span>'
+        + '<span class="seg2"><b>나만</b><b class="on gr">함께</b></span>'
+        + '<span style="font-size:11.5px;color:var(--sub)">누르면 곧바로 바뀌고, '
+        + '보내는 동안 <b>보내는 중</b> 이 붙습니다</span></div>')
       + '<p>고치려면 <b>관리자 열쇠</b>가 있어야 합니다 — 설정 → <b>내 앱</b> 칸에 넣습니다. '
       + '열쇠가 없는 PC 는 공유로 켠 앱만 보이고 고치는 단추가 아예 안 나옵니다.</p>'
-      + '<p><b>✎ 고치기</b> 를 누르면 타일이 줄로 바뀌고 이런 것이 보입니다.</p>'
-      + shot('고치기 — 스위치를 켜면 ' + other + ' 에 보입니다', '<div class="shotrow">'
-          + hSw('공유 켜짐', 1) + hSw('나만 보기', 0) + '</div>')
+      + '<p><b>✎ 고치기</b> 를 누르면 <b>2열 목록</b>으로 바뀝니다 — 여러 개를 훑으며 고칠 때 빠릅니다.</p>'
+      + shot('편집판 — 묶음을 접었다 펼치고, 줄을 끌어 옮깁니다',
+          '<div style="font-size:11px;font-weight:800;color:var(--sub);margin-bottom:5px">'
+        + '▼ 평가 <span style="opacity:.6">2</span> &nbsp;✎</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">'
+        + '<div class="lbrow2">⠿ <span class="seg2"><b>나만</b><b class="on gr">함께</b></span>'
+        + '<span><b>과세특 도우미</b><i>v1.39</i></span> ☆ ✎</div>'
+        + '<div class="lbrow2">⠿ <span class="seg2"><b>나만</b><b class="on gr">함께</b></span>'
+        + '<span><b>3학년 성적분석</b><i>v5.0</i></span> ☆ ✎</div>'
+        + '</div>'
+        + '<div style="font-size:11px;font-weight:800;color:var(--sub);margin-top:8px">'
+        + '▶ 대회 <span style="opacity:.6">9</span> &nbsp;<span style="opacity:.5">(접힘)</span></div>')
+      + '<ul>'
+      + '<li><b>▼ / ▶</b> — 묶음 머리를 눌러 접고 펼칩니다. 접어 둔 것은 이 PC 에 기억합니다</li>'
+      + '<li><b>⠿ 를 끌어</b> 다른 묶음 머리에 떨구면 그 묶음으로 옮겨집니다</li>'
+      + '<li><b>✎</b> — 그 줄이 그 자리에서 펼쳐져 이름·주소·버전을 바로 고칩니다</li>'
+      + '<li>묶음 머리의 <b>✎</b> — 묶음 <b>이름</b>을 고치거나 뺍니다. '
+      + '뺀 묶음에 있던 것은 <b>기타</b> 로 갑니다</li>'
+      + '<li><b>＋ 묶음</b> · <b>모두 접기</b> · <b>모두 펼치기</b> 는 위쪽에 있습니다</li>'
+      + '</ul>'
       + '<ul>'
       + '<li><b>＋ 앱 담기</b> / <b>＋ 바로가기 담기</b> — 담을 것을 적습니다</li>'
       + '<li><b>⟳ 내 GAS 앱 가져오기</b> — 구글 드라이브를 훑어 <b>새로 만든 앱</b>을 「나만」으로 담습니다. '

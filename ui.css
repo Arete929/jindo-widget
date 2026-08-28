@@ -1189,3 +1189,83 @@
     font-style: normal; font-size: calc(9px * var(--wf)); font-weight: 700;
     color: var(--dim); margin-left: 2px;
   }
+
+  /* ── 런처보드: 공유/나만 띠 ─────────────────────────────
+     «지금 남이 뭘 보나» 가 맨 위에 온다. 그게 스위치를 만지는 이유다. */
+  .lbband {
+    display: flex; align-items: baseline; gap: 8px; margin: 14px 0 4px; padding: 4px 3px 6px;
+    border-bottom: 2px solid var(--line);
+  }
+  .lbband b { font-size: calc(13px * var(--wf)); font-weight: 800; }
+  .lbband small { font-size: calc(10px * var(--wf)); font-weight: 700; opacity: .6; }
+  .lbband i { margin-left: auto; font-style: normal; font-size: calc(9.5px * var(--wf)); opacity: .5; }
+  .lbband.y { border-bottom-color: color-mix(in srgb, var(--on) 55%, var(--line)); }
+  .lbband.y b { color: var(--on); }
+
+  /* 묶음 머리 — 접기·펼치기, 끌어다 놓는 자리 */
+  .lgrp.lgh { cursor: pointer; border-radius: 8px; padding: 6px 5px 5px; }
+  .lgrp.lgh:hover { background: var(--card2); }
+  .lgrp.lgh .fold { font-style: normal; font-size: calc(9px * var(--wf)); opacity: .55; width: 11px; }
+  .lgrp.lgh .gt { font-weight: 800; }
+  .lgrp.lgh.folded { opacity: .7; }
+  .lgrp.lgh.over {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    outline: 2px dashed var(--accent); outline-offset: -2px;
+  }
+  .lgrp.lgh .gcx { margin-left: auto; padding: 2px 7px; }
+  .lgrp.lgh .lbcn {
+    flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 7px; padding: calc(4px * var(--wf)) calc(8px * var(--wf));
+    color: var(--fg); font: inherit; font-size: calc(11.5px * var(--wf));
+  }
+
+  /* ── 편집판: 2열 다단 ──────────────────────────────────
+     36개를 훑으며 고치려면 한 줄씩 쌓인 것보다 훨씬 빠르다. */
+  .lbrows.two {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+    gap: 5px; align-items: start;
+  }
+  .lbrow .grip { flex: none; opacity: .3; cursor: grab; font-size: calc(11px * var(--wf)); }
+  .lbrow:hover .grip { opacity: .7; }
+  .lbrow.dragging { opacity: .4; }
+  .lbrow.on { border-color: color-mix(in srgb, var(--on) 45%, var(--line)); }
+  .lbrow .lbv {
+    font-style: normal; font-weight: 600; font-size: calc(8.5px * var(--wf));
+    opacity: .5; margin-left: 5px;
+  }
+
+  /* 그 자리에서 고치기 */
+  .lbrow.open {
+    grid-column: 1 / -1; flex-direction: column; align-items: stretch; gap: 4px;
+    padding: 9px 10px; border-color: var(--accent);
+  }
+  .lbin { display: flex; align-items: center; gap: 7px; }
+  .lbin i {
+    flex: 0 0 auto; width: calc(38px * var(--wf)); font-style: normal;
+    font-size: calc(9.5px * var(--wf)); opacity: .65;
+  }
+  .lbin input {
+    flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 7px; padding: calc(5px * var(--wf)) calc(8px * var(--wf));
+    color: var(--fg); font: inherit; font-size: calc(11.5px * var(--wf));
+  }
+  .lbin input:focus { outline: 2px solid var(--on); outline-offset: -1px; border-color: transparent; }
+  .lbrb { display: flex; align-items: center; gap: 5px; padding-top: 4px; }
+  .lbrb .sp { flex: 1; }
+
+  /* ── 나만 | 함께 두 칸 단추 ────────────────────────────
+     스위치는 «지금 어느 쪽인가» 가 덜 또렷했다. 두 칸이면 눈으로 바로 읽힌다. */
+  .seg {
+    display: inline-flex; flex: none; border: 1px solid var(--line); border-radius: 999px;
+    overflow: hidden; background: var(--bg);
+  }
+  .seg button {
+    border: 0; background: none; cursor: pointer; font-family: inherit;
+    font-size: calc(9.5px * var(--wf)); font-weight: 700; color: var(--dim);
+    padding: calc(3px * var(--wf)) calc(8px * var(--wf)); line-height: 1.5;
+  }
+  .seg button.on { background: var(--on); color: var(--bg); }
+  .seg button:first-child.on { background: color-mix(in srgb, var(--fg) 45%, var(--bg)); }
+  .seg.wait { opacity: .5; }
+  .lbt .tseg { position: absolute; left: 6px; bottom: 4px; }
+  .lbt .lnk { padding-bottom: calc(22px * var(--wf)); }

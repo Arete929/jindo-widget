@@ -419,6 +419,11 @@ function getOfficeFav() {
   const v = loadState().officeFav;
   return Array.isArray(v) ? v.map(String).slice(0, 60) : [];
 }
+/* 접어 둔 묶음 — 이 PC 것. «공유/나만 / 종류 / 묶음» 을 한 열쇠로 담는다. */
+function getFeedFold() {
+  const v = loadState().feedFold;
+  return Array.isArray(v) ? v.map(String).slice(0, 80) : [];
+}
 /* 런처보드 즐겨찾기 — 앱 «이름» 으로 담는다. 이 PC 것이라 시트엔 안 올라간다. */
 function getFeedFav() {
   const v = loadState().feedFav;
@@ -749,7 +754,7 @@ function sendToWidget() {
     dashOrder: getDashOrder(), dashOff: getDashOff(),   // 대시보드 칸
     photo: { dir: getPhotoDir(), sec: getPhotoSec() },  // 사진 액자
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData,
-           hasKey: !!getFeedKey(), fav: getFeedFav() },   // 런처 목록
+           hasKey: !!getFeedKey(), fav: getFeedFav(), fold: getFeedFold() },   // 런처 목록
     update: { state: updateState, version: updateVersion }
   };
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
@@ -1442,7 +1447,7 @@ ipcMain.handle('get-settings', () => ({
              data: boardData },
     photo: { dir: getPhotoDir(), sec: getPhotoSec(), count: photoList().length },
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData,
-           hasKey: !!getFeedKey(), fav: getFeedFav() },
+           hasKey: !!getFeedKey(), fav: getFeedFav(), fold: getFeedFold() },
     browsers: browserList().map((b) => ({ key: b.key, label: b.label })),
     browser: getBrowserPick(),
     meals: loadMeals(),
@@ -1543,6 +1548,10 @@ ipcMain.on('set-ui', (_e, v) => {
   }
   if (v.officeFav !== undefined) {
     saveState({ officeFav: (v.officeFav || []).map(String).slice(0, 60) });
+    sendToWidget();
+  }
+  if (v.feedFold !== undefined) {
+    saveState({ feedFold: (v.feedFold || []).map(String).slice(0, 80) });
     sendToWidget();
   }
   if (v.feedFav !== undefined) {
@@ -1820,7 +1829,8 @@ ipcMain.handle('feed-refresh', async () => { await refreshFeed(); return feedDat
    ★ 고친 뒤에는 곧바로 다시 받아 화면을 맞춘다. */
 ipcMain.handle('feed-act', async (_e, o) => {
   const act = String((o && o.act) || '');
-  if (['add', 'edit', 'del', 'share', 'hide', 'scan'].indexOf(act) < 0) {
+  if (['add', 'edit', 'del', 'share', 'hide', 'scan',
+        'catAdd', 'catRename', 'catDel'].indexOf(act) < 0) {
     return { ok: false, error: '모르는 일입니다' };
   }
   try {
