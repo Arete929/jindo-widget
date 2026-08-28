@@ -63,8 +63,25 @@ function human(min) {
   return min + '분';
 }
 
-/* ── 오늘 ── */
+/* ── 오늘 ──────────────────────────────────────────────────
+   주간 시간표를 먼저 놓고, 그 아래에 «오늘 수업» 이야기를 붙인다.
+   ★ 예전에는 «오늘» 과 «이번주» 가 다른 탭이라 오갈 때마다
+     «오늘이 몇 교시더라» 를 다시 세야 했다. */
 function viewToday(d) {
+  return viewWeek(d)
+    + '<div class="tdhd">오늘 수업<small>' + esc(todayLabel(d)) + '</small></div>'
+    + todayLessons(d)
+    + '<div class="tdhd">진도<small>학기 전체를 주차별로</small></div>'
+    + viewProgress(d);
+}
+/* 오늘이 며칠·무슨 요일인지 — 주간표 아래 이음말 */
+function todayLabel(d) {
+  var n = new Date();
+  var t = (n.getMonth() + 1) + '월 ' + n.getDate() + '일 ' + (d && d.dow ? d.dow : '') + '요일';
+  var ls = (d && d.lessons) || [];
+  return t + (ls.length ? ' · ' + ls.length + '시간' : '');
+}
+function todayLessons(d) {
   var ls = d.lessons || [];
   if (d.holiday) return '<div class="empty">휴업일이라 수업이 없습니다.</div>';
   if (!d.weekday) return '<div class="empty">주말입니다. 푹 쉬세요.</div>';
@@ -167,8 +184,7 @@ function viewWeek(d) {
     if (!wkBusy) loadWeek(WEEKOFF);
     return '<div class="empty">시간표를 불러오는 중…</div>';
   }
-  var days = WK.days || [];
-  if (!days.length) return '<div class="empty">시간표가 없습니다.</div>';
+  if (!(WK.days || []).length) return '<div class="empty">시간표가 없습니다.</div>';
 
   // 주 이동 줄
   var nav = '<div class="wknav">'
@@ -177,11 +193,18 @@ function viewWeek(d) {
     + '<button class="wkb" data-off="' + (WEEKOFF + 1) + '" title="다음 주">▶</button>'
     + (WEEKOFF !== 0 ? '<button class="wkb now" data-off="0">이번주</button>' : '')
     + '</div>';
+  return nav + weekTable(WK);
+}
 
+/* 주간표 하나 — «이번 주» 와 «진도» 가 함께 쓴다.
+   ★ 같은 표를 두 번 짜면 한쪽만 고치는 일이 생긴다. */
+function weekTable(wk) {
+  var days = (wk && wk.days) || [];
+  if (!days.length) return '';
   // ★ 자정을 넘겨 켜 두면 서버가 붙여 준 today 표시가 «어제»에 머문다 — 지금 날짜로 다시 본다
   var nowD = new Date(), tMD = (nowD.getMonth() + 1) + '/' + nowD.getDate();
   var isTdy = function (x) { return String(x.md || '') === tMD; };
-  var h = nav + '<table class="gr"><thead><tr><th class="pc"></th>';
+  var h = '<table class="gr"><thead><tr><th class="pc"></th>';
   days.forEach(function (w) {
     h += '<th class="' + (isTdy(w) ? 'tdy' : '') + '">' + esc(w.dow)
       + '<small>' + esc(w.md) + '</small>'
@@ -984,17 +1007,70 @@ function mdDow(iso) {
 }
 
 /* ── 반별 진도 ── */
+/* ── 진도 ──────────────────────────────────────────────────
+   학기 전체를 «주차별 주간표» 로 쭉 나열한다.
+   ★ 한 주씩 부르면 스물다섯 번 오간다 — 한 번에 받아 온다(get-weeks).
+   ★ 학급별 진도 막대는 맨 위에 요약으로 남긴다 — 표만 있으면
+     «어느 반이 뒤처졌나» 를 한눈에 못 본다. */
+var ALLW = null, allwBusy = false, allwErr = '';
+/* 개학한 주가 지금으로부터 몇 주 앞인가 */
+function termWeekOff() {
+  var t = String(TERMSTART || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!t) return -12;
+  var mon = function (dt) {          // 그 주의 월요일
+    var x = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+    return x;
+  };
+  var a = mon(new Date(Number(t[1]), Number(t[2]) - 1, Number(t[3])));
+  var b = mon(new Date());
+  return Math.round((a - b) / (7 * 24 * 3600 * 1000));
+}
+function loadAllWeeks() {
+  if (allwBusy) return;
+  allwBusy = true; allwErr = '';
+  var from = termWeekOff();
+  widgetAPI.getWeeks(from, from + 24).then(function (list) {
+    allwBusy = false;
+    ALLW = (list || []).filter(function (w) { return w && (w.days || []).length; });
+    render();
+  }).catch(function (e) {
+    allwBusy = false; ALLW = [];
+    allwErr = (e && e.message) || String(e);
+    render();
+  });
+}
 function viewProgress(d) {
+  var h = '';
+  /* 학급별 요약 — 어느 반이 뒤처졌나 */
   var ps = (d.progress || []).filter(function (p) { return p.total > 0; });
-  if (!ps.length) return '<div class="empty">진도 자료가 아직 없습니다.</div>';
-  var max = Math.max.apply(null, ps.map(function (p) { return p.total; }));
-  return ps.map(function (p) {
-    var w = max ? Math.round(p.done / max * 100) : 0;
-    var gap = p.gap < 0 ? '<span class="gap"> ' + p.gap + '</span>' : '';
-    return '<div class="pg"><div class="pgc">' + esc(p.cls) + '</div>'
-      + '<div class="bar"><i style="width:' + w + '%"></i></div>'
-      + '<div class="pgn"><em>' + p.done + '</em>/' + p.total + '차시' + gap + '</div></div>';
+  if (ps.length) {
+    var max = Math.max.apply(null, ps.map(function (p) { return p.total; }));
+    h += ps.map(function (p) {
+      var w = max ? Math.round(p.done / max * 100) : 0;
+      var gap = p.gap < 0 ? '<span class="gap"> ' + p.gap + '</span>' : '';
+      return '<div class="pg"><div class="pgc">' + esc(p.cls) + '</div>'
+        + '<div class="bar"><i style="width:' + w + '%"></i></div>'
+        + '<div class="pgn"><em>' + p.done + '</em>/' + p.total + '차시' + gap + '</div></div>';
+    }).join('');
+  }
+  /* 주차별 주간표 */
+  if (!ALLW) {
+    if (!allwBusy) loadAllWeeks();
+    return h + '<div class="empty">학기 진도표를 불러오는 중…</div>';
+  }
+  if (allwErr) return h + '<div class="empty">' + esc(allwErr) + '</div>';
+  if (!ALLW.length) return h + '<div class="empty">진도 자료가 아직 없습니다.</div>';
+  h += '<div class="pwtop">학기 진도표<small>' + ALLW.length + '주</small>'
+    + '<button class="wkb" id="pwGet" title="다시 읽기">⟳</button></div>';
+  var nowD = new Date(), tMD = (nowD.getMonth() + 1) + '/' + nowD.getDate();
+  h += ALLW.map(function (wk, i) {
+    var thisWeek = (wk.days || []).some(function (x) { return String(x.md || '') === tMD; });
+    return '<div class="pwh' + (thisWeek ? ' now' : '') + '">' + (i + 1) + '주차'
+      + '<small>' + esc(wk.range || wk.label || '') + '</small>'
+      + (thisWeek ? '<em>이번 주</em>' : '') + '</div>' + weekTable(wk);
   }).join('');
+  return h;
 }
 
 /* 업데이트가 준비되면 맨 위에 눌러서 설치할 수 있는 띠를 띄운다.
@@ -3378,13 +3454,7 @@ function render() {
           + '" data-v="' + p[0] + '" title="' + esc(p[1]) + '">' + chipInner(p[0], p[1]) + '</button>';
       }).join('') + '</div>';
 
-  if (tab === 'tt') {
-    html += '<div class="chips sub">'
-      + ['today,오늘', 'week,이번주', 'progress,진도'].map(function (s) {
-          var p = s.split(',');
-          return '<button class="chip' + (VIEW === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">' + p[1] + '</button>';
-        }).join('') + '</div>';
-  }
+  // ★ 이번주·진도가 모두 «오늘» 안으로 들어갔다 — 곁가지 탭이 없다
 
   html += '</div>';   // 머리 끝 — 여기부터는 스크롤된다
   html += VIEW === 'week' ? viewWeek(d)
@@ -3612,6 +3682,8 @@ widgetAPI.onData(function (p) {
   STATE = p.data;
   // 혜원이지는 대시보드라는 «위젯에 없는» 화면이 있어서, 보던 화면을 스스로 챙긴다
   if (!IS_EASY) VIEW = p.view || VIEW;
+  // ★ «이번주» 는 «오늘» 안으로 들어갔다. 옛 판에서 그걸 보던 사람은 빈 화면이 된다.
+  if (VIEW === 'week' || VIEW === 'progress') { VIEW = 'today'; widgetAPI.setView('today'); }
   VER = p.version || '';
   UPD = p.update || null;
   LINKS = p.links || [];
@@ -3682,7 +3754,8 @@ widgetAPI.onData(function (p) {
     SCALE = p.scale;
     document.body.style.zoom = SCALE;
   }
-  if (VIEW === 'week' && STATE && STATE.ready) { WK = null; loadWeek(WEEKOFF); }
+  // ★ 주간표는 «오늘» 안에도 들어 있다 — 두 화면 다 받아 와야 한다
+  if ((VIEW === 'week' || VIEW === 'today') && STATE && STATE.ready) { WK = null; loadWeek(WEEKOFF); }
   // 창 제목 — 세 갈래가 각자 제 이름을 단다 (html 의 <title> 은 갈래를 모른다)
   var want = APPNAME + (IS_EASY ? ' — 넓게 보기' : '');
   if (APPNAME && document.title !== want) document.title = want;
@@ -3829,6 +3902,7 @@ function wireViews(app) {
         widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
         return; }
       if (b.id === 'cmGet') { widgetAPI.openSettings(); return; }
+      if (b.id === 'pwGet') { ALLW = null; loadAllWeeks(); render(); return; }
       // 학생기록
       if (b.dataset.rm) { recMode = b.dataset.rm; render(); return; }
       if (b.dataset.rc) { recCls = b.dataset.rc; recSid = ''; recDraft = ''; recSavedAt = ''; render(); return; }

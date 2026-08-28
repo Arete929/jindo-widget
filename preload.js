@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   gradeFetch: (g) => ipcRenderer.invoke('grade-fetch', g),
   openSettings: () => ipcRenderer.send('open-settings'),
   getWeek: (off) => ipcRenderer.invoke('get-week', off),
+  getWeeks: (from, to) => ipcRenderer.invoke('get-weeks', { from, to }),
   getWork: () => ipcRenderer.invoke('get-work'),
   workFetch: () => ipcRenderer.invoke('work-fetch'),
   printWork: (p) => ipcRenderer.invoke('work-print', p),

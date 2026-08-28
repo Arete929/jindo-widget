@@ -1492,3 +1492,34 @@
 
   /* 그 자리에서 고치기 — 격자에서 한 줄을 다 쓴다 */
   .lbrow.open { grid-column: 1 / -1; }
+
+  /* 주간표와 «오늘 수업» 사이 이음말 */
+  .tdhd {
+    display: flex; align-items: baseline; gap: 8px;
+    margin: calc(14px * var(--wf)) 2px calc(6px * var(--wf));
+    padding-bottom: calc(5px * var(--wf)); border-bottom: 1.5px solid var(--line);
+    font-size: calc(12px * var(--wf)); font-weight: 800; color: var(--fg2);
+  }
+  .tdhd small { font-weight: 600; font-size: calc(10px * var(--wf)); color: var(--dim); }
+
+  /* ── 학기 진도표 — 주차별 주간표 나열 ────────────────────── */
+  .pwtop {
+    display: flex; align-items: baseline; gap: 8px;
+    margin: calc(10px * var(--wf)) 2px calc(4px * var(--wf));
+    font-size: calc(11.5px * var(--wf)); font-weight: 800; color: var(--fg2);
+  }
+  .pwtop small { font-weight: 600; font-size: calc(10px * var(--wf)); color: var(--dim); }
+  .pwtop .wkb { margin-left: auto; }
+  .pwh {
+    display: flex; align-items: baseline; gap: 7px;
+    margin: calc(12px * var(--wf)) 2px calc(3px * var(--wf));
+    font-size: calc(11px * var(--wf)); font-weight: 800; color: var(--fg2);
+  }
+  .pwh small { font-weight: 600; font-size: calc(9.5px * var(--wf)); color: var(--dim); }
+  .pwh em {
+    font-style: normal; font-size: calc(9px * var(--wf)); font-weight: 800;
+    background: var(--accent); color: var(--on); border-radius: 999px;
+    padding: 1px calc(7px * var(--wf));
+  }
+  .pwh.now { color: var(--accent); }
+  .pwh + .gr { margin-bottom: calc(4px * var(--wf)); }

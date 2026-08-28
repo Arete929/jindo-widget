@@ -2103,6 +2103,23 @@ ipcMain.handle('get-week', async (_e, off) => {
     return null;
   }
 });
+/* 여러 주를 한 번에 — 학기 진도표는 스물다섯 주쯤 된다.
+   한 주씩 부르면 그만큼 오가야 해서 화면이 늦게 뜬다.
+   ★ 숨은 창 안에서 도는 셈이라 무겁지 않다(서버에 다시 묻지 않는다). */
+ipcMain.handle('get-weeks', async (_e, o) => {
+  const win = getWorkerWindow();
+  const from = Math.max(-60, Math.min(60, Number(o && o.from) || 0));
+  const to = Math.max(from, Math.min(from + 40, Number(o && o.to) || from));
+  try {
+    return await win.webContents.executeJavaScript(
+      `(function(){ if(!window.__widgetWeek) return null;`
+      + ` var out=[]; for (var i=${from}; i<=${to}; i++) { try { out.push(window.__widgetWeek(i)); }`
+      + ` catch(e) { out.push(null); } } return out; })()`, true);
+  } catch (e) {
+    debugLog(`학기 주간 자료 가져오기 실패(${from}~${to}): ${e && e.message ? e.message : e}`);
+    return null;
+  }
+});
 ipcMain.on('open-app', () => openInBrowser(APP_URL));
 // 주간업무 글 안에 걸린 링크 — 크롬으로 연다.
 // 어디로든 열어 주면 안 되므로 http(s) 인지 한 번 보고 연다.
