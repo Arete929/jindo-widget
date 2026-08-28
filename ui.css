@@ -1104,11 +1104,11 @@
     border-radius: 9px; padding: calc(6px * var(--wf)) calc(9px * var(--wf));
     color: var(--fg); font: inherit; font-size: calc(11.5px * var(--wf));
   }
-  .lbq:focus { outline: 2px solid var(--on); outline-offset: -1px; border-color: transparent; }
+  .lbq:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
   .lbmsg {
     font-size: calc(10.5px * var(--wf)); padding: 5px 3px; opacity: .85;
   }
-  .lbmsg.ok { color: var(--on); }
+  .lbmsg.ok { color: var(--accent); }
   .lbmsg.bad { color: #d9534f; }
   .lbtools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 2px 8px; }
   .lbhint { font-size: calc(10px * var(--wf)); opacity: .6; }
@@ -1130,7 +1130,7 @@
     border-radius: 7px; padding: calc(5px * var(--wf)) calc(8px * var(--wf));
     color: var(--fg); font: inherit; font-size: calc(11px * var(--wf));
   }
-  .lbfr input:focus { outline: 2px solid var(--on); outline-offset: -1px; border-color: transparent; }
+  .lbfr input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
   .lbfb { display: flex; gap: 6px; padding-top: 4px; }
 
   /* 고칠 때 보이는 줄 */
@@ -1139,11 +1139,27 @@
     display: flex; align-items: center; gap: 5px; background: var(--card);
     border: 1px solid var(--line); border-radius: 9px; padding: 4px 6px 4px 3px;
   }
-  .lbrow.on { border-color: color-mix(in srgb, var(--on) 45%, var(--line)); }
+  .lbrow.on { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 
   /* 평소에 보이는 타일 */
-  .lbt { position: relative; }
-  .lbt .lnk { width: 100%; padding-right: calc(24px * var(--wf)); }
+  /* ── 런처보드 타일 ────────────────────────────────────
+     ★ 타일 «자체» 가 상자다. 안의 여는 단추는 테두리 없이 비운다.
+     ★ 나만|함께 는 겹쳐 놓지 않고 아랫줄에 둔다 — 글자와 부딪쳤다. */
+  .lbt {
+    position: relative; display: flex; flex-direction: column;
+    gap: calc(7px * var(--wf));
+    background: var(--card); border: 1px solid var(--line); border-radius: 13px;
+    padding: calc(11px * var(--wf)) calc(12px * var(--wf)) calc(9px * var(--wf));
+  }
+  .lbt:hover { background: var(--card2); }
+  .lbt .lnk {
+    flex: 1; width: 100%; background: none; border: 0; padding: 0;
+    align-items: flex-start; gap: calc(10px * var(--wf));
+  }
+  .lbt .lnk:hover { background: none; }
+  .lbtf { display: flex; align-items: center; gap: 6px; }
+  .lbtf .lbstar { position: static; margin-left: auto; }
+  .lbstar.solo { position: absolute; top: calc(7px * var(--wf)); right: calc(8px * var(--wf)); }
   .lbt.dead .lnk { opacity: .5; }
   .lbv {
     font-style: normal; font-weight: 600; font-size: calc(9px * var(--wf));
@@ -1163,8 +1179,6 @@
   }
 
   /* 런처보드 타일도 «제 이름만큼» — .lbt 가 흐름의 한 칸이다 */
-  .lbt { display: flex; }
-  .lbt .lnk { flex: 1; }
 
   /* ── 런처보드: 종류 가름 ─────────────────────────────────
      내가 만든 앱과 그냥 담아 둔 주소는 성격이 달라 크게 가른다.
@@ -1200,8 +1214,8 @@
   .lbband b { font-size: calc(13px * var(--wf)); font-weight: 800; }
   .lbband small { font-size: calc(10px * var(--wf)); font-weight: 700; opacity: .6; }
   .lbband i { margin-left: auto; font-style: normal; font-size: calc(9.5px * var(--wf)); opacity: .5; }
-  .lbband.y { border-bottom-color: color-mix(in srgb, var(--on) 55%, var(--line)); }
-  .lbband.y b { color: var(--on); }
+  .lbband.y { border-bottom-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+  .lbband.y b { color: var(--accent); }
 
   /* 묶음 머리 — 접기·펼치기, 끌어다 놓는 자리 */
   .lgrp.lgh { cursor: pointer; border-radius: 8px; padding: 6px 5px 5px; }
@@ -1229,7 +1243,7 @@
   .lbrow .grip { flex: none; opacity: .3; cursor: grab; font-size: calc(11px * var(--wf)); }
   .lbrow:hover .grip { opacity: .7; }
   .lbrow.dragging { opacity: .4; }
-  .lbrow.on { border-color: color-mix(in srgb, var(--on) 45%, var(--line)); }
+  .lbrow.on { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
   .lbrow .lbv {
     font-style: normal; font-weight: 600; font-size: calc(8.5px * var(--wf));
     opacity: .5; margin-left: 5px;
@@ -1250,7 +1264,7 @@
     border-radius: 7px; padding: calc(5px * var(--wf)) calc(8px * var(--wf));
     color: var(--fg); font: inherit; font-size: calc(11.5px * var(--wf));
   }
-  .lbin input:focus { outline: 2px solid var(--on); outline-offset: -1px; border-color: transparent; }
+  .lbin input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
   .lbrb { display: flex; align-items: center; gap: 5px; padding-top: 4px; }
   .lbrb .sp { flex: 1; }
 
@@ -1265,14 +1279,25 @@
     font-size: calc(9.5px * var(--wf)); font-weight: 700; color: var(--dim);
     padding: calc(3px * var(--wf)) calc(8px * var(--wf)); line-height: 1.5;
   }
-  .seg button.on { background: var(--on); color: var(--bg); }
-  .seg button:first-child.on { background: color-mix(in srgb, var(--fg) 45%, var(--bg)); }
+  /* ★ 함께 = 강조색 바탕 + --on 글자. 거꾸로 쓰면 검정 위 검정이 된다. */
+  .seg button.on { background: var(--accent); color: var(--on); }
+  /* 나만 = 강조가 아니라 «그냥 켜짐» — 회색으로 둔다 */
+  .seg button:first-child.on {
+    background: color-mix(in srgb, var(--fg) 55%, var(--bg)); color: var(--bg);
+  }
   .seg.wait { opacity: .5; }
-  .lbt .tseg { position: absolute; left: 6px; bottom: 4px; }
-  .lbt .lnk { padding-bottom: calc(22px * var(--wf)); }
 
   /* 타일도 끌어서 묶음을 옮긴다 */
   .lbt.pick { cursor: grab; }
   .lbt.pick:active { cursor: grabbing; }
   .lbt.pick .lnk, .lbt.pick .lbstar, .lbt.pick .seg button { -webkit-user-drag: none; }
   .lbt.dragging { opacity: .4; }
+
+  /* 타일을 조금 더 넉넉하게 — 빡빡하다는 말이 있었다 */
+  .lnks { gap: 9px; }
+  .lnks > .lnk, .lnks > .lbt { min-width: calc(184px * var(--wf)); }
+  .lbt .lico { width: calc(30px * var(--wf)); height: calc(30px * var(--wf)); border-radius: 9px; }
+  .lbt .lico svg { width: calc(18px * var(--wf)); height: calc(18px * var(--wf)); }
+  .lbt .ltx b { font-size: calc(13.5px * var(--wf)); line-height: 1.35; }
+  .lbt .ltx i { font-size: calc(10px * var(--wf)); margin-top: 2px; }
+  .lbt .lbv { font-size: calc(9.5px * var(--wf)); }

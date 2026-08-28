@@ -2158,8 +2158,9 @@ function lkAddFrom(app) {
 function viewLinks() {
   var feed = feedTiles();
   var h = '<div class="top2"><div class="wknav">'
+    // ★ 아래 런처보드에도 «고치기» 가 있다 — 이름을 갈라야 헷갈리지 않는다
     + '<button class="wkb' + (lkEdit ? ' now' : '') + '" id="lkEd">'
-    + (lkEdit ? '✓ 다 됐어요' : '✎ 고치기') + '</button>'
+    + (lkEdit ? '✓ 다 됐어요' : (lbOn() ? '✎ 내 바로가기' : '✎ 고치기')) + '</button>'
     + '<span class="spacer"></span>' + fontBtns('link')
     + (FEED ? '<button class="wkb" id="fdGet" title="' + esc(feedName())
       + ' 다시 읽기">⟳</button>' : '')
@@ -2221,7 +2222,7 @@ function viewBoardApps() {
     + '<input id="lbQ" class="lbq" placeholder="앱 찾기" value="' + esc(lbQ) + '">';
   if (lbAdmin()) {
     h += '<button class="wkb' + (lbEdit ? ' now' : '') + '" id="lbEd">'
-      + (lbEdit ? '✓ 다 됐어요' : '✎ 고치기') + '</button>';
+      + (lbEdit ? '✓ 다 됐어요' : '✎ 앱 고치기') + '</button>';
   }
   h += '</div>';
 
@@ -2444,10 +2445,13 @@ function lbTile(x, i) {
     + ico + '<span class="ltx"><b>' + esc(x.t)
     + (x.version ? '<em class="lbv">' + esc(x.version) + '</em>' : '') + '</b>'
     + '<i>' + esc(sub) + '</i></span></button>'
-    + '<button class="lbstar' + (lbFav(x.t) ? ' on' : '') + '" data-lbfav="' + i + '"'
-    + ' title="즐겨찾기">' + (lbFav(x.t) ? '★' : '☆') + '</button>'
-    // ★ 고치기로 들어가지 않고도 여기서 바로 나만/함께를 정한다
-    + (lbAdmin() ? '<span class="tseg">' + lbSeg(x, i) + '</span>' : '')
+    /* 아랫줄 — 다루는 것들. 윗줄에 겹쳐 놓으면 글자와 부딪친다. */
+    + (lbAdmin()
+      ? '<div class="lbtf">' + lbSeg(x, i)
+        + '<button class="lbstar' + (lbFav(x.t) ? ' on' : '') + '" data-lbfav="' + i + '"'
+        + ' title="즐겨찾기">' + (lbFav(x.t) ? '★' : '☆') + '</button></div>'
+      : '<button class="lbstar solo' + (lbFav(x.t) ? ' on' : '') + '" data-lbfav="' + i + '"'
+        + ' title="즐겨찾기">' + (lbFav(x.t) ? '★' : '☆') + '</button>')
     + '</div>';
 }
 
