@@ -1235,20 +1235,24 @@
      선 하나로는 어디까지가 그 갈래인지 눈에 안 들어왔다.
      상자로 감싸면 내려가면서도 «지금 어느 쪽» 인지 늘 보인다.
      ★ 색은 아주 옅게 — 타일이 주인공이고 상자는 바탕이다. */
+  /* ★ 층이 넷이다 — 바탕 → 이 상자 → 묶음 상자 → 타일.
+     전에는 층 사이가 3~4% 뿐이라 통째로 한 색으로 보였다.
+     그릇은 «들어가고»(--fg 쪽으로), 타일은 바탕색으로 «튀어나온다». */
   .lbpanel {
-    display: block; margin: 12px 0 0; padding: calc(10px * var(--wf)) calc(12px * var(--wf))
+    display: block; margin: 14px 0 0; padding: calc(10px * var(--wf)) calc(12px * var(--wf))
       calc(12px * var(--wf));
-    border-radius: 16px; border: 1px solid var(--line);
-    background: color-mix(in srgb, var(--fg) 3.5%, var(--bg));
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--fg) 20%, var(--bg));
+    background: color-mix(in srgb, var(--fg) 8%, var(--bg));
   }
   .lbpanel.y {
-    border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
-    background: color-mix(in srgb, var(--accent) 7%, var(--bg));
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+    background: color-mix(in srgb, var(--accent) 11%, var(--bg));
   }
   .lbband {
     display: flex; align-items: baseline; gap: 8px; padding: 0 2px calc(6px * var(--wf));
   }
-  .lbband b { font-size: calc(13.5px * var(--wf)); font-weight: 800; }
+  .lbband b { font-size: calc(16px * var(--wf)); font-weight: 800; letter-spacing: -.3px; }
   .lbband small {
     font-size: calc(10px * var(--wf)); font-weight: 700; opacity: .75;
     background: color-mix(in srgb, var(--fg) 12%, transparent);
@@ -1260,7 +1264,6 @@
     background: color-mix(in srgb, var(--accent) 22%, transparent); opacity: 1;
   }
   /* 상자 안에서는 묶음 머리와 타일이 상자 색 위에 얹힌다 */
-  .lbpanel .lgrp.lgh:hover { background: color-mix(in srgb, var(--fg) 7%, transparent); }
   .lbpanel .lnks { padding-bottom: 2px; }
   .lbpanel > .lgrp.lgh:first-of-type { margin-top: 0; }
 
@@ -1268,24 +1271,26 @@
   /* ★ 이름을 «눌러» 접고 편다 — ▼ 같은 단추가 따로 없다.
      그래서 «눌러도 되는 곳» 임이 보여야 한다: 은은한 바탕 + 손가락 커서. */
   .lgrp.lgh {
-    cursor: pointer; border-radius: 8px; padding: 6px calc(10px * var(--wf)) 5px;
-    background: color-mix(in srgb, var(--accent) 9%, transparent);
-    transition: background .12s;
+    cursor: pointer; border-radius: 8px;
+    padding: calc(5px * var(--wf)) calc(8px * var(--wf)) calc(5px * var(--wf)) calc(2px * var(--wf));
+    background: none; transition: background .12s;
   }
-  .lgrp.lgh:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+  /* 묶음 상자 자체가 이미 색을 갖는다 — 머리에 또 칠하면 층이 흐려진다.
+     «눌러도 되는 곳» 임은 손가락 커서와 얹었을 때의 색으로 알린다. */
+  .lgrp.lgh:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
   /* ★ 묶음 이름(기타·모둠편성…)이 10px 흐린 글자라 눈에 안 들어왔다.
      타일이 수십 개라 «어디서 어디까지가 한 묶음인지» 가 가장 중요하다.
      ── 전에는 왼쪽에 강조색 막대를 세웠는데, .gt 가 inline 이라 막대가
         세로로 짧게 잘려 «(» 괄호처럼 보였다. 막대를 걷고, 대신
         머리 줄에 은은한 색을 깔아 묶음의 시작을 알린다. */
   .lgrp.lgh .lbgt {
-    font-weight: 800; font-size: calc(12.5px * var(--wf)); color: var(--fg2);
-    letter-spacing: -.2px;
+    font-weight: 800; font-size: calc(14.5px * var(--wf)); color: var(--fg);
+    letter-spacing: -.3px;
   }
   .lgrp.lgh small {
-    font-size: calc(10px * var(--wf)); font-weight: 800; opacity: 1;
-    color: var(--dim); background: var(--card2);
-    border-radius: 999px; padding: 1px calc(6px * var(--wf));
+    font-size: calc(11px * var(--wf)); font-weight: 800; opacity: 1;
+    color: var(--fg2); background: color-mix(in srgb, var(--fg) 14%, var(--bg));
+    border-radius: 999px; padding: calc(1px * var(--wf)) calc(7px * var(--wf));
   }
   /* 접힌 묶음 — 살짝 옅게 해서 «지금 닫혀 있다» 를 알린다 */
   .lgrp.lgh.folded { opacity: .72; }
@@ -1375,10 +1380,12 @@
   /* ── 묶음마다 다시 작은 상자 ─────────────────────────────
      머리 줄만으로는 어디까지가 «기타» 이고 어디부터 «모둠편성» 인지 흐릿했다. */
   .lbcat {
-    display: block; margin: calc(8px * var(--wf)) 0 0;
+    display: block; margin: calc(10px * var(--wf)) 0 0;
     padding: calc(6px * var(--wf)) calc(9px * var(--wf)) calc(9px * var(--wf));
-    border-radius: 12px; border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-    background: color-mix(in srgb, var(--card) 55%, transparent);
+    border-radius: 12px;
+    /* ★ 그릇의 두 번째 층 — 바깥 상자보다 한 단 더 들어간다 */
+    border: 1px solid color-mix(in srgb, var(--fg) 30%, var(--bg));
+    background: color-mix(in srgb, var(--fg) 21%, var(--bg));
   }
   .lbcat.folded { padding-bottom: calc(5px * var(--wf)); opacity: .8; }
   .lbcat > .lgrp.lgh { margin: 0; }
@@ -1410,10 +1417,21 @@
     position: relative; display: flex; flex-direction: column;
     gap: calc(10px * var(--wf)); min-width: 0;
     padding: calc(13px * var(--wf)) calc(14px * var(--wf)) calc(12px * var(--wf));
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-    transition: border-color .12s, background .12s;
+    /* ★ 타일은 «집는 것» 이다 — 그릇(상자·묶음)에서 튀어나와야 한다.
+       바탕색으로 돌아오고, 또렷한 테두리와 옅은 그림자를 준다.
+       밝은 테마 = 옅은 쟁반 위 흰 카드 / 어두운 테마 = 회색 쟁반 위 검은 카드.
+       ※ 위쪽에도 .lbt 가 하나 더 있으나 뒤에 오는 이 규칙이 이긴다. */
+    background: var(--bg);
+    border: 1px solid color-mix(in srgb, var(--fg) 38%, var(--bg));
+    box-shadow: 0 1px 3px rgba(0,0,0,.16);
+    border-radius: 14px;
+    transition: border-color .12s, background .12s, box-shadow .12s;
   }
-  .lbt:hover { background: var(--card2); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+  .lbt:hover {
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+    box-shadow: 0 2px 7px rgba(0,0,0,.22);
+  }
   .lbt.dead { opacity: .55; }
 
   /* 윗줄 */
