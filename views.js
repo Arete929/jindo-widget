@@ -2184,6 +2184,42 @@ function lbPump() {
     lbPump();
   });
 }
+/* 묶음 이름 바꾸기 — 먼저 바꿔 보여 주고 뒤에 시킨다.
+   ★ 런처 왕복이 5초다. 그동안 판을 잠그면 «한참 걸린다» 로 느껴진다.
+     화면에서는 곧바로 바꾸고, 런처가 안 받으면 그때 되돌린다. */
+function lbRenameCat(from, to) {
+  if (!FEED || !from || !to || from === to) { render(); return; }
+  var apps = FEED.apps || [];
+  var hit = [];
+  apps.forEach(function (a) {
+    if ((a.tab || '기타') === from) { a.tab = to; hit.push(a); }
+  });
+  var cats = FEED.cats || [];
+  var ci = cats.indexOf(from);
+  var hadTo = cats.indexOf(to) >= 0;
+  if (ci >= 0) {
+    if (hadTo) cats.splice(ci, 1);        // 이미 있는 이름으로 바꾸면 합쳐진다
+    else cats[ci] = to;
+  }
+  /* 접어 둔 것도 새 이름을 따라가야 한다 — 안 그러면 펴진 채로 보인다 */
+  LBFOLD = (LBFOLD || []).map(function (k) {
+    var p = String(k).split('/');
+    if (p.length === 3 && p[2] === from) { p[2] = to; return p.join('/'); }
+    return k;
+  });
+  lbErr = '';
+  render();
+  lbQ2.push({
+    id: 'cat:' + from,
+    body: { act: 'catRename', from: from, to: to },
+    undo: function () {
+      hit.forEach(function (a) { a.tab = from; });
+      if (ci >= 0) { if (hadTo) cats.splice(ci, 0, from); else cats[ci] = from; }
+    }
+  });
+  lbPump();
+}
+
 /* 묶음 옮기기 — 먼저 옮겨 보여 주고 뒤에 시킨다 */
 function lbMoveCat(x, to) {
   if ((x.tab || '기타') === to) return;
@@ -2948,7 +2984,7 @@ function wireBoardList(root) {
       var from = b.dataset.lbcsave;
       lbCatEdit = '';
       if (!to || to === from) { render(); return; }
-      lbDo('catRename', { from: from, to: to }, '묶음 이름 바꾸는 중');
+      lbRenameCat(from, to);
     });
   });
   root.querySelectorAll('[data-lbcdel]').forEach(function (b) {
