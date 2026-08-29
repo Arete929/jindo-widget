@@ -2145,11 +2145,36 @@ function lbFavToggle(t) {
      «안 먹었나» 싶어 또 누르게 된다.
    → 화면에서 먼저 뒤집고, 부탁은 줄을 세워 하나씩 보낸다.
      런처가 안 받으면 그 줄만 도로 뒤집는다. */
-var lbQ2 = [], lbSending = false, lbWait = {};
+var lbQ2 = [], lbSending = 0, lbWait = {};   // lbSending — 지금 보내는 중인 개수
 /* 접어 둔 묶음 · 지금 그 자리에서 고치고 있는 줄 · 이름을 고치는 묶음 */
 var LBFOLD = [], lbRow = '', lbCatEdit = '', lbNewCat = false;
 /* «묶음 옮기기» 단추를 누른 타일 — 이름으로 기억한다(차례는 다시 그리면 바뀐다) */
 var lbMvOpen = '';
+/* 🎨 를 누른 타일 */
+var lbClOpen = '';
+/* 고를 수 있는 파스텔 — 이름만 담고, 실제 색은 테마마다 ui.css 가 낸다.
+   ★ 색값을 담으면 어두운 테마에서 눈이 시리다. */
+var LBCOLORS = [
+  { k: '', t: '없음' }, { k: 'rose', t: '분홍' }, { k: 'peach', t: '살구' },
+  { k: 'lemon', t: '레몬' }, { k: 'mint', t: '민트' }, { k: 'sky', t: '하늘' },
+  { k: 'lilac', t: '라일락' }, { k: 'sand', t: '모래' }, { k: 'sage', t: '세이지' }
+];
+/* 색 고르기 — 먼저 칠해 보여 주고 뒤에 보낸다(왕복이 5초다) */
+function lbSetColor(x, c) {
+  var was = x.color || '';
+  if (was === c) { lbClOpen = ''; render(); return; }
+  x.color = c;
+  lbClOpen = '';
+  lbWait[x.t] = 1;
+  lbErr = '';
+  render();
+  lbQ2.push({
+    id: x.t,
+    body: { act: 'color', key: lbKey(x), color: c },
+    undo: function () { x.color = was; }
+  });
+  lbPump();
+}
 /* 줄을 펼쳐 고치는 동안 적은 것 — 어쩌다 다시 그려져도 안 잃는다.
    ★ 화면(DOM)만 믿으면 안 된다. 다시 그리는 순간 옛 값으로 되돌아간다. */
 var lbRowVals = null;
@@ -2167,22 +2192,29 @@ function lbFoldAll(on, keys) {
   widgetAPI.setUi({ feedFold: LBFOLD });
   render();
 }
+/* ★ 전에는 한 번에 하나씩만 보냈다(lbSending 이 참·거짓 하나).
+   런처 왕복이 5초라, 셋을 뒤집으면 15초를 기다려야 셋 다 끝났다.
+   켜고 끄기는 «서로 다른 줄의 한 칸» 을 고치는 일이라 겹칠 일이 없으니
+   한꺼번에 여럿 보낸다. 다만 무한정 열면 런처가 몰려 되레 느려진다 — 넷까지. */
+var LBSEND_MAX = 4;
 function lbPump() {
-  if (lbSending || !lbQ2.length) return;
-  lbSending = true;
-  var job = lbQ2.shift();
-  widgetAPI.feedAct(job.body).then(function (r) {
-    lbSending = false;
-    delete lbWait[job.id];
-    if (!r || !r.ok) {
-      job.undo();
-      lbErr = (r && r.error) || '바꾸지 못했습니다';
-    } else {
-      lbErr = ''; lbOkAt = r.at || '';
-    }
-    render();
-    lbPump();
-  });
+  while (lbSending < LBSEND_MAX && lbQ2.length) {
+    lbSending++;
+    (function (job) {
+      widgetAPI.feedAct(job.body).then(function (r) {
+        lbSending--;
+        delete lbWait[job.id];
+        if (!r || !r.ok) {
+          job.undo();
+          lbErr = (r && r.error) || '바꾸지 못했습니다';
+        } else {
+          lbErr = ''; lbOkAt = r.at || '';
+        }
+        render();
+        lbPump();
+      });
+    })(lbQ2.shift());
+  }
 }
 /* 묶음 이름 바꾸기 — 먼저 바꿔 보여 주고 뒤에 시킨다.
    ★ 런처 왕복이 5초다. 그동안 판을 잠그면 «한참 걸린다» 로 느껴진다.
@@ -2719,10 +2751,16 @@ function lbTile(x, i, showCat) {
        (x.updated ? lbDay(x.updated) : ''),
        (x.u ? '' : '주소 없음')].filter(Boolean).join('  ·  ');
   var editing = lbEdit && lbAdmin();
-  var sz = lbSizeOf(x);
+  /* ★ 타일 «칸 1·2·3» 은 걷었다 — 크기가 제각각이면 줄이 안 맞아 어수선하다.
+     담아 둔 크기 값도 안 본다. 안 그러면 예전에 2·3칸으로 해 둔 것만
+     계속 크게 남는데 되돌릴 길이 없다. */
 
+  /* ★ 색 이름만 붙인다 — 실제 색은 테마마다 ui.css 가 낸다.
+     ★ 함께 쓰는 것은 테두리로도 알린다. 상자 밖(검색 결과 등)에서도 갈려야 한다. */
   var h = '<div class="lbt' + (x.u ? '' : ' dead') + (lbAdmin() ? ' pick' : '')
-    + (editing ? ' editing' : '') + '" style="grid-column:span ' + sz + '"'
+    + (editing ? ' editing' : '')
+    + (x.shared ? ' isshared' : '')
+    + (x.color ? ' tint tint-' + esc(x.color) : '') + '"'
     + (lbAdmin() ? ' draggable="true" data-lbdrag="' + i + '" data-lbord="' + i + '"' : '')
     + '>';
   /* 편집 모드 — 왼쪽 위 ⊖ 로 뺀다 (빠른 설정창처럼) */
@@ -2752,16 +2790,23 @@ function lbTile(x, i, showCat) {
 
   /* 편집 모드 — 칸 수 (그리드에서 몇 칸을 차지하나) */
   if (editing) {
-    h += '<div class="tsize"><i>칸</i>'
-      + [1, 2, 3].map(function (n) {
-          return '<button class="' + (sz === n ? 'on' : '') + '" data-lbsz="'
-            + i + ',' + n + '">' + n + '</button>';
-        }).join('') + '</div>';
     /* ★ 끌어 옮기기는 옮길 곳이 화면 밖이면 못 쓴다 — 끄는 동안 화면이 안 따라간다.
        묶음이 일곱, 앱이 서른일곱이니 옮길 곳은 거의 늘 화면 밖이다.
        그래서 «어디로» 를 단추로 고르게 한다. */
     h += '<button class="tico tmv" data-lbmvopen="' + i + '"'
       + ' title="다른 묶음으로 옮기기">📁</button>';
+    h += '<button class="tico tcl" data-lbclopen="' + i + '"'
+      + ' title="타일 색 고르기">🎨</button>';
+    if (lbClOpen === x.t) {
+      h += '<div class="mvpop clpop"><div class="mvh">타일 색</div>'
+        + LBCOLORS.map(function (c) {
+            return '<button class="swatch' + (c.k ? ' tint-' + c.k : ' none')
+              + ((x.color || '') === c.k ? ' now' : '') + '"'
+              + ' data-lbclset="' + i + '|' + c.k + '" title="' + esc(c.t) + '">'
+              + (c.k ? '' : '✕') + '</button>';
+          }).join('')
+        + '</div>';
+    }
     if (lbMvOpen === x.t) {
       h += '<div class="mvpop"><div class="mvh">어느 묶음으로</div>'
         + lbCats().map(function (c) {
@@ -2875,12 +2920,24 @@ function wireBoardList(root) {
     });
   });
   /* 그 자리에서 고치기 */
-  root.querySelectorAll('[data-lbsz]').forEach(function (b) {
+  /* 타일 색 — 열기 / 고르기 */
+  root.querySelectorAll('[data-lbclopen]').forEach(function (b) {
     b.addEventListener('click', function (e) {
       e.stopPropagation();
-      var p = b.dataset.lbsz.split(',');
+      var x = at(b, 'lbclopen');
+      if (!x) return;
+      lbClOpen = (lbClOpen === x.t) ? '' : x.t;
+      lbMvOpen = '';
+      render();
+    });
+  });
+  root.querySelectorAll('[data-lbclset]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var p = b.dataset.lbclset.split('|');
       var x = apps[Number(p[0])];
-      if (x) lbSetSize(x, Number(p[1]));
+      if (x) lbSetColor(x, p[1] || '');
+      else { lbClOpen = ''; render(); }
     });
   });
   /* 묶음 옮기기 — 열기 / 고르기 / 그만 */

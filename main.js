@@ -290,6 +290,7 @@ function feedApp(a) {
     gas: tidyUrl(a.gas), sheet: tidyUrl(a.sheet),
     shared: !!a.shared, hidden: !!a.hidden,
     // 종류 — 'link' 면 담아 둔 주소, 아니면 내가 만든 앱
+    color: String(a.color || '').trim(),         // 타일 배경색 (파스텔 이름)
     kind: a.kind === 'link' ? 'link' : 'app',
     // 타일이 몇 칸을 차지하나 — 1~3
     size: (function () { const n = Number(a.size); return (n >= 1 && n <= 3) ? n : 1; })()
@@ -2041,6 +2042,7 @@ function patchFeed(act, o) {
   if (!hit) return;
   if (act === 'share') hit.shared = !!o.shared;
   else if (act === 'hide') hit.hidden = !!o.hidden;
+  else if (act === 'color') hit.color = String(o.color || '').trim();
   else if (act === 'size') {
     const n = Number(o.size);
     hit.size = (n >= 1 && n <= 3) ? n : 1;
@@ -2048,14 +2050,14 @@ function patchFeed(act, o) {
 }
 ipcMain.handle('feed-act', async (_e, o) => {
   const act = String((o && o.act) || '');
-  if (['add', 'edit', 'del', 'share', 'hide', 'scan', 'order', 'size',
+  if (['add', 'edit', 'del', 'share', 'hide', 'scan', 'order', 'size', 'color',
         'catAdd', 'catRename', 'catDel'].indexOf(act) < 0) {
     return { ok: false, error: '모르는 일입니다' };
   }
   try {
     /* ★ 켜고 끄는 일에는 목록 전체가 필요 없다 — light 로 부탁하면
        런처가 한 칸만 고치고 곧바로 답한다(왕복 5초 → 1초쯤). */
-    const light = ['share', 'hide', 'size'].indexOf(act) >= 0;
+    const light = ['share', 'hide', 'size', 'color'].indexOf(act) >= 0;
     const j = await feedPost(light ? Object.assign({ light: 1 }, o) : o);
 
     if (Array.isArray(j.apps)) {

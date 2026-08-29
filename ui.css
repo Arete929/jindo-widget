@@ -1541,6 +1541,63 @@
   }
   .lbt.dead { opacity: .55; }
 
+  /* ── 타일 색 (파스텔 여덟) ────────────────────────────────
+     ★ 색값을 곧이곧대로 칠하지 않는다. 밝은 테마에서 예쁜 파스텔이
+       어두운 테마에서는 눈이 시리다.
+       «색 기운»(--tint)만 정해 두고, 그 테마의 타일 바탕에 섞어 칠한다.
+       글자는 늘 제 색이라 어느 테마에서든 읽힌다. */
+  .lbt.tint {
+    background: color-mix(in srgb, var(--tint) 12%, var(--bg));
+    border-color: color-mix(in srgb, var(--tint) 42%, var(--line));
+  }
+  .lbt.tint:hover {
+    background: color-mix(in srgb, var(--tint) 20%, var(--bg));
+    border-color: color-mix(in srgb, var(--tint) 65%, var(--line));
+  }
+  /* 어두운 테마에서는 조금 더 섞어야 색이 보인다 */
+  :root[data-theme="black"] .lbt.tint,
+  :root[data-theme="persian"] .lbt.tint,
+  :root[data-theme="slate"] .lbt.tint,
+  :root[data-theme="night"] .lbt.tint {
+    background: color-mix(in srgb, var(--tint) 18%, var(--bg));
+  }
+  .tint-rose { --tint: #E8628A; }
+  .tint-peach { --tint: #F08A3C; }
+  .tint-lemon { --tint: #D9B411; }
+  .tint-mint { --tint: #22B08A; }
+  .tint-sky { --tint: #3E93D6; }
+  .tint-lilac { --tint: #8C6FE0; }
+  .tint-sand { --tint: #B08A5A; }
+  .tint-sage { --tint: #6FA361; }
+
+  /* 색 고르개 — 동그란 색점 */
+  .clpop { max-width: calc(190px * var(--wf)); }
+  .swatch {
+    width: calc(26px * var(--wf)); height: calc(26px * var(--wf));
+    border-radius: 999px; cursor: pointer; padding: 0;
+    border: 2px solid color-mix(in srgb, var(--fg) 22%, transparent);
+    background: color-mix(in srgb, var(--tint) 42%, var(--bg));
+    font-size: calc(11px * var(--wf)); font-weight: 800; color: var(--dim);
+    line-height: 1; font-family: inherit;
+  }
+  .swatch.none { background: var(--card2); }
+  .swatch:hover { transform: scale(1.12); }
+  .swatch.now { border-color: var(--fg); border-width: 3px; }
+
+  /* ── 함께 쓰는 앱 — 테두리로도 알린다 ──────────────────────
+     ★ «함께 쓰는 중» 상자 안에 있다는 것으로만 알 수 있었다.
+       검색해서 섞여 나오면 어느 것이 공유된 것인지 알 수 없었다. */
+  .lbt.isshared {
+    border-color: color-mix(in srgb, var(--accent) 62%, var(--line));
+    border-width: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.16),
+                0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+  /* 색을 골라 둔 것도 «함께» 는 테두리가 이겨야 한다 — 공유 여부가 더 중요하다 */
+  .lbt.tint.isshared { border-color: color-mix(in srgb, var(--accent) 62%, var(--line)); }
+  .tico.tcl { opacity: .55; font-size: calc(13px * var(--wf)); }
+  .tico.tcl:hover { opacity: 1; }
+
   /* 윗줄 */
   .lbth { display: flex; align-items: center; gap: calc(6px * var(--wf)); flex-wrap: nowrap; }
   .lbt .lico {
