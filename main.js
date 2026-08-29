@@ -947,11 +947,46 @@ async function finishLogin(idToken, retried) {
 /* ===================== 위젯 창 ===================== */
 // 이번주 격자는 요일 다섯 칸이 들어가야 해서 카드가 넓어야 한다. 다른 화면은 좁게.
 // 사용자가 직접 크기를 바꿨으면 그 크기를 존중한다 — 화면을 옮길 때마다 되돌리면 곤란하다
+/* ── 창을 화면 안에 가둔다 ────────────────────────────────
+   ★ 창이 화면보다 크면 아래쪽이 모니터 밖으로 나간다. 그러면 맨 아래 내용이
+     «잘려 보인다» — CSS 여백을 아무리 늘려도 그 여백째 화면 밖이라 소용없다.
+     실제로 1024×1537 창이 1032 높이 화면에 놓여 344px 가 밖에 있었다.
+   ★ 사람이 끌어 고치기도 어렵다 — 창 아래가 안 보이니 잡을 데가 없다.
+     그래서 앱이 스스로 다듬는다. */
+function fitToScreen(b) {
+  /* 그 창이 가장 많이 걸쳐 있는 화면을 기준으로 본다(모니터가 둘일 수 있다) */
+  let a;
+  try { a = screen.getDisplayMatching(b).workArea; }
+  catch (e) { a = screen.getPrimaryDisplay().workArea; }
+  const width = Math.max(240, Math.min(b.width, a.width));
+  const height = Math.max(180, Math.min(b.height, a.height));
+  /* 자리도 안으로 — 위쪽이 잘리면 제목 줄을 못 잡아 창을 아예 못 움직인다 */
+  const x = Math.min(Math.max(b.x, a.x), a.x + a.width - width);
+  const y = Math.min(Math.max(b.y, a.y), a.y + a.height - height);
+  return { x, y, width, height };
+}
+/* 지금 창이 화면 밖으로 나가 있으면 끌어들인다 */
+function fitWindowNow(win, why) {
+  if (!win || win.isDestroyed() || win.isFullScreen()) return;
+  const b = win.getBounds();
+  const n = fitToScreen(b);
+  if (n.x === b.x && n.y === b.y && n.width === b.width && n.height === b.height) return;
+  debugLog(`창을 화면 안으로 (${why}) — ${b.width}x${b.height}@${b.x},${b.y}`
+    + ` → ${n.width}x${n.height}@${n.x},${n.y}`);
+  win.setBounds(n);
+  if (win === widgetWin) saveState({ userW: n.width, userH: n.height, x: n.x, y: n.y });
+}
+
 function userSized() { const s = loadState(); return !!(s.userW && s.userH); }
 function baseWidthFor(view) { return ['week', 'work', 'comci', 'cal'].includes(view) ? 560 : 360; }
 function widgetSize(view) {
   const s = loadState();
-  if (s.userW && s.userH) return { width: s.userW, height: s.userH };
+  if (s.userW && s.userH) {
+    /* ★ 저장해 둔 크기가 지금 화면보다 클 수 있다 — 모니터를 바꿨거나,
+       예전에 큰 화면에서 키워 둔 채로 왔거나. 그대로 되살리면 아래가 잘린다. */
+    const f = fitToScreen({ x: s.x || 0, y: s.y || 0, width: s.userW, height: s.userH });
+    return { width: f.width, height: f.height };
+  }
   const k = SIZES[getScale()];
   return { width: Math.round(baseWidthFor(view || getView()) * k), height: Math.round(300 * k) };
 }
@@ -987,7 +1022,13 @@ function safePosition(state, size) {
   return { x: a.x + a.width - size.width - 30, y: a.y + 60 };
 }
 // 모니터를 뽑거나 배치가 바뀐 뒤 위젯이 화면 밖에 남지 않게 확인한다
+/* ★ 전에는 «자리» 만 보고 «크기» 는 안 봤다.
+   그래서 1024x1537 창이 1032 높이 화면에 그대로 남아, 아래 344px 가
+   모니터 밖에 있었다 — 맨 아래 내용이 통째로 잘려 보였다.
+   크기도 함께 다듬는다. */
 function keepOnScreen() {
+  fitWindowNow(widgetWin, '화면 살피기');
+  fitWindowNow(easyWin, '화면 살피기');
   if (!widgetWin || widgetWin.isDestroyed()) return;
   const b = widgetWin.getBounds();
   if (isUsablePos(b.x, b.y, b)) return;
@@ -1010,7 +1051,12 @@ function openEasyWindow() {
   if (easyWin && !easyWin.isDestroyed()) { easyWin.show(); easyWin.focus(); return; }
   const st = loadState();
   easyWin = new BrowserWindow({
-    width: Number(st.easyW) || 1100, height: Number(st.easyH) || 750,
+    /* ★ 저장해 둔 크기가 지금 화면보다 클 수 있다 — 그대로 되살리면 아래가 잘린다 */
+    ...(function () {
+      const f = fitToScreen({ x: Number(st.easyX) || 0, y: Number(st.easyY) || 0,
+        width: Number(st.easyW) || 1100, height: Number(st.easyH) || 750 });
+      return { width: f.width, height: f.height };
+    })(),
     x: typeof st.easyX === 'number' ? st.easyX : undefined,
     y: typeof st.easyY === 'number' ? st.easyY : undefined,
     minWidth: 880, minHeight: 560,
@@ -1043,7 +1089,10 @@ function openEasyWindow() {
     // 창을 닫으면 떠 있는 카드로 돌아간다 — 아무것도 안 남으면 앱이 사라진 것처럼 보인다
     showWidgetOnly();
   });
-  easyWin.webContents.once('did-finish-load', () => { sendToWidget(); sendTasks(); });
+  easyWin.webContents.once('did-finish-load', () => {
+    sendToWidget(); sendTasks();
+    fitWindowNow(easyWin, '넓게 보기를 띄운 뒤');
+  });
 }
 
 /* 넓게 보기를 접고 떠 있는 카드로 돌아간다 */
@@ -1142,7 +1191,12 @@ function createWidgetWindow() {
     }, 400);
   });
   widgetWin.on('closed', () => { widgetWin = null; });
-  widgetWin.webContents.once('did-finish-load', () => { sendToWidget(); sendTasks(); });
+  widgetWin.webContents.once('did-finish-load', () => {
+    sendToWidget(); sendTasks();
+    /* ★ 이미 어긋나 저장된 크기·자리를 한 번 바로잡는다.
+       사람이 끌어 고치기 어렵다 — 창 아래가 화면 밖이면 잡을 데가 없다. */
+    fitWindowNow(widgetWin, '창을 띄운 뒤');
+  });
 }
 
 function applyScale(key) {

@@ -2148,6 +2148,8 @@ function lbFavToggle(t) {
 var lbQ2 = [], lbSending = false, lbWait = {};
 /* 접어 둔 묶음 · 지금 그 자리에서 고치고 있는 줄 · 이름을 고치는 묶음 */
 var LBFOLD = [], lbRow = '', lbCatEdit = '', lbNewCat = false;
+/* «묶음 옮기기» 단추를 누른 타일 — 이름으로 기억한다(차례는 다시 그리면 바뀐다) */
+var lbMvOpen = '';
 /* 줄을 펼쳐 고치는 동안 적은 것 — 어쩌다 다시 그려져도 안 잃는다.
    ★ 화면(DOM)만 믿으면 안 된다. 다시 그리는 순간 옛 값으로 되돌아간다. */
 var lbRowVals = null;
@@ -2372,11 +2374,21 @@ function lkAddFrom(app) {
 
 function viewLinks() {
   var feed = feedTiles();
+  /* ★ 머리줄 하나에 다 모은다 — 검색칸과 «앱 고치기» 가 아래 따로 있으면,
+     서른일곱 개를 굴려 내려간 자리에서는 둘 다 화면 밖이라 못 쓴다.
+     .top2 는 머리에 붙박이로 남으므로 굴려도 늘 보인다. */
   var h = '<div class="top2"><div class="wknav">'
     // ★ 아래 런처보드에도 «고치기» 가 있다 — 이름을 갈라야 헷갈리지 않는다
     + '<button class="wkb' + (lkEdit ? ' now' : '') + '" id="lkEd">'
     + (lkEdit ? '✓ 다 됐어요' : (lbOn() ? '✎ 내 바로가기' : '✎ 고치기')) + '</button>'
-    + '<span class="spacer"></span>' + fontBtns('link')
+    + (lbOn()
+      ? '<input id="lbQ" class="lbq" placeholder="앱 찾기" value="' + esc(lbQ) + '">'
+        + (lbAdmin()
+          ? '<button class="wkb' + (lbEdit ? ' now' : '') + '" id="lbEd">'
+            + (lbEdit ? '✓ 다 됐어요' : '✎ 앱 고치기') + '</button>'
+          : '')
+      : '<span class="spacer"></span>')
+    + fontBtns('link')
     + (FEED ? '<button class="wkb" id="fdGet" title="' + esc(feedName())
       + ' 다시 읽기">⟳</button>' : '')
     + '</div></div>';
@@ -2433,13 +2445,8 @@ function viewLinks() {
    검색칸에 글자가 있으면 묶음을 무시하고 걸린 것만 보여 준다. */
 function viewBoardApps() {
   var all = (FEED.apps || []).filter(function (x) { return !x.hidden; });
-  var h = '<div class="lbbar">'
-    + '<input id="lbQ" class="lbq" placeholder="앱 찾기" value="' + esc(lbQ) + '">';
-  if (lbAdmin()) {
-    h += '<button class="wkb' + (lbEdit ? ' now' : '') + '" id="lbEd">'
-      + (lbEdit ? '✓ 다 됐어요' : '✎ 앱 고치기') + '</button>';
-  }
-  h += '</div>';
+  /* ★ 검색칸과 «앱 고치기» 는 머리줄(.top2)로 옮겼다 — 굴려도 늘 보여야 한다 */
+  var h = '';
 
   if (lbBusy) h += '<div class="lbmsg">' + esc(lbBusy) + '…</div>';
   if (lbErr) h += '<div class="lbmsg bad">' + esc(lbErr) + '</div>';
@@ -2714,6 +2721,19 @@ function lbTile(x, i, showCat) {
           return '<button class="' + (sz === n ? 'on' : '') + '" data-lbsz="'
             + i + ',' + n + '">' + n + '</button>';
         }).join('') + '</div>';
+    /* ★ 끌어 옮기기는 옮길 곳이 화면 밖이면 못 쓴다 — 끄는 동안 화면이 안 따라간다.
+       묶음이 일곱, 앱이 서른일곱이니 옮길 곳은 거의 늘 화면 밖이다.
+       그래서 «어디로» 를 단추로 고르게 한다. */
+    h += '<button class="tico tmv" data-lbmvopen="' + i + '"'
+      + ' title="다른 묶음으로 옮기기">📁</button>';
+    if (lbMvOpen === x.t) {
+      h += '<div class="mvpop"><div class="mvh">어느 묶음으로</div>'
+        + lbCats().map(function (c) {
+            return '<button class="wkb' + ((x.tab || '기타') === c ? ' now' : '')
+              + '" data-lbmvto="' + i + '|' + esc(c) + '">' + esc(c) + '</button>';
+          }).join('')
+        + '<button class="wkb mvx" data-lbmvx="1">그만</button></div>';
+    }
   }
   return h + '</div>';
 }
@@ -2826,6 +2846,30 @@ function wireBoardList(root) {
       var x = apps[Number(p[0])];
       if (x) lbSetSize(x, Number(p[1]));
     });
+  });
+  /* 묶음 옮기기 — 열기 / 고르기 / 그만 */
+  root.querySelectorAll('[data-lbmvopen]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var x = at(b, 'lbmvopen');
+      if (!x) return;
+      lbMvOpen = (lbMvOpen === x.t) ? '' : x.t;
+      render();
+    });
+  });
+  root.querySelectorAll('[data-lbmvto]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var p = b.dataset.lbmvto.split('|');
+      var x = apps[Number(p[0])];
+      lbMvOpen = '';
+      if (x) lbMoveCat(x, p.slice(1).join('|'));
+      else render();
+    });
+  });
+  var mvx = root.querySelector('[data-lbmvx]');
+  if (mvx) mvx.addEventListener('click', function (e) {
+    e.stopPropagation(); lbMvOpen = ''; render();
   });
   root.querySelectorAll('[data-lbmv]').forEach(function (b) {
     b.addEventListener('click', function (e) {
