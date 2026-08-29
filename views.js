@@ -968,16 +968,25 @@ function viewMeals() {
       + '<br><button class="btn" id="mlGetBig">지금 가져오기</button></div>';
   }
   var todayStr = todayYmd();
+  head += dutyMineBar();
   // ★ 오늘 것은 학사일정의 «오늘» 처럼 크게 키워 눈에 먼저 들어오게 한다
   function days(rows) {
     return (rows || []).map(function (x) {
       var on = (x.date === todayStr);
-      return '<div class="ml' + (on ? ' tdy' : '') + '">'
+      /* ★ 메뉴 아래에 그날 급식지도 — 내 차례면 색을 채워 눈에 먼저 들어오게 */
+      var g = dutyOf(x.date), mine = dutyIsMine(x.date);
+      var duty = g && g.name
+        ? '<div class="mlduty' + (mine ? ' mine' : '') + '">'
+          + '<i>급식지도</i><b>' + esc(g.name) + '</b>'
+          + (g.note ? '<small>' + esc(g.note) + '</small>' : '')
+          + (mine ? '<em>내 차례</em>' : '') + '</div>'
+        : '';
+      return '<div class="ml' + (on ? ' tdy' : '') + (mine ? ' myduty' : '') + '">'
         + '<div class="mlh">' + esc(mdDow(x.date)) + (on ? ' <em>오늘</em>' : '')
         + '<span>' + esc(x.kcal || '') + '</span></div>'
         + '<div class="mld">' + (x.dishes || []).map(function (t) {
             return '<span>' + esc(t) + '</span>';
-          }).join('') + '</div></div>';
+          }).join('') + '</div>' + duty + '</div>';
     }).join('');
   }
   // 학교를 여럿 담아 두었으면 학교마다 갈라 보여준다
@@ -991,10 +1000,60 @@ function viewMeals() {
   }
   return head + days(list);
 }
+/* 내 급식지도 — 앞으로 남은 것을 «n월 n일 · D-n» 으로.
+   ★ 순서표에 이름이 없는 분께는 «대상이 아니다» 라고 분명히 말한다. */
+function dutyMineBar() {
+  if (!DUTY) return '';
+  if (DUTY.error) {
+    return '<div class="dutybar bad"><i>급식지도</i><span>' + esc(DUTY.error) + '</span></div>';
+  }
+  if (dutyNotMine()) {
+    return '<div class="dutybar none"><i>급식지도</i>'
+      + '<span>급식지도 대상이 아닙니다'
+      + (DUTY.masked ? ' <small>(순서표에 «' + esc(DUTY.masked) + '» 이 없습니다)</small>' : '')
+      + '</span></div>';
+  }
+  if (!DUTY.me) return '';
+  var list = DUTY.mine || [];
+  if (!list.length) {
+    return '<div class="dutybar none"><i>급식지도</i>'
+      + '<span>올해 남은 차례가 없습니다 <small>(모두 ' + (DUTY.all || []).length + '번)</small></span></div>';
+  }
+  return '<div class="dutybar"><i>내 급식지도</i><span class="dutys">'
+    + list.map(function (x, i) {
+      return '<b class="duty' + (x.dday === 0 ? ' now' : (i === 0 ? ' soon' : '')) + '">'
+        + esc(mdOf(x.date)) + ' <small>(' + esc(x.dow) + ')</small>'
+        + '<u>' + ddayLabel(x.dday) + '</u></b>';
+    }).join('') + '</span></div>';
+}
+
 function fmtYmd(s) {
   var m = String(s || '').match(/^(\d{4})(\d{2})(\d{2})$/);
   return m ? Number(m[2]) + '/' + Number(m[3]) : String(s || '');
 }
+/* ── 급식지도 ────────────────────────────────────────────
+   ★ «내 차례가 없다» 와 «대상이 아니다» 는 다르다.
+     시간강사·보건교사처럼 순서표에 이름이 아예 없는 분은 대상이 아니다.
+     그런 분께 «남은 일정 없음» 이라고만 하면 시트가 잘못된 줄 안다. */
+function dutyOf(ymd) {
+  if (!DUTY || !DUTY.days) return null;
+  return DUTY.days[ymd] || null;
+}
+function dutyIsMine(ymd) {
+  var g = dutyOf(ymd);
+  return !!(g && DUTY.me && g.name === DUTY.me);
+}
+/* 순서표에 내 이름이 아예 없는가 (= 급식지도 대상이 아님) */
+function dutyNotMine() {
+  return !!(DUTY && !DUTY.error && (DUTY.names || []).length && !DUTY.me);
+}
+/* 'D-34' · 오늘이면 'D-DAY' · 내일이면 'D-1' */
+function ddayLabel(n) { return n === 0 ? 'D-DAY' : ('D-' + n); }
+function mdOf(iso) {
+  var p = String(iso || '').split('-');
+  return p.length === 3 ? (Number(p[1]) + '월 ' + Number(p[2]) + '일') : String(iso || '');
+}
+
 function todayYmd() {
   var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
@@ -2029,6 +2088,11 @@ var LINKS = [];
 var TERMSTART = '';
 var NAVSTYLE = 'both';
 var TABORDER = [], DASHORDER = [], DASHOFF = [], DASHSIZE = {};
+/* 급식지도 순서표 — main 이 시트에서 읽어 정리해 내려 준다 */
+var DUTY = null;
+/* 당일 안내를 «오늘은 그만» 하고 닫은 날. 날짜를 적어 두어야 내일 다시 뜬다. */
+var dutyHidDay = '';
+try { dutyHidDay = localStorage.getItem('dutyHid') || ''; } catch (e) { /* 못 읽으면 그만 */ }
 var FEED = null, FEEDFAV = [];
 /* ── 런처보드 ──────────────────────────────────────────────
    런처 GAS(내 앱 대시보드) 시트를 이 화면에서 바로 고친다.
@@ -2418,6 +2482,15 @@ function lbListHtml() {
     h += '<section class="lbpanel ' + band.k + '">'
       + '<div class="lbband"><b>' + esc(band.t) + '</b>'
       + '<small>' + mine.length + '</small><i>' + esc(band.d) + '</i></div>';
+    /* ★ 함께 쓰는 것은 묶음으로 가르지 않는다.
+       공유한 것은 대개 몇 개뿐이라, 묶음마다 상자를 만들면 상자 하나에
+       앱 하나씩 들어가 자리만 먹고 되레 못 찾는다.
+       대신 묶음을 «이름 뒤 딱지» 로 붙여 준다 — 2026 짝꿍선정 (모둠편성) */
+    if (band.k === 'y') {
+      h += lbGroup('', mine, all, '', true);
+      h += '</section>';
+      return;
+    }
     /* 종류 띠는 «둘 다» 있을 때만 — 하나뿐이면 자리만 먹는다 */
     var kinds = LBKIND.filter(function (kd) {
       return mine.some(function (x) { return lbKindOf(x) === kd.k; });
@@ -2507,7 +2580,7 @@ function lbFormHtml() {
 }
 
 /* 묶음 하나 — 평소엔 타일, 고칠 때는 줄 */
-function lbGroup(title, list, all, key) {
+function lbGroup(title, list, all, key, showCat) {
   var canFold = !!key && key !== 'fav';
   var folded = canFold && lbFolded(key);
   var cat = canFold ? key.split('/')[2] : '';
@@ -2526,9 +2599,14 @@ function lbGroup(title, list, all, key) {
       + '<button class="wkb" data-lbccancel="1">그만</button>'
       + '<button class="wkb" data-lbcdel="' + esc(cat) + '" title="이 묶음을 빼면 안에 있던 것은 «기타» 로 갑니다">✕ 묶음 빼기</button>';
   } else {
-    h += '<span class="lbgt">' + esc(title) + '</span><small>' + list.length + '</small>';
+    if (title) {
+      h += '<span class="lbgt">' + esc(title) + '</span><small>' + list.length + '</small>';
+    }
+    /* ★ 전에는 margin-left:auto 로 화면 맨 오른쪽 끝에 있었다 — 넓은 창에서는
+       이름에서 천 픽셀 넘게 떨어져 있어 아무도 못 찾았다. 이름 바로 옆에 둔다. */
     if (editing && cat) {
-      h += '<button class="wkb gcx" data-lbcedit="' + esc(cat) + '" title="묶음 이름 고치기">✎</button>';
+      h += '<button class="wkb gcx" data-lbcedit="' + esc(cat) + '"'
+        + ' title="묶음 이름 고치기">✎ 묶음 이름</button>';
     }
   }
   h += '</div>';
@@ -2538,7 +2616,7 @@ function lbGroup(title, list, all, key) {
      줄 목록과 타일을 오가면 눈이 자리를 잃는다 — 배지만 붙였다 뗀다. */
   return h + '<div class="lbgrid">' + list.map(function (x) {
     var i = all.indexOf(x);
-    return lbRow === x.t ? lbRowHtml(x, i) : lbTile(x, i);
+    return lbRow === x.t ? lbRowHtml(x, i) : lbTile(x, i, showCat);
   }).join('') + '</div></section>';
 }
 
@@ -2583,7 +2661,7 @@ function lbSeg(x, i) {
    윗줄 — 아이콘 … (도구) 나만|함께 ☆
    아래 — 이름(굵게) / 버전 · 마지막 고친 날(옅게)
    ★ 여는 곳은 «이름 덩이» 다. 도구 단추와 안 부딪치게 자리를 갈랐다. */
-function lbTile(x, i) {
+function lbTile(x, i, showCat) {
   var ico = '<span class="lico" style="--ic:' + linkColor(x.t) + '">'
     + ofSvg(ofIconOf(x)) + '</span>';
   var link = lbKindOf(x) === 'link';
@@ -2621,8 +2699,12 @@ function lbTile(x, i) {
     + ' title="즐겨찾기">' + (lbFav(x.t) ? '★' : '☆') + '</button>'
     + '</div>';
 
+  /* ★ 묶음을 이름 뒤에 딱지로 — 함께 쓰는 목록처럼 묶음 상자가 없을 때 쓴다 */
+  var catTag = showCat
+    ? '<u class="lbcatt">' + esc(x.tab || '기타') + '</u>'
+    : '';
   h += '<button class="lnk" data-lbgo="' + i + '" title="' + esc(x.u || '') + '">'
-    + '<b>' + esc(x.t) + '</b>'
+    + '<b>' + esc(x.t) + catTag + '</b>'
     + '<i>' + esc(sub) + '</i></button>';
 
   /* 편집 모드 — 칸 수 (그리드에서 몇 칸을 차지하나) */
@@ -3396,6 +3478,21 @@ function titleBar() {
     + (VER ? '<span class="tver">v' + esc(VER) + '</span>' : '')
     + '<span class="grip" title="여기를 잡고 끌면 위젯이 움직입니다">⠿⠿</span></div>';
 }
+/* 오늘이 내 급식지도인가 — 업데이트 띠와 같은 자리에 놓는다.
+   ★ 저절로 사라지면 못 보고 지나친다. «닫기» 를 눌러야 사라진다.
+     닫은 날을 적어 두어 그날 하루만 감춘다 — 다음 날이면 다시 뜬다. */
+function dutyTodayBar() {
+  if (!DUTY || !DUTY.me) return '';
+  var t = todayYmd();
+  if (!dutyIsMine(t)) return '';
+  if (dutyHidDay === t) return '';
+  var g = dutyOf(t);
+  return '<div class="dutytoday">'
+    + '<span>🍚 <b>오늘은 급식지도입니다</b>'
+    + (g && g.note ? ' · ' + esc(g.note) : '') + '</span>'
+    + '<button class="x" id="dutyX" title="오늘은 그만 보기">✕</button></div>';
+}
+
 function updBar() {
   if (!UPD || !UPD.state) return '';
   if (UPD.state === 'ready') {
@@ -3425,7 +3522,8 @@ function render() {
     return report();
   }
 
-  var d = STATE, html = '<div class="top">' + titleBar() + boardBar() + notesCard() + wxCard() + usageBar() + updBar() + taskBar();
+  var d = STATE, html = '<div class="top">' + titleBar() + boardBar() + notesCard() + wxCard()
+    + usageBar() + dutyTodayBar() + updBar() + taskBar();
   // 혜원 데스크는 수업진도 자료를 안 받으므로 날짜·요일을 스스로 만든다
   var nd = new Date();
   var dText = d.date ? d.date.slice(5).replace('-', '월 ') + '일'
@@ -3774,6 +3872,7 @@ widgetAPI.onData(function (p) {
   DASHORDER = p.dashOrder || [];
   DASHOFF = p.dashOff || [];
   DASHSIZE = p.dashSize || {};
+  DUTY = p.duty || null;
   FEED = (p.feed && p.feed.show && p.feed.data) ? p.feed.data : null;
   if (p.feed && p.feed.fav) FEEDFAV = p.feed.fav;
   if (p.feed && p.feed.fold) LBFOLD = p.feed.fold;
@@ -4189,6 +4288,13 @@ function wireViews(app) {
   if (acB) acB.addEventListener('click', function () {
     acBusy = true; AC = { months: [], error: '' }; render();
     widgetAPI.academicFetch().then(function (d) { acBusy = false; AC = d || { empty: true }; render(); });
+  });
+  /* 급식지도 당일 안내 닫기 — 오늘 날짜를 적어 두어 그날 하루만 감춘다 */
+  var dx = app.querySelector('#dutyX');
+  if (dx) dx.addEventListener('click', function () {
+    dutyHidDay = todayYmd();
+    try { localStorage.setItem('dutyHid', dutyHidDay); } catch (e) { /* 못 적어도 그만 */ }
+    render();
   });
   var mlB = app.querySelector('#mlGet') || app.querySelector('#mlGetBig');
   if (mlB) mlB.addEventListener('click', function () {

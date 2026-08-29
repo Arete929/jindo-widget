@@ -768,6 +768,7 @@ function sendToWidget() {
     grade: { on: getGradeOn(), sheets: getGradeSheets() },
     wx: { show: getWxShow(), spot: getWxSpot(), data: wxData },
     sys: { show: getSysShow(), data: sysData },
+    duty: dutyForWidget(),                       // 급식지도 순서표
     easyFav: loadState().easyFav || [],          // 혜원이지 대시보드 즐겨찾기
     links: getLinks(),                           // 바로가기 타일
     termStart: getTermStart(),                   // 진도표 1주차 기준
@@ -1276,6 +1277,7 @@ ipcMain.on('comci-config', (_e, cfg) => {
 /* ===================== 학사일정 (구글 시트) ===================== */
 // 학교 «연간 수업일수 계획표» 원본을 그대로 훑어본다. 권한 없이 받아진다.
 const academic = require('./academic.js');
+const mealduty = require('./mealduty.js');
 const academicFile = path.join(userDataPath, 'academic.json');
 
 function loadAcademic() {
@@ -1346,6 +1348,61 @@ ipcMain.handle('academic-fetch', async () => {
 
 /* ===================== 급식 (나이스) ===================== */
 const neis = require('./neis.js');
+
+/* ── 급식지도 순서표 ────────────────────────────────────────
+   ★ 하루에 한 번이면 넉넉하다 — 순서표는 학기에 한 번 만들고 잘 안 바뀐다.
+   ★ 못 받아도 급식은 멀쩡히 보여야 한다. 실패를 조용히 삼키고 옛것을 쓴다. */
+const dutyFile = path.join(userDataPath, 'mealduty.json');
+let dutyData = null, dutyFetching = false;
+function getDutySheet() {
+  const v = loadState().dutySheet;
+  return v === undefined ? mealduty.DEFAULT_SHEET : String(v || '');
+}
+function loadDuty() {
+  if (dutyData) return dutyData;
+  try { dutyData = JSON.parse(fs.readFileSync(dutyFile, 'utf-8')); } catch (e) { dutyData = null; }
+  return dutyData;
+}
+async function refreshDuty(why) {
+  if (dutyFetching) return loadDuty();
+  const id = getDutySheet();
+  if (!id) { dutyData = null; return null; }
+  dutyFetching = true;
+  try {
+    debugLog(`급식지도 순서표 받기 (${why})`);
+    const v = await mealduty.fetchDuty(id);
+    dutyData = v;
+    try { fs.writeFileSync(dutyFile, JSON.stringify(v)); } catch (e) { /* 못 적어도 그만 */ }
+    debugLog(`급식지도 — 날 ${Object.keys(v.days).length}개 · 사람 ${Object.keys(v.names).length}명`
+      + (v.warn.length ? ` · ${v.warn.join(' / ')}` : ''));
+    sendToWidget();
+    return v;
+  } catch (e) {
+    debugLog(`급식지도 받기 실패: ${(e && e.message) || e}`);
+    return loadDuty();
+  } finally { dutyFetching = false; }
+}
+/* 화면이 쓰기 좋은 꼴로 — «내 것» 은 미리 추려서 보낸다.
+   ★ 시트에 이름이 아예 없는 분(시간강사·보건교사 등)은 대상이 아니다.
+     «없다» 와 «대상이 아니다» 는 다르다 — 화면에서 달리 말해야 한다. */
+function dutyForWidget() {
+  const d = loadDuty();
+  if (!d) return null;
+  const st = loadState();
+  const masked = (st.comci && st.comci.teacher) || '';
+  const picked = String(st.dutyName || '').trim();
+  const me = picked || mealduty.matchName(masked, d.names || {});
+  return {
+    days: d.days || {},
+    names: Object.keys(d.names || {}),
+    me: me,                       // 시트에서 찾은 내 이름 ('' 면 대상이 아님)
+    masked: masked,               // 컴시간에 적힌 (가려진) 이름
+    picked: !!picked,             // 손으로 고른 것인가
+    mine: me ? mealduty.nextFor(d, me) : [],
+    all: me ? (d.names[me] || []) : [],
+    fetchedAt: d.fetchedAt || '', error: d.error || '', warn: d.warn || []
+  };
+}
 const mealFile = path.join(userDataPath, 'meals.json');
 
 function loadMeals() {
@@ -1504,6 +1561,9 @@ ipcMain.handle('get-settings', () => ({
     grade: { on: getGradeOn(), sheets: getGradeSheets() },
     rec: recordsmain.recState(),
     academicSheet: loadState().academicSheet || academic.DEFAULT_SHEET,
+    dutySheet: getDutySheet(),
+    dutyName: String(loadState().dutyName || ''),
+    duty: dutyForWidget(),                       // 설정에서 «내 이름» 을 고르려면 필요하다
     neis: loadState().neis || null,
     neisList: getNeisList(),
     links: getLinks(),
@@ -1690,6 +1750,19 @@ ipcMain.on('set-ui', (_e, v) => {
   if (v.usageShow !== undefined) { saveState({ usageShow: !!v.usageShow }); sendToWidget(); }
   if (v.usageStyle !== undefined) {
     saveState({ usageStyle: v.usageStyle === 'bar' ? 'bar' : 'ring' });
+    sendToWidget();
+  }
+  if (v.dutySheet !== undefined) {
+    /* 주소를 통째로 붙여넣어도 되게 — 시트 ID 만 꺼내 담는다 */
+    const id = mealduty.sheetIdOf(v.dutySheet) || String(v.dutySheet || '').trim();
+    saveState({ dutySheet: id });
+    debugLog(`급식지도 순서표 주소 변경: ${id}`);
+    dutyData = null;
+    scheduleTask('duty', '급식지도', 200, () => refreshDuty('주소가 바뀜'));
+  }
+  if (v.dutyName !== undefined) {
+    saveState({ dutyName: String(v.dutyName || '').trim() });
+    debugLog(`급식지도 내 이름: ${v.dutyName}`);
     sendToWidget();
   }
   if (v.academicSheet !== undefined) {
@@ -2363,6 +2436,14 @@ aiusage.setLogger(debugLog);
       scheduleTask('meal', '급식', 3000, () => refreshMeals());
     }
     setInterval(() => refreshMeals(), 12 * 60 * 60 * 1000);
+
+    /* 급식지도 순서표 — 학기에 한 번 만들고 잘 안 바뀐다. 하루에 한 번이면 넉넉하다. */
+    const d0 = loadDuty();
+    const dAge = d0 && d0.fetchedAt ? (Date.now() - new Date(d0.fetchedAt).getTime()) : Infinity;
+    if (!d0 || d0.error || dAge > 24 * 60 * 60 * 1000) {
+      scheduleTask('duty', '급식지도', 5000, () => refreshDuty('처음'));
+    }
+    setInterval(() => refreshDuty('하루에 한 번'), 24 * 60 * 60 * 1000);
     // 절전에서 깨거나 잠금을 풀었을 때도 한 번 본다 (그 사이 새 버전이 나왔을 수 있다)
     try {
       powerMonitor.on('resume', () => { debugLog('절전 해제 — 업데이트 확인'); checkForUpdates(); });

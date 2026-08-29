@@ -450,6 +450,28 @@
 </section>
 
 <section>
+  <h2>급식지도 순서표</h2>
+  <div class="row">
+    <label class="lb">순서표 시트</label>
+    <input type="text" id="dutySheet" placeholder="구글 시트 주소 또는 ID">
+    <button id="dutySave">저장</button>
+  </div>
+  <div class="hint" id="dutyMsg"></div>
+  <div class="row">
+    <label class="lb">내 이름</label>
+    <span class="palw" id="dutyWho"></span>
+  </div>
+  <div class="hint">
+    학교 <b>«급식지도 순서»</b> 시트입니다.
+    <b>급식</b> 화면에 날마다 지도교사가 붙고, <b>내 차례</b>는 «10월 2일 · D-34» 처럼 보입니다.<br>
+    이름은 컴시간에 적힌 이름(<b>김*호</b>)으로 순서표의 온전한 이름(<b>김진호</b>)을 저절로 찾습니다.
+    잘못 찾으면 위에서 손으로 고르세요.<br>
+    시간강사·보건교사처럼 <b>순서표에 이름이 없는 분</b>은 급식 화면에
+    «급식지도 대상이 아닙니다» 라고 나옵니다.
+  </div>
+</section>
+
+<section>
   <h2>학년부 일지 (우리 학년)</h2>
   <div class="row">
     <label class="lb">1학년</label>
@@ -831,6 +853,8 @@ function __paint() {
   $('verText').textContent = 'v' + UI.version;
   $('h1').textContent = '⚙️ ' + (UI.appName || '위젯') + ' 설정';
   if (UI.academicSheet && !$('acSheet').value) $('acSheet').value = UI.academicSheet;
+  if (UI.dutySheet !== undefined && !$('dutySheet').value) $('dutySheet').value = UI.dutySheet;
+  drawDutyWho();
   // ── 날씨
   var wx = UI.wx || {};
   var wxOn = wx.show !== false;
@@ -1324,6 +1348,45 @@ $('acSave').onclick = function () {
   widgetAPI.setUi({ academicSheet: id });
   $('acSheet').value = id;
 };
+
+/* ── 급식지도 순서표 ──────────────────────────────────────
+   ★ 드롭다운은 쓰지 않는다 — 이름은 단추 팔레트로 고른다. */
+$('dutySave').onclick = function () {
+  var v = $('dutySheet').value.trim();
+  var m = v.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  var id = m ? m[1] : v;
+  widgetAPI.setUi({ dutySheet: id });
+  $('dutySheet').value = id;
+  $('dutyMsg').textContent = '✅ 저장됨 · ' + stampNow() + '  (순서표를 받는 중…)';
+  setTimeout(load, 3000);
+};
+/* 내 이름 — 저절로 찾은 것을 보여 주고, 틀리면 손으로 고른다 */
+function drawDutyWho() {
+  var box = $('dutyWho');
+  if (!box) return;
+  var d = UI.duty || null;
+  if (!d) { box.innerHTML = '<span class="hint">아직 순서표를 못 받았습니다.</span>'; return; }
+  if (d.error) { box.innerHTML = '<span class="hint">' + esc(d.error) + '</span>'; return; }
+  var names = d.names || [];
+  var me = d.me || '';
+  var head = me
+    ? ('<b>' + esc(me) + '</b>' + (d.picked ? ' <small>(손으로 고름)</small>'
+        : ' <small>(' + esc(d.masked || '') + ' 로 찾음)</small>'))
+    : '<b>급식지도 대상이 아닙니다</b>';
+  box.innerHTML = '<div class="hint" style="width:100%">' + head + '</div>'
+    + '<button class="wkb" data-duty="">저절로 찾기</button>'
+    + names.map(function (n) {
+        return '<button class="wkb' + (n === me ? ' on' : '') + '" data-duty="'
+          + esc(n) + '">' + esc(n) + '</button>';
+      }).join('');
+  box.querySelectorAll('[data-duty]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      widgetAPI.setUi({ dutyName: b.dataset.duty });
+      $('dutyMsg').textContent = '✅ 저장됨 · ' + stampNow();
+      setTimeout(load, 400);
+    });
+  });
+}
 
 /* ── 연결·정보 ── */
 $('loginBtn').onclick = function () { widgetAPI.openLogin(); };

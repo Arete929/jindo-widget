@@ -100,8 +100,47 @@ function sideUsage() {
           }).join(''))
       + '</div>';
   }
-  return h + (keys.length ? '<button class="sulg wide" id="usgGet">⟳ 다시 읽기</button>' : '')
-    + '</div>';
+  return h + (keys.length ? usgReloadBox(keys) : '') + '</div>';
+}
+
+/* ── 다시 읽기 — 누르면 아래가 펼쳐지며 진행률이 보인다 ──────
+   ★ 무엇을 얼마나 읽었는지는 새로 물어볼 것이 없다.
+     USG[k].loading 이 이미 갈래마다 «읽는 중인가» 를 말해 준다. */
+var usgOpen = false;
+function usgProgress(keys) {
+  var done = 0, now = '';
+  keys.forEach(function (k) {
+    var u = USG[k] || {};
+    if (u.loading) { if (!now) now = u.label || k; }
+    else done++;
+  });
+  return { done: done, all: keys.length, now: now,
+    pct: keys.length ? Math.round(done / keys.length * 100) : 100 };
+}
+function usgReloadBox(keys) {
+  var g = usgProgress(keys);
+  var busy = g.done < g.all;
+  /* ★ 접고 펴는 것은 사람 뜻이다.
+     읽는 중이라고 억지로 펼쳐 두면, 접으려 눌러도 안 접혀 답답하다.
+     대신 ⟳ 를 누르면 그때 펼쳐 준다(아래 wire 에서 usgOpen=true). */
+  var open = usgOpen;
+  var h = '<button class="sulg wide' + (open ? ' on' : '') + '" id="usgGet">'
+    + (busy ? '읽는 중…' : '⟳ 다시 읽기')
+    + '<em class="cara">' + (open ? '▾' : '▸') + '</em></button>';
+  if (!open) return h;
+  h += '<div class="usgacc">'
+    + '<div class="usgk"><i style="width:' + g.pct + '%"></i></div>'
+    + '<div class="usgn">' + (busy
+      ? (esc(g.now || '') + ' 읽는 중 · ' + g.done + '/' + g.all)
+      : ('다 읽었습니다 · ' + g.all + '/' + g.all)) + '</div>';
+  h += keys.map(function (k) {
+    var u = USG[k] || {};
+    return '<div class="usgr' + (u.loading ? ' busy' : '') + '">'
+      + '<b>' + esc(u.label || k) + '</b>'
+      + '<span>' + (u.loading ? '읽는 중' : (u.needsLogin ? '로그인 필요'
+        : (u.ok ? '됨' : '못 읽음'))) + '</span></div>';
+  }).join('');
+  return h + '</div>';
 }
 
 /* 맨 위 띠 — 업데이트 안내와 «바뀐 내역». 사이드바 위까지 지나간다.
@@ -150,8 +189,13 @@ function drawSide() {
   });
   var ug = SIDE.querySelector('#usgGet');
   if (ug) ug.addEventListener('click', function () {
-    ug.textContent = '읽는 중…';
+    /* 읽는 중이면 «접기» 로 쓴다 — 다시 눌러 또 읽게 하면 헛일만 는다 */
+    var keys = (USGON.length ? USGON : Object.keys(USG || {}));
+    var g = usgProgress(keys);
+    if (g.done < g.all) { usgOpen = !usgOpen; render(); return; }
+    usgOpen = true;
     widgetAPI.usageRefresh();
+    render();
   });
   var gw = SIDE.querySelector('#goWid');
   if (gw) gw.addEventListener('click', function () { widgetAPI.showWidget(); });
