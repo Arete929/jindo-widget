@@ -1356,7 +1356,12 @@
   .seg button:first-child.on {
     background: color-mix(in srgb, var(--fg) 55%, var(--bg)); color: var(--bg);
   }
-  .seg.wait { opacity: .5; }
+  /* 보내는 중 — 흐리게 하지 않는다(꺼진 것처럼 보인다). 맥박으로만 알린다 */
+  .seg.wait { animation: segpulse 1.1s ease-in-out infinite; }
+  @keyframes segpulse {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+    50%      { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 0%, transparent); }
+  }
 
   /* 타일도 끌어서 묶음을 옮긴다 */
   .lbt.pick { cursor: grab; }
@@ -1486,7 +1491,8 @@
   .seg button.on { background: var(--accent); }
   .seg button:first-child.on { background: color-mix(in srgb, var(--fg) 55%, var(--bg)); }
   .seg button:first-child.on svg { stroke: var(--bg); }
-  .seg.wait { opacity: .45; }
+  /* ★ 위에도 .seg.wait 가 있지만 뒤에 오는 이것이 이긴다 — 여기가 실제로 먹는 자리다 */
+  .seg.wait { opacity: 1; }
 
   .lbt .lbstar {
     position: static; flex: none; border: 0; background: none; cursor: pointer;

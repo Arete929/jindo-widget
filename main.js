@@ -307,10 +307,33 @@ async function refreshFeed() {
        열쇠가 없으면 예전처럼 «공유로 켠 것» 만 받는다(GET ?view=json). */
     let j, admin = false;
     if (getFeedKey()) {
-      try { j = await feedPost({ act: 'list' }); admin = true; }
-      catch (e) { debugLog('런처 열쇠로 못 받음 — ' + (e.message || e)); }
+      /* ★ 한 번 미끄러졌다고 포기하지 않는다 — GAS 는 첫 깨울 때 유난히 느리다 */
+      for (let tries = 0; tries < 2 && !j; tries++) {
+        try { j = await feedPost({ act: 'list' }); admin = true; }
+        catch (e) {
+          debugLog('런처 열쇠로 못 받음' + (tries ? '(두 번째)' : '') + ' — ' + (e.message || e));
+          if (tries === 0) await new Promise((r) => setTimeout(r, 1200));
+        }
+      }
+      /* ★ 여기서 공개 목록(?view=json)으로 떨어지면 안 된다.
+         그것은 «공유로 켠 것만» 주고 shared 도 안 보낸다. 그대로 갈아치우면
+         서른일곱이 넷으로 줄고 그 넷마저 «나만 보기» 로 보인다 — 실제로 그랬다.
+         못 받았으면 있던 것을 그대로 두고 사정만 알린다. */
+      if (!j) {
+        if (feedData && feedData.apps && feedData.apps.length) {
+          feedData = Object.assign({}, feedData,
+            { error: '지금은 런처가 응답하지 않습니다 — 아까 받아 둔 것을 보여 줍니다' });
+        } else {
+          feedData = { apps: [], at: '', admin: true, cats: [],
+            error: '런처가 응답하지 않습니다' };
+        }
+        debugLog('런처보드 — 못 받아서 있던 것을 그대로 둔다');
+        sendToWidget();
+        return;
+      }
     }
     if (!j) {
+      // 열쇠가 없는 사람(혜원이지) — 공개 목록이 «제 목록» 이다
       j = JSON.parse(await fetchText(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'view=json'));
     }
     const apps = ((j && j.apps) || []).map(feedApp).filter((a) => a.t);
@@ -1881,6 +1904,21 @@ ipcMain.on('open-easy', () => openEasyWindow());
 ipcMain.handle('feed-refresh', async () => { await refreshFeed(); return feedData; });
 /* 런처보드에서 고친 것 — 열쇠가 있는 PC 에서만 통한다.
    ★ 고친 뒤에는 곧바로 다시 받아 화면을 맞춘다. */
+/* 목록을 다시 안 받았을 때, 바뀐 줄만 손으로 고친다.
+   ★ 열쇠는 «고치기 전» 이름·주소다(런처가 줄을 찾는 것과 같은 기준). */
+function patchFeed(act, o) {
+  if (!feedData || !feedData.apps) return;
+  const k = (o && o.key) || {};
+  const hit = feedData.apps.filter((a) =>
+    a.t === String(k.name || '') && a.u === tidyUrl(k.appUrl))[0];
+  if (!hit) return;
+  if (act === 'share') hit.shared = !!o.shared;
+  else if (act === 'hide') hit.hidden = !!o.hidden;
+  else if (act === 'size') {
+    const n = Number(o.size);
+    hit.size = (n >= 1 && n <= 3) ? n : 1;
+  }
+}
 ipcMain.handle('feed-act', async (_e, o) => {
   const act = String((o && o.act) || '');
   if (['add', 'edit', 'del', 'share', 'hide', 'scan', 'order', 'size',
@@ -1888,10 +1926,23 @@ ipcMain.handle('feed-act', async (_e, o) => {
     return { ok: false, error: '모르는 일입니다' };
   }
   try {
-    const j = await feedPost(o);
-    feedData = { apps: ((j.apps) || []).map(feedApp).filter((a) => a.t),
-      at: j.at || '', error: '', admin: true, cats: (j.cats || []).map(String) };
-    debugLog('런처보드 ' + act + ' — 앱 ' + feedData.apps.length + '개');
+    /* ★ 켜고 끄는 일에는 목록 전체가 필요 없다 — light 로 부탁하면
+       런처가 한 칸만 고치고 곧바로 답한다(왕복 5초 → 1초쯤). */
+    const light = ['share', 'hide', 'size'].indexOf(act) >= 0;
+    const j = await feedPost(light ? Object.assign({ light: 1 }, o) : o);
+
+    if (Array.isArray(j.apps)) {
+      feedData = { apps: j.apps.map(feedApp).filter((a) => a.t),
+        at: j.at || '', error: '', admin: true, cats: (j.cats || []).map(String) };
+      debugLog('런처보드 ' + act + ' — 앱 ' + feedData.apps.length + '개');
+    } else {
+      /* ★ 목록이 안 왔다. 여기서 apps 를 빈 배열로 두면 화면이 통째로 비어
+         «앱이 다 사라졌다» 처럼 보인다 — 실제로 그런 일이 있었다.
+         있던 것을 그대로 두고 바뀐 줄만 손으로 고친다. */
+      patchFeed(act, o);
+      if (feedData) feedData.at = j.at || feedData.at;
+      debugLog('런처보드 ' + act + ' — 가볍게 답받음(목록은 그대로)');
+    }
     sendToWidget();
     return { ok: true, added: j.added, touched: j.touched, at: j.at || '' };
   } catch (e) {
