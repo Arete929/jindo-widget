@@ -1475,13 +1475,28 @@ async function refreshDuty(why) {
 function dutyForWidget() {
   const d = loadDuty();
   if (!d) return null;
+  /* ★ 순서표의 «지도교사» 칸에는 사람 이름만 있는 것이 아니다 —
+     입학식·개천절·수련활동 처럼 그날의 사정도 적혀 있고, 그것들도
+     «두세 글자 한글» 이라 이름 거르기를 그냥 통과했다.
+     컴시간 교사 명단과 맞춰 본다 — 진짜 선생님은 거기 있다. */
+  const tt = loadComci();
+  const masks = ((tt && tt.teachers) || []).map((t) => String(t.name || ''))
+    .filter(Boolean);
+  const isTeacher = (full) => !masks.length || masks.some((m) => {
+    if (m.length !== full.length) return false;
+    for (let i = 0; i < m.length; i++) {
+      if (m[i] === '*' || m[i] === '＊') continue;
+      if (m[i] !== full[i]) return false;
+    }
+    return true;
+  });
   const st = loadState();
   const masked = (st.comci && st.comci.teacher) || '';
   const picked = String(st.dutyName || '').trim();
   const me = picked || mealduty.matchName(masked, d.names || {});
   return {
     days: d.days || {},
-    names: Object.keys(d.names || {}),
+    names: Object.keys(d.names || {}).filter(isTeacher),
     me: me,                       // 시트에서 찾은 내 이름 ('' 면 대상이 아님)
     masked: masked,               // 컴시간에 적힌 (가려진) 이름
     picked: !!picked,             // 손으로 고른 것인가

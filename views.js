@@ -2169,6 +2169,25 @@ var LBCOLORS = [
   { k: 'lemon', t: '레몬' }, { k: 'mint', t: '민트' }, { k: 'sky', t: '하늘' },
   { k: 'lilac', t: '라일락' }, { k: 'sand', t: '모래' }, { k: 'sage', t: '세이지' }
 ];
+/* 숨긴 것을 펼쳐 보고 있나 */
+var lbHidOpen = false;
+/* 숨기기·되살리기 — 먼저 감추고 뒤에 보낸다.
+   ★ 지우는 것이 아니다. 시트에 그대로 있고 «숨김» 표시만 바뀐다. */
+function lbSetHidden(x, on) {
+  if (!!x.hidden === !!on) return;
+  x.hidden = !!on;
+  if (on) lbHidOpen = true;      // 어디로 갔는지 보이게 펼쳐 준다
+  lbWait[x.t] = 1;
+  lbErr = '';
+  render();
+  lbQ2.push({
+    id: x.t,
+    body: { act: 'hide', key: lbKey(x), hidden: !!on },
+    undo: function () { x.hidden = !on; }
+  });
+  lbPump();
+}
+
 /* 색 고르기 — 먼저 칠해 보여 주고 뒤에 보낸다(왕복이 5초다) */
 function lbSetColor(x, c) {
   var was = x.color || '';
@@ -2592,7 +2611,29 @@ function lbListHtml() {
     });
     h += '</section>';
   });
+  h += lbHiddenBox();
   return h;
+}
+
+/* 숨긴 것 — 맨 아래에 접어 둔다. 눌러 펴면 되살릴 수 있다.
+   ★ 숨겼는데 어디로 갔는지 알 수 없으면 «지워진 것» 과 다를 바가 없다. */
+function lbHiddenBox() {
+  if (!lbAdmin()) return '';
+  var hid = (FEED.apps || []).filter(function (x) { return x.hidden; });
+  if (!hid.length) return '';
+  var h = '<section class="lbpanel hid">'
+    + '<div class="lbband" id="lbHidFold" title="눌러서 펴고 접습니다">'
+    + '<b>숨긴 것</b><small>' + hid.length + '</small>'
+    + '<i>' + (lbHidOpen ? '눌러서 접기' : '눌러서 펴기') + '</i></div>';
+  if (lbHidOpen) {
+    h += '<div class="hidlist">' + hid.map(function (x) {
+      return '<div class="hidrow"><b>' + esc(x.t) + '</b>'
+        + '<u>' + esc(x.tab || '기타') + '</u>'
+        + '<span class="sp"></span>'
+        + '<button class="ntb" data-lbshow="' + esc(x.t) + '">되살리기</button></div>';
+    }).join('') + '</div>';
+  }
+  return h + '</section>';
 }
 /* 지금 화면에 나온 묶음 열쇠들 — «모두 접기» 에 쓴다 */
 function lbFoldKeys() {
@@ -2721,11 +2762,20 @@ function lbRowHtml(x, i) {
         : '<div class="lbin"><i>버전</i><input id="lbr_ver" data-lbrv="ver" value="' + esc(vv('ver', x.version)) + '"></div>')
       + '<div class="lbin"><i>설명</i>'
       + '<input id="lbr_desc" data-lbrv="desc" value="' + esc(vv('desc', x.d)) + '"></div>'
+      /* ★ 묶음도 여기서 바꾼다 — 고치는 중에는 타일의 📁 에 손이 안 닿는다.
+         드롭다운은 쓰지 않는다(전역 규칙) — 단추로 고른다. */
+      + '<div class="lbin pal"><i>묶음</i><span class="palw">'
+      + lbCats().map(function (c) {
+          return '<button type="button" class="wkb'
+            + (vv('tab', x.tab || '기타') === c ? ' now' : '')
+            + '" data-lbrtab="' + esc(c) + '">' + esc(c) + '</button>';
+        }).join('') + '</span></div>'
       + '<div class="lbrb">'
       + '<button class="ntb" data-lbrsave="' + i + '">저장</button>'
       + '<button class="wkb" data-lbrcancel="1">그만</button>'
       + '<span class="sp"></span>'
-      + '<button class="wkb" data-lbdel="' + i + '" title="빼기">✕</button>'
+      + '<button class="wkb" data-lbdel="' + i + '"'
+      + ' title="목록에서 감춥니다 — 지워지지 않습니다">숨기기</button>'
       + '</div></div>';
   }
 }
@@ -2775,7 +2825,8 @@ function lbTile(x, i, showCat) {
     + '>';
   /* 편집 모드 — 왼쪽 위 ⊖ 로 뺀다 (빠른 설정창처럼) */
   if (editing) {
-    h += '<button class="tminus" data-lbdel="' + i + '" title="빼기">−</button>';
+    h += '<button class="tminus" data-lbdel="' + i + '"'
+      + ' title="목록에서 감춥니다 — 지워지지 않습니다">−</button>';
   }
   h += '<div class="lbth">' + ico;
   if (lbAdmin()) {
@@ -3005,6 +3056,18 @@ function wireBoardList(root) {
   });
   var rc = root.querySelector('[data-lbrcancel]');
   if (rc) rc.addEventListener('click', function () { lbRow = ''; lbRowVals = null; render(); });
+  /* 묶음 고르기 — 고른 것을 담아 두고 그 자리에서 표시만 바꾼다 */
+  root.querySelectorAll('[data-lbrtab]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      lbRowVals = lbRowVals || {};
+      lbRowVals.tab = b.dataset.lbrtab;
+      var box = b.parentElement;
+      box.querySelectorAll('[data-lbrtab]').forEach(function (z) {
+        z.classList.toggle('now', z === b);
+      });
+    });
+  });
   /* ★ 적는 족족 담아 둔다 — 저장 단추를 누르는 사이에 다시 그려져도 안 잃는다 */
   root.querySelectorAll('[data-lbrv]').forEach(function (e) {
     e.addEventListener('input', function () {
@@ -3023,10 +3086,15 @@ function wireBoardList(root) {
         return e ? e.value.trim() : '';
       };
       var key = lbKey(x);          // ★ 고치기 «전» 이름·주소로 줄을 찾는다
+      /* ★ 고른 묶음을 «비우기 전에» 꺼내 둔다 —
+         아래에서 lbRowVals 를 null 로 만든 뒤 읽으면 늘 옛 묶음이 갔다. */
+      var pickedTab = (lbRowVals && lbRowVals.tab) || x.tab || '기타';
       lbRow = ''; lbRowVals = null;
       lbDo('edit', { key: key, data: {
         name: g('#lbr_name', 'name') || x.t, appUrl: g('#lbr_url', 'url'),
-        desc: g('#lbr_desc', 'desc'), tab: x.tab || '기타', icon: x.icon,
+        desc: g('#lbr_desc', 'desc'),
+        tab: pickedTab,
+        icon: x.icon,
         version: lbKindOf(x) === 'link' ? '' : g('#lbr_ver', 'ver'),
         gasUrl: x.gas, sheetUrl: x.sheet, kind: lbKindOf(x),
         visibility: x.shared ? '공유' : '나만'
@@ -3148,20 +3216,29 @@ function wireBoardList(root) {
       if (x) lbOpenForm(x);
     });
   });
+  /* ★ 전에는 여기서 시트 줄을 «지웠다»(del). 되돌릴 수 없어서
+     «과세특 작성 도우미» 한 줄이 그렇게 사라졌다.
+     목록에서 안 보이게 하고 싶을 뿐인데 지우는 것은 너무 세다.
+     이제 «숨기기» 다 — 시트에 그대로 남고, 아래 «숨긴 것» 에서 되살린다. */
   root.querySelectorAll('[data-lbdel]').forEach(function (b) {
     b.addEventListener('click', function () {
       var x = at(b, 'lbdel');
       if (!x) return;
-      /* ★ 시트에서 «줄이 통째로 지워지는» 일이다 — 되돌릴 수 없다.
-         작은 단추에 «정말?» 만 띄우면 두 번 눌러 지나치기 쉽다.
-         실제로 그렇게 앱 하나가 지워졌다. 이름을 대고 또렷이 묻는다. */
-      if (!confirm('«' + x.t + '» 을(를) 런처보드에서 지웁니다.' + String.fromCharCode(10)
-        + String.fromCharCode(10)
-        + '앱 자체는 그대로 남습니다. 이 목록에서만 사라집니다.' + String.fromCharCode(10)
-        + '되돌릴 수 없습니다 — 다시 담으려면 손으로 넣어야 합니다.')) return;
-      lbDo('del', { key: lbKey(x) }, '빼는 중');
+      lbSetHidden(x, true);
     });
   });
+  /* 숨긴 것 되살리기 */
+  root.querySelectorAll('[data-lbshow]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var x = (FEED.apps || []).filter(function (a) {
+        return a.t === b.dataset.lbshow;
+      })[0];
+      if (x) lbSetHidden(x, false);
+    });
+  });
+  var hf = root.querySelector('#lbHidFold');
+  if (hf) hf.addEventListener('click', function () { lbHidOpen = !lbHidOpen; render(); });
 }
 /* 검색칸이 바뀔 때 — 목록만 갈아 끼운다 */
 function lbPaint(root) {

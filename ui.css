@@ -1316,6 +1316,26 @@
     border: 1px solid color-mix(in srgb, var(--fg) 20%, var(--bg));
     background: color-mix(in srgb, var(--fg) 8%, var(--bg));
   }
+  /* 숨긴 것 — 맨 아래에 조용히. 눌러 펴면 되살릴 수 있다 */
+  .lbpanel.hid { background: var(--card); border-style: dashed; opacity: .9; }
+  .lbpanel.hid .lbband { cursor: pointer; }
+  .lbpanel.hid .lbband b { color: var(--dim); }
+  .hidlist { display: flex; flex-direction: column; gap: calc(4px * var(--wf)); }
+  .hidrow {
+    display: flex; align-items: center; gap: calc(8px * var(--wf));
+    background: var(--bg); border: 1px solid var(--line); border-radius: 9px;
+    padding: calc(6px * var(--wf)) calc(10px * var(--wf));
+  }
+  .hidrow b { font-weight: 800; font-size: calc(12px * var(--wf)); color: var(--fg2); }
+  .hidrow u {
+    text-decoration: none; font-size: calc(10px * var(--wf)); font-weight: 800;
+    color: var(--dim); background: var(--card2);
+    border-radius: 999px; padding: 1px calc(7px * var(--wf));
+  }
+  .hidrow .sp { flex: 1; }
+  .hidrow .ntb { padding: calc(3px * var(--wf)) calc(11px * var(--wf));
+                 font-size: calc(11px * var(--wf)); }
+
   .lbpanel.y {
     border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
     background: color-mix(in srgb, var(--accent) 11%, var(--bg));
