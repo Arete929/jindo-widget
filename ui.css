@@ -106,7 +106,11 @@
      가로채여서 아예 안 움직인다 — 그래서 끌기는 머리 줄에만 준다. */
   /* ★ 바닥 여백이 11px 뿐이라 맨 아래 타일이 반쯤 잘려 보였다.
      창 테두리가 없어 아래 끝이 어디인지 눈으로 가늠하기도 어렵다. 넉넉히 둔다. */
-  #app { padding: 0 11px 34px; max-height: 100vh; overflow-y: auto; overflow-x: hidden; }
+  /* ★ 바닥 여백 — 11px → 34px → 60px 으로 세 번 늘렸다.
+     창이 화면보다 컸을 때는 여백을 아무리 늘려도 소용이 없었다(v1.70.0 에서 창을 가뒀다).
+     이제는 «끝이 보이도록» 넉넉히 둔다 — 마지막 타일이 화면 끝에 딱 붙어 있으면
+     아래에 더 있는지 없는지 알 수가 없어 «잘렸다» 로 보인다. */
+  #app { padding: 0 11px 60px; max-height: 100vh; overflow-y: auto; overflow-x: hidden; }
   #app::-webkit-scrollbar { width: 7px; }
   #app::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
   #app::-webkit-scrollbar-track { background: transparent; }
@@ -1317,6 +1321,8 @@
     background: color-mix(in srgb, var(--fg) 8%, var(--bg));
   }
   /* 숨긴 것 — 맨 아래에 조용히. 눌러 펴면 되살릴 수 있다 */
+  /* 맨 마지막 상자 아래 — 여기서 끝났다는 것이 보이게 한 뼘 더 */
+  .lbpanel:last-of-type { margin-bottom: calc(22px * var(--wf)); }
   .lbpanel.hid { background: var(--card); border-style: dashed; opacity: .9; }
   .lbpanel.hid .lbband { cursor: pointer; }
   .lbpanel.hid .lbband b { color: var(--dim); }
