@@ -99,9 +99,12 @@ function findBrowser(key) {
   return null;
 }
 /* 이 PC 에 깔려 있는 것들 — 설정에서 고르게 보여준다 */
+/* ★ 차례가 곧 «고르지 않았을 때 뽑히는 순서» 다.
+   전에는 웨일이 맨 앞이라, 웨일이 깔린 뒤로는 «크롬으로 로그인하세요» 라면서
+   웨일을 열었다. 바로 위 주석대로 크롬이 먼저다. */
 const BROWSERS = [
-  { key: 'whale', label: '웨일' },
   { key: 'chrome', label: '크롬' },
+  { key: 'whale', label: '웨일' },
   { key: 'edge', label: '엣지' }
 ];
 function browserList() {
@@ -120,6 +123,22 @@ function browserPath() {
   }
   const have = browserList();
   return have.length ? have[0].path : null;
+}
+/* 지금 열리는 브라우저의 «사람이 부르는 이름» — 안내 글에 쓴다.
+   ★ 전에는 어디에나 «크롬» 이라고 글자로 박아 두었다. 웨일이 열려도 «크롬 탭을 열었어요»
+     라고 해서 어디를 봐야 할지 알 수 없었다. */
+function browserName() {
+  const exe = browserPath();
+  if (!exe) return '기본 브라우저';
+  const base = path.basename(exe).toLowerCase();
+  const b = BROWSERS.filter((x) => base.indexOf(x.key === 'edge' ? 'msedge' : x.key) >= 0)[0];
+  return b ? b.label : '브라우저';
+}
+/* 로그인 넘겨받기 주소 — 앱 이름을 함께 실어 보낸다.
+   ★ 웹 대시보드 한 곳을 진호알리미·혜원이지가 같이 쓴다. 이름을 보내야
+     그 화면이 «진호알리미 계정 연결» 로 제대로 적는다. */
+function handoffUrl(port, nonce) {
+  return `${APP_URL}?widget=${port}&nonce=${nonce}&app=${encodeURIComponent(APP_NAME)}`;
 }
 function openInBrowser(url) {
   const exe = browserPath();
@@ -760,6 +779,8 @@ function sendToWidget() {
     todayEvent: todayEventText(),
     notes: notesToShow(),
     rec: recordsmain.recState(),
+    /* 그리는 쪽 안내 글이 «크롬» 이라고 못박지 않도록, 실제로 열리는 이름을 보낸다 */
+    browserLabel: browserName(),
     flavor: FLAVOR,
     appName: APP_NAME,
     usage: { show: getUsageShow(), on: getUsageOn(), style: getUsageStyle(),
@@ -831,8 +852,8 @@ function startLogin() {
   // 앞서 연 크롬 탭이 무효가 되지 않게. (탭만 다시 띄운다)
   if (handoffServer && handoffServer.listening) {
     const p = handoffServer.address().port;
-    debugLog(`이미 로그인을 기다리는 중 (127.0.0.1:${p}) — 크롬 탭만 다시 엽니다`);
-    openInBrowser(`${APP_URL}?widget=${p}&nonce=${handoffNonce}`);
+    debugLog(`이미 로그인을 기다리는 중 (127.0.0.1:${p}) — ${browserName()} 탭만 다시 엽니다`);
+    openInBrowser(handoffUrl(p, handoffNonce));
     return;
   }
   stopHandoffServer();
@@ -910,9 +931,9 @@ function startLogin() {
 
   handoffServer.listen(0, '127.0.0.1', () => {
     const port = handoffServer.address().port;
-    debugLog(`로그인 대기 시작 (127.0.0.1:${port}) — 크롬을 엽니다`);
-    openInBrowser(`${APP_URL}?widget=${port}&nonce=${nonce}`);
-    notify(APP_NAME, '크롬 탭을 열었어요. 거기서 구글 로그인해 주세요.');
+    debugLog(`로그인 대기 시작 (127.0.0.1:${port}) — ${browserName()}을(를) 엽니다`);
+    openInBrowser(handoffUrl(port, nonce));
+    notify(APP_NAME, `${browserName()} 탭을 열었어요. 거기서 구글 로그인해 주세요.`);
   });
 
   // 5분 안에 안 끝나면 서버를 닫는다 (열어둔 채로 두지 않는다)
@@ -1691,6 +1712,8 @@ ipcMain.handle('get-settings', () => ({
     size: getScale(), opacity: getOpacity(), alwaysOnTop: getAlwaysOnTop(),
     autoLaunch: app.getLoginItemSettings().openAtLogin,
     version: app.getVersion(),
+    /* 그리는 쪽 안내 글이 «크롬» 이라고 못박지 않도록, 실제로 열리는 이름을 보낸다 */
+    browserLabel: browserName(),
     flavor: FLAVOR,
     appName: APP_NAME,
     theme: getTheme(),
@@ -1996,8 +2019,8 @@ function createTray() {
         click: () => resetWidgetPosition()
       },
       ...(HAS_TT ? [
-        { label: '수업진도 앱 열기 (크롬)', click: () => openInBrowser(APP_URL) },
-        { label: '크롬으로 로그인', click: () => startLogin() }
+        { label: `수업진도 앱 열기 (${browserName()})`, click: () => openInBrowser(APP_URL) },
+        { label: `${browserName()}으로 로그인`, click: () => startLogin() }
       ] : []),
       {
         label: 'Windows 시작 시 자동 실행', type: 'checkbox',

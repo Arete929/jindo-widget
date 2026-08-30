@@ -32,6 +32,9 @@ function bumpFont(key, dir) {
 /* 갈래 — jinho(진호알리미, 시간표 있음) / hyewon(혜원 데스크, 시간표 없음).
    메인이 그릴 때마다 알려 준다. 시간표에 딸린 것만 가리고 나머지는 둘 다 같다. */
 var FLAVOR = 'jinho', HAS_TT = true, APPNAME = '진호알리미';
+/* 지금 열리는 브라우저 이름 — 안내 글에 쓴다.
+   ★ 전에는 «크롬» 이라고 글자로 박아 두어, 웨일이 열려도 크롬이라고 했다. */
+var BROWSER = '크롬';
 // 지금 그리고 있는 창이 «넓은 창»(easy.html)인가. 왼쪽 메뉴가 있으면 넓은 창이다.
 // ★ 갈래로 가르지 않는다 — 한 프로그램이 위젯 창과 넓은 창을 함께 띄우기 때문이다.
 var IS_EASY = !!document.getElementById('side');
@@ -1475,7 +1478,8 @@ function recSetup() {
     return h + '</div>';
   }
   if (!st.linked) {
-    h += '<div class="rw">구글에 한 번 연결해 주세요. 크롬이 열리고, 허용하면 끝납니다.</div>'
+    h += '<div class="rw">구글에 한 번 연결해 주세요. ' + esc(BROWSER)
+      + '이(가) 열리고, 허용하면 끝납니다.</div>'
       + '<button class="btn" id="recIn">구글 연결하기</button>';
     return h + '</div>';
   }
@@ -3737,9 +3741,9 @@ function render() {
     // 구글이 앱 안 브라우저 로그인을 막기 때문에, 크롬을 열어 거기서 로그인하고
     // 결과만 위젯이 넘겨받는다 (main.js 의 startLogin 참고).
     app.innerHTML = titleBar() + updBar() + taskBar() + '<div class="empty">수업진도에 로그인해 주세요.'
-      + '<br><button class="btn" onclick="widgetAPI.openLogin()">크롬으로 로그인</button>'
+      + '<br><button class="btn" onclick="widgetAPI.openLogin()">구글 계정 연결</button>'
       + '<div style="margin-top:9px;font-size:10.5px;line-height:1.5;color:#6f7885">'
-      + '크롬 탭이 열립니다. 거기서 구글 로그인하면<br>'
+      + esc(BROWSER) + ' 탭이 열립니다. 거기서 구글 로그인하면<br>'
       + '위젯이 자동으로 이어받아요.</div></div>';
     return report();
   }
@@ -3761,7 +3765,7 @@ function render() {
     + (HAS_TT
         ? '<button class="ico" title="지금 새로고침" onclick="widgetAPI.refreshNow()">⟳</button>'
         : '<button class="ico" id="reGet" title="보고 있는 탭을 다시 읽기">⟳</button>')
-    + (HAS_TT ? '<button class="ico" title="수업진도 앱 열기(크롬)" onclick="widgetAPI.openApp()">↗</button>' : '')
+    + (HAS_TT ? '<button class="ico" title="수업진도 앱 열기" onclick="widgetAPI.openApp()">↗</button>' : '')
     + '</div>';
 
   var noteTxt = d.note || TODAYEV || '';
@@ -4113,6 +4117,7 @@ document.addEventListener('focusout', function () {
 
 widgetAPI.onData(function (p) {
   if (p.flavor) FLAVOR = p.flavor;
+  if (p.browserLabel) BROWSER = p.browserLabel;
   STATE = p.data;
   // 혜원이지는 대시보드라는 «위젯에 없는» 화면이 있어서, 보던 화면을 스스로 챙긴다
   if (!IS_EASY) VIEW = p.view || VIEW;
@@ -4635,7 +4640,7 @@ function wireViews(app) {
   });
   var rin = app.querySelector('#recIn');
   if (rin) rin.addEventListener('click', function () {
-    rin.textContent = '크롬에서 허용해 주세요…';
+    rin.textContent = BROWSER + '에서 허용해 주세요…';
     recErr = '';
     widgetAPI.recSignIn().then(function (st) { REC = st; recErr = ''; render(); })
       .catch(function (e) { recErr = (e && e.message) || String(e); render(); });
@@ -4643,11 +4648,11 @@ function wireViews(app) {
   var rpm = app.querySelector('#recPerm');
   if (rpm) rpm.addEventListener('click', function () {
     widgetAPI.openUrl('https://myaccount.google.com/permissions');
-    rpm.textContent = '크롬에서 «혜원데스크2026» 을 지워 주세요';
+    rpm.textContent = BROWSER + '에서 «혜원데스크2026» 을 지워 주세요';
   });
   var rin2 = app.querySelector('#recIn2');
   if (rin2) rin2.addEventListener('click', function () {
-    rin2.textContent = '크롬에서 허용해 주세요…';
+    rin2.textContent = BROWSER + '에서 허용해 주세요…';
     recErr = '';
     widgetAPI.recSignIn().then(function (st) { REC = st; recErr = ''; render(); })
       .catch(function (e) { recErr = (e && e.message) || String(e); render(); });
