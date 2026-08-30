@@ -1185,8 +1185,26 @@
     background: var(--accent); color: var(--on); border: 0; cursor: pointer;
     font-size: 12px; font-weight: 700; font-family: inherit;
   }
-  .foot { margin-top: 8px; text-align: center; font-size: 9px; color: var(--dim);
-          opacity: .7; letter-spacing: .2px; }
+  /* ★ 화면 «끝» 표시.
+     긴 화면(주간업무 5000px·학사일정 9500px)은 창 아래 끝에서 글이 그냥 끊긴다.
+     그러면 «아래에 더 있다» 와 «다 봤다» 가 눈으로 구분되지 않아 잘린 것처럼 보인다.
+     선을 긋고 «여기가 끝입니다» 라고 적어 끝을 분명히 한다.
+     ★ 글자 크기는 반드시 calc(px * var(--wf)) — A−/A+ 를 따라가야 한다. */
+  .foot {
+    margin-top: calc(16px * var(--wf));
+    padding-top: calc(11px * var(--wf));
+    border-top: 1px solid var(--line);
+    text-align: center; letter-spacing: -.2px;
+  }
+  .foot .fend {
+    display: block; font-size: calc(11px * var(--wf));
+    font-weight: 700; color: var(--dim);
+  }
+  .foot .fby {
+    display: block; margin-top: calc(3px * var(--wf));
+    font-size: calc(9px * var(--wf)); color: var(--dim);
+    opacity: .55; letter-spacing: .2px;
+  }
 
   /* 사용량 띠 오른쪽의 작은 단추들 — 원형·막대 고르기 */
   .usgset { display: flex; flex-direction: column; gap: 3px; justify-content: center; }

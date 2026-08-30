@@ -1,26 +1,16 @@
 {
-  "name": "jindo-widget",
-  "productName": "JindoWidget",
-  "version": "1.71.1",
+  "name": "hyewon-desk",
+  "productName": "HyewonDesk",
+  "version": "1.72.0",
   "description": "체육 수업진도 — 오늘 수업·이번주·반별 진도를 항상 위에 띄워 보여주는 위젯",
   "main": "main.js",
   "author": "Arete929",
   "license": "MIT",
-  "scripts": {
-    "start": "electron .",
-    "dist": "electron-builder --win",
-    "build:jinho": "electron-builder --win --config build-jinho.yml --publish never",
-    "build:hyewon": "electron-builder --win --config build-hyewon.yml --publish never",
-    "build:both": "npm run build:jinho && npm run build:hyewon"
-  },
-  "devDependencies": {
-    "electron": "^35.0.0",
-    "electron-builder": "^25.1.8"
-  },
   "dependencies": {
     "electron-updater": "^6.8.9"
   },
   "allowScripts": {
     "electron@35.7.5": true
-  }
+  },
+  "flavor": "hyewon"
 }
