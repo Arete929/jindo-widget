@@ -108,8 +108,16 @@
     box-shadow: 0 6px 10px -8px rgba(0,0,0,.45);
   }
   .ehead .top2 { background: none; padding: 0; margin: 6px 0 0; }
-  .main::-webkit-scrollbar { width: 9px; }
-  .main::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; }
+  /* ★ 위젯(ui.css #app)과 같은 굵기·같은 진하기로 맞춘다 — 옅어서 안 보였다 */
+  .main::-webkit-scrollbar { width: 14px; }
+  .main::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--fg) 34%, var(--bg));
+    border-radius: 8px; border: 3px solid var(--bg); background-clip: padding-box;
+  }
+  .main::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--fg) 55%, var(--bg)); background-clip: padding-box;
+  }
+  .main::-webkit-scrollbar-track { background: transparent; }
 
   /* ── 대시보드 칸 ── */
   /* 여섯 칸 격자. 칸마다 가로·세로를 정하고, 자리는 알아서 흘려 채운다.

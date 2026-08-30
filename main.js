@@ -954,17 +954,48 @@ async function finishLogin(idToken, retried) {
      실제로 1024×1537 창이 1032 높이 화면에 놓여 344px 가 밖에 있었다.
    ★ 사람이 끌어 고치기도 어렵다 — 창 아래가 안 보이니 잡을 데가 없다.
      그래서 앱이 스스로 다듬는다. */
+/* 모니터를 다 합친 «바탕» — 여러 대를 가로로 이어 붙인 전체 넓이.
+   ★ 이것이 필요한 까닭: 이 PC 는 모니터가 셋이고(1920 + 1200 + 1024),
+     선생님은 위젯을 1280 폭으로 두 모니터에 걸쳐 쓰신다.
+     한계를 «모니터 한 대» 로 잡으면 그 창을 켤 때마다 1024 로 줄여 버리고,
+     오른쪽 가장자리를 끌어도 꿈쩍하지 않는다 — v1.70.0 이 그랬다. */
+function deskBox() {
+  const ds = screen.getAllDisplays();
+  const L = Math.min.apply(null, ds.map((d) => d.workArea.x));
+  const T = Math.min.apply(null, ds.map((d) => d.workArea.y));
+  const R = Math.max.apply(null, ds.map((d) => d.workArea.x + d.workArea.width));
+  const B = Math.max.apply(null, ds.map((d) => d.workArea.y + d.workArea.height));
+  return { x: L, y: T, width: R - L, height: B - T };
+}
 function fitToScreen(b) {
   /* 그 창이 가장 많이 걸쳐 있는 화면을 기준으로 본다(모니터가 둘일 수 있다) */
   let a;
   try { a = screen.getDisplayMatching(b).workArea; }
   catch (e) { a = screen.getPrimaryDisplay().workArea; }
-  const width = Math.max(240, Math.min(b.width, a.width));
+  const u = deskBox();
+  /* 가로 — 모니터 «한 대» 로 막지 않는다. 옆 모니터까지 걸쳐 넓게 쓰는 것은
+     사람이 일부러 하는 일이고, 가로로 이어진 바탕이니 잘리지도 않는다. */
+  const width = Math.max(240, Math.min(b.width, u.width));
+  /* 세로 — 이 화면 높이까지만. 화면보다 높으면 아래가 진짜로 모니터 밖이라
+     내용도 안 보이고 가장자리를 잡을 수도 없다. 이것이 원래 막으려던 것이다. */
   const height = Math.max(180, Math.min(b.height, a.height));
-  /* 자리도 안으로 — 위쪽이 잘리면 제목 줄을 못 잡아 창을 아예 못 움직인다 */
-  const x = Math.min(Math.max(b.x, a.x), a.x + a.width - width);
-  const y = Math.min(Math.max(b.y, a.y), a.y + a.height - height);
-  return { x, y, width, height };
+  /* 자리 — 왼쪽 위 모서리는 바탕 안에 있어야 한다(제목 줄을 잡을 수 있어야 하니까).
+     오른쪽은 옆 모니터로 넘어가도 좋다. */
+  let x = Math.min(Math.max(b.x, u.x), u.x + u.width - Math.min(width, a.width));
+  let y = Math.min(Math.max(b.y, a.y), a.y + a.height - height);
+  /* ★ 한 번으로는 모자란다. 창이 화면 밖 멀리 있으면 «옮기기 전» 화면을 기준으로 재는데,
+     옮기고 나면 다른 화면 위에 놓인다. 그 화면으로 한 번 더 맞춘다.
+     (실제로 y=3000 에 있던 창이 다른 모니터 높이로 계산돼 아래가 허공에 남았다) */
+  let h2 = height;
+  try {
+    const a2 = screen.getDisplayMatching({ x, y, width, height }).workArea;
+    if (a2.x !== a.x || a2.y !== a.y) {
+      h2 = Math.max(180, Math.min(height, a2.height));
+      y = Math.min(Math.max(y, a2.y), a2.y + a2.height - h2);
+      x = Math.min(Math.max(x, u.x), u.x + u.width - Math.min(width, a2.width));
+    }
+  } catch (e) { /* 못 재면 첫 번째 값 그대로 */ }
+  return { x, y, width, height: h2 };
 }
 /* ★ 창에 «이보다 커질 수 없다» 를 건다.
    다듬기만으로는 모자란다 — 줄여 놓아도 사람이 다시 끌어 키우면 그만이다.
@@ -978,8 +1009,13 @@ function clampWindow(win) {
      한두 픽셀 반올림되어 한계를 살짝 넘는다. 700 을 주면 701 이 되는 식이다.
      그래서 여유를 두 픽셀 둔다 — 눈에는 안 보이고, 넘는 일은 확실히 막힌다. */
   var pad = 2;
-  try { win.setMaximumSize(Math.max(300, a.width - pad), Math.max(200, a.height - pad)); }
-  catch (e) { /* 못 걸어도 그만 */ }
+  /* ★ 가로 한계는 «바탕 전체», 세로 한계만 «이 화면». 가로까지 한 모니터로 막으면
+     두 모니터에 걸쳐 넓게 쓰던 창이 못 늘어난다 — 오른쪽 가장자리를 끌어도
+     커서만 ↔ 로 바뀌고 꿈쩍 않는다. v1.70.0~1.72.0 이 그랬다. */
+  const u = deskBox();
+  try {
+    win.setMaximumSize(Math.max(300, u.width - pad), Math.max(200, a.height - pad));
+  } catch (e) { /* 못 걸어도 그만 */ }
 }
 /* 두 창에 한꺼번에 */
 function clampAll(why) {
