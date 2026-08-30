@@ -3823,9 +3823,9 @@ function render() {
   /* 화면 맨 끝 — 여기까지 굴렸으면 더 볼 것이 없다는 표시.
      ★ 긴 화면은 창 아래 끝에서 글이 그냥 끊겨서 «잘렸다» 로 보인다.
        이 줄이 나오면 «다 봤다» 는 뜻이다. (버전은 제목 줄 오른쪽 끝에 있다) */
-  html += '<div class="foot">'
-    + '<span class="fend">여기가 끝입니다</span>'
-    + '<span class="fby">@JINHOKIM</span></div>';
+  /* ★ 글귀(«여기가 끝입니다»)는 뺐다 — 가로줄과 @JINHOKIM 만으로 끝인 줄 안다.
+     줄은 남긴다. 이것이 없으면 긴 화면에서 «더 있는지 끝인지» 를 다시 알 수 없다. */
+  html += '<div class="foot"><span class="fby">@JINHOKIM</span></div>';
   app.style.setProperty('--wf', String(FS[fsKey()] || 1));
   app.innerHTML = html;
   // 두 번째 고정 줄이 머리 «바로 아래»에 붙도록, 머리 높이를 재서 알려 준다.
