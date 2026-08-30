@@ -967,55 +967,64 @@ function deskBox() {
   const B = Math.max.apply(null, ds.map((d) => d.workArea.y + d.workArea.height));
   return { x: L, y: T, width: R - L, height: B - T };
 }
+/* ★★ 크기는 «건드리지 않는다». 자리만 본다.
+   여기서 크기를 줄이려던 것이 이 앱에서 가장 큰 말썽이었다.
+
+   까닭 — 이 PC 는 모니터마다 배율이 다르다(세로 모니터만 1.25배).
+   그러면 screen 이 알려 주는 작업 영역과 창이 알려 주는 크기가 «다른 단위» 다.
+     세로 모니터의 작업 영역을 그대로 달라고 하면 (1024x1489)
+     창은 1280x1293 이라고 답한다 — DIP 로는 1025x1035 다.
+   이 둘을 곧바로 견주면 멀쩡한 창이 «작업 영역보다 크다» 로 나온다.
+   그래서 켤 때마다 1280 → 1024 로 줄었고, 오른쪽·아래 가장자리를 끌어도
+   꿈쩍하지 않았다. 기록에도 매번 남아 있었다.
+
+   창이 화면보다 조금 크더라도 큰일이 아니다 — 안에서 굴려 볼 수 있고,
+   맨 끝은 «여기가 끝입니다» 로 알 수 있다(v1.72.0).
+   정작 위험한 것은 창이 통째로 화면 밖으로 나가 «잡을 데가 없어지는» 것이다.
+   그것만 막는다. */
 function fitToScreen(b) {
-  /* 그 창이 가장 많이 걸쳐 있는 화면을 기준으로 본다(모니터가 둘일 수 있다) */
   let a;
   try { a = screen.getDisplayMatching(b).workArea; }
   catch (e) { a = screen.getPrimaryDisplay().workArea; }
   const u = deskBox();
-  /* 가로 — 모니터 «한 대» 로 막지 않는다. 옆 모니터까지 걸쳐 넓게 쓰는 것은
-     사람이 일부러 하는 일이고, 가로로 이어진 바탕이니 잘리지도 않는다. */
-  const width = Math.max(240, Math.min(b.width, u.width));
-  /* 세로 — 이 화면 높이까지만. 화면보다 높으면 아래가 진짜로 모니터 밖이라
-     내용도 안 보이고 가장자리를 잡을 수도 없다. 이것이 원래 막으려던 것이다. */
-  const height = Math.max(180, Math.min(b.height, a.height));
-  /* 자리 — 왼쪽 위 모서리는 바탕 안에 있어야 한다(제목 줄을 잡을 수 있어야 하니까).
-     오른쪽은 옆 모니터로 넘어가도 좋다. */
-  let x = Math.min(Math.max(b.x, u.x), u.x + u.width - Math.min(width, a.width));
-  let y = Math.min(Math.max(b.y, a.y), a.y + a.height - height);
-  /* ★ 한 번으로는 모자란다. 창이 화면 밖 멀리 있으면 «옮기기 전» 화면을 기준으로 재는데,
-     옮기고 나면 다른 화면 위에 놓인다. 그 화면으로 한 번 더 맞춘다.
-     (실제로 y=3000 에 있던 창이 다른 모니터 높이로 계산돼 아래가 허공에 남았다) */
-  let h2 = height;
-  try {
-    const a2 = screen.getDisplayMatching({ x, y, width, height }).workArea;
-    if (a2.x !== a.x || a2.y !== a.y) {
-      h2 = Math.max(180, Math.min(height, a2.height));
-      y = Math.min(Math.max(y, a2.y), a2.y + a2.height - h2);
-      x = Math.min(Math.max(x, u.x), u.x + u.width - Math.min(width, a2.width));
-    }
-  } catch (e) { /* 못 재면 첫 번째 값 그대로 */ }
-  return { x, y, width, height: h2 };
+  const width = Math.max(240, b.width);
+  const height = Math.max(180, b.height);
+  /* 제목 줄을 잡을 수 있어야 한다 — 왼쪽 위 모서리를 바탕 안에 두고,
+     적어도 한 뼘(가로 160 · 세로 80)은 화면에 걸쳐 두게 한다. */
+  let x = Math.min(Math.max(b.x, u.x), u.x + u.width - 160);
+  let y = Math.min(Math.max(b.y, a.y), a.y + a.height - 80);
+  /* ★ 가로·세로를 따로 다듬으면 «어느 화면에도 안 걸리는» 자리가 나올 수 있다.
+     모니터가 ㄱ 자로 놓여 있어서 가운데가 비기 때문이다.
+     (x=100, y=99999 인 창이 100,1248 로 왔는데 그 자리엔 모니터가 없었다)
+     정말로 아무 화면에도 안 걸리면 주 화면 왼쪽 위로 데려온다. */
+  const seen = screen.getAllDisplays().some(function (d) {
+    const q = d.workArea;
+    return x < q.x + q.width && x + width > q.x && y < q.y + q.height && y + height > q.y;
+  });
+  if (!seen) {
+    const p = screen.getPrimaryDisplay().workArea;
+    x = p.x + 40; y = p.y + 40;
+  }
+  return { x, y, width, height };
 }
-/* ★ 창에 «이보다 커질 수 없다» 를 건다.
-   다듬기만으로는 모자란다 — 줄여 놓아도 사람이 다시 끌어 키우면 그만이다.
-   여기서 막으면 끌어도 작업 영역을 못 넘는다. 애초에 못 넘으니 안 잘린다. */
+/* ★★ 한계를 «걸지 않는다». 오히려 전에 걸어 둔 한계를 푸는 자리다.
+
+   v1.70.0 에서 «창이 화면보다 커지지 못하게» 한계를 걸었다.
+   그 뒤로 세 가지가 한꺼번에 망가졌다 —
+     · 두 모니터에 걸쳐 넓게 쓰던 창이 켤 때마다 줄었다 (1280 → 1024)
+     · 아래 가장자리를 끌어도 세로가 더 안 늘었다
+     · 백틱(`) 전체화면이 1488 에서 막혔다 (화면 전체는 1537)
+
+   애초에 막으려던 «바닥이 잘림» 은 창 크기 탓이 아니었다.
+   긴 화면에 «끝» 표시가 없어서 잘린 것처럼 보였을 뿐이고,
+   그것은 v1.72.0 에서 «여기가 끝입니다» 로 고쳤다.
+   있지도 않은 병을 고치려다 멀쩡한 세 군데를 망가뜨렸다. 걷어낸다.
+
+   ★ setMaximumSize(0, 0) 은 «한계 없음» 이다.
+     이미 깔려 있는 판에 걸어 둔 한계도 이걸로 풀린다. */
 function clampWindow(win) {
   if (!win || win.isDestroyed()) return;
-  let a;
-  try { a = screen.getDisplayMatching(win.getBounds()).workArea; }
-  catch (e) { a = screen.getPrimaryDisplay().workArea; }
-  /* ★ 화면 배율이 1이 아니면(이 PC 의 세로 모니터는 1.25배) 창 크기가
-     한두 픽셀 반올림되어 한계를 살짝 넘는다. 700 을 주면 701 이 되는 식이다.
-     그래서 여유를 두 픽셀 둔다 — 눈에는 안 보이고, 넘는 일은 확실히 막힌다. */
-  var pad = 2;
-  /* ★ 가로 한계는 «바탕 전체», 세로 한계만 «이 화면». 가로까지 한 모니터로 막으면
-     두 모니터에 걸쳐 넓게 쓰던 창이 못 늘어난다 — 오른쪽 가장자리를 끌어도
-     커서만 ↔ 로 바뀌고 꿈쩍 않는다. v1.70.0~1.72.0 이 그랬다. */
-  const u = deskBox();
-  try {
-    win.setMaximumSize(Math.max(300, u.width - pad), Math.max(200, a.height - pad));
-  } catch (e) { /* 못 걸어도 그만 */ }
+  try { win.setMaximumSize(0, 0); } catch (e) { /* 못 풀어도 그만 */ }
 }
 /* 두 창에 한꺼번에 */
 function clampAll(why) {
