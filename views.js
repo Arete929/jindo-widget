@@ -4187,7 +4187,12 @@ widgetAPI.onData(function (p) {
   }
   if (!IS_EASY && p.scale && p.scale !== SCALE) {
     SCALE = p.scale;
-    document.body.style.zoom = SCALE;
+    /* ★ body 에 CSS zoom 을 걸면 안 된다 — 100vh 로 잰 #app 이 «그려 놓고 확대» 되어
+       크게(1.2배)에서는 화면 높이의 20% 가 창 아래로 삐져나갔다.
+       그 안에 있던 맨 아래 내용·@JINHOKIM 은 굴려도 영원히 안 보였다.
+       webFrame 확대(setZoom)는 vh 까지 함께 줄여 줘서 삐져나갈 수가 없다. */
+    if (widgetAPI.setZoom) widgetAPI.setZoom(SCALE);
+    else document.body.style.zoom = SCALE;   // 옛 preload 로 켜졌을 때만
   }
   // ★ 주간표는 «오늘» 안에도 들어 있다 — 두 화면 다 받아 와야 한다
   if ((VIEW === 'week' || VIEW === 'today') && STATE && STATE.ready) { WK = null; loadWeek(WEEKOFF); }

@@ -1,5 +1,5 @@
-// 파일명: preload.js | @version 1.8.0
-const { contextBridge, ipcRenderer } = require('electron');
+// 파일명: preload.js | @version 1.9.0
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
   onData: (cb) => ipcRenderer.on('jindo-data', (_e, payload) => cb(payload)),
@@ -47,6 +47,11 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   /* 창이 화면 아래로 넘쳤다고 알린다 — 재는 것은 «그리는 쪽» 이 한다.
      거기서는 innerHeight 와 screen.availHeight 가 둘 다 CSS 픽셀이라 같은 자다. */
   tooTall: (o) => ipcRenderer.send('too-tall', o),
+  /* ★ 화면 크기(작게·보통·크게) — 반드시 이걸로 키운다.
+     body 에 CSS zoom 을 걸면 100vh 로 잰 #app 이 «그려 놓고 확대» 되어
+     화면 높이의 20% 가 창 밖으로 삐져나간다 — 하단이 어느 모니터에서든 잘리고,
+     굴려도 그 부분은 영원히 못 본다. webFrame 확대는 vh 까지 함께 줄여 준다. */
+  setZoom: (z) => webFrame.setZoomFactor(Number(z) || 1),
 
   /* AI 사용량 (클로드·제미나이) */
   usageLogin: (key) => ipcRenderer.send('usage-login', key),
