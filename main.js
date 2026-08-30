@@ -966,6 +966,30 @@ function fitToScreen(b) {
   const y = Math.min(Math.max(b.y, a.y), a.y + a.height - height);
   return { x, y, width, height };
 }
+/* ★ 창에 «이보다 커질 수 없다» 를 건다.
+   다듬기만으로는 모자란다 — 줄여 놓아도 사람이 다시 끌어 키우면 그만이다.
+   여기서 막으면 끌어도 작업 영역을 못 넘는다. 애초에 못 넘으니 안 잘린다. */
+function clampWindow(win) {
+  if (!win || win.isDestroyed()) return;
+  let a;
+  try { a = screen.getDisplayMatching(win.getBounds()).workArea; }
+  catch (e) { a = screen.getPrimaryDisplay().workArea; }
+  /* ★ 화면 배율이 1이 아니면(이 PC 의 세로 모니터는 1.25배) 창 크기가
+     한두 픽셀 반올림되어 한계를 살짝 넘는다. 700 을 주면 701 이 되는 식이다.
+     그래서 여유를 두 픽셀 둔다 — 눈에는 안 보이고, 넘는 일은 확실히 막힌다. */
+  var pad = 2;
+  try { win.setMaximumSize(Math.max(300, a.width - pad), Math.max(200, a.height - pad)); }
+  catch (e) { /* 못 걸어도 그만 */ }
+}
+/* 두 창에 한꺼번에 */
+function clampAll(why) {
+  [widgetWin, easyWin].forEach(function (w) {
+    if (!w || w.isDestroyed()) return;
+    clampWindow(w);
+    fitWindowNow(w, why);
+  });
+}
+
 /* 지금 창이 화면 밖으로 나가 있으면 끌어들인다 */
 function fitWindowNow(win, why) {
   if (!win || win.isDestroyed() || win.isFullScreen()) return;
@@ -1090,8 +1114,11 @@ function openEasyWindow() {
     // 창을 닫으면 떠 있는 카드로 돌아간다 — 아무것도 안 남으면 앱이 사라진 것처럼 보인다
     showWidgetOnly();
   });
+  clampWindow(easyWin);
+  easyWin.on('moved', () => clampWindow(easyWin));
   easyWin.webContents.once('did-finish-load', () => {
     sendToWidget(); sendTasks();
+    clampWindow(easyWin);
     fitWindowNow(easyWin, '넓게 보기를 띄운 뒤');
   });
 }
@@ -1192,10 +1219,15 @@ function createWidgetWindow() {
     }, 400);
   });
   widgetWin.on('closed', () => { widgetWin = null; });
+  /* ★ 끌어도 작업 영역을 못 넘게 한계를 건다 — 이게 근본이다 */
+  clampWindow(widgetWin);
+  /* 창을 옮기면 다른 모니터일 수 있다 — 그 화면 기준으로 한계를 다시 잡는다 */
+  widgetWin.on('moved', () => clampWindow(widgetWin));
   widgetWin.webContents.once('did-finish-load', () => {
     sendToWidget(); sendTasks();
     /* ★ 이미 어긋나 저장된 크기·자리를 한 번 바로잡는다.
        사람이 끌어 고치기 어렵다 — 창 아래가 화면 밖이면 잡을 데가 없다. */
+    clampWindow(widgetWin);
     fitWindowNow(widgetWin, '창을 띄운 뒤');
   });
 }
@@ -2506,8 +2538,10 @@ aiusage.setLogger(debugLog);
       powerMonitor.on('unlock-screen', () => checkForUpdates());
     } catch (e) { debugLog(`전원 감시 등록 실패: ${e.message}`); }
 
+    /* ★ 모니터를 뽑거나 해상도가 바뀌면 «작업 영역» 도 바뀐다 —
+       한계를 다시 걸어야 그 화면에 맞는다. */
     ['display-removed', 'display-added', 'display-metrics-changed'].forEach((ev) => {
-      screen.on(ev, () => setTimeout(keepOnScreen, 400));
+      screen.on(ev, () => setTimeout(() => { clampAll('화면이 바뀜'); keepOnScreen(); }, 400));
     });
   });
 }

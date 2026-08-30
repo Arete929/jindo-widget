@@ -2150,6 +2150,16 @@ var lbQ2 = [], lbSending = 0, lbWait = {};   // lbSending — 지금 보내는 �
 var LBFOLD = [], lbRow = '', lbCatEdit = '', lbNewCat = false;
 /* «묶음 옮기기» 단추를 누른 타일 — 이름으로 기억한다(차례는 다시 그리면 바뀐다) */
 var lbMvOpen = '';
+/* ★ 아는 색 이름일 때만 칠한다.
+   시트 13열에는 옛 «즐겨찾기 색»이 hex(#D7F0D0)로 남아 있는 줄이 있다.
+   그것을 클래스에 그대로 붙이면 CSS 가 못 알아봐 타일만 어정쩡해진다. */
+function lbTint(x) {
+  var c = String((x && x.color) || '').trim();
+  for (var i = 0; i < LBCOLORS.length; i++) {
+    if (LBCOLORS[i].k && LBCOLORS[i].k === c) return c;
+  }
+  return '';
+}
 /* 🎨 를 누른 타일 */
 var lbClOpen = '';
 /* 고를 수 있는 파스텔 — 이름만 담고, 실제 색은 테마마다 ui.css 가 낸다.
@@ -2760,7 +2770,7 @@ function lbTile(x, i, showCat) {
   var h = '<div class="lbt' + (x.u ? '' : ' dead') + (lbAdmin() ? ' pick' : '')
     + (editing ? ' editing' : '')
     + (x.shared ? ' isshared' : '')
-    + (x.color ? ' tint tint-' + esc(x.color) : '') + '"'
+    + (lbTint(x) ? ' tint tint-' + lbTint(x) : '') + '"'
     + (lbAdmin() ? ' draggable="true" data-lbdrag="' + i + '" data-lbord="' + i + '"' : '')
     + '>';
   /* 편집 모드 — 왼쪽 위 ⊖ 로 뺀다 (빠른 설정창처럼) */
@@ -3142,15 +3152,13 @@ function wireBoardList(root) {
     b.addEventListener('click', function () {
       var x = at(b, 'lbdel');
       if (!x) return;
-      /* ★ 시트에서 «지워지는» 일이라 한 번 더 묻는다 */
-      if (b.dataset.sure !== '1') {
-        b.dataset.sure = '1'; b.textContent = '정말?'; b.classList.add('now');
-        setTimeout(function () {
-          if (!b.isConnected) return;
-          b.dataset.sure = ''; b.textContent = '✕'; b.classList.remove('now');
-        }, 3000);
-        return;
-      }
+      /* ★ 시트에서 «줄이 통째로 지워지는» 일이다 — 되돌릴 수 없다.
+         작은 단추에 «정말?» 만 띄우면 두 번 눌러 지나치기 쉽다.
+         실제로 그렇게 앱 하나가 지워졌다. 이름을 대고 또렷이 묻는다. */
+      if (!confirm('«' + x.t + '» 을(를) 런처보드에서 지웁니다.' + String.fromCharCode(10)
+        + String.fromCharCode(10)
+        + '앱 자체는 그대로 남습니다. 이 목록에서만 사라집니다.' + String.fromCharCode(10)
+        + '되돌릴 수 없습니다 — 다시 담으려면 손으로 넣어야 합니다.')) return;
       lbDo('del', { key: lbKey(x) }, '빼는 중');
     });
   });
