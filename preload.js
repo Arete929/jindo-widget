@@ -44,6 +44,9 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   setView: (view) => ipcRenderer.send('set-view', view),
   toggleFull: () => ipcRenderer.send('toggle-full'),
   reportHeight: (h) => ipcRenderer.send('content-height', h),
+  /* 창이 화면 아래로 넘쳤다고 알린다 — 재는 것은 «그리는 쪽» 이 한다.
+     거기서는 innerHeight 와 screen.availHeight 가 둘 다 CSS 픽셀이라 같은 자다. */
+  tooTall: (o) => ipcRenderer.send('too-tall', o),
 
   /* AI 사용량 (클로드·제미나이) */
   usageLogin: (key) => ipcRenderer.send('usage-login', key),

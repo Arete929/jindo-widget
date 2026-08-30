@@ -2454,6 +2454,31 @@ ipcMain.on('toggle-full', (e) => {
   win.setFullScreen(want);
   debugLog('전체화면 ' + (want ? '켬' : '끔'));
 });
+/* 창 아래가 모니터 밖으로 나갔다고 «그리는 쪽» 이 알려 왔다.
+   ★ 값은 모두 CSS 픽셀이다. 여기서는 창 높이와 안쪽 높이를 견주어
+     배율을 스스로 알아낸다(창높이 ÷ inner). 그래야 배율 섞인 PC 에서도 안 틀린다.
+   ★ 먼저 위로 올려 본다 — 사람이 정한 크기를 함부로 줄이지 않는다.
+     올릴 자리가 모자란 만큼만 높이를 깎는다. */
+ipcMain.on('too-tall', (e, o) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win || win.isDestroyed() || win.isFullScreen()) return;
+  const inner = Number(o && o.inner) || 0;
+  const over = Number(o && o.over) || 0;
+  const room = Math.max(0, Number(o && o.room) || 0);
+  if (inner <= 0 || over <= 2) return;
+  const b = win.getBounds();
+  const k = b.height / inner;                 // 창이 쓰는 단위 ÷ CSS 픽셀
+  if (!isFinite(k) || k <= 0) return;
+  const 올릴것 = Math.min(over, room);
+  const 깎을것 = over - 올릴것;
+  const y = Math.round(b.y - 올릴것 * k);
+  const h = Math.max(200, Math.round(b.height - 깎을것 * k) - 2);
+  if (y === b.y && h >= b.height) return;
+  debugLog(`창 아래가 화면 밖 — ${b.height}@${b.y} → ${h}@${y}`
+    + ` (넘친 ${over}css · 위로 ${올릴것} · 깎은 ${깎을것})`);
+  win.setBounds({ x: b.x, y: y, width: b.width, height: h });
+  if (win === widgetWin) saveState({ userH: h, y: y });
+});
 ipcMain.on('open-app', () => openInBrowser(APP_URL));
 // 주간업무 글 안에 걸린 링크 — 크롬으로 연다.
 // 어디로든 열어 주면 안 되므로 http(s) 인지 한 번 보고 연다.

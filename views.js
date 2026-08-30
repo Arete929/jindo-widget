@@ -3981,7 +3981,37 @@ function report() {
     var app = appEl();
     if (app) widgetAPI.reportHeight(app.scrollHeight + 4);
   });
+  checkTooTall();
 }
+
+/* ★★ 창 아래가 모니터 밖으로 나가지 않게 한다 — «잘린다» 의 진짜 원인.
+   화면 밖으로 나간 부분은 굴려도 볼 수 없고 가장자리를 잡을 수도 없다.
+
+   ★ 재는 자리를 여기(그리는 쪽)로 옮긴 까닭 —
+     바깥(main.js)에서는 screen 이 주는 값(DIP)과 창이 답하는 값(화면 단위)이
+     배율 섞인 PC 에서 서로 다른 단위였다. 그걸 곧바로 견주다가
+     멀쩡한 창을 켤 때마다 줄이고, 가장자리를 못 끌게 만들었다(v1.70~1.73).
+     여기서는 innerHeight 도 screen.availHeight 도 screenY 도 모두 CSS 픽셀이다.
+     같은 자로 재니 어긋날 일이 없다. */
+var tallTimer = null;
+function checkTooTall() {
+  if (!widgetAPI.tooTall) return;
+  clearTimeout(tallTimer);
+  tallTimer = setTimeout(function () {
+    var sc = window.screen;
+    if (!sc || !sc.availHeight) return;
+    var top = (typeof sc.availTop === 'number') ? sc.availTop : 0;
+    var 바닥 = window.screenY + window.outerHeight;
+    var 넘침 = 바닥 - (top + sc.availHeight);
+    if (넘침 <= 2) return;
+    widgetAPI.tooTall({
+      inner: window.innerHeight,   // 배율을 스스로 알아내는 데 쓴다
+      over: 넘침,
+      room: Math.max(0, window.screenY - top)   // 위로 올릴 수 있는 만큼
+    });
+  }, 450);
+}
+window.addEventListener('resize', checkTooTall);
 
 // 설정에서 컴시간을 바꾸거나 다시 불러오면, 들고 있던 자료를 버리고 새로 읽는다
 widgetAPI.onTasks(function (list) { TASKS = list || []; render(); });
