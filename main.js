@@ -1039,6 +1039,27 @@ function portalInfo() {
     })
   };
 }
+/* 도우미를 띄울 때 쓰는 조건.
+   ★ 처음엔 그냥 stdio:'ignore' 로 띄웠다가 도우미가 죽었다 —
+       UnicodeEncodeError: 'cp949' codec can't encode character '\U0001f517'
+     도우미는 파이썬으로 만든 것이고, 진행 상황을 이모지(🔗)와 함께 찍는다.
+     탐색기에서 두 번 눌러 띄우면 파이썬이 «진짜 콘솔» 을 알아보고 유니코드로 쓰지만,
+     출력을 없애고 띄우면 콘솔이 아니어서 지역 문자표(cp949)로 바꾸려다 터진다.
+     PYTHONIOENCODING/PYTHONUTF8 로 «출력은 UTF-8» 이라고 못박아 준다.
+   ★ cwd 는 도우미 폴더 — 도우미가 제 폴더의 config.ini 를 읽는다. */
+function portalSpawnOpts(dir) {
+  return {
+    cwd: dir,
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: false,
+    env: Object.assign({}, process.env, {
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONUTF8: '1',
+      PYTHONLEGACYWINDOWSSTDIO: ''
+    })
+  };
+}
 function openPortal(i) {
   const list = portalHelpers();
   const x = (i === undefined || i === null || i < 0) ? null : list[i];
@@ -1048,8 +1069,7 @@ function openPortal(i) {
     return { ok: true, how: 'browser' };
   }
   try {
-    /* ★ 도우미는 제 폴더에서 config.ini 를 읽는다 — cwd 를 그 폴더로 맞춰 준다 */
-    spawn(x.path, [], { cwd: path.dirname(x.path), detached: true, stdio: 'ignore' }).unref();
+    spawn(x.path, [], portalSpawnOpts(path.dirname(x.path))).unref();
     debugLog('업무포털 도우미 실행: ' + path.basename(x.path));
     return { ok: true, how: 'helper', name: x.name };
   } catch (e) {
