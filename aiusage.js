@@ -391,4 +391,19 @@ function stop() {
   });
 }
 
-module.exports = { KEYS, PROVIDERS, poll, pollAll, openLogin, snapshot, stop, setLogger, onUpdate };
+/* 끈 것의 숨은 창을 접는다 — 램을 돌려받는다.
+   ★ 켜 둔 것(keep)만 남긴다. 로그인 창이 떠 있는 것은 건드리지 않는다. */
+function prune(keep) {
+  const k2 = keep || [];
+  KEYS.forEach((k) => {
+    if (k2.indexOf(k) >= 0) return;
+    if (loggingIn[k]) return;                    // 사람이 로그인하는 중이면 그대로
+    if (wins[k] && !wins[k].isDestroyed()) {
+      try { wins[k].destroy(); } catch (_) { /* 무시 */ }
+      debug(`[사용량:${k}] 꺼짐 — 숨은 창을 접었습니다`);
+    }
+    wins[k] = null;
+  });
+}
+
+module.exports = { KEYS, PROVIDERS, poll, pollAll, openLogin, snapshot, stop, prune, setLogger, onUpdate };

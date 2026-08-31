@@ -52,7 +52,10 @@ const POLL_INTERVAL_MS = 60 * 1000;          // 1분마다 값 갱신
 // 2분마다 새 버전 확인. 확인은 latest.yml(350바이트 남짓) 하나를 받는 것이 전부라
 // 이 정도 주기도 부담이 없다 — 새 버전이 나오면 사실상 바로 뜬다.
 const UPDATE_CHECK_INTERVAL_MS = 2 * 60 * 1000;
-const USAGE_INTERVAL_MS = 60 * 1000;         // AI 사용량도 1분마다
+/* ★ 사용량은 분 단위로 볼 일이 드물다 — 5분이면 충분하다.
+   숨은 브라우저 창이 claude.ai 같은 무거운 페이지를 매번 여는 일이라,
+   주기를 늘리는 것이 램·네트워크를 그대로 아끼는 길이다. */
+const USAGE_INTERVAL_MS = 5 * 60 * 1000;    // AI 사용량은 5분마다
 const RELEASES_PAGE_URL = 'https://github.com/Arete929/jindo-widget/releases/latest';
 
 const userDataPath = app.getPath('userData');
@@ -217,6 +220,11 @@ function getUsageOn() {
   return st.usageShow ? ['claude', 'gemini'] : [];   // 옛 설정 옮기기
 }
 function getUsageShow() { return getUsageOn().length > 0; }
+/* 켜 둔 것만 읽는다 — 하나도 안 켰으면 아무 창도 안 띄운다 */
+function pollUsageEnabled() {
+  const on = getUsageOn();
+  if (on.length) aiusage.pollAll(on);
+}
 function getUsageStyle() { return loadState().usageStyle === 'bar' ? 'bar' : 'ring'; }
 
 /* ── 내 PC (CPU·램) ───────────────────────────────────────────
@@ -2069,7 +2077,14 @@ ipcMain.on('set-ui', (_e, v) => {
     sendToWidget();
   }
   if (v.usageOn !== undefined) {
+    const before = getUsageOn();
     saveState({ usageOn: (v.usageOn || []).filter((k) => USAGE_KEYS.includes(k)) });
+    /* 방금 켠 것은 바로 읽어 준다 — 5분을 기다리게 하지 않는다.
+       끈 것의 숨은 창은 접는다(램을 돌려받는다). */
+    const now = getUsageOn();
+    const 새로켠 = now.filter((k) => before.indexOf(k) < 0);
+    if (새로켠.length) aiusage.pollAll(새로켠);
+    if (aiusage.prune) aiusage.prune(now);
     sendToWidget();
   }
   if (v.usageShow !== undefined) { saveState({ usageShow: !!v.usageShow }); sendToWidget(); }
@@ -2540,7 +2555,7 @@ ipcMain.handle('work-print', async (_e, p) => {
 
 /* ── AI 사용량 ── */
 ipcMain.on('usage-login', (_e, key) => aiusage.openLogin(String(key || '')));
-ipcMain.on('usage-refresh', () => aiusage.pollAll());
+ipcMain.on('usage-refresh', () => pollUsageEnabled());
 ipcMain.on('usage-style', (_e, style) => {
   saveState({ usageStyle: style === 'bar' ? 'bar' : 'ring' });
   sendToWidget();
@@ -2860,8 +2875,12 @@ if (!gotLock) {
     // 숨은 창으로 claude.ai · gemini.google.com 을 열어 읽는 것이라 시작 직후는 피한다.
 aiusage.setLogger(debugLog);
     aiusage.onUpdate(() => sendToWidget());
-    setTimeout(() => aiusage.pollAll(), 9000);
-    setInterval(() => aiusage.pollAll(), USAGE_INTERVAL_MS);
+    /* ★ «켜 둔 것만» 읽는다. 전에는 설정과 무관하게 셋 다 읽어서,
+       로그인도 안 한 GPT 를 1분마다(하루 1,440번) 헛걸음했다 —
+       숨은 창 세 개가 램 수십~백 MB 씩 물고 있었다.
+       끈 것은 창도 안 만들어진다(poll 이 안 불리면 worker 도 없다). */
+    setTimeout(() => pollUsageEnabled(), 9000);
+    setInterval(() => pollUsageEnabled(), USAGE_INTERVAL_MS);
 
     // 주간업무 — 오래됐거나 «실패로 저장된» 것이면 다시 받는다.
     // ★실패 기록을 성공처럼 붙들고 있으면, 문제가 고쳐진 뒤에도 옛 오류를 계속 보여준다.
