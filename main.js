@@ -2746,17 +2746,32 @@ if (process.argv.indexOf('--updated') >= 0) {
       '[' + new Date().toISOString() + '] 설치기가 띄운 판(--updated) — 깨끗하게 다시 켜고 물러납니다'
       + ' (v' + app.getVersion() + ')' + String.fromCharCode(10));
   } catch (e) { /* 병든 판은 이 기록조차 못 쓸 수 있다 — 그래도 다시 켜는 것이 일이다 */ }
-  /* ★ relaunch 로 다시 켜면 «병든 판의 자식» 이라 병을 물려받을 수 있다.
-     건강했던 실행은 모두 탐색기(두 번 누르기)가 띄운 것이었다 —
-     그래서 탐색기에게 맡긴다. 탐색기가 띄우면 두 번 누른 것과 같은 깨끗한 조건이다. */
-  /* 2초 틈 — 탐색기가 너무 빨리 띄우면 이 판이 미처 못 죽어 잠금에 부딪친다.
-     (ping 은 콘솔 없이도 도는 믿을 만한 시계다) */
+  /* ★★ 다시 켜기는 «작업 스케줄러» 에게 부탁한다.
+     처음엔 cmd(ping 뒤 탐색기) 자식으로 했는데 — Electron 은 끝날 때
+     «떼어 놓은(detached) 자식까지 몰살» 한다는 것을 결정 실험으로 확인했다
+     (2026-09-01 t-jobkill: ping 3초짜리 자식이 파일 하나 못 남기고 딸려 죽음).
+     그래서 어제 판올림마다 앱이 증발했다 — 램 탓이라 짚었던 것도 절반은 이것이었다.
+     작업 스케줄러는 시스템 서비스 소속이라 몰살에서 벗어난다(t-jobkill2 로 확인).
+     차림: 각본(.cmd)을 적어 두고 → 스케줄러에 등록 → 곧장 실행시키고 → 물러난다.
+     각본은 2초 기다렸다(이 판이 죽을 틈) 앱을 켜고 제 등록을 지운다. */
   try {
-    spawn(process.env.ComSpec || 'cmd.exe',
-      ['/c', 'ping -n 3 127.0.0.1 >nul & explorer.exe "' + process.execPath + '"'],
-      { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    const { execSync } = require('child_process');
+    const CR = String.fromCharCode(13);
+    const cmdFile = path.join(userDataPath, 'relaunch.cmd');
+    fs.writeFileSync(cmdFile, ['@echo off',
+      'ping -n 3 127.0.0.1 >nul',
+      'start "" "' + process.execPath + '"',
+      'schtasks /delete /tn JindoWidgetRelaunch /f >nul 2>&1'
+    ].join(CR + String.fromCharCode(10)) + CR + String.fromCharCode(10));
+    execSync('schtasks /create /f /tn JindoWidgetRelaunch /tr "\\"' + cmdFile
+      + '\\"" /sc once /st 23:59', { stdio: 'ignore', windowsHide: true });
+    execSync('schtasks /run /tn JindoWidgetRelaunch', { stdio: 'ignore', windowsHide: true });
   } catch (e) {
-    app.relaunch({ args: [] });   // 탐색기가 안 되면 이거라도
+    try {
+      fs.appendFileSync(debugLogFile, '[' + new Date().toISOString()
+        + '] 스케줄러 부탁 실패(' + e.message + ') — relaunch 로 대신' + String.fromCharCode(10));
+    } catch (e2) { /* 무시 */ }
+    app.relaunch({ args: [] });   // 이 길은 병들 수 있지만 없는 것보단 낫다
   }
   app.exit(0);
 }
