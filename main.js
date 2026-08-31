@@ -158,6 +158,7 @@ let timetableWin = null;   // 주간 시간표 «크게 보기» 창
 let settingsWin = null;    // 설정 창
 let handoffServer = null;   // 크롬에서 로그인 결과를 받는 잠깐짜리 서버
 let handoffNonce = null;    // 그때그때 만드는 일회용 확인값
+let handoffDone = false;    // 이번 로그인에서 이미 넘겨받았는가
 let tray = null;
 let pollTimer = null;
 let lastData = null;
@@ -857,6 +858,7 @@ function startLogin() {
     return;
   }
   stopHandoffServer();
+  handoffDone = false;
   handoffNonce = crypto.randomBytes(16).toString('hex');
   const nonce = handoffNonce;
 
@@ -904,6 +906,14 @@ function startLogin() {
         try { const j = JSON.parse(body); gotNonce = j.nonce; idToken = j.idToken; } catch (e) { /* 아래에서 걸러짐 */ }
       }
 
+      /* ★ 이미 한 번 받았으면, 뒤따라온 폼 전송에도 «됐다» 고 답해 준다.
+         안 그러면 화면에 «잘못된 요청» 이 뜬다 — 사실은 잘 된 것인데도. */
+      if (handoffDone && idToken) {
+        if (isForm) { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); res.end(DONE_HTML); }
+        else { res.writeHead(200, Object.assign({ 'Content-Type': 'text/plain' }, cors)); res.end('ok'); }
+        debugLog('로그인 정보가 한 번 더 왔습니다 — 이미 끝난 것이라 그냥 됐다고 답합니다');
+        return;
+      }
       if (gotNonce !== nonce || !idToken) {
         debugLog(`로그인 넘겨받기 거부 — 확인값이 맞지 않습니다 (${isForm ? '폼' : 'fetch'})`);
         res.writeHead(400, cors); res.end('bad');
@@ -917,8 +927,12 @@ function startLogin() {
         res.writeHead(200, Object.assign({ 'Content-Type': 'text/plain' }, cors));
         res.end('ok');
       }
-      debugLog(`크롬에서 로그인 정보를 넘겨받았습니다 (${isForm ? '폼 전송' : 'fetch'})`);
-      stopHandoffServer();
+      debugLog(`${browserName()}에서 로그인 정보를 넘겨받았습니다 (${isForm ? '폼 전송' : 'fetch'})`);
+      /* ★ 바로 닫으면 안 된다. 웹 쪽은 fetch 가 막힐 때를 대비해 폼 전송을 «한 번 더» 보낸다.
+         먼저 온 fetch 를 받고 곧장 닫아 버리면, 뒤따라온 폼 전송이 «연결 거부» 화면을 만난다.
+         선생님이 본 그 화면이다. 조금 열어 두었다가 닫는다. */
+      handoffDone = true;
+      setTimeout(stopHandoffServer, 20 * 1000);
       finishLogin(idToken);
     });
   });
@@ -936,12 +950,14 @@ function startLogin() {
     notify(APP_NAME, `${browserName()} 탭을 열었어요. 거기서 구글 로그인해 주세요.`);
   });
 
-  // 5분 안에 안 끝나면 서버를 닫는다 (열어둔 채로 두지 않는다)
+  /* 시간이 지나면 닫는다 — 열어둔 채로 두지 않는다.
+     ★ 5분은 짧았다. 구글 로그인 뒤에 «주간업무계획 문서» 까지 읽고 나서야 결과를 보내는데,
+       문서가 크면 그것만 한참이다. 그 사이에 통로가 닫혀 «연결 거부» 가 났다. */
   setTimeout(() => {
     if (!handoffServer) return;
-    debugLog('로그인 대기 시간 초과 — 서버를 닫습니다');
+    debugLog('로그인 대기 시간 초과(15분) — 통로를 닫습니다');
     stopHandoffServer();
-  }, 5 * 60 * 1000);
+  }, 15 * 60 * 1000);
 }
 
 async function finishLogin(idToken, retried) {
