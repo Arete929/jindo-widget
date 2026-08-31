@@ -742,9 +742,17 @@ function getWorkerWindow() {
   });
   workerWin.on('closed', () => { workerWin = null; });
   workerWin.loadURL(APP_URL).catch((e) => debugLog(`숨은 창 로드 실패: ${e.message}`));
+  /* ★ 램이 바닥나면 숨은 창의 렌더러가 먼저 죽는다(2026-08-31 실측 — 그 뒤로 poll 이
+     영영 매달려 «로그인하세요» 만 남았다). 죽으면 버리고, 다음 poll 이 새로 만든다. */
+  workerWin.webContents.on('render-process-gone', (_e, d) => {
+    debugLog('숨은 일꾼 창이 죽음(' + (d && d.reason) + ') — 버리고 다음에 새로 만든다');
+    try { workerWin.destroy(); } catch (e2) { /* 무시 */ }
+    workerWin = null;
+  });
   return workerWin;
 }
 
+let lastPollDone = Date.now();   // 심장 도장 — pollOnce 가 «끝난» 마지막 때
 async function pollOnce() {
   // ★ 시간표가 없는 판(혜원 데스크·혜원이지)은 수업진도를 아예 안 쓴다.
   //   예전에는 화면의 ⟳ 단추가 이걸 불러서, 로그인이 없으니 needLogin 이 되고
@@ -773,6 +781,8 @@ async function pollOnce() {
     sendToWidget();
   } catch (e) {
     debugLog(`값 가져오기 실패: ${e && e.message ? e.message : e}`);
+  } finally {
+    lastPollDone = Date.now();
   }
 }
 
@@ -2807,6 +2817,21 @@ if (!gotLock) {
       // 앱이 로그인·자료 불러오기를 끝낼 시간을 조금 준 뒤 첫 조회
       setTimeout(pollOnce, 6000);
       pollTimer = setInterval(pollOnce, POLL_INTERVAL_MS);
+      /* ★ 심장 감시 — poll 이 «끝나지» 못한 채 5분이 지나면 스스로 다시 켠다.
+         램이 바닥났을 때 숨은 창·네트워크가 죽고, poll 이 대답 없는 창을 기다리며
+         영영 매달렸다(2026-08-31 실측). 매달린 앱은 겉만 살아 있다 —
+         창 이동은 되는데 자료·로그인·기록이 전부 멎어 «로그인하세요» 만 남는다.
+         그 상태는 안에서 못 고친다. 다시 태어나는 것이 답이다. */
+      setInterval(() => {
+        if (Date.now() - lastPollDone < 5 * 60 * 1000) return;
+        try {
+          fs.appendFileSync(debugLogFile,
+            '[' + new Date().toISOString() + '] ★ 심장이 5분째 안 뜀(poll 매달림) — 다시 켭니다'
+            + String.fromCharCode(10));
+        } catch (e) { /* 무시 */ }
+        try { app.relaunch(); } catch (e) { /* 무시 */ }
+        app.exit(1);
+      }, 60 * 1000);
     } else {
       // 혜원 데스크는 시간표를 안 쓴다 — 수업진도 앱을 띄우지도, 로그인하지도 않는다.
       // 화면 쪽은 «자료가 준비됐다»는 표시만 있으면 되므로 빈 껍데기를 넣어 둔다.
