@@ -702,6 +702,14 @@ function installUpdateNow() {
   debugLog('업데이트 설치 — quitAndInstall');
   if (pollTimer) clearInterval(pollTimer);
   autoUpdater.quitAndInstall(true, true);
+  /* ★ 이 프로세스가 «확실히» 죽어야 한다.
+     설치본은 곧바로 새 앱을 띄우는데(--force-run), 그때 옛 프로세스가 살아 있으면
+     새 것이 잠금을 못 얻고 조용히 물러난다. 그러면 화면에는 옛 «죽은 창» 만 남는다.
+     트레이·숨은 창 때문에 저절로 안 죽는 일이 있어, 몇 초 뒤 손수 끝낸다. */
+  setTimeout(function () {
+    debugLog('업데이트 설치 — 옛 판을 확실히 끝냅니다');
+    app.exit(0);
+  }, 4000);
 }
 function checkForUpdates(manual) {
   if (!app.isPackaged) {
@@ -1085,8 +1093,16 @@ function openPortal(i) {
     return { ok: true, how: 'browser' };
   }
   try {
-    spawn(x.path, [], portalSpawnOpts(path.dirname(x.path))).unref();
-    debugLog('업무포털 도우미 실행: ' + path.basename(x.path));
+    /* ★ «탐색기에서 두 번 누르는 것» 과 똑같이 띄운다.
+       환경변수(PYTHONIOENCODING)만으로는 모자랐다 — LG 에서 여전히 cp949 로 죽었다.
+       도우미는 파이썬이고, 파이썬은 «진짜 콘솔» 이 붙어 있을 때만 유니코드로 쓴다.
+       cmd 의 start 는 새 콘솔을 만들어 주므로, 사람이 두 번 누른 것과 같은 자리가 된다.
+       /D 로 도우미 폴더를 일터로 잡아 준다(거기서 config.ini 를 읽는다). */
+    const dir = path.dirname(x.path);
+    spawn(process.env.ComSpec || 'cmd.exe',
+      ['/c', 'start', '', '/D', dir, x.path],
+      Object.assign(portalSpawnOpts(dir), { windowsHide: true })).unref();
+    debugLog('업무포털 도우미 실행(새 콘솔): ' + path.basename(x.path));
     return { ok: true, how: 'helper', name: x.name };
   } catch (e) {
     debugLog('도우미 실행 실패(' + e.message + ') — 그냥 포털을 엽니다');
@@ -2693,6 +2709,16 @@ process.on('uncaughtException', (err) => debugLog(`uncaughtException: ${err && e
 /* ===================== 시작 ===================== */
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
+  /* ★ 여기서 조용히 사라지면 «앱은 도는데 기록이 한 줄도 안 남는» 상태가 된다.
+     실제로 아수스에서 일곱 시간을 그렇게 보냈다 — 업데이트가 앱을 다시 띄웠는데
+     옛 프로세스가 아직 안 죽어 잠금을 쥐고 있었고, 새 것은 여기서 조용히 끝났다.
+     그 사이 화면에는 옛 프로세스의 «죽은 창» 이 남아 로그인 화면만 보였다.
+     적어도 흔적은 남긴다. */
+  try {
+    fs.appendFileSync(path.join(app.getPath('userData'), 'debug.log'),
+      '[' + new Date().toISOString() + '] 이미 떠 있는 진호알리미가 있어 이 판은 물러납니다'
+      + ' (v' + app.getVersion() + ')' + String.fromCharCode(10));
+  } catch (e) { /* 무시 */ }
   app.quit();
 } else {
   app.on('second-instance', () => {
