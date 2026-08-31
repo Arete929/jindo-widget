@@ -2707,8 +2707,30 @@ ipcMain.on('content-height', (_e, h) => {
 process.on('uncaughtException', (err) => debugLog(`uncaughtException: ${err && err.stack ? err.stack : err}`));
 
 /* ===================== 시작 ===================== */
+/* ── 시작 파수꾼 ─────────────────────────────────────────
+   ★ 업데이트 직후 «좀비» 가 생기는 일이 있었다 (2026-08-31 아수스에서 실제로).
+     설치기가 새 판을 띄웠는데 옛 판이 아직 죽는 중이라, 새 판의 시작 절차(whenReady)가
+     영영 안 돌았다 — 이벤트에는 반응하면서(찌르면 창을 만든다) 자료 갱신·로그인 마무리·
+     기록은 하나도 안 하는 상태. 겉보기엔 «로그인이 안 된다» 로 나타났다.
+   ★ 좀비는 스스로 못 알아챈다. 그래서 밖에서 지킨다 —
+     30초 안에 시작 절차가 완료(bootOk)되지 않으면 기록을 남기고 스스로 다시 켠다.
+     정상 시작은 몇 초면 끝나므로 멀쩡한 앱을 건드릴 일은 없다. */
+let bootOk = false;
+setTimeout(() => {
+  if (bootOk) return;
+  try {
+    fs.appendFileSync(debugLogFile,
+      '[' + new Date().toISOString() + '] ★ 시작 절차가 30초 안에 안 끝남(좀비) — 다시 켭니다'
+      + ' (v' + app.getVersion() + ')' + String.fromCharCode(10));
+  } catch (e) { /* 무시 */ }
+  try { app.relaunch(); } catch (e) { /* 무시 */ }
+  app.exit(1);
+}, 30 * 1000);
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
+  /* 물러나는 것은 «일부러» 끝나는 것이다 — 파수꾼이 다시 켜면 무한 고리가 된다 */
+  bootOk = true;
   /* ★ 여기서 조용히 사라지면 «앱은 도는데 기록이 한 줄도 안 남는» 상태가 된다.
      실제로 아수스에서 일곱 시간을 그렇게 보냈다 — 업데이트가 앱을 다시 띄웠는데
      옛 프로세스가 아직 안 죽어 잠금을 쥐고 있었고, 새 것은 여기서 조용히 끝났다.
@@ -2727,6 +2749,7 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
+    bootOk = true;   // 파수꾼에게 «심장이 뛰기 시작했다» 고 알린다
     debugLog(`=== 시작 === v${app.getVersion()} · 로그: ${debugLogFile}`);
     // ★ 창보다 «먼저» 등록한다 — 창이 뜨자마자 sendToWidget() 이 불리는데
     //   그때 학생기록 준비가 안 돼 있으면 예외가 났다
