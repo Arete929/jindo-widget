@@ -13,7 +13,11 @@ var NOTES = null;
 /* 탭마다 글자 크기 배율을 따로 둔다. 메인이 저장해 두므로 껐다 켜도 그대로다. */
 var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1 };
 function fsKey() {
-  return ({ work: 'work', comci: 'comci', cal: 'cal', meal: 'meal', rec: 'rec',
+  /* ★ 시간표 탭(오늘·이번주·진도표)은 셋이 한 탭이라 크기도 하나로 묶는다 — 열쇠 tt.
+     전에는 이 셋이 아예 빠져 있어서 «--wf» 가 늘 1 이었다. 그래서 이미
+     calc(px * var(--wf)) 로 짜 둔 이번주 표·진도표까지 꿈쩍 안 했다. */
+  return ({ today: 'tt', week: 'tt', progress: 'tt',
+    work: 'work', comci: 'comci', cal: 'cal', meal: 'meal', rec: 'rec',
     home: 'home', note: 'note', link: 'link', grid: 'grid',
     office: 'office' })[VIEW] || '';
 }
@@ -3803,12 +3807,15 @@ function render() {
 
   if (tab === 'tt') {
     // ★ «이번주» 만 «오늘» 안으로 들어갔다. 진도는 그대로 제 탭이다.
+    /* ★ 글자 크기(A− A+)를 여기 오른쪽 끝에 둔다 — 이 줄은 머리(.top)에 붙어 있어
+       굴려도 늘 보인다. 열쇠는 tt 하나라 오늘·이번주·진도표가 함께 커지고 작아진다. */
     html += '<div class="chips sub">'
       + ['today,오늘', 'progress,진도표'].map(function (s) {
           var p = s.split(',');
           return '<button class="chip' + (VIEW === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">'
             + p[1] + '</button>';
-        }).join('') + '</div>';
+        }).join('')
+      + fontBtns('tt') + '</div>';
   }
 
   html += '</div>';   // 머리 끝 — 여기부터는 스크롤된다
