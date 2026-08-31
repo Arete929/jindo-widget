@@ -310,4 +310,5 @@ function register(helpers) {
   ipcMain.handle('roster-fetch', async () => refreshRoster());
 }
 
-module.exports = { register, recState, loadRoster, refreshRoster };
+/* 위젯의 로그인 자동 복원이 쓴다 — 저장된 갱신 토큰으로 새 액세스 토큰을 받는다 */
+module.exports = { register, recState, loadRoster, refreshRoster, accessToken: token };

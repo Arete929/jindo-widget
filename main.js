@@ -779,6 +779,19 @@ async function pollOnce() {
     }
     if (data.needLogin) {
       debugLog('로그인 필요');
+      /* ★ 사람을 부르기 전에 «저장된 계정으로 스스로» 복원해 본다.
+         숨은 창의 세션은 여러 이유로 풀린다 — 오래돼서, 저장이 막혀서(보안 프로그램이
+         낯선 출신의 파일 고치기를 격리하는 일이 실제로 있었다), 램이 바닥나서.
+         그러나 갱신 토큰은 상태 파일에 있고 «읽기» 는 언제나 되므로,
+         새 액세스 토큰을 받아 숨은 창에 이어 붙이면 손 안 대고 돌아온다. */
+      if (Date.now() - lastLoginRestore > 5 * 60 * 1000) {
+        lastLoginRestore = Date.now();
+        debugLog('저장된 계정으로 로그인 자동 복원을 시도합니다');
+        recordsmain.accessToken().then((at) => {
+          if (!at) { debugLog('자동 복원 — 토큰이 비어 있음'); return; }
+          restoreLogin(at);
+        }).catch((e) => debugLog('자동 복원 실패: ' + (e && e.message ? e.message : e)));
+      }
       lastData = { needLogin: true };
       sendToWidget();
       return;
@@ -986,6 +999,28 @@ function startLogin() {
   }, 15 * 60 * 1000);
 }
 
+let lastLoginRestore = 0;   // 자동 복원은 5분에 한 번만 — 실패를 두들기지 않는다
+/* 저장된 계정의 «액세스 토큰» 으로 숨은 창 로그인을 복원한다.
+   ★ 위젯의 구글 연결에는 openid 가 없어 id 토큰은 못 받는다 — 액세스 토큰이 유일한 길.
+     웹(boot.js v1.3.0)의 __widgetSignInAT 가 받아 준다. 옛 웹이 떠 있으면 새로 불러온다. */
+async function restoreLogin(accessToken, retried) {
+  const win = getWorkerWindow();
+  try {
+    const ok = await win.webContents.executeJavaScript(
+      'window.__widgetSignInAT ? window.__widgetSignInAT(' + JSON.stringify(accessToken) + ') : null', true);
+    if (ok === null) {
+      if (retried) { debugLog('자동 복원 — 웹에 __widgetSignInAT 가 없습니다'); return; }
+      debugLog('자동 복원 — 웹이 옛 판이라 새로 불러온 뒤 다시');
+      win.webContents.reloadIgnoringCache();
+      win.webContents.once('did-finish-load', () => setTimeout(() => restoreLogin(accessToken, true), 2500));
+      return;
+    }
+    debugLog('로그인 자동 복원 완료 — 손댈 것 없이 이어집니다');
+    setTimeout(pollOnce, 2000);
+  } catch (e) {
+    debugLog('자동 복원 마무리 실패: ' + (e && e.message ? e.message : e));
+  }
+}
 async function finishLogin(idToken, retried) {
   const win = getWorkerWindow();
   try {
