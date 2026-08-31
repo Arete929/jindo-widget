@@ -53,6 +53,13 @@ contextBridge.exposeInMainWorld('widgetAPI', {
      굴려도 그 부분은 영원히 못 본다. webFrame 확대는 vh 까지 함께 줄여 준다. */
   setZoom: (z) => webFrame.setZoomFactor(Number(z) || 1),
 
+  /* 업무포털 — 도우미 목록·실행·폴더 고르기.
+     ★ 인증서 비밀번호는 도우미의 config.ini 몫이다. 이 앱은 손대지 않는다. */
+  portalInfo: () => ipcRenderer.invoke('portal-info'),
+  portalOpen: (i) => ipcRenderer.invoke('portal-open', i),
+  portalPick: () => ipcRenderer.invoke('portal-pick'),
+  portalClear: () => ipcRenderer.invoke('portal-clear'),
+
   /* AI 사용량 (클로드·제미나이) */
   usageLogin: (key) => ipcRenderer.send('usage-login', key),
   usageRefresh: () => ipcRenderer.send('usage-refresh'),

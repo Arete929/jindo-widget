@@ -966,6 +966,99 @@ async function finishLogin(idToken, retried) {
   }
 }
 
+/* ===================== 업무포털 =====================
+   ★ 자동 로그인은 «업무포털접속도우미» 가 이미 하고 있다(셀레니움으로 진짜 브라우저를 몬다).
+     그것을 앱에서 다시 만들지 않는다 — 한 번 눌러 대신 실행해 줄 뿐이다.
+   ★ 도우미가 없거나 못 찾으면 «그냥 포털 열기» 로 내려간다. 되돌아갈 길은 늘 둔다.
+   ★ 인증서 비밀번호는 도우미의 config.ini 가 들고 있다. 이 앱은 손대지 않는다 —
+     읽지도, 옮기지도, 기록하지도 않는다. */
+const PORTAL_URL = 'https://sen.eduptl.kr';        // 서울시교육청 업무포털
+/* 도우미가 흔히 놓이는 자리 — 바탕화면과 OneDrive 바탕화면 */
+function portalHelperRoots() {
+  const home = app.getPath('home');
+  const out = [];
+  try { out.push(app.getPath('desktop')); } catch (e) { /* 무시 */ }
+  try {
+    fs.readdirSync(home).forEach(function (d) {
+      if (d.indexOf('OneDrive') !== 0) return;
+      ['바탕 화면', 'Desktop'].forEach(function (b) {
+        out.push(path.join(home, d, b));
+      });
+    });
+  } catch (e) { /* 무시 */ }
+  return out;
+}
+/* 폴더 안에서 도우미 exe 를 찾는다.
+   ★ 바탕화면을 통째로 뒤지면 느리다. «이름이 그럴듯한 폴더» 로만 들어간다.
+     (업무포털접속도우미_v_102 › 업무포털접속도우미 › 나이스_크롬(1.02).exe 처럼 두 겹) */
+const PORTAL_DIR_RE = /도우미|포털|eduptl|나이스|에듀파인/i;
+const PORTAL_EXE_RE = /^(?=.*\.exe$)(?=.*(나이스|에듀파인|포털)).*$/i;
+function portalScan(dir, depth) {
+  const found = [];
+  let names = [];
+  try { names = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return found; }
+  names.forEach(function (n) {
+    const p = path.join(dir, n.name);
+    if (n.isDirectory()) {
+      if (depth > 0 && PORTAL_DIR_RE.test(n.name)) {
+        portalScan(p, depth - 1).forEach(function (x) { found.push(x); });
+      }
+    } else if (PORTAL_EXE_RE.test(n.name)) {
+      found.push(p);
+    }
+  });
+  return found;
+}
+function portalHelpers() {
+  const pick = String(loadState().portalHelperDir || '');
+  const roots = pick ? [pick] : portalHelperRoots();
+  const seen = {}, out = [];
+  roots.forEach(function (r) {
+    portalScan(r, pick ? 2 : 2).forEach(function (p) {
+      if (seen[p]) return;
+      seen[p] = 1;
+      const base = path.basename(p).replace(/\.exe$/i, '');
+      out.push({
+        path: p,
+        /* «나이스_크롬(1.02)» → 곳 «나이스» · 브라우저 «크롬» */
+        where: /에듀파인/.test(base) ? '에듀파인' : (/나이스/.test(base) ? '나이스' : '포털'),
+        via: /엣지/.test(base) ? '엣지' : (/크롬/.test(base) ? '크롬' : ''),
+        name: base.replace(/\(.*\)$/, '').replace(/_/g, ' ')
+      });
+    });
+  });
+  return out;
+}
+function portalInfo() {
+  const list = portalHelpers();
+  return {
+    url: PORTAL_URL,
+    dir: String(loadState().portalHelperDir || ''),
+    items: list.map(function (x, i) {
+      return { i: i, where: x.where, via: x.via, name: x.name };
+    })
+  };
+}
+function openPortal(i) {
+  const list = portalHelpers();
+  const x = (i === undefined || i === null || i < 0) ? null : list[i];
+  if (!x) {
+    debugLog('업무포털 — 도우미가 없어 ' + browserName() + '으로 그냥 엽니다');
+    openInBrowser(PORTAL_URL);
+    return { ok: true, how: 'browser' };
+  }
+  try {
+    /* ★ 도우미는 제 폴더에서 config.ini 를 읽는다 — cwd 를 그 폴더로 맞춰 준다 */
+    spawn(x.path, [], { cwd: path.dirname(x.path), detached: true, stdio: 'ignore' }).unref();
+    debugLog('업무포털 도우미 실행: ' + path.basename(x.path));
+    return { ok: true, how: 'helper', name: x.name };
+  } catch (e) {
+    debugLog('도우미 실행 실패(' + e.message + ') — 그냥 포털을 엽니다');
+    openInBrowser(PORTAL_URL);
+    return { ok: false, how: 'browser', error: e.message };
+  }
+}
+
 /* ===================== 위젯 창 ===================== */
 // 이번주 격자는 요일 다섯 칸이 들어가야 해서 카드가 넓어야 한다. 다른 화면은 좁게.
 // 사용자가 직접 크기를 바꿨으면 그 크기를 존중한다 — 화면을 옮길 때마다 되돌리면 곤란하다
@@ -2013,6 +2106,18 @@ function createTray() {
         { label: '🗓️ 주간 시간표 크게 보기', click: () => openTimetableWindow() },
         { label: '지금 새로고침', click: () => pollOnce() }
       ] : []),
+      /* 업무포털 — 도우미가 있으면 곳마다 한 줄, 없으면 «그냥 열기» 한 줄 */
+      ...(portalHelpers().length
+        ? [{
+            label: '업무포털',
+            submenu: portalHelpers().map(function (x, i) {
+              return { label: x.name, click: () => openPortal(i) };
+            }).concat([
+              { type: 'separator' },
+              { label: '도우미 없이 그냥 열기', click: () => openPortal(-1) }
+            ])
+          }]
+        : [{ label: '업무포털 열기', click: () => openPortal(-1) }]),
       {
         // 다른 모니터를 뽑았거나 위젯을 어디 뒀는지 못 찾을 때 쓰는 탈출구
         label: '위젯 위치 초기화 (화면 가운데로)',
@@ -2049,6 +2154,25 @@ function createTray() {
 /* ===================== IPC ===================== */
 ipcMain.on('refresh-now', () => pollOnce());
 ipcMain.on('open-login', () => startLogin());
+/* 업무포털 — 도우미로 열거나, 없으면 그냥 포털을 연다 */
+ipcMain.handle('portal-info', () => portalInfo());
+ipcMain.handle('portal-open', (_e, i) => openPortal(Number(i)));
+/* 도우미가 든 폴더를 손수 고른다 (동료 PC 는 자리가 다르다) */
+ipcMain.handle('portal-pick', async () => {
+  const r = await dialog.showOpenDialog({
+    title: '업무포털접속도우미가 든 폴더를 골라 주세요',
+    properties: ['openDirectory'],
+    defaultPath: loadState().portalHelperDir || app.getPath('desktop')
+  });
+  if (r.canceled || !r.filePaths.length) return portalInfo();
+  saveState({ portalHelperDir: r.filePaths[0] });
+  debugLog('업무포털 도우미 폴더: ' + r.filePaths[0]);
+  return portalInfo();
+});
+ipcMain.handle('portal-clear', () => {
+  saveState({ portalHelperDir: '' });
+  return portalInfo();
+});
 ipcMain.on('open-timetable', () => openTimetableWindow());
 /* 닫기 — «끄는 것» 이 아니라 감추는 것이다. 트레이에서 다시 부른다. */
 ipcMain.on('hide-widget', () => {

@@ -1917,6 +1917,41 @@ function ofTile(x, i) {
   return h + '</div>';
 }
 
+/* ── 업무포털 ─────────────────────────────────────────────
+   ★ 자동 로그인은 «업무포털접속도우미» 가 이미 한다(셀레니움으로 진짜 브라우저를 몬다).
+     여기서는 그것을 한 번 눌러 대신 실행해 줄 뿐이다. 다시 만들지 않는다.
+   ★ 도우미가 없으면 «그냥 열기» 하나만 보인다 — 되돌아갈 길은 늘 둔다. */
+var PORTAL = null, portalBusy = false, portalMsg = '';
+function loadPortal() {
+  if (portalBusy || !widgetAPI.portalInfo) return;
+  portalBusy = true;
+  widgetAPI.portalInfo().then(function (r) {
+    portalBusy = false; PORTAL = r || { items: [] }; render();
+  }).catch(function () { portalBusy = false; PORTAL = { items: [] }; render(); });
+}
+function portalBar() {
+  if (!widgetAPI.portalInfo) return '';
+  if (!PORTAL) { loadPortal(); return ''; }
+  var xs = PORTAL.items || [];
+  var h = '<div class="ptl"><b>업무포털</b>';
+  if (xs.length) {
+    h += xs.map(function (x) {
+      return '<button class="wkb ptlb" data-ptl="' + x.i + '">'
+        + esc(x.where) + (x.via ? '<small>' + esc(x.via) + '</small>' : '') + '</button>';
+    }).join('');
+    h += '<button class="wkb" data-ptl="-1" title="도우미 없이 포털만 엽니다">그냥 열기</button>';
+  } else {
+    h += '<button class="wkb ptlb" data-ptl="-1">포털 열기</button>'
+      + '<span class="ptlh">접속도우미가 있으면 자동 로그인까지 됩니다 —'
+      + ' 설정에서 폴더를 골라 주세요</span>';
+  }
+  h += '<span class="spacer"></span>'
+    + '<button class="wkb" id="ptlPick" title="접속도우미가 든 폴더 고르기">📁</button>';
+  if (portalMsg) h += '<span class="ptlh ok">' + esc(portalMsg) + '</span>';
+  h += '</div>';
+  return h;
+}
+
 function viewOffice() {
   var h = '<div class="top2"><div class="wknav">'
     + '<button class="wkb' + (ofOnlyFav ? '' : ' now') + '" data-ofv="0">전체</button>'
@@ -1925,6 +1960,8 @@ function viewOffice() {
     + '<input class="ofq" id="ofQ" placeholder="이름·설명으로 찾기" value="' + esc(ofQ) + '">'
     + fontBtns('office')
     + '</div></div>';
+
+  h += portalBar();
 
   // ★ 예시라는 것을 또렷이 — 진짜 자료로 착각하면 안 된다
   if (OFFICE.demo) {
@@ -4582,6 +4619,32 @@ function wireViews(app) {
     });
   });
   wireBoard(app);   // 전광판 — 위젯은 본문 안에 띠가 있다
+  // 업무포털 — 도우미 실행 / 그냥 열기 / 폴더 고르기
+  app.querySelectorAll('[data-ptl]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var i = Number(b.dataset.ptl);
+      b.disabled = true;
+      portalMsg = i < 0 ? '포털을 엽니다…' : '접속도우미를 띄웁니다…';
+      render();
+      widgetAPI.portalOpen(i).then(function (r) {
+        portalMsg = (r && r.how === 'helper')
+          ? '접속도우미가 떴습니다 — 브라우저 창을 보세요'
+          : '포털을 열었습니다';
+        render();
+        setTimeout(function () { portalMsg = ''; render(); }, 6000);
+      });
+    });
+  });
+  var pp = app.querySelector('#ptlPick');
+  if (pp) pp.addEventListener('click', function () {
+    widgetAPI.portalPick().then(function (r) {
+      PORTAL = r || PORTAL;
+      portalMsg = (PORTAL.items || []).length
+        ? (PORTAL.items.length + '개를 찾았습니다') : '그 폴더에서는 못 찾았습니다';
+      render();
+      setTimeout(function () { portalMsg = ''; render(); }, 6000);
+    });
+  });
   // 교무실
   app.querySelectorAll('[data-ofv]').forEach(function (b) {
     b.addEventListener('click', function () { ofOnlyFav = b.dataset.ofv === '1'; render(); });

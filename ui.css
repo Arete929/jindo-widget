@@ -877,6 +877,24 @@
   .chips.sub .chip { flex: 0 1 130px; }
   .chips.sub .wfs { margin-left: auto; align-self: center; }
 
+  /* ── 업무포털 줄 (교무실 화면 맨 위) ──
+     ★ 드롭다운을 쓰지 않는다 — 곳(나이스·에듀파인)마다 단추를 늘어놓는다. */
+  .ptl {
+    display: flex; align-items: center; flex-wrap: wrap;
+    gap: calc(5px * var(--wf)); margin: 0 0 calc(9px * var(--wf));
+    padding: calc(7px * var(--wf)) calc(9px * var(--wf));
+    border-radius: 10px; background: var(--card);
+    border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--bg));
+  }
+  .ptl > b { font-size: calc(11.5px * var(--wf)); color: var(--accent); margin-right: 2px; }
+  .ptl .ptlb { font-weight: 800; }
+  .ptl .ptlb small {
+    margin-left: calc(4px * var(--wf)); font-weight: 600; opacity: .7;
+    font-size: calc(9.5px * var(--wf));
+  }
+  .ptlh { font-size: calc(10px * var(--wf)); color: var(--dim); }
+  .ptlh.ok { color: var(--now); font-weight: 700; }
+
   /* ── 학사일정 ── */
   /* 시트에 섞여 있는 «다른 해» 탭 — 눌러 볼 수는 있게 두되 흐리게 */
   .wkb.oldyr { opacity: .55; border-style: dashed; }
