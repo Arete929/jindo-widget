@@ -2707,6 +2707,35 @@ ipcMain.on('content-height', (_e, h) => {
 process.on('uncaughtException', (err) => debugLog(`uncaughtException: ${err && err.stack ? err.stack : err}`));
 
 /* ===================== 시작 ===================== */
+/* ── 설치기가 띄운 판은 «징검다리» 로만 쓴다 ──────────────────
+   ★ 업데이트 설치기(--updated 로 띄움)가 낳은 프로세스는 병들어 태어난다 —
+     돌기는 도는데 제 폴더(Roaming\JindoWidget)에 아무것도 못 쓴다.
+     기록이 안 남고, 로그인해도 저장이 안 되고(widget-state 가 안 바뀜),
+     세션 저장이 안 되니 매번 «로그인하세요» 가 떴다. (2026-08-31 두 번 실측)
+     손으로 켠 프로세스는 늘 멀쩡했다 — 껐다 켜면 즉시 낫던 까닭이다.
+   ★ 그래서 그 병든 판은 일을 하지 않는다. 자기를 «깨끗한 조건으로» 다시 켜고
+     곧장 물러난다. relaunch 는 이 판이 끝난 뒤에 도니 잠금도 안 부딪친다. */
+if (process.argv.indexOf('--updated') >= 0) {
+  try {
+    fs.appendFileSync(debugLogFile,
+      '[' + new Date().toISOString() + '] 설치기가 띄운 판(--updated) — 깨끗하게 다시 켜고 물러납니다'
+      + ' (v' + app.getVersion() + ')' + String.fromCharCode(10));
+  } catch (e) { /* 병든 판은 이 기록조차 못 쓸 수 있다 — 그래도 다시 켜는 것이 일이다 */ }
+  /* ★ relaunch 로 다시 켜면 «병든 판의 자식» 이라 병을 물려받을 수 있다.
+     건강했던 실행은 모두 탐색기(두 번 누르기)가 띄운 것이었다 —
+     그래서 탐색기에게 맡긴다. 탐색기가 띄우면 두 번 누른 것과 같은 깨끗한 조건이다. */
+  /* 2초 틈 — 탐색기가 너무 빨리 띄우면 이 판이 미처 못 죽어 잠금에 부딪친다.
+     (ping 은 콘솔 없이도 도는 믿을 만한 시계다) */
+  try {
+    spawn(process.env.ComSpec || 'cmd.exe',
+      ['/c', 'ping -n 3 127.0.0.1 >nul & explorer.exe "' + process.execPath + '"'],
+      { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+  } catch (e) {
+    app.relaunch({ args: [] });   // 탐색기가 안 되면 이거라도
+  }
+  app.exit(0);
+}
+
 /* ── 시작 파수꾼 ─────────────────────────────────────────
    ★ 업데이트 직후 «좀비» 가 생기는 일이 있었다 (2026-08-31 아수스에서 실제로).
      설치기가 새 판을 띄웠는데 옛 판이 아직 죽는 중이라, 새 판의 시작 절차(whenReady)가
