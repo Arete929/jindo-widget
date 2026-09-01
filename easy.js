@@ -14,6 +14,8 @@ var EBAR = document.getElementById('ebar');   // 맨 위를 가로지르는 띠
 // 그림 아이콘은 Music\\진호아이콘 에서 가져와 assets/nav-*.png 로 넣어 두었다
 var MENU = [
   { v: 'home', p: 'nav-home', t: '대시보드', d: '오늘 것을 한눈에', g: '' },
+  // ★ 업무관리(노션)는 진호알리미에만 — 혜원이지에는 이 기능이 없다
+  { v: 'task', p: 'nav-work', t: '업무관리', d: '노션 할 일 — 오늘·이번주·프로젝트별', g: '오늘 볼 것', jinho: true },
   { v: 'work', p: 'nav-work', t: '주간업무', d: '표·들여쓰기까지 원문 그대로', g: '오늘 볼 것' },
   { v: 'cal', p: 'nav-cal', t: '학사일정', d: '3월부터 이듬해 2월까지', g: '오늘 볼 것' },
   { v: 'meal', p: 'nav-meal', t: '급식', d: '주 단위로 넘겨 보기', g: '오늘 볼 것' },
@@ -28,7 +30,7 @@ var MENU = [
 function navImg(m) { return '<img src="assets/' + m.p + '.png" alt="">'; }
 /* 이 갈래에서 쓸 수 있는 화면만 — 진도표는 혜원이지 것이다 */
 function menus() {
-  var list = MENU.filter(function (m) { return !(m.hyewon && HAS_TT); })
+  var list = MENU.filter(function (m) { return !(m.hyewon && HAS_TT) && !(m.jinho && !HAS_TT); })
     .map(function (m) {
       // 진호알리미의 «바로가기» 는 런처보드다 — 내 앱을 담고 고치는 곳
       if (m.v === 'link' && FLAVOR === 'jinho') {
@@ -516,7 +518,8 @@ render = function () {
     h = '<div class="ehead"><div class="ph"><h1>' + esc(m.t) + '</h1>'
       + '<span class="sub">' + esc(m.d) + '</span></div></div>'
       + '<div id="view">'
-      + (VIEW === 'work' ? viewWork()
+      + (VIEW === 'task' ? viewTasks()
+        : VIEW === 'work' ? viewWork()
         : VIEW === 'cal' ? viewAcademic()
           : VIEW === 'meal' ? viewMeals()
             : VIEW === 'comci' ? viewComci()
