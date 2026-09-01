@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 1.88.2
-// 수정요약: v1.88.2 업무관리 탭을 눌러도 딴 탭으로 튕기던 문제(main VIEWS 에 task 누락) + 넓게 보기 차림표에도 업무관리 추가 / v1.88.1 v1.88.0 이 아예 안 켜지던 문제 — 새 파일 notion.js 가 빌드 목록에 빠졌었다(두 갈래 다 추가) / v1.88.0 업무관리 탭 신규(노션 PROJECTS·TASKS 연동 — 진호알리미 전용, 시간표와 주간업무 사이). 오늘·이번주/프로젝트별/마감없음 3갈래·완료·오늘로·진행중·추가 / v1.87.0 바뀐 수업(보강·교체)이 null-null 로 나오던 문제 — 컴시간이 «>11302» 같은 문자열로 주는 것을 못 읽었다. 파싱 보강 + 바뀐 칸 노란 테두리 표시 / v1.86.0 컴시간 자동 갱신(켤 때 1회 + 6시간마다) + 컴시간 탭 ⟳ 새로고침 버튼 / v1.85.0 숨은 창 로그인·캐시 메모리 전용(?widgetworker=1 — 격리로 손상되는 IndexedDB 회피, 로그인 몇 초 만에 풀리던 문제 뿌리 해결) + 켤 때 손상 창고·재기동 예약작업 찌꺼기 청소 / v1.84.0 구글 클라이언트를 파이어베이스와 같은 프로젝트 것으로 교체(audience 불일치 해소) + 판올림 재기동 wscript 숨김 실행(검은 콘솔 창 제거)
+// 파일명: main.js | @version 1.89.0
+// 수정요약: v1.89.0 업무관리 2단 — 오른쪽에 내가 쓰는 「내 할 일」(이 PC 저장·노션 무관). 완료는 접히고 복원·일괄삭제 가능 / v1.88.2 업무관리 탭을 눌러도 딴 탭으로 튕기던 문제(main VIEWS 에 task 누락) + 넓게 보기 차림표에도 업무관리 추가 / v1.88.1 v1.88.0 이 아예 안 켜지던 문제 — 새 파일 notion.js 가 빌드 목록에 빠졌었다(두 갈래 다 추가) / v1.88.0 업무관리 탭 신규(노션 PROJECTS·TASKS 연동 — 진호알리미 전용, 시간표와 주간업무 사이). 오늘·이번주/프로젝트별/마감없음 3갈래·완료·오늘로·진행중·추가 / v1.87.0 바뀐 수업(보강·교체)이 null-null 로 나오던 문제 — 컴시간이 «>11302» 같은 문자열로 주는 것을 못 읽었다. 파싱 보강 + 바뀐 칸 노란 테두리 표시 / v1.86.0 컴시간 자동 갱신(켤 때 1회 + 6시간마다) + 컴시간 탭 ⟳ 새로고침 버튼 / v1.85.0 숨은 창 로그인·캐시 메모리 전용(?widgetworker=1 — 격리로 손상되는 IndexedDB 회피, 로그인 몇 초 만에 풀리던 문제 뿌리 해결) + 켤 때 손상 창고·재기동 예약작업 찌꺼기 청소 / v1.84.0 구글 클라이언트를 파이어베이스와 같은 프로젝트 것으로 교체(audience 불일치 해소) + 판올림 재기동 wscript 숨김 실행(검은 콘솔 창 제거)
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
 // 수정요약: v1.83.0 겹침 방지 두 번째 잠금(포트) — V3 그림자 격리가 파일 잠금을 무력화해도 두 벌이 못 겹치게. 늦게 뜬 쪽이 살아남고, 안 물러나는 좀비는 강제로 내린다
 //
@@ -454,6 +454,25 @@ async function refreshTasks(why) {
   sendToWidget();
 }
 
+/* ── 내 할 일(To-do) ────────────────────────────────────────
+   업무관리 탭 오른쪽에 두는 «내가 직접 쓰는» 목록. 노션과 상관없이 이 PC 에만 있다.
+   ★ 완료한 것은 지우지 않고 접어 둔다 — 나중에 되돌릴 수 있어야 하기 때문이다. */
+function getTodos() {
+  const a = loadState().todos;
+  return Array.isArray(a) ? a : [];
+}
+function saveTodos(list) {
+  saveState({ todos: list.slice(0, 300), todosAt: stampKST() });
+  sendToWidget();
+}
+/* 저장시각 — 화면에 «마지막 저장» 으로 보여 준다(전역 규칙) */
+function stampKST() {
+  const d = new Date();
+  const z = (n) => (n < 10 ? '0' : '') + n;
+  return d.getFullYear() + '.' + z(d.getMonth() + 1) + '.' + z(d.getDate())
+    + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()) + ':' + z(d.getSeconds());
+}
+
 /* ── 전광판 ────────────────────────────────────────────────
    같은 학교 선생님끼리 한 줄씩 주고받는다.
    ★ 이 앱에서 «바깥에 쓰는» 것은 이것뿐이다. 그래서 두 겹으로 막는다.
@@ -884,7 +903,8 @@ function sendToWidget() {
     photo: { dir: getPhotoDir(), sec: getPhotoSec() },  // 사진 액자
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData,
            hasKey: !!getFeedKey(), fav: getFeedFav(), fold: getFeedFold() },   // 런처 목록
-    task: HAS_TT ? { show: getTaskShow(), hasKey: !!getNotionKey(), data: taskData } : null,
+    task: HAS_TT ? { show: getTaskShow(), hasKey: !!getNotionKey(), data: taskData,
+      todos: getTodos(), todosAt: String(loadState().todosAt || '') } : null,
     update: { state: updateState, version: updateVersion }
   };
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
@@ -1685,6 +1705,48 @@ ipcMain.handle('task-create', async (_e, title, projectId, ymd) => {
     return { ok: true };
   } catch (e) { return { ok: false, error: (e && e.message) || String(e) }; }
 });
+/* ── 내 할 일 창구 ── (노션과 무관, 이 PC 에만 저장) */
+ipcMain.handle('todo-add', (_e, text) => {
+  const t = String(text || '').trim().slice(0, 200);
+  if (!t) return { ok: false, error: '내용을 적어 주세요' };
+  const list = getTodos();
+  /* 겹치지 않는 번호 — 시각만 쓰면 빨리 두 번 누를 때 같은 번호가 났다 */
+  const id = 'td' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+  list.unshift({ id: id, text: t, done: false, at: stampKST(), doneAt: '' });
+  saveTodos(list);
+  return { ok: true, at: stampKST() };
+});
+ipcMain.handle('todo-toggle', (_e, id) => {
+  const list = getTodos();
+  const x = list.filter((v) => v.id === id)[0];
+  if (!x) return { ok: false, error: '없는 항목입니다' };
+  x.done = !x.done;
+  x.doneAt = x.done ? stampKST() : '';
+  saveTodos(list);
+  return { ok: true, at: stampKST() };
+});
+ipcMain.handle('todo-del', (_e, id) => {
+  saveTodos(getTodos().filter((v) => v.id !== id));
+  return { ok: true, at: stampKST() };
+});
+/* 완료한 것 «모두» 지우기 — 접어 둔 아코디언 안의 단추 */
+ipcMain.handle('todo-clear-done', () => {
+  const left = getTodos().filter((v) => !v.done);
+  saveTodos(left);
+  return { ok: true, at: stampKST() };
+});
+/* 순서 바꾸기 — 안 끝난 것들 사이에서만 위·아래로 */
+ipcMain.handle('todo-move', (_e, id, dir) => {
+  const list = getTodos();
+  const live = list.filter((v) => !v.done);
+  const i = live.findIndex((v) => v.id === id);
+  const j = i + (dir === 'up' ? -1 : 1);
+  if (i < 0 || j < 0 || j >= live.length) return { ok: true };
+  const tmp = live[i]; live[i] = live[j]; live[j] = tmp;
+  saveTodos(live.concat(list.filter((v) => v.done)));
+  return { ok: true, at: stampKST() };
+});
+
 /* 설정의 «지금 확인» — 열쇠와 연결이 맞는지 그 자리에서 알려 준다 */
 ipcMain.handle('task-test', async (_e, key) => {
   try {
@@ -2011,7 +2073,8 @@ ipcMain.handle('get-settings', () => ({
              data: aiusage.snapshot() },
     sys: { show: getSysShow(), data: sysData },
     // 업무관리(노션) — 열쇠 자체는 안 보낸다. «넣었는가» 와 읽어 둔 자료만.
-    task: HAS_TT ? { show: getTaskShow(), hasKey: !!getNotionKey(), data: taskData } : null,
+    task: HAS_TT ? { show: getTaskShow(), hasKey: !!getNotionKey(), data: taskData,
+      todos: getTodos(), todosAt: String(loadState().todosAt || '') } : null,
     wx: { show: getWxShow(), spot: getWxSpot(), data: wxData },
     grade: { on: getGradeOn(), sheets: getGradeSheets() },
     rec: recordsmain.recState(),

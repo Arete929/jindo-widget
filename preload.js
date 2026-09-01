@@ -81,6 +81,12 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   taskSetDue: (id, ymd) => ipcRenderer.invoke('task-set-due', id, ymd),
   taskCreate: (title, projectId, ymd) => ipcRenderer.invoke('task-create', title, projectId, ymd),
   taskTest: (key) => ipcRenderer.invoke('task-test', key),
+  // 내 할 일 (이 PC 에만 저장)
+  todoAdd: (text) => ipcRenderer.invoke('todo-add', text),
+  todoToggle: (id) => ipcRenderer.invoke('todo-toggle', id),
+  todoDel: (id) => ipcRenderer.invoke('todo-del', id),
+  todoClearDone: () => ipcRenderer.invoke('todo-clear-done'),
+  todoMove: (id, dir) => ipcRenderer.invoke('todo-move', id, dir),
 
   comciSearch: (name) => ipcRenderer.invoke('comci-search', name),
   comciFetch: () => ipcRenderer.invoke('comci-fetch'),

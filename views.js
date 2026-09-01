@@ -630,6 +630,8 @@ function viewComci() {
    ★ 진호알리미에만 있다. 고치면 노션에 바로 반영된다. */
 var TASK = null, tkSub = 'now', tkProj = '', tkBusy = '', tkErr = '', tkOpen = {};
 var tkNew = '', tkNewProj = '';
+/* 내 할 일 — 오른쪽 단. 완료한 것은 접어 둔다(tdOpen 이 켜져야 펼친다). */
+var TODOS = [], TODOAT = '', tdOpen = false, tdBusy = false, tdErr = '', tdSaved = '';
 
 /* ISO 시각 → «2026.09.02 12:10» (KST) */
 function fmtStamp(iso) {
@@ -696,6 +698,77 @@ function tkSection(title, list, cls) {
     + list.map(tkRow).join('') + '</div>';
 }
 
+/* ── 내 할 일(오른쪽 단) ──
+   ★ 노션과 상관없다. 열쇠가 없어도 이 칸은 쓸 수 있어야 한다. */
+/* 할 일 명령 하나를 돌리고 결과를 화면에 반영한다 (저장시각 포함) */
+function tdRun(promise) {
+  if (tdBusy) return;
+  tdBusy = true; tdErr = '';
+  promise.then(function (r) {
+    tdBusy = false;
+    if (r && r.ok === false) tdErr = r.error || '하지 못했습니다';
+    else if (r && r.at) tdSaved = r.at;
+    render();
+  }).catch(function (e) {
+    tdBusy = false; tdErr = String((e && e.message) || e); render();
+  });
+}
+function tdAddNow(root) {
+  var box = root.querySelector('#tdNew');
+  var v = box ? String(box.value || '').trim() : '';
+  if (!v) { tdErr = '내용을 적어 주세요'; render(); return; }
+  if (box) box.value = '';
+  tdRun(widgetAPI.todoAdd(v));
+}
+
+function viewTodos() {
+  var live = TODOS.filter(function (t) { return !t.done; });
+  var done = TODOS.filter(function (t) { return t.done; });
+  var h = '<div class="tdbox"><div class="tkh">📝 내 할 일 <b>' + live.length + '</b></div>';
+
+  h += '<div class="tdadd">'
+    + '<input class="bdi" id="tdNew" placeholder="적고 엔터" maxlength="200">'
+    + '<button class="bdgo" id="tdAdd"' + (tdBusy ? ' disabled' : '') + '>＋</button></div>';
+  if (tdErr) h += '<div class="tkerr">' + esc(tdErr) + '</div>';
+
+  if (!live.length) h += '<div class="tdempty">적어 두면 여기 쌓입니다.</div>';
+  h += live.map(function (t, i) {
+    return '<div class="tdrow">'
+      + '<button class="tdck" data-tdck="' + esc(t.id) + '" title="완료">☐</button>'
+      + '<span class="tdtx">' + esc(t.text) + '</span>'
+      + '<span class="tdops">'
+      + (i > 0 ? '<button class="tdb" data-tdup="' + esc(t.id) + '" title="위로">▲</button>' : '')
+      + (i < live.length - 1 ? '<button class="tdb" data-tddn="' + esc(t.id) + '" title="아래로">▼</button>' : '')
+      + '<button class="tdb x" data-tddel="' + esc(t.id) + '" title="지우기">✕</button>'
+      + '</span></div>';
+  }).join('');
+
+  /* 완료한 것 — 접어 두고, 펼치면 되돌리기·모두 지우기 */
+  if (done.length) {
+    h += '<div class="tddone">'
+      + '<button class="tdfold" id="tdFold">' + (tdOpen ? '▾' : '▸')
+      + ' 완료 <b>' + done.length + '</b>개</button>';
+    if (tdOpen) {
+      h += done.map(function (t) {
+        return '<div class="tdrow off">'
+          + '<button class="tdck on" data-tdck="' + esc(t.id) + '" title="되돌리기">☑</button>'
+          + '<span class="tdtx">' + esc(t.text) + '</span>'
+          + '<span class="tdops">'
+          + '<button class="tdb" data-tdck="' + esc(t.id) + '" title="되돌리기">↩ 복원</button>'
+          + '<button class="tdb x" data-tddel="' + esc(t.id) + '" title="지우기">✕</button>'
+          + '</span></div>';
+      }).join('')
+        + '<button class="tdclear" id="tdClear"' + (tdBusy ? ' disabled' : '') + '>'
+        + '완료한 ' + done.length + '개 모두 지우기</button>';
+    }
+    h += '</div>';
+  }
+  var stamp = tdSaved || TODOAT;
+  if (stamp) h += '<div class="rsaved">' + (tdSaved ? '✅ 저장됨 · ' : '마지막 저장 · ')
+    + esc(stamp) + '</div>';
+  return h + '</div>';
+}
+
 function viewTasks() {
   var head = '<div class="wknav"><span class="wklab" style="text-align:left">업무관리'
     + '<small>' + (TASK && TASK.at ? esc(fmtStamp(TASK.at)) + ' 기준' : '아직 안 읽음') + '</small></span>'
@@ -703,11 +776,14 @@ function viewTasks() {
     + '<button class="wkb" id="tkGet" title="노션에서 다시 받기">' + (tkBusy === 'all' ? '…' : '⟳') + '</button>'
     + '</div>';
 
+  /* ★ 노션이 아직 없어도 «내 할 일» 은 쓸 수 있어야 한다 — 오른쪽 단은 늘 그린다 */
   if (!TASK) {
-    return head + '<div class="empty">노션 업무관리가 아직 연결되지 않았습니다.<br>'
+    return head + '<div class="tkwrap"><div class="tkleft">'
+      + '<div class="empty">노션 업무관리가 아직 연결되지 않았습니다.<br>'
       + '<button class="btn" onclick="widgetAPI.openSettings()">설정에서 연결하기</button>'
       + '<div style="margin-top:8px;font-size:10.5px;color:#6f7885">'
-      + '노션에서 <b>내부 통합</b>을 만들고 그 열쇠를 설정에 넣으면 됩니다.</div></div>';
+      + '노션에서 <b>내부 통합</b>을 만들고 그 열쇠를 설정에 넣으면 됩니다.</div></div>'
+      + '</div><div class="tkright">' + viewTodos() + '</div></div>';
   }
   if (TASK.error) head += '<div class="tkerr">' + esc(TASK.error) + '</div>';
   if (tkErr) head += '<div class="tkerr">' + esc(tkErr) + '</div>';
@@ -781,7 +857,9 @@ function viewTasks() {
     + '<button class="bdgo" id="tkAdd"' + (tkBusy === 'add' ? ' disabled' : '') + '>'
     + (tkBusy === 'add' ? '만드는 중…' : '노션에 추가') + '</button></div>';
 
-  return head + body;
+  /* 2단 — 넓으면 왼쪽 노션 / 오른쪽 내 할 일, 좁으면 위아래로 (CSS 가 정한다) */
+  return head + '<div class="tkwrap"><div class="tkleft">' + body + '</div>'
+    + '<div class="tkright">' + viewTodos() + '</div></div>';
 }
 
 /* ── 학사일정 ── */
@@ -4346,7 +4424,10 @@ widgetAPI.onData(function (p) {
   DASHSIZE = p.dashSize || {};
   DUTY = p.duty || null;
   // 업무관리(노션) — 진호알리미에만 온다
-  if (p.task !== undefined) TASK = (p.task && p.task.show) ? (p.task.data || null) : null;
+  if (p.task !== undefined) {
+    TASK = (p.task && p.task.show) ? (p.task.data || null) : null;
+    if (p.task) { TODOS = p.task.todos || []; TODOAT = p.task.todosAt || ''; }
+  }
   FEED = (p.feed && p.feed.show && p.feed.data) ? p.feed.data : null;
   if (p.feed && p.feed.fav) FEEDFAV = p.feed.fav;
   if (p.feed && p.feed.fold) LBFOLD = p.feed.fold;
@@ -4558,6 +4639,14 @@ function wireViews(app) {
       if (b.id === 'workGet') { WORK = null; workBusy = true; render();
         widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
         return; }
+      // ── 내 할 일 ──
+      if (b.id === 'tdFold') { tdOpen = !tdOpen; render(); return; }
+      if (b.dataset.tdck) { tdRun(widgetAPI.todoToggle(b.dataset.tdck)); return; }
+      if (b.dataset.tddel) { tdRun(widgetAPI.todoDel(b.dataset.tddel)); return; }
+      if (b.dataset.tdup) { tdRun(widgetAPI.todoMove(b.dataset.tdup, 'up')); return; }
+      if (b.dataset.tddn) { tdRun(widgetAPI.todoMove(b.dataset.tddn, 'down')); return; }
+      if (b.id === 'tdClear') { tdRun(widgetAPI.todoClearDone()); return; }
+      if (b.id === 'tdAdd') { tdAddNow(app); return; }
       // ── 업무관리(노션) ──
       if (b.dataset.tks !== undefined) { tkSub = b.dataset.tks; tkErr = ''; render(); return; }
       if (b.dataset.tkp !== undefined) { tkProj = b.dataset.tkp; render(); return; }
@@ -4985,6 +5074,11 @@ function wireViews(app) {
   }
   app.querySelectorAll('.wlink').forEach(function (a) {
     a.addEventListener('click', function () { widgetAPI.openUrl(a.dataset.url); });
+  });
+  // 내 할 일 — 엔터로 바로 추가 (한글 조합 중 엔터는 무시)
+  var tdBox = app.querySelector('#tdNew');
+  if (tdBox) tdBox.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); tdAddNow(app); }
   });
   // 업무관리 — «마감 없는 일 n건 보기» 와 줄 눌러 비고 펼치기
   app.querySelectorAll('.tkmore').forEach(function (el) {

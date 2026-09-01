@@ -776,6 +776,43 @@
   /* ★ 컴시간 시간표도 같은 .gr 표를 쓰고 u0·u1 로 색을 잡는다.
      차시 색을 만들며 u0~u5 를 지웠더니 «흰 글씨가 흰 바탕에» 놓여 통째로 안 보였다.
      컴시간은 차시라는 것이 없으니 제 색을 따로 둔다. */
+  /* ── 업무관리 2단 — 넓을 때만 갈라진다. 좁은 위젯에서는 위아래로 쌓인다 ── */
+  .tkwrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  @media (min-width: 780px) {
+    .tkwrap { grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); align-items: start; }
+    .tkright { position: sticky; top: 0; }
+  }
+  /* ── 내 할 일 ── */
+  .tdbox { border: 1px solid var(--line); border-radius: 11px; background: var(--card2);
+           padding: calc(8px * var(--wf)) calc(9px * var(--wf)); }
+  .tdadd { display: flex; gap: 5px; margin-bottom: 6px; }
+  .tdadd .bdi { flex: 1; min-width: 0; }
+  .tdadd .bdgo { flex: 0 0 auto; padding: 0 calc(12px * var(--wf)); }
+  .tdempty { font-size: calc(10.5px * var(--wf)); color: var(--dim); padding: 6px 0; }
+  .tdrow { display: flex; align-items: flex-start; gap: 5px; padding: calc(4px * var(--wf)) 0;
+           border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
+  .tdrow:last-child { border-bottom: 0; }
+  .tdck { flex: 0 0 auto; background: none; border: 0; cursor: pointer; color: var(--dim);
+          font-size: calc(13px * var(--wf)); line-height: 1.2; padding: 0; font-family: inherit; }
+  .tdck.on { color: var(--now); }
+  .tdtx { flex: 1; min-width: 0; font-size: calc(11px * var(--wf)); color: var(--fg);
+          line-height: 1.4; word-break: break-word; }
+  .tdrow.off .tdtx { color: var(--dim); text-decoration: line-through; }
+  .tdops { flex: 0 0 auto; display: flex; gap: 2px; }
+  .tdb { background: none; border: 0; cursor: pointer; color: var(--dim); font-family: inherit;
+         font-size: calc(9.5px * var(--wf)); padding: 1px 3px; border-radius: 5px; }
+  .tdb:hover { background: var(--line); color: var(--fg); }
+  .tdb.x:hover { background: var(--holfg); color: #fff; }
+  .tddone { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
+  .tdfold { background: none; border: 0; cursor: pointer; color: var(--dim); font-family: inherit;
+            font-size: calc(10.5px * var(--wf)); font-weight: 700; padding: 2px 0; }
+  .tdfold b { color: var(--fg2); }
+  .tdclear { width: 100%; margin-top: 6px; background: none; border: 1px solid var(--holfg);
+             color: var(--holfg); border-radius: 7px; cursor: pointer; font-family: inherit;
+             font-weight: 700; font-size: calc(10px * var(--wf));
+             padding: calc(4px * var(--wf)) 0; }
+  .tdclear:disabled { opacity: .5; cursor: default; }
+
   /* ── 업무관리(노션) ── */
   .tksec { margin-top: 8px; }
   .tkh { font-size: calc(11px * var(--wf)); font-weight: 800; color: var(--fg2);
