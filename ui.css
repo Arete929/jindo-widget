@@ -778,10 +778,19 @@
      컴시간은 차시라는 것이 없으니 제 색을 따로 둔다. */
   /* ── 업무관리 2단 — 넓을 때만 갈라진다. 좁은 위젯에서는 위아래로 쌓인다 ── */
   .tkwrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .tksplit { display: none; }
   @media (min-width: 780px) {
-    .tkwrap { grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); align-items: start; }
+    /* 왼쪽(남는 만큼) · 칸막이 · 오른쪽(사람이 끌어 정한 --tkr) */
+    .tkwrap { grid-template-columns: minmax(0, 1fr) 6px var(--tkr, 300px);
+              align-items: start; gap: 0 8px; }
     .tkright { position: sticky; top: 0; }
+    .tksplit { display: block; align-self: stretch; min-height: 60px; cursor: col-resize;
+               border-radius: 3px; background: var(--line); opacity: .55; }
+    .tksplit:hover { opacity: 1; background: var(--accent); }
   }
+  /* 끄는 동안에는 글자가 잡히지 않게 — 손이 미끄러져도 선택되지 않는다 */
+  body.tkdrag { cursor: col-resize; user-select: none; }
+  body.tkdrag .tksplit { opacity: 1; background: var(--accent); }
   /* ── 내 할 일 ── */
   .tdbox { border: 1px solid var(--line); border-radius: 11px; background: var(--card2);
            padding: calc(8px * var(--wf)) calc(9px * var(--wf)); }

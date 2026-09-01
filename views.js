@@ -632,6 +632,7 @@ var TASK = null, tkSub = 'now', tkProj = '', tkBusy = '', tkErr = '', tkOpen = {
 var tkNew = '', tkNewProj = '';
 /* 내 할 일 — 오른쪽 단. 완료한 것은 접어 둔다(tdOpen 이 켜져야 펼친다). */
 var TODOS = [], TODOAT = '', tdOpen = false, tdBusy = false, tdErr = '', tdSaved = '';
+var TKSPLIT = 300;   // 오른쪽 «내 할 일» 단의 너비(px) — 칸막이를 끌어 정한다
 
 /* ISO 시각 → «2026.09.02 12:10» (KST) */
 function fmtStamp(iso) {
@@ -700,6 +701,14 @@ function tkSection(title, list, cls) {
 
 /* ── 내 할 일(오른쪽 단) ──
    ★ 노션과 상관없다. 열쇠가 없어도 이 칸은 쓸 수 있어야 한다. */
+/* 2단 뼈대 — 오른쪽 단 너비(--tkr)는 사람이 칸막이를 끌어 정한 값이다 */
+function tkWrapOpen() {
+  return '<div class="tkwrap" id="tkWrap" style="--tkr:' + (Number(TKSPLIT) || 300) + 'px">';
+}
+function tkSplitBar() {
+  return '<div class="tksplit" id="tkSplit" title="끌어서 너비 조절 · 두 번 누르면 처음대로"></div>';
+}
+
 /* 할 일 명령 하나를 돌리고 결과를 화면에 반영한다 (저장시각 포함) */
 function tdRun(promise) {
   if (tdBusy) return;
@@ -778,12 +787,12 @@ function viewTasks() {
 
   /* ★ 노션이 아직 없어도 «내 할 일» 은 쓸 수 있어야 한다 — 오른쪽 단은 늘 그린다 */
   if (!TASK) {
-    return head + '<div class="tkwrap"><div class="tkleft">'
+    return head + tkWrapOpen() + '<div class="tkleft">'
       + '<div class="empty">노션 업무관리가 아직 연결되지 않았습니다.<br>'
       + '<button class="btn" onclick="widgetAPI.openSettings()">설정에서 연결하기</button>'
       + '<div style="margin-top:8px;font-size:10.5px;color:#6f7885">'
       + '노션에서 <b>내부 통합</b>을 만들고 그 열쇠를 설정에 넣으면 됩니다.</div></div>'
-      + '</div><div class="tkright">' + viewTodos() + '</div></div>';
+      + '</div>' + tkSplitBar() + '<div class="tkright">' + viewTodos() + '</div></div>';
   }
   if (TASK.error) head += '<div class="tkerr">' + esc(TASK.error) + '</div>';
   if (tkErr) head += '<div class="tkerr">' + esc(tkErr) + '</div>';
@@ -858,8 +867,8 @@ function viewTasks() {
     + (tkBusy === 'add' ? '만드는 중…' : '노션에 추가') + '</button></div>';
 
   /* 2단 — 넓으면 왼쪽 노션 / 오른쪽 내 할 일, 좁으면 위아래로 (CSS 가 정한다) */
-  return head + '<div class="tkwrap"><div class="tkleft">' + body + '</div>'
-    + '<div class="tkright">' + viewTodos() + '</div></div>';
+  return head + tkWrapOpen() + '<div class="tkleft">' + body + '</div>'
+    + tkSplitBar() + '<div class="tkright">' + viewTodos() + '</div></div>';
 }
 
 /* ── 학사일정 ── */
@@ -4426,7 +4435,10 @@ widgetAPI.onData(function (p) {
   // 업무관리(노션) — 진호알리미에만 온다
   if (p.task !== undefined) {
     TASK = (p.task && p.task.show) ? (p.task.data || null) : null;
-    if (p.task) { TODOS = p.task.todos || []; TODOAT = p.task.todosAt || ''; }
+    if (p.task) {
+      TODOS = p.task.todos || []; TODOAT = p.task.todosAt || '';
+      if (p.task.split) TKSPLIT = p.task.split;
+    }
   }
   FEED = (p.feed && p.feed.show && p.feed.data) ? p.feed.data : null;
   if (p.feed && p.feed.fav) FEEDFAV = p.feed.fav;
@@ -5075,6 +5087,39 @@ function wireViews(app) {
   app.querySelectorAll('.wlink').forEach(function (a) {
     a.addEventListener('click', function () { widgetAPI.openUrl(a.dataset.url); });
   });
+  /* 2단 칸막이 — 시트 열처럼 끌어서 너비를 맞춘다.
+     ★ 끄는 동안에는 화면을 다시 그리지 않는다(그리면 깜빡이고 마우스를 놓친다).
+       CSS 값만 바꿔 두고, 손을 뗄 때 한 번 저장한다. */
+  var sp = app.querySelector('#tkSplit');
+  if (sp) {
+    var wrap = app.querySelector('#tkWrap');
+    sp.addEventListener('mousedown', function (e) {
+      if (!wrap) return;
+      e.preventDefault();
+      document.body.classList.add('tkdrag');
+      var move = function (ev) {
+        var r = wrap.getBoundingClientRect();
+        var w = Math.round(r.right - ev.clientX - 3);       // 칸막이 두께만큼 뺀다
+        w = Math.max(180, Math.min(620, Math.min(w, Math.round(r.width - 240))));
+        TKSPLIT = w;
+        wrap.style.setProperty('--tkr', w + 'px');
+      };
+      var up = function () {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+        document.body.classList.remove('tkdrag');
+        widgetAPI.setUi({ taskSplit: TKSPLIT });          // 여기서 한 번만 저장
+      };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+    // 두 번 누르면 처음 너비로
+    sp.addEventListener('dblclick', function () {
+      TKSPLIT = 300;
+      if (wrap) wrap.style.setProperty('--tkr', '300px');
+      widgetAPI.setUi({ taskSplit: 300 });
+    });
+  }
   // 내 할 일 — 엔터로 바로 추가 (한글 조합 중 엔터는 무시)
   var tdBox = app.querySelector('#tdNew');
   if (tdBox) tdBox.addEventListener('keydown', function (e) {
