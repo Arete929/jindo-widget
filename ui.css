@@ -776,6 +776,47 @@
   /* ★ 컴시간 시간표도 같은 .gr 표를 쓰고 u0·u1 로 색을 잡는다.
      차시 색을 만들며 u0~u5 를 지웠더니 «흰 글씨가 흰 바탕에» 놓여 통째로 안 보였다.
      컴시간은 차시라는 것이 없으니 제 색을 따로 둔다. */
+  /* ── 업무관리(노션) ── */
+  .tksec { margin-top: 8px; }
+  .tkh { font-size: calc(11px * var(--wf)); font-weight: 800; color: var(--fg2);
+         margin: 6px 0 4px; display: flex; align-items: center; gap: 5px; }
+  .tkh b { color: var(--dim); font-weight: 700; }
+  .tkrow { border: 1px solid var(--line); border-radius: 9px; background: var(--card2);
+           padding: calc(6px * var(--wf)) calc(8px * var(--wf)); margin-bottom: 5px; cursor: pointer; }
+  .tkrow.late { border-color: var(--holfg); background: color-mix(in srgb, var(--holfg) 10%, var(--card2)); }
+  .tkrow.today { border-color: var(--now); }
+  .tkl { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .tkd { font-size: calc(10.5px * var(--wf)); font-weight: 800; color: var(--fg2);
+         min-width: calc(32px * var(--wf)); }
+  .tkd.no { color: var(--dim); font-weight: 700; }
+  .tkrow.late .tkd { color: var(--holfg); }
+  /* 프로젝트 이름표 — 프로젝트마다 제 색(--pc)을 갖는다 */
+  .tkp { font-size: calc(9.5px * var(--wf)); font-weight: 800; color: var(--pc, var(--dim));
+         border: 1px solid color-mix(in srgb, var(--pc, var(--line)) 45%, transparent);
+         background: color-mix(in srgb, var(--pc, var(--line)) 14%, transparent);
+         border-radius: 999px; padding: 1px calc(7px * var(--wf)); white-space: nowrap; }
+  .tkp.none { color: var(--dim); border-color: var(--line); background: none; }
+  .tkst { font-size: calc(9px * var(--wf)); font-weight: 800; color: var(--on);
+          background: var(--accent); border-radius: 999px; padding: 1px calc(6px * var(--wf)); }
+  .tkt { font-size: calc(11.5px * var(--wf)); color: var(--fg); margin-top: 3px; line-height: 1.35; }
+  .tkn { font-size: calc(10px * var(--wf)); color: var(--dim); margin-top: 3px;
+         border-left: 2px solid var(--line); padding-left: 6px; }
+  .tkb { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+  .tkbtn { background: none; border: 1px solid var(--line); color: var(--fg2);
+           border-radius: 6px; cursor: pointer; font-family: inherit;
+           font-size: calc(9.5px * var(--wf)); padding: calc(2px * var(--wf)) calc(7px * var(--wf)); }
+  .tkbtn.ok { border-color: var(--now); color: var(--now); font-weight: 800; }
+  .tkbtn:disabled { opacity: .5; cursor: default; }
+  .tkmore { margin-top: 8px; font-size: calc(10.5px * var(--wf)); color: var(--accent);
+            font-weight: 700; cursor: pointer; }
+  .tkerr { margin: 6px 0; font-size: calc(10.5px * var(--wf)); color: var(--holfg);
+           font-weight: 700; border: 1px solid var(--holfg); border-radius: 8px;
+           padding: calc(5px * var(--wf)) calc(8px * var(--wf)); }
+  .tkadd { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 6px; }
+  .tkadd .bdi { width: 100%; box-sizing: border-box; margin-bottom: 5px; }
+  .tkadd .bdgo { width: 100%; padding: calc(6px * var(--wf)) 0; margin-top: 5px; }
+  .wknav.wrap { flex-wrap: wrap; }
+
   .gr td.u0 { background: #3a2f8f; }   /* 학급 시간표 */
   .gr td.u1 { background: #12708a; }   /* 내 시간표   */
   /* ★ 바뀐 수업(보강·교체) — 컴시간 사이트의 노란 칸과 같은 뜻.

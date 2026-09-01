@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 1.87.0
-// 수정요약: v1.87.0 바뀐 수업(보강·교체)이 null-null 로 나오던 문제 — 컴시간이 «>11302» 같은 문자열로 주는 것을 못 읽었다. 파싱 보강 + 바뀐 칸 노란 테두리 표시 / v1.86.0 컴시간 자동 갱신(켤 때 1회 + 6시간마다) + 컴시간 탭 ⟳ 새로고침 버튼 / v1.85.0 숨은 창 로그인·캐시 메모리 전용(?widgetworker=1 — 격리로 손상되는 IndexedDB 회피, 로그인 몇 초 만에 풀리던 문제 뿌리 해결) + 켤 때 손상 창고·재기동 예약작업 찌꺼기 청소 / v1.84.0 구글 클라이언트를 파이어베이스와 같은 프로젝트 것으로 교체(audience 불일치 해소) + 판올림 재기동 wscript 숨김 실행(검은 콘솔 창 제거)
+// 파일명: main.js | @version 1.88.0
+// 수정요약: v1.88.0 업무관리 탭 신규(노션 PROJECTS·TASKS 연동 — 진호알리미 전용, 시간표와 주간업무 사이). 오늘·이번주/프로젝트별/마감없음 3갈래·완료·오늘로·진행중·추가 / v1.87.0 바뀐 수업(보강·교체)이 null-null 로 나오던 문제 — 컴시간이 «>11302» 같은 문자열로 주는 것을 못 읽었다. 파싱 보강 + 바뀐 칸 노란 테두리 표시 / v1.86.0 컴시간 자동 갱신(켤 때 1회 + 6시간마다) + 컴시간 탭 ⟳ 새로고침 버튼 / v1.85.0 숨은 창 로그인·캐시 메모리 전용(?widgetworker=1 — 격리로 손상되는 IndexedDB 회피, 로그인 몇 초 만에 풀리던 문제 뿌리 해결) + 켤 때 손상 창고·재기동 예약작업 찌꺼기 청소 / v1.84.0 구글 클라이언트를 파이어베이스와 같은 프로젝트 것으로 교체(audience 불일치 해소) + 판올림 재기동 wscript 숨김 실행(검은 콘솔 창 제거)
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
 // 수정요약: v1.83.0 겹침 방지 두 번째 잠금(포트) — V3 그림자 격리가 파일 잠금을 무력화해도 두 벌이 못 겹치게. 늦게 뜬 쪽이 살아남고, 안 물러나는 좀비는 강제로 내린다
 //
@@ -19,6 +19,7 @@ const path = require('path');
 const fs = require('fs');
 const aiusage = require('./aiusage.js');
 const recordsmain = require('./recordsmain.js');
+const notion = require('./notion.js');
 const roster = require('./roster.js');
 const gradeplan = require('./gradeplan.js');
 const weather = require('./weather.js');
@@ -422,6 +423,37 @@ function photoList() {
    자주 쓰는 것을 앞으로 당겨 둔다. 위젯의 탭 줄과 넓게 보기의 왼쪽
    차림표가 «같은 순서» 를 쓴다 — 둘이 다르면 손이 헷갈린다.
    ★ 담아 둔 목록에 없는 화면(새로 생긴 것)은 뒤에 붙는다. */
+/* ── 업무관리(노션) ─────────────────────────────────────────
+   노션의 PROJECTS·TASKS 를 읽어 «오늘·이번주 할 일» 로 보여주고, 거기서 바로 고친다.
+   ★ 진호알리미에만 있다(HAS_TT). 혜원이지에는 탭 자체가 안 보인다.
+   ★ 열쇠는 화면으로 안 내려간다 — 화면은 «넣었는가(hasKey)» 만 안다. */
+let taskData = null;   // { projects:[…], tasks:[…], at, error }
+/* 표 주소는 앱에 박아 둔다 — 선생님은 열쇠만 넣으면 된다. 설정에서 바꿀 수도 있다. */
+const TASK_DB = '2edff403d7468111bb56cc4626908a58';   // 🏐 TASKS
+const PROJ_DB = '2edff403d74681e0b6bbfbb8c22c8888';   // PROJECTS
+function getNotionKey() { return String(loadState().notionKey || '').trim(); }
+function getTaskDb() { return String(loadState().taskDb || '').trim() || TASK_DB; }
+function getProjDb() { return String(loadState().projDb || '').trim() || PROJ_DB; }
+function getTaskShow() { return loadState().taskShow !== false; }
+
+async function refreshTasks(why) {
+  if (!HAS_TT) return;                      // 혜원이지는 이 기능이 없다
+  const key = getNotionKey();
+  if (!key) { taskData = null; sendToWidget(); return; }
+  try {
+    const r = await notion.loadAll(key, getTaskDb(), getProjDb());
+    taskData = { projects: r.projects, tasks: r.tasks, at: r.at, error: '' };
+    debugLog(`업무관리 받기 완료 — 프로젝트 ${r.projects.length} · 태스크 ${r.tasks.length}`
+      + (why ? ` (${why})` : ''));
+  } catch (e) {
+    const msg = (e && e.message) || String(e);
+    taskData = { projects: (taskData && taskData.projects) || [],
+      tasks: (taskData && taskData.tasks) || [], at: (taskData && taskData.at) || '', error: msg };
+    debugLog('업무관리 받기 실패 — ' + msg);
+  }
+  sendToWidget();
+}
+
 /* ── 전광판 ────────────────────────────────────────────────
    같은 학교 선생님끼리 한 줄씩 주고받는다.
    ★ 이 앱에서 «바깥에 쓰는» 것은 이것뿐이다. 그래서 두 겹으로 막는다.
@@ -852,6 +884,7 @@ function sendToWidget() {
     photo: { dir: getPhotoDir(), sec: getPhotoSec() },  // 사진 액자
     feed: { show: getFeedShow(), url: getFeedUrl(), data: feedData,
            hasKey: !!getFeedKey(), fav: getFeedFav(), fold: getFeedFold() },   // 런처 목록
+    task: HAS_TT ? { show: getTaskShow(), hasKey: !!getNotionKey(), data: taskData } : null,
     update: { state: updateState, version: updateVersion }
   };
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
@@ -1625,6 +1658,41 @@ async function comciFetchNow(why) {
 }
 ipcMain.handle('comci-fetch', () => comciFetchNow(''));
 
+/* ── 업무관리(노션) 창구 ── */
+ipcMain.handle('task-refresh', async () => { await refreshTasks('눌러서'); return taskData; });
+ipcMain.handle('task-set-status', async (_e, id, name) => {
+  try {
+    await notion.setStatus(getNotionKey(), id, name);
+    debugLog('업무관리 — 상태 바꿈: ' + name);
+    await refreshTasks('고친 뒤');
+    return { ok: true };
+  } catch (e) { return { ok: false, error: (e && e.message) || String(e) }; }
+});
+ipcMain.handle('task-set-due', async (_e, id, ymd) => {
+  try {
+    await notion.setDue(getNotionKey(), id, ymd);
+    debugLog('업무관리 — 마감일 바꿈: ' + (ymd || '(지움)'));
+    await refreshTasks('고친 뒤');
+    return { ok: true };
+  } catch (e) { return { ok: false, error: (e && e.message) || String(e) }; }
+});
+ipcMain.handle('task-create', async (_e, title, projectId, ymd) => {
+  try {
+    if (!String(title || '').trim()) return { ok: false, error: '내용을 적어 주세요' };
+    await notion.createTask(getNotionKey(), getTaskDb(), title, projectId, ymd);
+    debugLog('업무관리 — 새 태스크: ' + String(title).slice(0, 30));
+    await refreshTasks('만든 뒤');
+    return { ok: true };
+  } catch (e) { return { ok: false, error: (e && e.message) || String(e) }; }
+});
+/* 설정의 «지금 확인» — 열쇠와 연결이 맞는지 그 자리에서 알려 준다 */
+ipcMain.handle('task-test', async (_e, key) => {
+  try {
+    const r = await notion.test(String(key || '').trim() || getNotionKey(), getTaskDb(), getProjDb());
+    return { ok: true, msg: `연결됐습니다 — 프로젝트 ${r.projects}개 · 태스크 ${r.tasks}개를 읽었습니다` };
+  } catch (e) { return { ok: false, error: (e && e.message) || String(e) }; }
+});
+
 ipcMain.handle('comci-get', () => ({ config: getComciConfig(), data: loadComci() }));
 ipcMain.on('comci-pick', (_e, p) => {   // 마지막으로 본 학년·반
   saveState({ comciPick: { grade: Number(p && p.grade) || 1, cls: Number(p && p.cls) || 1 } });
@@ -1942,6 +2010,8 @@ ipcMain.handle('get-settings', () => ({
     usage: { show: getUsageShow(), on: getUsageOn(), style: getUsageStyle(),
              data: aiusage.snapshot() },
     sys: { show: getSysShow(), data: sysData },
+    // 업무관리(노션) — 열쇠 자체는 안 보낸다. «넣었는가» 와 읽어 둔 자료만.
+    task: HAS_TT ? { show: getTaskShow(), hasKey: !!getNotionKey(), data: taskData } : null,
     wx: { show: getWxShow(), spot: getWxSpot(), data: wxData },
     grade: { on: getGradeOn(), sheets: getGradeSheets() },
     rec: recordsmain.recState(),
@@ -1995,6 +2065,23 @@ ipcMain.on('set-ui', (_e, v) => {
     saveState({ gclient: { clientId: String(v.gclient.clientId || '').trim(), clientSecret: String(v.gclient.clientSecret || '').trim() } });
     debugLog('학생기록 — 구글 클라이언트 정보 저장');
   }
+  /* ── 업무관리(노션) ── 열쇠는 저장만 하고 화면으로 되돌리지 않는다 */
+  if (v.notionKey !== undefined) {
+    saveState({ notionKey: String(v.notionKey || '').trim().slice(0, 120) });
+    debugLog('업무관리 — 노션 열쇠 ' + (String(v.notionKey || '').trim() ? '저장' : '지움'));
+    taskData = null;
+    refreshTasks('열쇠 바뀜');
+  }
+  if (v.taskDb !== undefined || v.projDb !== undefined) {
+    const s = {};
+    if (v.taskDb !== undefined) s.taskDb = notion.idOf(v.taskDb);
+    if (v.projDb !== undefined) s.projDb = notion.idOf(v.projDb);
+    saveState(s);
+    debugLog('업무관리 — 표 주소 바꿈');
+    taskData = null;
+    refreshTasks('표 바뀜');
+  }
+  if (v.taskShow !== undefined) { saveState({ taskShow: !!v.taskShow }); sendToWidget(); }
   if (v.recClasses !== undefined) { saveState({ recClasses: v.recClasses || [] }); sendToWidget(); }
   if (v.rosterSheet !== undefined) {
     saveState({ rosterSheet: String(v.rosterSheet || '') });
@@ -3012,6 +3099,12 @@ if (!gotLock) {
        학교를 안 골랐으면 조용히 지나간다. 시간표가 바뀌어도 하루 안에는 따라온다. */
     scheduleTask('comci', '컴시간', 25 * 1000, () => comciFetchNow('켤 때'));
     setInterval(() => comciFetchNow('6시간 주기'), 6 * 60 * 60 * 1000);
+
+    /* 업무관리 — 켤 때 한 번 + 30분마다. 열쇠가 없으면 조용히 지나간다. */
+    if (HAS_TT) {
+      scheduleTask('task', '업무관리', 12 * 1000, () => refreshTasks('켤 때'));
+      setInterval(() => refreshTasks('30분 주기'), 30 * 60 * 1000);
+    }
 
     checkForUpdates();
     setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);

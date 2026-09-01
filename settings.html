@@ -500,6 +500,34 @@
   </div>
 </section>
 
+<section id="secTask">
+  <h2>업무관리 (노션)</h2>
+  <div class="hint" style="margin-top:0">
+    노션의 <b>PROJECTS·TASKS</b> 를 위젯에서 보고, 완료·마감일·추가까지 바로 합니다.
+    <b>진호알리미에만</b> 있는 기능입니다.
+  </div>
+  <div class="row" style="margin-top:10px">
+    <label class="lb">노션 열쇠</label>
+    <input type="password" id="ntKey" placeholder="secret_… (노션 내부 통합 토큰)" autocomplete="off">
+    <button id="ntSave">저장</button>
+    <button id="ntTest">지금 확인</button>
+  </div>
+  <div class="hint" id="ntMsg" style="margin-top:2px"></div>
+  <div class="row">
+    <label class="lb">보이기</label>
+    <div class="chips" id="ntShowRow"></div>
+  </div>
+  <div class="hint">
+    <b>준비는 한 번만 하면 됩니다.</b><br>
+    ① <b>notion.so/my-integrations</b> → «새 통합» 을 만들고 <b>내부 통합 시크릿</b>을 복사합니다<br>
+    ② 노션에서 <b>PROJECTS</b> 와 <b>TASKS</b> 표를 열고, 오른쪽 위 <b>⋯ → 연결 → 방금 만든 통합</b> 을 추가합니다
+    <span style="color:#b23223">(이걸 빠뜨리면 «찾지 못했습니다» 가 납니다)</span><br>
+    ③ 위 칸에 열쇠를 붙여넣고 <b>저장</b> → <b>지금 확인</b> 을 눌러 «연결됐습니다» 가 나오면 끝입니다<br><br>
+    열쇠는 이 PC 에만 저장되고 화면에는 다시 보이지 않습니다.
+    표 주소는 앱에 들어 있어 따로 넣을 것이 없습니다.
+  </div>
+</section>
+
 <section>
   <h2>학생기록</h2>
   <div class="hint" style="margin-top:0">
@@ -900,9 +928,64 @@ function __paint() {
   LKS = null;   // 새 자료를 받았으니 들고 있던 것을 버린다
   paintLks();
   paintFd();
+  paintNt();
   paintTs();
   paintRec();
 }
+
+/* ── 업무관리(노션) ──────────────────────────────────────── */
+function paintNt() {
+  var sec = $('secTask');
+  if (!sec) return;
+  // 혜원이지에는 이 기능이 없다 — 아예 감춘다
+  var jinho = UI.flavor === 'jinho';
+  sec.style.display = jinho ? '' : 'none';
+  if (!jinho) return;
+  var t = UI.task || {};
+  $('ntKey').value = '';
+  $('ntKey').placeholder = t.hasKey
+    ? '넣어 두었습니다 (바꾸려면 새로 적으세요)' : 'secret_… (노션 내부 통합 토큰)';
+  var d = t.data;
+  if (!t.hasKey) $('ntMsg').innerHTML = '열쇠가 없어 업무관리가 비어 있습니다';
+  else if (d && d.error) $('ntMsg').innerHTML = '<span class="warn">' + esc(d.error) + '</span>';
+  else if (d) $('ntMsg').innerHTML = '<span class="ok">연결됨</span> · 프로젝트 '
+    + (d.projects || []).length + '개 · 태스크 ' + (d.tasks || []).length + '개';
+  else $('ntMsg').innerHTML = '<span class="ok">열쇠 있음</span> · 아직 안 읽었습니다';
+  // 보이기 스위치
+  var row = $('ntShowRow');
+  var on = t.show !== false;
+  row.innerHTML = '<button class="chip' + (on ? ' on' : '') + '" data-ntshow="1">보이기</button>'
+    + '<button class="chip' + (!on ? ' on' : '') + '" data-ntshow="0">숨기기</button>';
+  row.querySelectorAll('[data-ntshow]').forEach(function (b) {
+    b.onclick = function () {
+      var v = b.dataset.ntshow === '1';
+      if (!UI.task) UI.task = {};
+      UI.task.show = v;
+      widgetAPI.setUi({ taskShow: v });
+      paintNt();
+    };
+  });
+}
+$('ntSave').onclick = function () {
+  var v = $('ntKey').value.trim();
+  widgetAPI.setUi({ notionKey: v });
+  if (!UI.task) UI.task = {};
+  UI.task.hasKey = !!v;
+  $('ntMsg').innerHTML = '<span class="ok">✅ 저장됨 · ' + stampNow() + '</span> — «지금 확인» 을 눌러 보세요';
+  $('ntKey').value = '';
+  $('ntKey').placeholder = v ? '넣어 두었습니다 (바꾸려면 새로 적으세요)' : 'secret_… (노션 내부 통합 토큰)';
+};
+$('ntTest').onclick = function () {
+  var v = $('ntKey').value.trim();     // 적어 둔 게 있으면 그것으로, 없으면 저장된 것으로
+  $('ntMsg').textContent = '확인하는 중…';
+  widgetAPI.taskTest(v).then(function (r) {
+    $('ntMsg').innerHTML = (r && r.ok)
+      ? '<span class="ok">✅ ' + esc(r.msg) + '</span>'
+      : '<span class="warn">' + esc((r && r.error) || '확인하지 못했습니다') + '</span>';
+  }).catch(function (e) {
+    $('ntMsg').innerHTML = '<span class="warn">' + esc(String((e && e.message) || e)) + '</span>';
+  });
+};
 
 /* ── 컴시간 ── */
 $('schoolFind').onclick = function () {
@@ -1079,6 +1162,7 @@ function drawOrder(boxId, items, opt) {
 /* 탭·차림표 순서 */
 var TABALL = [
   { k: 'tt', t: '시간표', jinho: true },
+  { k: 'task', t: '업무관리', jinho: true },
   { k: 'work', t: '주간업무' },
   { k: 'comci', t: '컴시간' },
   { k: 'grid', t: '진도표', hyewon: true },

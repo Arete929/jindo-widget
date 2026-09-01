@@ -12,7 +12,7 @@ var TODAYEV = '';
 /* 업데이트 내역 — 새 버전으로 켜졌을 때 한 번 보여주고, 닫으면 다시 안 뜬다 */
 var NOTES = null;
 /* 탭마다 글자 크기 배율을 따로 둔다. 메인이 저장해 두므로 껐다 켜도 그대로다. */
-var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1 };
+var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1, task: 1 };
 function fsKey() {
   /* ★ 시간표 탭(오늘·이번주·진도표)은 셋이 한 탭이라 크기도 하나로 묶는다 — 열쇠 tt.
      전에는 이 셋이 아예 빠져 있어서 «--wf» 가 늘 1 이었다. 그래서 이미
@@ -20,7 +20,7 @@ function fsKey() {
   return ({ today: 'tt', week: 'tt', progress: 'tt',
     work: 'work', comci: 'comci', cal: 'cal', meal: 'meal', rec: 'rec',
     home: 'home', note: 'note', link: 'link', grid: 'grid',
-    office: 'office' })[VIEW] || '';
+    office: 'office', task: 'task' })[VIEW] || '';
 }
 function fontBtns(key) {
   return '<span class="wfs">'
@@ -623,6 +623,165 @@ function viewComci() {
     h += '</div>';
   }
   return h + '</div>';
+}
+
+/* ── 업무관리(노션) ────────────────────────────────────────
+   노션의 PROJECTS·TASKS 를 «오늘·이번주 / 프로젝트별 / 마감 없음» 세 갈래로 본다.
+   ★ 진호알리미에만 있다. 고치면 노션에 바로 반영된다. */
+var TASK = null, tkSub = 'now', tkProj = '', tkBusy = '', tkErr = '', tkOpen = {};
+var tkNew = '', tkNewProj = '';
+
+/* ISO 시각 → «2026.09.02 12:10» (KST) */
+function fmtStamp(iso) {
+  try {
+    var d = new Date(iso);
+    var z = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '.' + z(d.getMonth() + 1) + '.' + z(d.getDate())
+      + ' ' + z(d.getHours()) + ':' + z(d.getMinutes());
+  } catch (e) { return ''; }
+}
+function tkYmd(d) {
+  var z = function (n) { return (n < 10 ? '0' : '') + n; };
+  return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate());
+}
+/* 마감일까지 며칠 — 오늘이면 0, 지났으면 음수 */
+function tkDays(ymd) {
+  if (!ymd) return null;
+  var a = new Date(ymd.slice(0, 10) + 'T00:00:00');
+  var t = new Date(); t.setHours(0, 0, 0, 0);
+  return Math.round((a - t) / 86400000);
+}
+function tkOpenTasks() {
+  return ((TASK && TASK.tasks) || []).filter(function (t) { return t.status !== '완료'; });
+}
+/* 프로젝트마다 고정된 색 — 이름을 숫자로 바꿔 고르면 늘 같은 색이 나온다 */
+var TKCOL = ['#7c5cff', '#e0714f', '#2f9e6e', '#c1508e', '#2f7fd0', '#b8860b',
+             '#8a5cf5', '#d0473d', '#0f8f8f', '#6f7885'];
+function tkColor(name) {
+  var n = 0, s = String(name || '');
+  for (var i = 0; i < s.length; i++) n = (n * 31 + s.charCodeAt(i)) % 9973;
+  return TKCOL[n % TKCOL.length];
+}
+function tkChip(t) {
+  var nm = (t.projectNames || [])[0] || '';
+  if (!nm) return '<span class="tkp none">프로젝트 없음</span>';
+  return '<span class="tkp" style="--pc:' + tkColor(nm) + '">' + esc(nm) + '</span>';
+}
+/* 한 줄 그리기 */
+function tkRow(t) {
+  var d = tkDays(t.due);
+  var when = t.due ? (Number(t.due.slice(5, 7)) + '/' + Number(t.due.slice(8, 10))) : '';
+  var cls = 'tkrow' + (d !== null && d < 0 ? ' late' : (d === 0 ? ' today' : ''));
+  var busy = tkBusy === t.id;
+  return '<div class="' + cls + '" data-tk="' + esc(t.id) + '">'
+    + '<div class="tkl">'
+    + (when ? '<b class="tkd">' + esc(when) + '</b>' : '<b class="tkd no">–</b>')
+    + tkChip(t)
+    + (t.status === '진행 중' ? '<span class="tkst">진행중</span>' : '')
+    + '</div>'
+    + '<div class="tkt">' + esc(t.title) + '</div>'
+    + (tkOpen[t.id] && t.note ? '<div class="tkn">' + esc(t.note) + '</div>' : '')
+    + '<div class="tkb">'
+    + '<button class="tkbtn ok" data-done="' + esc(t.id) + '"' + (busy ? ' disabled' : '') + '>✅ 완료</button>'
+    + '<button class="tkbtn" data-today="' + esc(t.id) + '"' + (busy ? ' disabled' : '') + '>📅 오늘로</button>'
+    + (t.status !== '진행 중'
+        ? '<button class="tkbtn" data-go="' + esc(t.id) + '"' + (busy ? ' disabled' : '') + '>🔵 진행중</button>' : '')
+    + '<button class="tkbtn" data-tkurl="' + esc(t.url) + '">↗ 노션</button>'
+    + '</div></div>';
+}
+function tkSection(title, list, cls) {
+  if (!list.length) return '';
+  return '<div class="tksec' + (cls ? ' ' + cls : '') + '">'
+    + '<div class="tkh">' + title + ' <b>' + list.length + '</b></div>'
+    + list.map(tkRow).join('') + '</div>';
+}
+
+function viewTasks() {
+  var head = '<div class="wknav"><span class="wklab" style="text-align:left">업무관리'
+    + '<small>' + (TASK && TASK.at ? esc(fmtStamp(TASK.at)) + ' 기준' : '아직 안 읽음') + '</small></span>'
+    + fontBtns('task')
+    + '<button class="wkb" id="tkGet" title="노션에서 다시 받기">' + (tkBusy === 'all' ? '…' : '⟳') + '</button>'
+    + '</div>';
+
+  if (!TASK) {
+    return head + '<div class="empty">노션 업무관리가 아직 연결되지 않았습니다.<br>'
+      + '<button class="btn" onclick="widgetAPI.openSettings()">설정에서 연결하기</button>'
+      + '<div style="margin-top:8px;font-size:10.5px;color:#6f7885">'
+      + '노션에서 <b>내부 통합</b>을 만들고 그 열쇠를 설정에 넣으면 됩니다.</div></div>';
+  }
+  if (TASK.error) head += '<div class="tkerr">' + esc(TASK.error) + '</div>';
+  if (tkErr) head += '<div class="tkerr">' + esc(tkErr) + '</div>';
+
+  // 세 갈래
+  head += '<div class="wknav">'
+    + [['now', '오늘·이번주'], ['proj', '프로젝트별'], ['nodue', '마감 없음']].map(function (s) {
+        return '<button class="wkb' + (tkSub === s[0] ? ' now' : '') + '" data-tks="' + s[0] + '">'
+          + s[1] + '</button>';
+      }).join('') + '</div>';
+
+  var open = tkOpenTasks();
+  var body = '';
+
+  if (tkSub === 'now') {
+    var late = [], week = [], soon = [];
+    open.forEach(function (t) {
+      var d = tkDays(t.due);
+      if (d === null) return;                 // 마감 없는 것은 따로 본다
+      if (d < 0) late.push(t);
+      else if (d <= 7) week.push(t);
+      else soon.push(t);
+    });
+    body += tkSection('⚠️ 지났어요', late, 'late');
+    body += tkSection('📌 이번 주', week);
+    body += tkSection('🗓 다가옴', soon);
+    var noDue = open.filter(function (t) { return !t.due; }).length;
+    if (noDue) body += '<div class="tkmore" data-tks="nodue">마감 없는 일 ' + noDue + '건 보기 ▸</div>';
+    if (!late.length && !week.length && !soon.length && !noDue) {
+      body += '<div class="empty">할 일이 없습니다 🎉</div>';
+    }
+  } else if (tkSub === 'nodue') {
+    body += tkSection('❓ 마감 없는 일', open.filter(function (t) { return !t.due; }));
+    if (!open.filter(function (t) { return !t.due; }).length) {
+      body += '<div class="empty">마감 없는 일이 없습니다.</div>';
+    }
+  } else {
+    // 프로젝트별 — 안 끝난 일이 있는 프로젝트만, 많은 순
+    var by = {};
+    open.forEach(function (t) {
+      var nm = (t.projectNames || [])[0] || '프로젝트 없음';
+      (by[nm] = by[nm] || []).push(t);
+    });
+    var names = Object.keys(by).sort(function (a, b) { return by[b].length - by[a].length; });
+    if (!names.length) body += '<div class="empty">안 끝난 일이 없습니다 🎉</div>';
+    body += '<div class="wknav wrap">'
+      + '<button class="wkb' + (!tkProj ? ' now' : '') + '" data-tkp="">전체 ' + open.length + '</button>'
+      + names.map(function (nm) {
+          return '<button class="wkb' + (tkProj === nm ? ' now' : '') + '" data-tkp="' + esc(nm) + '">'
+            + esc(nm) + ' ' + by[nm].length + '</button>';
+        }).join('') + '</div>';
+    names.forEach(function (nm) {
+      if (tkProj && tkProj !== nm) return;
+      body += tkSection('<span class="tkp" style="--pc:' + tkColor(nm) + '">' + esc(nm) + '</span>',
+        by[nm]);
+    });
+  }
+
+  // 빠른 추가
+  var projs = (TASK.projects || []).slice().sort(function (a, b) {
+    return String(a.title).localeCompare(String(b.title));
+  });
+  body += '<div class="tkadd"><div class="tkh">＋ 할 일 추가</div>'
+    + '<input class="bdi" id="tkNew" placeholder="무엇을 할까요?" value="' + esc(tkNew) + '">'
+    + '<div class="wknav wrap">'
+    + '<button class="wkb' + (!tkNewProj ? ' now' : '') + '" data-tknp="">프로젝트 없이</button>'
+    + projs.map(function (p) {
+        return '<button class="wkb' + (tkNewProj === p.id ? ' now' : '') + '" data-tknp="' + esc(p.id) + '">'
+          + esc(p.title) + '</button>';
+      }).join('') + '</div>'
+    + '<button class="bdgo" id="tkAdd"' + (tkBusy === 'add' ? ' disabled' : '') + '>'
+    + (tkBusy === 'add' ? '만드는 중…' : '노션에 추가') + '</button></div>';
+
+  return head + body;
 }
 
 /* ── 학사일정 ── */
@@ -3822,7 +3981,7 @@ function render() {
   }
 
   // 탭마다 그림 — 넓게 보기의 차림표와 «같은 그림» 을 쓴다
-  var NAVIMG = { tt: 'nav-home', work: 'nav-work', comci: 'nav-comci', grid: 'nav-rec',
+  var NAVIMG = { tt: 'nav-home', task: 'nav-work', work: 'nav-work', comci: 'nav-comci', grid: 'nav-rec',
                  cal: 'nav-cal', meal: 'nav-meal', rec: 'nav-rec',
                  office: 'nav-office', link: 'nav-link' };
   function chipInner(v, label) {
@@ -3838,7 +3997,8 @@ function render() {
   html += '<div class="chips">'
     + inOrder(
         // ★ 진호알리미의 «바로가기» 는 런처보드다 — 이름만 다르고 화면 값(link)은 같다
-        HAS_TT ? ['tt,시간표', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,런처보드']
+        // ★ «업무관리»(노션)는 진호알리미에만 있다 — 시간표와 주간업무 사이
+        HAS_TT ? ['tt,시간표', 'task,업무관리', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,런처보드']
                : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,바로가기'],
         TABORDER, function (s) { return s.split(',')[0]; }).map(function (s, i) {
         var p = s.split(',');
@@ -3864,6 +4024,7 @@ function render() {
   html += VIEW === 'week' ? viewWeek(d)
     : VIEW === 'progress' ? viewProgress(d)
     : VIEW === 'work' ? viewWork()
+    : VIEW === 'task' ? viewTasks()
     : VIEW === 'comci' ? viewComci()
     : VIEW === 'cal' ? viewAcademic()
     : VIEW === 'meal' ? viewMeals()
@@ -4184,6 +4345,8 @@ widgetAPI.onData(function (p) {
   DASHOFF = p.dashOff || [];
   DASHSIZE = p.dashSize || {};
   DUTY = p.duty || null;
+  // 업무관리(노션) — 진호알리미에만 온다
+  if (p.task !== undefined) TASK = (p.task && p.task.show) ? (p.task.data || null) : null;
   FEED = (p.feed && p.feed.show && p.feed.data) ? p.feed.data : null;
   if (p.feed && p.feed.fav) FEEDFAV = p.feed.fav;
   if (p.feed && p.feed.fold) LBFOLD = p.feed.fold;
@@ -4394,6 +4557,45 @@ function wireViews(app) {
       }
       if (b.id === 'workGet') { WORK = null; workBusy = true; render();
         widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
+        return; }
+      // ── 업무관리(노션) ──
+      if (b.dataset.tks !== undefined) { tkSub = b.dataset.tks; tkErr = ''; render(); return; }
+      if (b.dataset.tkp !== undefined) { tkProj = b.dataset.tkp; render(); return; }
+      if (b.dataset.tknp !== undefined) { tkNewProj = b.dataset.tknp; render(); return; }
+      if (b.dataset.tkurl) { widgetAPI.openUrl(b.dataset.tkurl); return; }
+      if (b.id === 'tkGet') {
+        if (tkBusy) return;
+        tkBusy = 'all'; tkErr = ''; render();
+        widgetAPI.taskRefresh().then(function () { tkBusy = ''; render(); })
+          .catch(function (e) { tkBusy = ''; tkErr = String((e && e.message) || e); render(); });
+        return; }
+      if (b.dataset.done || b.dataset.go) {
+        var id = b.dataset.done || b.dataset.go;
+        var st = b.dataset.done ? '완료' : '진행 중';
+        if (tkBusy) return;
+        tkBusy = id; tkErr = ''; render();
+        widgetAPI.taskSetStatus(id, st).then(function (r) {
+          tkBusy = ''; tkErr = (r && r.ok) ? '' : ((r && r.error) || '고치지 못했습니다'); render();
+        }).catch(function (e) { tkBusy = ''; tkErr = String((e && e.message) || e); render(); });
+        return; }
+      if (b.dataset.today) {
+        if (tkBusy) return;
+        tkBusy = b.dataset.today; tkErr = ''; render();
+        widgetAPI.taskSetDue(b.dataset.today, tkYmd(new Date())).then(function (r) {
+          tkBusy = ''; tkErr = (r && r.ok) ? '' : ((r && r.error) || '고치지 못했습니다'); render();
+        }).catch(function (e) { tkBusy = ''; tkErr = String((e && e.message) || e); render(); });
+        return; }
+      if (b.id === 'tkAdd') {
+        var box = app.querySelector('#tkNew');
+        var title = box ? String(box.value || '').trim() : '';
+        if (!title) { tkErr = '내용을 적어 주세요'; render(); return; }
+        if (tkBusy) return;
+        tkNew = title; tkBusy = 'add'; tkErr = ''; render();
+        widgetAPI.taskCreate(title, tkNewProj, '').then(function (r) {
+          tkBusy = '';
+          if (r && r.ok) { tkNew = ''; tkErr = ''; } else { tkErr = (r && r.error) || '만들지 못했습니다'; }
+          render();
+        }).catch(function (e) { tkBusy = ''; tkErr = String((e && e.message) || e); render(); });
         return; }
       if (b.id === 'cmGet') { widgetAPI.openSettings(); return; }
       if (b.id === 'cmFetch') {
@@ -4783,6 +4985,18 @@ function wireViews(app) {
   }
   app.querySelectorAll('.wlink').forEach(function (a) {
     a.addEventListener('click', function () { widgetAPI.openUrl(a.dataset.url); });
+  });
+  // 업무관리 — «마감 없는 일 n건 보기» 와 줄 눌러 비고 펼치기
+  app.querySelectorAll('.tkmore').forEach(function (el) {
+    el.addEventListener('click', function () { tkSub = el.dataset.tks; render(); });
+  });
+  app.querySelectorAll('.tkrow').forEach(function (el) {
+    el.addEventListener('click', function (ev) {
+      if (ev.target.closest('button')) return;      // 단추는 제 일을 한다
+      var id = el.dataset.tk;
+      tkOpen[id] = !tkOpen[id];
+      render();
+    });
   });
   var nx = app.querySelector('#notesX');
   if (nx) nx.addEventListener('click', function () { NOTES = null; widgetAPI.notesSeen(); render(); });

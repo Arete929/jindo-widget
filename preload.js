@@ -75,6 +75,13 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   openLog: () => ipcRenderer.send('open-log'),
 
   /* 컴시간알리미 */
+  // 업무관리(노션)
+  taskRefresh: () => ipcRenderer.invoke('task-refresh'),
+  taskSetStatus: (id, name) => ipcRenderer.invoke('task-set-status', id, name),
+  taskSetDue: (id, ymd) => ipcRenderer.invoke('task-set-due', id, ymd),
+  taskCreate: (title, projectId, ymd) => ipcRenderer.invoke('task-create', title, projectId, ymd),
+  taskTest: (key) => ipcRenderer.invoke('task-test', key),
+
   comciSearch: (name) => ipcRenderer.invoke('comci-search', name),
   comciFetch: () => ipcRenderer.invoke('comci-fetch'),
   comciGet: () => ipcRenderer.invoke('comci-get'),
