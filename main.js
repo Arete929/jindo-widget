@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 1.85.0
-// 수정요약: v1.85.0 숨은 창 로그인·캐시 메모리 전용(?widgetworker=1 — 격리로 손상되는 IndexedDB 회피, 로그인 몇 초 만에 풀리던 문제 뿌리 해결) + 켤 때 손상 창고·재기동 예약작업 찌꺼기 청소 / v1.84.0 구글 클라이언트를 파이어베이스와 같은 프로젝트 것으로 교체(audience 불일치 해소) + 판올림 재기동 wscript 숨김 실행(검은 콘솔 창 제거)
+// 파일명: main.js | @version 1.86.0
+// 수정요약: v1.86.0 컴시간 자동 갱신(켤 때 1회 + 6시간마다) + 컴시간 탭 ⟳ 새로고침 버튼 / v1.85.0 숨은 창 로그인·캐시 메모리 전용(?widgetworker=1 — 격리로 손상되는 IndexedDB 회피, 로그인 몇 초 만에 풀리던 문제 뿌리 해결) + 켤 때 손상 창고·재기동 예약작업 찌꺼기 청소 / v1.84.0 구글 클라이언트를 파이어베이스와 같은 프로젝트 것으로 교체(audience 불일치 해소) + 판올림 재기동 wscript 숨김 실행(검은 콘솔 창 제거)
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
 // 수정요약: v1.83.0 겹침 방지 두 번째 잠금(포트) — V3 그림자 격리가 파일 잠금을 무력화해도 두 벌이 못 겹치게. 늦게 뜬 쪽이 살아남고, 안 물러나는 좀비는 강제로 내린다
 //
@@ -1605,11 +1605,11 @@ ipcMain.handle('comci-search', async (_e, name) => {
   }
 });
 
-ipcMain.handle('comci-fetch', async () => {
+async function comciFetchNow(why) {
   const cfg = getComciConfig();
   if (!cfg.school) return { error: '학교를 먼저 골라주세요' };
   try {
-    debugLog(`컴시간 시간표 받기: ${cfg.school.name}`);
+    debugLog(`컴시간 시간표 받기: ${cfg.school.name}` + (why ? ` (${why})` : ''));
     // 한 번 부르면 교사·학급이 같이 온다 — 둘 다 저장해 두고, 무엇을 볼지는 위젯에서 고른다
     const data = await comcigan.fetchTimetable(cfg.school.code);
     data.schoolName = cfg.school.name;     // 컴시간이 학교명을 가려서 주므로 고른 이름을 쓴다
@@ -1622,7 +1622,8 @@ ipcMain.handle('comci-fetch', async () => {
     debugLog(`컴시간 받기 실패: ${e && e.message ? e.message : e}`);
     return { error: (e && e.message) || '불러오지 못했습니다' };
   }
-});
+}
+ipcMain.handle('comci-fetch', () => comciFetchNow(''));
 
 ipcMain.handle('comci-get', () => ({ config: getComciConfig(), data: loadComci() }));
 ipcMain.on('comci-pick', (_e, p) => {   // 마지막으로 본 학년·반
@@ -3006,6 +3007,11 @@ if (!gotLock) {
     // 전광판 — 켤 때 한 번, 그 뒤로는 5분마다
     scheduleTask('board', '전광판', 8000, () => refreshBoard());
     setInterval(() => refreshBoard(), 5 * 60 * 1000);
+
+    /* 컴시간 — 켤 때 한 번(닫았다 열면 자동 새로고침) + 6시간마다.
+       학교를 안 골랐으면 조용히 지나간다. 시간표가 바뀌어도 하루 안에는 따라온다. */
+    scheduleTask('comci', '컴시간', 25 * 1000, () => comciFetchNow('켤 때'));
+    setInterval(() => comciFetchNow('6시간 주기'), 6 * 60 * 60 * 1000);
 
     checkForUpdates();
     setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);

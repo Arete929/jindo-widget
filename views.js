@@ -514,7 +514,7 @@ function moveHit(step) {
 
 /* ── 컴시간 ──
    설정 창에서 한 번 불러온 학교 시간표를 보여준다. 교사·학급 중 불러온 것만 나온다. */
-var CM = null, cmBusy = false, cmMode = '', cmGrade = 1, cmCls = 1, cmPicked = false;
+var CM = null, cmBusy = false, cmErr = '', cmMode = '', cmGrade = 1, cmCls = 1, cmPicked = false;
 // 교사표와 학급표를 나란히 볼 것인가(가로) 위아래로 볼 것인가(세로)
 var cmSide = 'col';   // col = 세로(교사표 밑에 학급표) · row = 가로(나란히)
 
@@ -566,7 +566,9 @@ function viewComci() {
     + esc(d.schoolName || d.school || '')
     + '<small>' + esc((d.updatedAt || '').slice(0, 10)) + ' 기준</small></span>'
     + fontBtns('comci')
-    + '<button class="wkb" id="cmGet" title="설정에서 다시 불러오기">⚙</button></div>';
+    + '<button class="wkb" id="cmFetch" title="컴시간에서 지금 다시 받기">' + (cmBusy ? '…' : '⟳') + '</button>'
+    + '<button class="wkb" id="cmGet" title="설정에서 다시 불러오기">⚙</button></div>'
+    + (cmErr ? '<div class="empty" style="padding:6px 0">컴시간 받기 실패 — ' + esc(cmErr) + '</div>' : '');
 
   // 둘 다 있으면 나란히(가로) / 위아래(세로) 를 고를 수 있다
   if (hasT && hasC) {
@@ -4391,6 +4393,16 @@ function wireViews(app) {
         widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
         return; }
       if (b.id === 'cmGet') { widgetAPI.openSettings(); return; }
+      if (b.id === 'cmFetch') {
+        if (cmBusy) return;
+        b.textContent = '…'; cmBusy = true; cmErr = '';
+        widgetAPI.comciFetch().then(function (r) {
+          cmBusy = false;
+          // 받기 성공이면 저장본이 갈리고 comci-changed 가 와서 새로 그린다 — 실패만 적어 보인다
+          cmErr = (r && r.error) ? r.error : '';
+          render();
+        }).catch(function (e) { cmBusy = false; cmErr = String((e && e.message) || e); render(); });
+        return; }
       if (b.id === 'pwGet') { ALLW = null; loadAllWeeks(); render(); return; }
       // 학생기록
       if (b.dataset.rm) { recMode = b.dataset.rm; render(); return; }
