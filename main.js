@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 1.83.1
-// 수정요약: v1.83.1 로그인 자동 복원을 빠르게 — 성공할 때까지 매 확인(45초)마다 재시도(열 번 내리 실패하면 5분 간격), 웹이 뜨는 중이면 다 뜬 뒤 시도
+// 파일명: main.js | @version 1.84.0
+// 수정요약: v1.84.0 구글 클라이언트를 파이어베이스와 같은 프로젝트 것으로 교체(자동 복원의 마지막 벽 — audience 불일치 해소. ★계정 연결 1회 다시 필요) + 판올림 재기동을 wscript 숨김 실행으로(검은 콘솔 창 제거·창 닫으면 앱 죽던 문제)
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
 // 수정요약: v1.83.0 겹침 방지 두 번째 잠금(포트) — V3 그림자 격리가 파일 잠금을 무력화해도 두 벌이 못 겹치게. 늦게 뜬 쪽이 살아남고, 안 물러나는 좀비는 강제로 내린다
 //
@@ -2811,7 +2811,13 @@ if (process.argv.indexOf('--updated') >= 0) {
       'start "" "' + process.execPath + '"',
       'schtasks /delete /tn JindoWidgetRelaunch /f >nul 2>&1'
     ].join(CR + String.fromCharCode(10)) + CR + String.fromCharCode(10));
-    execSync('schtasks /create /f /tn JindoWidgetRelaunch /tr "\\"' + cmdFile
+    /* ★ 스케줄러가 .cmd 를 곧장 돌리면 검은 콘솔 창이 뜨고, 앱의 오류 글줄이
+       그 창에 붙는다 — 사람이 그 창을 닫으면 앱이 같이 죽는다(2026-09-01 실제로).
+       wscript 로 감싸 창 없이(0) 돌린다. */
+    const vbsFile = path.join(userDataPath, 'relaunch.vbs');
+    fs.writeFileSync(vbsFile,
+      'CreateObject("WScript.Shell").Run "cmd /c ""' + cmdFile + '""", 0, False' + CR + String.fromCharCode(10));
+    execSync('schtasks /create /f /tn JindoWidgetRelaunch /tr "wscript.exe \\"' + vbsFile
       + '\\"" /sc once /st 23:59', { stdio: 'ignore', windowsHide: true });
     execSync('schtasks /run /tn JindoWidgetRelaunch', { stdio: 'ignore', windowsHide: true });
   } catch (e) {
