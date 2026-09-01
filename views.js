@@ -590,7 +590,9 @@ function viewComci() {
     h += '<div class="cmh">' + me.i + ' ' + esc(me.name) + ' 선생님'
       + (hasC ? '' : '<small>설정에서 내 이름을 바꿀 수 있어요</small>') + '</div>';
     h += cmTable(me.days, function (x) {
-      return '<td class="c u1" title="' + esc(x.grade + '-' + x.cls + ' ' + x.subject) + '">'
+      // ★ 바뀐 수업(보강·교체)은 컴시간 사이트처럼 눈에 띄게 표시한다
+      return '<td class="c u1' + (x.changed ? ' chg' : '') + '" title="'
+        + esc(x.grade + '-' + x.cls + ' ' + x.subject + (x.changed ? ' (바뀐 수업)' : '')) + '">'
         + '<b>' + x.grade + '-' + x.cls + '</b><u>' + esc(x.subject) + '</u></td>';
     });
     h += '</div>';
@@ -614,7 +616,8 @@ function viewComci() {
     var cl = gsel.classes.filter(function (c) { return c.cls === cmCls; })[0] || gsel.classes[0];
     cmCls = cl.cls;
     h += cmTable(cl.days, function (x) {
-      return '<td class="c u0" title="' + esc(x.subject + ' / ' + x.teacher) + '">'
+      return '<td class="c u0' + (x.changed ? ' chg' : '') + '" title="'
+        + esc(x.subject + ' / ' + x.teacher + (x.changed ? ' (바뀐 수업)' : '')) + '">'
         + '<b>' + esc(x.subject) + '</b><u>' + esc(x.teacher) + '</u></td>';
     });
     h += '</div>';

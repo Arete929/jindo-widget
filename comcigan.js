@@ -132,6 +132,19 @@ function shape(j, want) {
   const subs = j['자료492'] || [];
   const teachers = j['자료446'] || [];
   const subName = (i) => subs[i] || '';
+  /* ★ 바뀐 수업(보강·교체)은 숫자가 아니라 «>» 를 붙인 «문자열» 로 온다.
+       예) ">11302" = 3-2 로 바뀐 수업 · ">0" = 수업이 빠진 자리
+     그대로 숫자로 다루면 NaN 이 되어 화면에 «null-null» 이 찍혔다(2026-09-01 실측).
+     «>» 를 떼어 값을 살리고, 바뀐 칸이라는 표시(changed)를 함께 남긴다. */
+  function cell(v) {
+    if (typeof v === 'string') {
+      const m = v.match(/^>?\s*(\d+)$/);
+      if (!m) return null;
+      const n = Number(m[1]);
+      return n ? { v: n, changed: v.indexOf('>') >= 0 } : null;   // ">0" = 빈 자리
+    }
+    return v ? { v: v, changed: false } : null;
+  }
   const out = {
     fetchedAt: new Date().toISOString(),
     school: j['학교명'] || '', region: j['지역명'] || '',
@@ -153,9 +166,10 @@ function shape(j, want) {
           const row = (T[g] && T[g][c] && T[g][c][d]) || [];
           const periods = [];
           for (let p = 1; p < row.length; p++) {
-            const v = row[p];
-            if (!v) { periods.push(null); continue; }
-            periods.push({ p, subject: subName(Math.floor(v / sep)), teacher: teachers[v % sep] || '' });
+            const c = cell(row[p]);
+            if (!c) { periods.push(null); continue; }
+            periods.push({ p, subject: subName(Math.floor(c.v / sep)),
+              teacher: teachers[c.v % sep] || '', changed: c.changed });
           }
           days.push({ dow: DOW[d], periods });
         }
@@ -175,12 +189,12 @@ function shape(j, want) {
         const row = (T[t] && T[t][d]) || [];
         const periods = [];
         for (let p = 1; p < row.length; p++) {
-          const v = row[p];
-          if (!v) { periods.push(null); continue; }
-          const gc = v % sep;
+          const c = cell(row[p]);
+          if (!c) { periods.push(null); continue; }
+          const gc = c.v % sep;
           periods.push({
-            p, subject: subName(Math.floor(v / sep)),
-            grade: Math.floor(gc / 100), cls: gc % 100
+            p, subject: subName(Math.floor(c.v / sep)),
+            grade: Math.floor(gc / 100), cls: gc % 100, changed: c.changed
           });
         }
         days.push({ dow: DOW[d], periods });
@@ -200,4 +214,4 @@ async function fetchTimetable(schoolCode) {
   return shape(j, { teacher: true, classes: true });
 }
 
-module.exports = { searchSchool, fetchTimetable, readProtocol };
+module.exports = { searchSchool, fetchTimetable, readProtocol, fetchRaw };
