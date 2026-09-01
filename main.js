@@ -1,6 +1,6 @@
-// 파일명: main.js | @version 1.23.0
+// 파일명: main.js | @version 1.83.0
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
-// 수정요약: v1.23.0 테마 «슬레이트»·«슬레이트 라이트» 추가 (남색/밝은 바탕 + 같은 보라 강조)
+// 수정요약: v1.83.0 겹침 방지 두 번째 잠금(포트) — V3 그림자 격리가 파일 잠금을 무력화해도 두 벌이 못 겹치게. 늦게 뜬 쪽이 살아남고, 안 물러나는 좀비는 강제로 내린다
 //
 // 값을 어떻게 얻는가:
 //   숨은 창으로 실제 웹앱(jindo-dashboard.web.app)을 띄워 놓고, 그 앱이 위젯용으로
@@ -2851,6 +2851,61 @@ if (!gotLock) {
     if (!widgetWin) { createWidgetWindow(); return; }
     widgetWin.show(); widgetWin.focus();
   });
+
+  /* ── 겹침 방지 두 번째 잠금 (포트) ──
+     Electron 의 단일 실행 잠금은 «파일» 로 되어 있다. 보안 프로그램(V3)이
+     낯선 출신 프로세스의 파일을 그림자로 격리하면 서로의 잠금이 안 보여서,
+     실제로 아수스에서 두 벌이 겹쳐 떴고 위에 올라온 죽은 벌이 로그인 화면만 보여줬다.
+     포트는 커널이 쥐고 있어 그림자로 못 가린다 — 여기에 한 번 더 잠근다.
+     ★ 늦게 뜬 쪽이 살아남는다. 화면이 이상해서 사람이 다시 켜면
+       «새 것으로 바뀌는» 것이 맞기 때문이다. */
+  const GUARD_PORT = HAS_TT ? 47291 : 47292;   // 진호알리미 / 혜원이지 — 둘이 같이 뜨는 건 된다
+  function startInstanceGuard(tries) {
+    const left = (tries === undefined) ? 5 : tries;
+    const srv = http.createServer((req, res) => {
+      if (req.url === '/quit-for-new') {
+        debugLog('새 판이 떠서 이 판은 물러납니다 (포트 잠금)');
+        res.end('ok');
+        setTimeout(() => app.exit(0), 150);
+        return;
+      }
+      res.end('guard v' + app.getVersion());
+    });
+    srv.once('error', (e) => {
+      if (e && e.code === 'EADDRINUSE') {
+        if (left <= 0) { killGuardHolder(); return; }
+        // 먼저 뜬 벌에게 물러나라고 말하고, 잠시 뒤 다시 잡아 본다
+        const rq = http.get({ host: '127.0.0.1', port: GUARD_PORT,
+          path: '/quit-for-new', timeout: 2000 }, () => {});
+        rq.on('error', () => {});
+        rq.on('timeout', () => rq.destroy());
+        setTimeout(() => startInstanceGuard(left - 1), 1500);
+      } else {
+        debugLog('포트 잠금 실패 — ' + ((e && e.message) || e));
+      }
+    });
+    srv.listen(GUARD_PORT, '127.0.0.1', () => {
+      debugLog('포트 잠금 잡음 (' + GUARD_PORT + ')');
+    });
+  }
+  /* 물러나라고 해도 안 물러난다 = 일손이 멈춘 좀비다. 포트 주인을 찾아 강제로 내린다. */
+  function killGuardHolder() {
+    try {
+      const { execSync } = require('child_process');
+      const out = execSync('netstat -ano -p tcp', { encoding: 'utf8' });
+      const line = out.split(/\r?\n/).filter((l) =>
+        l.indexOf('127.0.0.1:' + GUARD_PORT) >= 0 && /LISTENING/i.test(l))[0];
+      const pid = line && Number(line.trim().split(/\s+/).pop());
+      if (pid && pid !== process.pid) {
+        debugLog('좀비(' + pid + ')가 포트를 쥐고 있어 강제로 내립니다');
+        execSync('taskkill /PID ' + pid + ' /T /F');
+        setTimeout(() => startInstanceGuard(1), 1200);
+        return;
+      }
+    } catch (e) { debugLog('좀비 내리기 실패 — ' + ((e && e.message) || e)); }
+    debugLog('포트 잠금을 끝내 못 잡았습니다 — 잠금 없이 갑니다');
+  }
+  startInstanceGuard();
 
   app.whenReady().then(() => {
     bootOk = true;   // 파수꾼에게 «심장이 뛰기 시작했다» 고 알린다

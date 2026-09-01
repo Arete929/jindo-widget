@@ -1,4 +1,5 @@
-/* 파일명: views.js | @version 1.0.0
+/* 파일명: views.js | @version 1.83.0
+   수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜원이지는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -2027,12 +2028,11 @@ function boardBar() {
   } else if (!list.length) {
     h += '<span class="bdmsg dim">오늘은 아직 올라온 것이 없습니다</span>';
   } else {
-    // ★ 글이 길면 흐르고, 짧으면 가만히 둔다 — 짧은 글이 굳이 움직이면 눈에 거슬린다
+    // ★ 전광판이니 짧은 글도 흐른다 — 멈춰 있으면 전광판 같지 않다
     var one = list.map(function (x) {
       return '<b>' + esc(x.who) + '</b> ' + esc(x.text);
     }).join('<i class="bdsep">·</i>');
-    var len = list.reduce(function (n, x) { return n + x.who.length + x.text.length + 3; }, 0);
-    h += '<span class="bdmsg"><span class="bdflow' + (len > 34 ? ' run' : '') + '">'
+    h += '<span class="bdmsg"><span class="bdflow run">'
       + one + '</span></span>';
   }
   h += '<button class="bdb" id="bdGet" title="다시 읽기">⟳</button>';
