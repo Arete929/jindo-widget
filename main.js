@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 1.84.0
-// 수정요약: v1.84.0 구글 클라이언트를 파이어베이스와 같은 프로젝트 것으로 교체(자동 복원의 마지막 벽 — audience 불일치 해소. ★계정 연결 1회 다시 필요) + 판올림 재기동을 wscript 숨김 실행으로(검은 콘솔 창 제거·창 닫으면 앱 죽던 문제)
+// 파일명: main.js | @version 1.85.0
+// 수정요약: v1.85.0 숨은 창 로그인·캐시 메모리 전용(?widgetworker=1 — 격리로 손상되는 IndexedDB 회피, 로그인 몇 초 만에 풀리던 문제 뿌리 해결) + 켤 때 손상 창고·재기동 예약작업 찌꺼기 청소 / v1.84.0 구글 클라이언트를 파이어베이스와 같은 프로젝트 것으로 교체(audience 불일치 해소) + 판올림 재기동 wscript 숨김 실행(검은 콘솔 창 제거)
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
 // 수정요약: v1.83.0 겹침 방지 두 번째 잠금(포트) — V3 그림자 격리가 파일 잠금을 무력화해도 두 벌이 못 겹치게. 늦게 뜬 쪽이 살아남고, 안 물러나는 좀비는 강제로 내린다
 //
@@ -750,7 +750,10 @@ function getWorkerWindow() {
     webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false }
   });
   workerWin.on('closed', () => { workerWin = null; });
-  workerWin.loadURL(APP_URL).catch((e) => debugLog(`숨은 창 로드 실패: ${e.message}`));
+  /* ★ ?widgetworker=1 — 웹이 이 표식을 보면 로그인·캐시를 «메모리 전용» 으로 돌린다.
+     보안 프로그램 격리가 저장창고(IndexedDB)를 손상시켜 로그인이 몇 초 만에 풀리던
+     문제(2026-09-01 실측)의 뿌리 해결 — 디스크에 저장할 것 자체를 없앤다. */
+  workerWin.loadURL(APP_URL + '?widgetworker=1').catch((e) => debugLog(`숨은 창 로드 실패: ${e.message}`));
   /* ★ 램이 바닥나면 숨은 창의 렌더러가 먼저 죽는다(2026-08-31 실측 — 그 뒤로 poll 이
      영영 매달려 «로그인하세요» 만 남았다). 죽으면 버리고, 다음 poll 이 새로 만든다. */
   workerWin.webContents.on('render-process-gone', (_e, d) => {
@@ -2929,6 +2932,18 @@ if (!gotLock) {
   app.whenReady().then(() => {
     bootOk = true;   // 파수꾼에게 «심장이 뛰기 시작했다» 고 알린다
     debugLog(`=== 시작 === v${app.getVersion()} · 로그: ${debugLogFile}`);
+    /* ★ 손상된 저장창고 청소 — 격리가 IndexedDB 파일을 빼돌려 «손상→삭제→재생성» 이
+       반복되던 자리(2026-09-01 실측). 숨은 창은 이제 메모리 전용이라 이 창고가 필요
+       없다. 숨은 창을 만들기 전에 비워서 손상 고리를 끊는다. */
+    try {
+      fs.rmSync(path.join(userDataPath, 'Partitions', 'jindo', 'IndexedDB'),
+        { recursive: true, force: true });
+    } catch (e) { /* 무시 */ }
+    /* ★ 옛 판이 남긴 재기동 예약 작업 찌꺼기 — 뒤늦게 빈 검은 창을 띄운다. 지운다. */
+    try {
+      require('child_process').exec('schtasks /delete /tn JindoWidgetRelaunch /f',
+        { windowsHide: true }, () => { });
+    } catch (e) { /* 무시 */ }
     // ★ 창보다 «먼저» 등록한다 — 창이 뜨자마자 sendToWidget() 이 불리는데
     //   그때 학생기록 준비가 안 돼 있으면 예외가 났다
     // 학생기록 — 구글 연결·시트·명렬표는 이 모듈이 맡는다
