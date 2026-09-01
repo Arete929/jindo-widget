@@ -1,4 +1,5 @@
-// 파일명: main.js | @version 1.83.0
+// 파일명: main.js | @version 1.83.1
+// 수정요약: v1.83.1 로그인 자동 복원을 빠르게 — 성공할 때까지 매 확인(45초)마다 재시도(열 번 내리 실패하면 5분 간격), 웹이 뜨는 중이면 다 뜬 뒤 시도
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
 // 수정요약: v1.83.0 겹침 방지 두 번째 잠금(포트) — V3 그림자 격리가 파일 잠금을 무력화해도 두 벌이 못 겹치게. 늦게 뜬 쪽이 살아남고, 안 물러나는 좀비는 강제로 내린다
 //
@@ -784,9 +785,13 @@ async function pollOnce() {
          낯선 출신의 파일 고치기를 격리하는 일이 실제로 있었다), 램이 바닥나서.
          그러나 갱신 토큰은 상태 파일에 있고 «읽기» 는 언제나 되므로,
          새 액세스 토큰을 받아 숨은 창에 이어 붙이면 손 안 대고 돌아온다. */
-      if (Date.now() - lastLoginRestore > 5 * 60 * 1000) {
+      /* ★ 설치 직후엔 로그인 화면이 «바로» 걷혀야 한다. 그래서 처음에는 매 확인마다
+         다시 해 보고, 열 번을 내리 실패하면 그때부터 5분에 한 번으로 물러선다. */
+      const restoreGap = loginRestoreFails < 10 ? 45 * 1000 : 5 * 60 * 1000;
+      if (Date.now() - lastLoginRestore > restoreGap) {
         lastLoginRestore = Date.now();
-        debugLog('저장된 계정으로 로그인 자동 복원을 시도합니다');
+        loginRestoreFails++;
+        debugLog('저장된 계정으로 로그인 자동 복원을 시도합니다 (' + loginRestoreFails + '번째)');
         recordsmain.accessToken().then((at) => {
           if (!at) { debugLog('자동 복원 — 토큰이 비어 있음'); return; }
           restoreLogin(at);
@@ -999,13 +1004,20 @@ function startLogin() {
   }, 15 * 60 * 1000);
 }
 
-let lastLoginRestore = 0;   // 자동 복원은 5분에 한 번만 — 실패를 두들기지 않는다
+let lastLoginRestore = 0;   // 실패가 이어질 때만 간격을 벌린다 — 처음엔 매 확인마다
+let loginRestoreFails = 0;  // 내리 실패한 횟수 — 성공하면 0으로
 /* 저장된 계정의 «액세스 토큰» 으로 숨은 창 로그인을 복원한다.
    ★ 위젯의 구글 연결에는 openid 가 없어 id 토큰은 못 받는다 — 액세스 토큰이 유일한 길.
      웹(boot.js v1.3.0)의 __widgetSignInAT 가 받아 준다. 옛 웹이 떠 있으면 새로 불러온다. */
 async function restoreLogin(accessToken, retried) {
   const win = getWorkerWindow();
   try {
+    if (win.webContents.isLoading()) {
+      // 막 켠 직후엔 웹이 아직 뜨는 중이다 — 지금 던지면 헛발질이니 다 뜬 다음에 한다
+      debugLog('자동 복원 — 웹이 뜨는 중이라 기다렸다 시도합니다');
+      win.webContents.once('did-finish-load', () => setTimeout(() => restoreLogin(accessToken, retried), 1500));
+      return;
+    }
     const ok = await win.webContents.executeJavaScript(
       'window.__widgetSignInAT ? window.__widgetSignInAT(' + JSON.stringify(accessToken) + ') : null', true);
     if (ok === null) {
@@ -1016,6 +1028,7 @@ async function restoreLogin(accessToken, retried) {
       return;
     }
     debugLog('로그인 자동 복원 완료 — 손댈 것 없이 이어집니다');
+    loginRestoreFails = 0;
     setTimeout(pollOnce, 2000);
   } catch (e) {
     debugLog('자동 복원 마무리 실패: ' + (e && e.message ? e.message : e));
