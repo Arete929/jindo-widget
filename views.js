@@ -4647,7 +4647,10 @@ function wireViews(app) {
   wireBoardApps(app);
   // ★ .rach 도 함께 훑는다 — 학생기록 아코디언의 «머리» 단추다.
   //   .wkb 만 훑던 때에는 눌러도 아무 일이 없어서 «펼쳐지지 않는다» 였다.
-  app.querySelectorAll('.wkb, .rach, .gph').forEach(function (b) {
+  /* ★ 여기 목록에 빠진 «단추 종류» 는 눌러도 아무 일이 없다. 새 단추를 만들면 꼭 넣을 것.
+     (2026-09-02: 업무관리·내 할 일 단추를 만들고 여기 안 넣어서 체크박스가 안 먹었다) */
+  app.querySelectorAll('.wkb, .rach, .gph, .tkbtn, .tdck, .tdb, .tdclear, .tdfold, #tdAdd')
+    .forEach(function (b) {
     b.addEventListener('click', function () {
       if (b.dataset.off !== undefined) { WK = null; loadWeek(Number(b.dataset.off)); return; }
       if (b.dataset.doc) { workDoc = b.dataset.doc; workOff = 0; render(); return; }
