@@ -348,4 +348,8 @@ async function fetchWork(ids) {
   return out;
 }
 
-module.exports = { fetchWork, parseWork, DOCS };
+/* 해석기 판 — 규칙을 고치면 이 숫자를 올린다. 그러면 저장해 둔 옛 해석본을 버리고
+   다시 받는다(main.js workIsOld). 2 = 제 번호 단 줄에 목록 점을 안 붙이는 규칙. */
+const PARSE_VER = 2;
+
+module.exports = { fetchWork, parseWork, DOCS, PARSE_VER };
