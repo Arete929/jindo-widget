@@ -79,6 +79,24 @@
     --warnbg: #fef6e7; --warnfg: #b45309;
     --holbg: #fdeef0; --holfg: #be123c;
   }
+  /* 한옥 — 한지 바탕에 나무빛 강조, 정원 초록을 «지금» 색으로.
+     ★ 팔레트의 정원초록(#7E8B63)을 그대로 쓰면 한지 위에서 흐려서(2.9) 짙게 내렸다.
+       흐린 글자도 팔레트의 돌빛으로 두면 카드 위에서 안 읽혀 따로 잡았다. */
+  :root[data-theme="hanok"] {
+    --bg: #EFE4D2; --fg: #2A2A27; --accent: #6C4B3B; --on: #EFE4D2; --now: #4F5E38;
+    --card: #E4D7C0; --card2: #D6C6AB; --line: #BDAF99;
+    --dim: #5A5248; --fg2: #3A3833;
+  }
+  /* 다크UI — 짙은 남색 바탕에 또렷한 파랑.
+     ★ 팔레트에 «지금(초록)» 이 없어 같은 결의 초록을 하나 골라 넣었다.
+       서리빛 파랑(#DDEBFF)은 카드로 쓰면 글자가 안 보여 카드에 안 썼다. */
+  :root[data-theme="darkui"] {
+    --bg: #101A33; --fg: #F8FBFF; --accent: #3F7CFF; --on: #FFFFFF; --now: #4FD6A0;
+    --card: #18243F; --card2: #22314F; --line: #2C3C5E;
+    --dim: #93A1B5; --fg2: #DDE6F5;
+    --warnbg: #2a2413; --warnfg: #fbbf24;
+    --holbg: #331a22; --holfg: #f87171;
+  }
   /* 나이트 — 검은 바탕, «글자는 흰빛» 이고 키위색은 강조에만 남긴다.
      글자까지 형광 연두면 오래 보기 어렵다. */
   :root[data-theme="night"] {
@@ -212,10 +230,12 @@
   /* 밝은 바탕(기본 고스트·칠화이트)에는 검정 톱니 */
   :root .gear,
   :root[data-theme="chillwhite"] .gear,
-  :root[data-theme="slatelight"] .gear { background-image: url('assets/setting_bk.png'); }
+  :root[data-theme="slatelight"] .gear,
+  :root[data-theme="hanok"] .gear { background-image: url('assets/setting_bk.png'); }
   :root[data-theme="black"] .gear,
   :root[data-theme="slate"] .gear,
   :root[data-theme="persian"] .gear,
+  :root[data-theme="darkui"] .gear,
   :root[data-theme="night"] .gear { background-image: url('assets/setting_blue.png'); }
   /* 제목 줄 오른쪽 끝 — 지금 쓰는 버전 */
   .tver {
