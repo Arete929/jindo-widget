@@ -158,7 +158,10 @@ function pushParas(out, html) {
     const lks = linksIn(part);
     textOf(part).split('\n').forEach((ln) => {
       if (!hasInk(ln)) return;
-      const p = { k: 'p', t: (li ? '  · ' : '') + trimEnd(ln) };
+      /* * 제 번호(1. 가. 1…)를 이미 달고 있는 줄에는 목록 점을 붙이지 않는다.
+         붙이면 «· 1.» 이 되고, 화면의 단계 계산(views.js 의 wlevel)이 점만 보고
+         0단계로 여겨 «1.» 과 «가.» 가 같은 줄로 뭉개졌다. */
+      const p = { k: 'p', t: (li && !hasOwnMark(ln) ? '  · ' : '') + trimEnd(ln) };
       if (al) p.al = al;
       // 이 줄에 실제로 들어 있는 링크만 붙인다 (<br> 로 한 문단이 여러 줄이 되기도 한다)
       const mine = lks.filter((x) => ln.indexOf(x.t) >= 0);
@@ -166,6 +169,13 @@ function pushParas(out, html) {
       out.push(p);
     });
   });
+}
+/* 이 줄이 제 번호를 이미 달고 있는가 — views.js 의 wlevel 과 «같은 규칙» 을 쓴다.
+   («(소득)» 처럼 글자로 시작하는 괄호는 번호가 아니다 — 숫자일 때만 번호로 본다) */
+function hasOwnMark(s) {
+  const x = String(s).replace(/^[\s ]+/, '');
+  return /^\d{1,2}\s*[.)．）]/.test(x) || /^[가-힣]\s*[.)．）]/.test(x)
+    || /^[①-⑳]/.test(x) || /^\(\s*\d{1,2}\s*\)/.test(x);
 }
 function trimEnd(s) { return String(s).replace(/[\s ]+$/, ''); }
 
