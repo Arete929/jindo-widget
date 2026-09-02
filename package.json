@@ -1,7 +1,7 @@
 {
   "name": "hyewon-desk",
   "productName": "HyewonDesk",
-  "version": "1.89.5",
+  "version": "1.90.0",
   "description": "체육 수업진도 — 오늘 수업·이번주·반별 진도를 항상 위에 띄워 보여주는 위젯",
   "main": "main.js",
   "author": "Arete929",

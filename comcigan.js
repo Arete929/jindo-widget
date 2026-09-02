@@ -203,7 +203,67 @@ function shape(j, want) {
     }
     out.byTeacher = list;
   }
+  /* ★ 학급 시간표에도 «바뀐 수업» 을 옮겨 붙인다.
+     컴시간은 변경분을 교사 시간표(자료542)에만 실어 주고, 학급 시간표(자료481)는
+     옛 값 그대로 준다(2026-09-02 실측 — 학급 자료의 변경 표시 0개).
+     그대로 두면 아무리 새로 받아도 «3-2 목 4교시 체육» 처럼 옛 시간표가 남는다. */
+  if (out.classes && j['자료542'] && j['자료481']) {
+    applyTeacherChanges(j, out, sep, teachers, subName);
+  }
   return out;
+}
+
+/* ── 교사 쪽 변경을 학급 시간표에 옮겨 붙이기 ───────────────────
+   컴시간은 «바뀐 수업» 을 교사 시간표에만 «>11302» 같은 문자열로 준다.
+   학급 시간표는 옛 값이라, 그 변경을 여기서 학급 칸에 반영한다.
+     ">0"     그 시각 그 교사의 수업이 빠졌다 → 그 수업을 갖고 있던 학급 칸을 비운다
+     ">11302" 그 시각 그 교사가 3-2 에 들어간다 → 3-2 의 그 칸에 넣는다
+   ★ 빼기를 먼저 다 하고 넣기를 한다 — 두 반이 서로 바뀐 경우(맞바꿈)가 어긋나지 않는다. */
+function applyTeacherChanges(j, out, sep, teachers, subName) {
+  const T = j['자료542'], C = j['자료481'];
+  const num = (v) => Number(String(v).replace(/^>\s*/, '')) || 0;
+
+  /* 학급 하루치를 찾아 준다 */
+  function dayOf(grade, cls, d) {
+    const g = (out.classes || []).filter((x) => x.grade === grade)[0];
+    const c = g && (g.classes || []).filter((x) => x.cls === cls)[0];
+    if (!c) return null;
+    return (c.days || []).filter((x) => x.dow === DOW[d])[0] || null;
+  }
+  function setCell(day, p, v) {
+    if (!day) return;
+    while (day.periods.length < p) day.periods.push(null);
+    day.periods[p - 1] = v;
+  }
+
+  const adds = [];
+  for (let t = 1; t < (T || []).length; t++) {
+    for (let d = 1; d <= 5; d++) {
+      const row = (T[t] && T[t][d]) || [];
+      for (let p = 1; p < row.length; p++) {
+        const v = row[p];
+        if (typeof v !== 'string' || v.indexOf('>') < 0) continue;   // 안 바뀐 칸
+        const n = num(v);
+        if (!n) {
+          /* 빠진 수업 — 그 시각 이 교사를 갖고 있던 학급을 옛 자료에서 찾아 비운다 */
+          for (let g = 1; g < (C || []).length; g++) {
+            for (let k = 1; k < ((C[g] || []).length); k++) {
+              const cv = num((C[g][k] && C[g][k][d] && C[g][k][d][p]) || 0);
+              if (cv && (cv % sep) === t) setCell(dayOf(g, k, d), p, null);
+            }
+          }
+        } else {
+          const gc = n % sep;
+          adds.push({ grade: Math.floor(gc / 100), cls: gc % 100, d: d, p: p,
+            subject: subName(Math.floor(n / sep)), teacher: teachers[t] || '' });
+        }
+      }
+    }
+  }
+  adds.forEach((a) => {
+    setCell(dayOf(a.grade, a.cls, a.d), a.p,
+      { p: a.p, subject: a.subject, teacher: a.teacher, changed: true });
+  });
 }
 
 /* 학교 코드로 시간표를 받아 정리한다.
@@ -214,4 +274,4 @@ async function fetchTimetable(schoolCode) {
   return shape(j, { teacher: true, classes: true });
 }
 
-module.exports = { searchSchool, fetchTimetable, readProtocol, fetchRaw };
+module.exports = { searchSchool, fetchTimetable, readProtocol, fetchRaw , shape };
