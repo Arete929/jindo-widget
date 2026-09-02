@@ -680,16 +680,21 @@ function tkRow(t) {
     + '<div class="tkl">'
     + (when ? '<b class="tkd">' + esc(when) + '</b>' : '<b class="tkd no">–</b>')
     + tkChip(t)
-    + (t.status === '진행 중' ? '<span class="tkst">진행중</span>' : '')
+    /* ★ 상태는 «채운 배지» 로 늘 보여 준다. 전에는 진행 중일 때만 배지가 있고
+         나머지는 아무 표시가 없어서, 아래 단추(✅ 완료)를 상태로 잘못 읽었다. */
+    + (t.status === '진행 중'
+        ? '<span class="tkst go">진행 중</span>'
+        : '<span class="tkst todo">시작 전</span>')
     + '</div>'
     + '<div class="tkt">' + esc(t.title) + '</div>'
     + (tkOpen[t.id] && t.note ? '<div class="tkn">' + esc(t.note) + '</div>' : '')
+    /* ★ 단추는 «…로» 어미 + 외곽선만 — 배지(채움)와 눈으로 갈린다 */
     + '<div class="tkb">'
-    + '<button class="tkbtn ok" data-done="' + esc(t.id) + '"' + (busy ? ' disabled' : '') + '>✅ 완료</button>'
-    + '<button class="tkbtn" data-today="' + esc(t.id) + '"' + (busy ? ' disabled' : '') + '>📅 오늘로</button>'
+    + '<button class="tkbtn" data-done="' + esc(t.id) + '"' + (busy ? ' disabled' : '') + '>완료로</button>'
+    + '<button class="tkbtn" data-today="' + esc(t.id) + '"' + (busy ? ' disabled' : '') + '>오늘로</button>'
     + (t.status !== '진행 중'
-        ? '<button class="tkbtn" data-go="' + esc(t.id) + '"' + (busy ? ' disabled' : '') + '>🔵 진행중</button>' : '')
-    + '<button class="tkbtn" data-tkurl="' + esc(t.url) + '">↗ 노션</button>'
+        ? '<button class="tkbtn" data-go="' + esc(t.id) + '"' + (busy ? ' disabled' : '') + '>진행중으로</button>' : '')
+    + '<button class="tkbtn" data-tkurl="' + esc(t.url) + '">노션에서 열기</button>'
     + '</div></div>';
 }
 function tkSection(title, list, cls) {

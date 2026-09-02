@@ -842,8 +842,11 @@
          background: color-mix(in srgb, var(--pc, var(--line)) 14%, transparent);
          border-radius: 999px; padding: 1px calc(7px * var(--wf)); white-space: nowrap; }
   .tkp.none { color: var(--dim); border-color: var(--line); background: none; }
-  .tkst { font-size: calc(9px * var(--wf)); font-weight: 800; color: var(--on);
-          background: var(--accent); border-radius: 999px; padding: 1px calc(6px * var(--wf)); }
+  /* 상태 배지 — «채운 색». 단추와 헷갈리지 않도록 모양을 아주 다르게 둔다. */
+  .tkst { font-size: calc(9px * var(--wf)); font-weight: 800; border-radius: 999px;
+          padding: 1px calc(6px * var(--wf)); white-space: nowrap; }
+  .tkst.go { color: var(--on); background: var(--accent); }
+  .tkst.todo { color: var(--dim); background: color-mix(in srgb, var(--dim) 16%, transparent); }
   .tkt { font-size: calc(11.5px * var(--wf)); color: var(--fg); margin-top: 3px; line-height: 1.35; }
   .tkn { font-size: calc(10px * var(--wf)); color: var(--dim); margin-top: 3px;
          border-left: 2px solid var(--line); padding-left: 6px; }
@@ -851,7 +854,8 @@
   .tkbtn { background: none; border: 1px solid var(--line); color: var(--fg2);
            border-radius: 6px; cursor: pointer; font-family: inherit;
            font-size: calc(9.5px * var(--wf)); padding: calc(2px * var(--wf)) calc(7px * var(--wf)); }
-  .tkbtn.ok { border-color: var(--now); color: var(--now); font-weight: 800; }
+  /* 단추 — «외곽선만». 누르는 것이지 상태가 아니다(초록 채움을 일부러 뺐다). */
+  .tkbtn:hover { border-color: var(--accent); color: var(--accent); }
   .tkbtn:disabled { opacity: .5; cursor: default; }
   .tkmore { margin-top: 8px; font-size: calc(10.5px * var(--wf)); color: var(--accent);
             font-weight: 700; cursor: pointer; }
