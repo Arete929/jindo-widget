@@ -926,10 +926,13 @@
   /* 글머리 단계마다 «위 여백»을 달리 줘서 덩어리가 눈에 갈리게 한다.
      1. 2. 3. 이 최상위, 그 아래 가. 나., 1) 2), 가) 나) 순이다.
      ★글자는 원문 그대로다 — 간격만 손댄다. 단계는 views.js 의 wlevel() 이 정한다. */
-  .wkp.lv1 { margin-top: 16px; }
-  .wkp.lv2 { margin-top: 6px; }
-  .wkp.lv3 { margin-top: 3px; }
-  .wkp.lv4 { margin-top: 1px; }
+  /* ★ 단계마다 «위 간격» 과 «가로 들여쓰기» 를 함께 준다.
+     전에는 위 간격만 있고 가로는 원문 공백에 맡겼는데, 그 공백이 줄마다 달라
+     «2.» 와 그 아래 «가.» 가 같은 자리에 놓이는 일이 있었다. */
+  .wkp.lv1 { margin-top: 16px; padding-left: 0; }
+  .wkp.lv2 { margin-top: 6px; padding-left: 1.15em; }
+  .wkp.lv3 { margin-top: 3px; padding-left: 2.3em; }
+  .wkp.lv4 { margin-top: 1px; padding-left: 3.45em; }
   /* 부서 제목 «바로 아래» 첫 줄은 이미 제목이 띄워 줬으니 겹쳐 벌리지 않는다 */
   .wkdt > b + .wkp.lv1 { margin-top: 0; }
   /* 표 칸 안에서는 칸이 좁으므로 절반만 준다 */

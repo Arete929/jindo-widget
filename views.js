@@ -370,8 +370,15 @@ function wblock(b) {
   // 원문이 가운데(또는 오른쪽) 정렬이면 그대로 따라간다 — 급식지도 안내표의 이름 등
   if (b.k === 'p') {
     var lv = wlevel(b.t);
+    /* ★ 가로 들여쓰기는 «번호 단계» 로 정한다.
+       원문에 남아 있는 앞 공백이 줄마다 제각각이라(같은 «가.» 인데 어떤 데는 공백 3칸,
+       어떤 데는 2칸) 그대로 두면 «2.» 와 그 아래 «가.» 가 같은 자리에 놓였다
+       (2026-09-02 창의복지부 2번). 단계가 잡힌 줄은 앞 공백을 걷어내고 CSS 로 맞춘다.
+       ★ 단계가 없는 줄((소득)·(성적) 같은 딸림 줄)은 원문 공백을 그대로 둔다 —
+         그 줄들은 앞 공백이 곧 뜻이다. */
+    var t = lv ? String(b.t).replace(/^[\s ]+/, '') : b.t;
     return '<div class="wkp' + (b.al ? ' a-' + b.al : '') + (lv ? ' lv' + lv : '')
-      + '">' + withLinks(mk(b.t), b.links) + '</div>';
+      + '">' + withLinks(mk(t), b.links) + '</div>';
   }
   return '<div class="wtbw"><table class="wtb">'
     + (b.rows || []).map(function (r) {
