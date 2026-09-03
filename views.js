@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.97.0
+/* 파일명: views.js | @version 1.97.1
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -2660,6 +2660,10 @@ function lbPump() {
         }
         render();
         lbPump();
+      }).catch(function (e) {
+        /* ★ 여기서도 놓으면 보내는 자리가 하나씩 영영 막힌다 */
+        lbSending--; delete lbWait[job.id]; job.undo();
+        lbErr = lbWhy(e); render(); lbPump();
       });
     })(lbQ2.shift());
   }
@@ -2758,12 +2762,25 @@ function lbToggleShare(x) {
   lbPump();
 }
 
-/* 런처에 시키기 — 하는 동안 단추를 잠그고, 끝나면 저장시각을 남긴다 */
+/* IPC 가 미끄러지면 «Error invoking remote method …» 가 통째로 붙어 온다 — 벗겨 낸다 */
+function lbWhy(e) {
+  return String((e && e.message) || e)
+    .replace(/^Error invoking remote method '[^']*':\s*/, '')
+    .replace(/^Error:\s*/, '') || '하지 못했습니다';
+}
+/* 런처에 시키기 — 하는 동안 단추를 잠그고, 끝나면 저장시각을 남긴다.
+   ★ 미끄러졌을 때 lbBusy 를 꼭 풀어 준다. 안 풀면 «담기» 가 조용히 잠긴 채로
+     앱을 껐다 켤 때까지 아무 반응이 없다 — 눌러도 아무 일이 없는 그 증상이다. */
 function lbDo(act, body, tag) {
   if (lbBusy) return;
   lbBusy = tag || act; lbErr = '';
   render();
+  var 늦음 = setTimeout(function () {          // 답이 아예 안 와도 풀어 준다
+    if (!lbBusy) return;
+    lbBusy = ''; lbErr = '런처가 답하지 않습니다 — 다시 눌러 보세요'; render();
+  }, 40000);
   widgetAPI.feedAct(Object.assign({ act: act }, body || {})).then(function (r) {
+    clearTimeout(늦음);
     lbBusy = '';
     if (!r || !r.ok) { lbErr = (r && r.error) || '하지 못했습니다'; render(); return; }
     lbOkAt = r.at || '';
@@ -2773,6 +2790,9 @@ function lbDo(act, body, tag) {
     }
     if (act === 'add' || act === 'edit') lbForm = null;
     render();
+  }).catch(function (e) {
+    clearTimeout(늦음);
+    lbBusy = ''; lbErr = lbWhy(e); render();
   });
 }
 /* 담기·고치기 칸 — 새로 담을 때는 x 가 없다 */
