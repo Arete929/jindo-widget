@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.100.2
+/* 파일명: views.js | @version 1.101.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -735,18 +735,6 @@ function tickRun(promise) {
     render();
   }).catch(function (e) { tickBusy = false; tickErr = String((e && e.message) || e); render(); });
 }
-function tickAddNow(root) {
-  var box = root.querySelector('#tkNewT');
-  var v = box ? String(box.value || '').trim() : '';
-  if (!v) { tickErr = '내용을 적어 주세요'; render(); return; }
-  if (box) box.value = '';
-  tickRun(widgetAPI.tickAdd(v, ''));
-}
-
-/* 할 일 명령 하나를 돌리고 결과를 화면에 반영한다 (저장시각 포함) */
-
-
-
 /* ── 수업진도 대시보드 얹기 ────────────────────────────────
    ★ 위젯 화면으로 옮겨 적지 않고 «그 앱을 그대로» 이 자리에 얹는다.
      여기서는 «자리»만 잡아 두고, 실제 화면은 메인이 그 자리에 붙여 준다. */
@@ -785,7 +773,187 @@ function viewSide() {
     + viewTick() + '</div>';
 }
 
-/* ── 틱틱 ── */
+/* ── 틱틱 손질(1.101.0) ────────────────────────────────────
+   줄마다 날짜·보관함·우선순위를 보이고, 적을 때 틱틱 단축키(!높음 ^보관함 내일)를 알아듣는다.
+   날짜·우선순위·보관함은 줄에서 팔레트로 바꾸고, 지우기와 정렬도 된다. */
+var tickPop = '';                              // 열린 팔레트 «id|kind» — id 가 new 면 입력칸 것
+var tickDel = '';                              // 지우기 확인을 기다리는 할 일 id
+var tickDraft = '';                            // 입력칸 글 — 다시 그려도 안 잃는다
+var tickNew = { pri: null, pid: '', due: null };   // 입력칸 옆 칩으로 고른 것(단축키보다 우선)
+var tickSort = (function () { try { return localStorage.getItem('tickSort') || 'due'; } catch (e) { return 'due'; } })();
+var TK_PRI = { 5: '높음', 3: '중간', 1: '낮음', 0: '없음' };
+var TK_DOW = ['일', '월', '화', '수', '목', '금', '토'];
+
+function tkPlus(n) { var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + n); return tkYmd(d); }
+/* 이번주(월~일)의 그 요일 — weekOff 1 이면 다음주 */
+function tkWeekday(dow, weekOff) {
+  var d = new Date(); d.setHours(0, 0, 0, 0);
+  var toMon = d.getDay() === 0 ? -6 : 1 - d.getDay();      // 이번주 월요일까지
+  var idx = dow === 0 ? 6 : dow - 1;                        // 월0 … 일6
+  d.setDate(d.getDate() + toMon + idx + 7 * (weekOff || 0));
+  return tkYmd(d);
+}
+/* 날짜 → «오늘·내일·모레·이번주 금·다음주 화·9/12». 지난 것은 «9/1 (3일 지남)» */
+function tkWhenLabel(ymd) {
+  if (!ymd) return '';
+  var n = tkDays(ymd);
+  if (n === null) return '';
+  var md = Number(ymd.slice(5, 7)) + '/' + Number(ymd.slice(8, 10));
+  if (n < 0) return md + ' (' + (-n) + '일 지남)';
+  if (n === 0) return '오늘';
+  if (n === 1) return '내일';
+  if (n === 2) return '모레';
+  var dow = new Date(ymd.slice(0, 10) + 'T00:00:00').getDay();
+  if (ymd <= tkWeekday(0, 0)) return '이번주 ' + TK_DOW[dow];
+  if (ymd <= tkWeekday(0, 1)) return '다음주 ' + TK_DOW[dow];
+  return md;
+}
+/* 틱틱 단축키 해석 — 제목에서 «!우선순위 ^보관함 날짜말» 을 뽑아낸다.
+   모르는 보관함(^없는이름)은 그대로 글자로 남긴다. */
+function tickParse(text) {
+  var s = ' ' + String(text || '') + ' ';
+  var out = { title: '', pri: null, pid: '', pname: '', due: null };
+  var ps = (TICK && TICK.data && TICK.data.projects) || [];
+  s = s.replace(/\s!(높음|high|3)(?=\s)/i, function () { out.pri = 5; return ' '; })
+       .replace(/\s!(중간|medium|mid|2)(?=\s)/i, function () { out.pri = 3; return ' '; })
+       .replace(/\s!(낮음|low|1)(?=\s)/i, function () { out.pri = 1; return ' '; })
+       .replace(/\s!(없음|none|0)(?=\s)/i, function () { out.pri = 0; return ' '; });
+  s = s.replace(/\s\^(\S+)/, function (m, name) {
+    var q = name.toLowerCase();
+    var hit = ps.filter(function (p) { return String(p.name).toLowerCase().indexOf(q) >= 0; })[0];
+    if (!hit) return m;
+    out.pid = hit.id; out.pname = hit.name; return ' ';
+  });
+  var DOWI = { '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6, '일': 0 };
+  s = s.replace(/\s(오늘|내일|모레|글피)(?=\s)/, function (m, w) {
+    out.due = tkPlus({ '오늘': 0, '내일': 1, '모레': 2, '글피': 3 }[w]); return ' '; });
+  s = s.replace(/\s(이번\s*주|다음\s*주|담주)\s*([월화수목금토일])(?:요일)?(?=\s)/, function (m, wk, d) {
+    out.due = tkWeekday(DOWI[d], /이번/.test(wk) ? 0 : 1); return ' '; });
+  s = s.replace(/\s([월화수목금토일])요일(?=\s)/, function (m, d) {
+    var y = tkWeekday(DOWI[d], 0);
+    if (y < tkPlus(0)) y = tkWeekday(DOWI[d], 1);           // 이미 지난 요일이면 다음주 것
+    out.due = y; return ' ';
+  });
+  s = s.replace(/\s(\d{4})[-./](\d{1,2})[-./](\d{1,2})(?=\s)/, function (m, y, mo, d) {
+    out.due = y + '-' + ('0' + mo).slice(-2) + '-' + ('0' + d).slice(-2); return ' '; });
+  s = s.replace(/\s(\d{1,2})(?:\/|월\s*)(\d{1,2})일?(?=\s)/, function (m, mo, d) {
+    var y = new Date().getFullYear();
+    var ymd = y + '-' + ('0' + mo).slice(-2) + '-' + ('0' + d).slice(-2);
+    if (tkDays(ymd) < -60) ymd = (y + 1) + ymd.slice(4);      // 한참 지난 날이면 내년 것
+    out.due = ymd; return ' ';
+  });
+  out.title = s.replace(/\s+/g, ' ').trim();
+  return out;
+}
+/* 입력칸 글의 단축키 + 칩으로 고른 것 — 칩이 이긴다 */
+function tickNewMerged() {
+  var p = tickParse(tickDraft);
+  var ps = (TICK && TICK.data && TICK.data.projects) || [];
+  if (tickNew.pri !== null) p.pri = tickNew.pri;
+  if (tickNew.pid) {
+    p.pid = tickNew.pid;
+    p.pname = (ps.filter(function (x) { return x.id === tickNew.pid; })[0] || {}).name || '';
+  }
+  if (tickNew.due !== null) p.due = tickNew.due || null;
+  if (!p.pid && tickList) {                     // 아무것도 안 골랐으면 지금 보고 있는 보관함으로
+    p.pid = tickList;
+    p.pname = (ps.filter(function (x) { return x.id === tickList; })[0] || {}).name || '';
+  }
+  return p;
+}
+function tickNameOf(pid) {
+  var ps = (TICK && TICK.data && TICK.data.projects) || [];
+  return (ps.filter(function (x) { return x.id === pid; })[0] || {}).name || '';
+}
+/* 팔레트 — 날짜·우선순위·보관함. 열린 것만 그린다 */
+function tkPopHtml(id, kind, cur) {
+  var key = id + '|' + kind;
+  if (tickPop !== key) return '';
+  var chip = function (v, label, on) {
+    return '<button class="wkb' + (on ? ' now' : '') + '" data-tkset="' + esc(key + '|' + v) + '">' + esc(label) + '</button>';
+  };
+  var h = '<div class="tdpop">';
+  if (kind === 'pri') {
+    h += [5, 3, 1, 0].map(function (v) { return chip(v, TK_PRI[v], Number(cur) === v); }).join('');
+  } else if (kind === 'list') {
+    var ps = (TICK && TICK.data && TICK.data.projects) || [];
+    h += ps.map(function (p) { return chip(p.id, p.name, cur === p.id); }).join('');
+  } else {
+    h += chip(tkPlus(0), '오늘', cur === tkPlus(0)) + chip(tkPlus(1), '내일', cur === tkPlus(1))
+      + chip(tkPlus(2), '모레', cur === tkPlus(2))
+      + '<span class="tdpl">이번주</span>'
+      + [1, 2, 3, 4, 5, 6, 0].map(function (d) { return chip(tkWeekday(d, 0), TK_DOW[d], cur === tkWeekday(d, 0)); }).join('')
+      + '<span class="tdpl">다음주</span>'
+      + [1, 2, 3, 4, 5, 6, 0].map(function (d) { return chip(tkWeekday(d, 1), TK_DOW[d], cur === tkWeekday(d, 1)); }).join('')
+      + chip('', '지우기', !cur)
+      + '<input type="date" class="tkcal" data-tkcal="' + esc(key) + '" value="' + esc(cur || '') + '" title="달력에서 고르기">';
+  }
+  return h + '</div>';
+}
+/* 팔레트에서 고른 것을 적용한다 — «id|kind|값» */
+function tickApply(key) {
+  var p = String(key || '').split('|');
+  var id = p[0], kind = p[1], val = p.slice(2).join('|');
+  tickPop = ''; tickDel = '';
+  if (id === 'new') {
+    if (kind === 'pri') tickNew.pri = Number(val) || 0;
+    else if (kind === 'list') tickNew.pid = val;
+    else tickNew.due = val;                              // '' 면 «날짜 없음» 으로 고른 것
+    render(); return;
+  }
+  var t = (((TICK && TICK.data && TICK.data.tasks) || []).filter(function (x) { return x.id === id; }))[0];
+  if (!t) { render(); return; }
+  var patch = kind === 'pri' ? { priority: Number(val) || 0 }
+    : kind === 'due' ? { due: val }
+    : { projectId: val, title: t.title, due: t.due || '', priority: Number(t.priority) || 0 };
+  if (kind === 'list' && val === t.projectId) { render(); return; }
+  tickRun(widgetAPI.tickUpdate(t.projectId, t.id, patch));
+}
+/* 정렬 — 마감순(기본)·우선순위순·보관함순·제목순 */
+function tickSorted(list) {
+  var byDue = function (a, b) { return (a.due || '9999').localeCompare(b.due || '9999'); };
+  var byPri = function (a, b) { return (Number(b.priority) || 0) - (Number(a.priority) || 0); };
+  var cmp = tickSort === 'pri' ? function (a, b) { return byPri(a, b) || byDue(a, b); }
+    : tickSort === 'list' ? function (a, b) { return String(a.project || '').localeCompare(String(b.project || '')) || byDue(a, b); }
+    : tickSort === 'title' ? function (a, b) { return String(a.title || '').localeCompare(String(b.title || ''), 'ko'); }
+    : function (a, b) { return byDue(a, b) || byPri(a, b); };
+  return list.slice().sort(cmp);
+}
+/* 입력칸 아래 줄(칩·미리보기·팔레트)만 다시 그린다 — 글자 치는 중에 입력칸을 건드리지 않으려고 */
+function tickNewHtml() {
+  var np = tickNewMerged();
+  return '<button class="tdb tdtag pri p' + (np.pri || 0) + '" data-tkpop="new|pri" title="우선순위 (!높음·!중간·!낮음)">!' + (np.pri ? TK_PRI[np.pri] : '우선순위') + '</button>'
+    + '<button class="tdb tdtag list" data-tkpop="new|list" title="보관함 (^이름)">^' + esc(np.pname || '보관함') + '</button>'
+    + '<button class="tdb tdtag date" data-tkpop="new|due" title="날짜 (오늘·내일·이번주 금·9/12)">📅 ' + esc(np.due ? tkWhenLabel(np.due) : '날짜') + '</button>'
+    + (np.title ? '<span class="tdprev">→ ' + esc(np.title) + '</span>' : '')
+    + tkPopHtml('new', 'pri', np.pri) + tkPopHtml('new', 'list', np.pid) + tkPopHtml('new', 'due', np.due || '');
+}
+function tickPaintNew(root) {
+  var box = root.querySelector('#tdNew');
+  if (box) box.innerHTML = tickNewHtml();
+}
+function tickAddNow(root) {
+  var box = root.querySelector('#tkNewT');
+  if (box) tickDraft = String(box.value || '');
+  var p = tickNewMerged();
+  if (!p.title) { tickErr = '내용을 적어 주세요'; render(); return; }
+  tickDraft = ''; if (box) box.value = '';
+  tickNew = { pri: null, pid: '', due: null }; tickPop = '';
+  tickRun(widgetAPI.tickAdd(p.title, p.due || '', p.pid || '', p.pri === null ? 0 : p.pri));
+}
+/* 어느 목록에 어느 기간으로 몇 개가 걸리는가 — viewTick 의 거르기와 같은 규칙 */
+function tickCountOf(listId, when) {
+  var d = TICK && TICK.data;
+  var all = ((d && d.tasks) || []).filter(function (t) { return t.status !== 2; });
+  if (listId) all = all.filter(function (t) { return t.projectId === listId; });
+  return all.filter(function (t) {
+    if (when === 'all') return true;
+    var n = tkDays(t.due);
+    if (n === null) return when === 'nodue';
+    if (when === 'nodue') return false;
+    return when === 'week' ? n <= 7 : n <= 0;
+  }).length;
+}
 function viewTick() {
   if (!TICK || !TICK.on) {
     return '<div class="tdempty">틱틱이 아직 연결되지 않았습니다.<br><br>'
@@ -801,8 +969,9 @@ function viewTick() {
   if (d && d.error) h += '<div class="tkerr">' + esc(d.error) + '</div>';
 
   h += '<div class="tdadd">'
-    + '<input class="bdi" id="tkNewT" placeholder="틱틱에 적고 엔터" maxlength="300">'
-    + '<button class="bdgo" id="tkAddT"' + (tickBusy ? ' disabled' : '') + '>＋</button></div>';
+    + '<input class="bdi" id="tkNewT" placeholder="틱틱에 적고 엔터 — !높음 ^보관함 내일" maxlength="300" value="' + esc(tickDraft) + '">'
+    + '<button class="bdgo" id="tkAddT"' + (tickBusy ? ' disabled' : '') + '>＋</button></div>'
+    + '<div class="tdnew" id="tdNew">' + tickNewHtml() + '</div>';
 
   /* ★ 다 보여주면 스물몇 개가 쏟아진다(2026-09-03 실측 26개).
      기간과 목록으로 걸러 «지금 볼 것» 만 남긴다. */
@@ -815,17 +984,7 @@ function viewTick() {
     if (tickWhen === 'nodue') return false;
     return tickWhen === 'week' ? n <= 7 : n <= 0;      // 이번주 / 오늘까지
   });
-
-  // 기간 고르기 — 몇 개인지 함께 적어 둔다
-  var cnt = function (k) {
-    return byList.filter(function (t) {
-      var n = tkDays(t.due);
-      if (k === 'all') return true;
-      if (n === null) return k === 'nodue';
-      if (k === 'nodue') return false;
-      return k === 'week' ? n <= 7 : n <= 0;
-    }).length;
-  };
+  var cnt = function (k) { return tickCountOf(tickList, k); };
   h += '<div class="wknav wrap">'
     + [['today', '오늘'], ['week', '이번주'], ['nodue', '마감없음'], ['all', '전체']]
       .map(function (s) {
@@ -843,23 +1002,34 @@ function viewTick() {
             + esc(p.id) + '">' + esc(p.name) + '</button>';
         }).join('') + '</div>';
   }
+  // 정렬
+  h += '<div class="wknav wrap tdsort"><span class="tdpl">정렬</span>'
+    + [['due', '마감'], ['pri', '우선순위'], ['list', '보관함'], ['title', '제목']].map(function (s) {
+        return '<button class="wkb' + (tickSort === s[0] ? ' now' : '') + '" data-tksort="' + s[0] + '">' + s[1] + '</button>';
+      }).join('') + '</div>';
 
   if (!list.length) {
     h += '<div class="tdempty">'
       + (all.length ? '이 갈래에는 없습니다 — 위에서 «전체» 를 눌러 보세요' : '할 일이 없습니다 🎉')
       + '</div>';
   }
-  h += list.map(function (t) {
-    var dd = tkDays(t.due);
-    var when = t.due ? (Number(t.due.slice(5, 7)) + '/' + Number(t.due.slice(8, 10))) : '';
-    return '<div class="tdrow' + (dd !== null && dd < 0 ? ' late' : '') + '">'
+  h += tickSorted(list).map(function (t) {
+    var dd = tkDays(t.due), late = dd !== null && dd < 0;
+    var pri = Number(t.priority) || 0;
+    return '<div class="tdrow' + (late ? ' late' : '') + '">'
       + '<button class="tdck" data-tkdone="' + esc(t.id) + '" data-pid="' + esc(t.projectId)
       + '" title="완료">☐</button>'
       + '<span class="tdtx">' + esc(t.title)
-      + '<i class="tdmeta">' + (when ? esc(when) + ' · ' : '') + esc(t.project || '') + '</i></span>'
+      + '<i class="tdmeta">'
+      + '<button class="tdb tdtag date' + (late ? ' late' : '') + '" data-tkpop="' + esc(t.id + '|due') + '" title="날짜 바꾸기">📅 ' + esc(t.due ? tkWhenLabel(t.due) : '날짜') + '</button>'
+      + '<button class="tdb tdtag pri p' + pri + '" data-tkpop="' + esc(t.id + '|pri') + '" title="우선순위 바꾸기">!' + (pri ? TK_PRI[pri] : '·') + '</button>'
+      + '<button class="tdb tdtag list" data-tkpop="' + esc(t.id + '|list') + '" title="보관함 옮기기">^' + esc(t.project || '') + '</button>'
+      + '</i>'
+      + tkPopHtml(t.id, 'due', t.due || '') + tkPopHtml(t.id, 'pri', pri) + tkPopHtml(t.id, 'list', t.projectId)
+      + '</span>'
       + '<span class="tdops">'
-      + '<button class="tdb" data-tktoday="' + esc(t.id) + '" data-pid="' + esc(t.projectId)
-      + '" title="마감일을 오늘로">오늘</button>'
+      + '<button class="tdb tddel' + (tickDel === t.id ? ' warn' : '') + '" data-tkdel="' + esc(t.id)
+      + '" data-pid="' + esc(t.projectId) + '" title="지우기">' + (tickDel === t.id ? '정말 지울까요?' : '✕') + '</button>'
       + '</span></div>';
   }).join('');
   if (d && d.at) h += '<div class="rsaved">마지막 받음 · ' + esc(fmtStamp(d.at)) + '</div>';
@@ -4863,8 +5033,30 @@ function wireViews(app) {
         widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
         return; }
       // ── 오른쪽 단 갈아 끼우기 · 틱틱 ──
+      if (b.dataset.tksort) {
+        tickSort = b.dataset.tksort;
+        try { localStorage.setItem('tickSort', tickSort); } catch (e) { /* 못 적어도 그만 */ }
+        render(); return;
+      }
+      if (b.dataset.tkpop !== undefined) {           // 팔레트 열고 닫기
+        tickDel = '';
+        tickPop = (tickPop === b.dataset.tkpop) ? '' : b.dataset.tkpop;
+        if (tickPop.indexOf('new|') === 0) tickPaintNew(app); else render();
+        return;
+      }
+      if (b.dataset.tkset !== undefined) { tickApply(b.dataset.tkset); return; }
+      if (b.dataset.tkdel) {                          // 두 번 눌러야 지운다
+        if (tickDel !== b.dataset.tkdel) { tickDel = b.dataset.tkdel; tickPop = ''; render(); return; }
+        tickDel = ''; tickRun(widgetAPI.tickDel(b.dataset.pid, b.dataset.tkdel)); return;
+      }
       if (b.dataset.tkw) { tickWhen = b.dataset.tkw; render(); return; }
-      if (b.dataset.tkl2 !== undefined) { tickList = b.dataset.tkl2; render(); return; }
+      if (b.dataset.tkl2 !== undefined) {
+        tickList = b.dataset.tkl2;
+        /* ★ 고른 목록이 지금 기간엔 비어 있으면 «전체» 로 넘어간다 —
+           기본함처럼 마감 없는 것뿐인 목록이 «이번주 0» 으로만 보여 «안 된다» 로 읽혔다. */
+        if (tickList && tickWhen !== 'all' && !tickCountOf(tickList, tickWhen) && tickCountOf(tickList, 'all')) tickWhen = 'all';
+        render(); return;
+      }
       if (b.dataset.tkdone) { tickRun(widgetAPI.tickDone(b.dataset.pid, b.dataset.tkdone)); return; }
       if (b.dataset.tktoday) {
         tickRun(widgetAPI.tickDue(b.dataset.pid, b.dataset.tktoday, tkYmd(new Date()))); return; }
@@ -5337,6 +5529,12 @@ function wireViews(app) {
     });
   }
   // 틱틱 — 엔터로 바로 추가 (한글 조합 중 엔터는 무시)
+  /* 틱틱 입력칸 — 치는 대로 단축키 미리보기(입력칸은 안 건드린다) · 달력 고르기 */
+  var tkIn = app.querySelector('#tkNewT');
+  if (tkIn) tkIn.addEventListener('input', function () { tickDraft = tkIn.value; tickPaintNew(app); });
+  app.querySelectorAll('.tkcal').forEach(function (el) {
+    el.addEventListener('change', function () { tickApply(el.dataset.tkcal + '|' + (el.value || '')); });
+  });
   var tkBoxT = app.querySelector('#tkNewT');
   if (tkBoxT) tkBoxT.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); tickAddNow(app); }

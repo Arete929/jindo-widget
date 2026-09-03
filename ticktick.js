@@ -1,4 +1,4 @@
-// 파일명: ticktick.js | @version 1.100.2
+// 파일명: ticktick.js | @version 1.101.0
 // 틱틱(TickTick) — 할 일을 읽고 만들고 완료한다 (진호알리미 전용).
 //
 // ★ 노션과 다른 점: 열쇠 한 줄이 아니라 «한 번 로그인해서 표를 받는» 방식(OAuth)이다.
@@ -148,9 +148,10 @@ async function loadAll(token) {
 }
 
 /* ── 고치기 ── */
-function createTask(token, projectId, title, ymd) {
+function createTask(token, projectId, title, ymd, priority) {
   const body = { title: String(title || '').slice(0, 300) };
   if (projectId) body.projectId = projectId;
+  if (Number(priority)) body.priority = Number(priority);    // 틱틱 값: 1 낮음 · 3 중간 · 5 높음
   /* 틱틱은 날짜를 ISO 로 받는다. 하루 종일 할 일로 넣는다. */
   if (ymd) { body.dueDate = ymd + 'T00:00:00+0900'; body.isAllDay = true; }
   return call(token, 'POST', '/task', body);
@@ -162,6 +163,11 @@ function completeTask(token, projectId, taskId) {
 function deleteTask(token, projectId, taskId) {
   return call(token, 'DELETE', '/project/' + encodeURIComponent(projectId)
     + '/task/' + encodeURIComponent(taskId));
+}
+/* 아무 칸이나 고치기 — 우선순위·마감·보관함(projectId). id·projectId 는 늘 함께 보낸다 */
+function updateTask(token, projectId, taskId, patch) {
+  const body = Object.assign({ id: taskId, projectId: projectId }, patch || {});
+  return call(token, 'POST', '/task/' + encodeURIComponent(taskId), body);
 }
 /* 마감일 옮기기 — 틱틱은 고칠 때도 id·projectId 를 함께 보내야 한다 */
 function setDue(token, projectId, taskId, ymd) {
@@ -178,4 +184,4 @@ async function test(token) {
 }
 
 module.exports = { authUrl, waitForCode, exchange, loadAll, projects,
-  createTask, completeTask, deleteTask, setDue, test, redirectUri, PORT };
+  createTask, updateTask, completeTask, deleteTask, setDue, test, redirectUri, PORT };
