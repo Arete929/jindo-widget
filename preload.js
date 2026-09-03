@@ -1,4 +1,4 @@
-// 파일명: preload.js | @version 1.101.1
+// 파일명: preload.js | @version 1.102.0
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
@@ -93,6 +93,8 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   tickAdd: (title, ymd, pid, pri) => ipcRenderer.invoke('tick-add', title, ymd, pid, pri),
   tickUpdate: (pid, tid, patch) => ipcRenderer.invoke('tick-update', pid, tid, patch),
   tickDel: (pid, tid) => ipcRenderer.invoke('tick-del', pid, tid),
+  tickUndone: (pid, tid) => ipcRenderer.invoke('tick-undone', pid, tid),
+  tickDoneClear: () => ipcRenderer.invoke('tick-done-clear'),
   tickDone: (pid, tid) => ipcRenderer.invoke('tick-done', pid, tid),
   tickDue: (pid, tid, ymd) => ipcRenderer.invoke('tick-due', pid, tid, ymd),
   tickTest: () => ipcRenderer.invoke('tick-test'),

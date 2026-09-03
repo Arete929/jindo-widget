@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.101.1
+/* 파일명: views.js | @version 1.102.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -780,6 +780,34 @@ var tickPop = '';                              // 열린 팔레트 «id|kind» �
 var tickDel = '';                              // 지우기 확인을 기다리는 할 일 id
 var tickDraft = '';                            // 입력칸 글 — 다시 그려도 안 잃는다
 var tickNew = { pri: null, pid: '', due: null };   // 입력칸 옆 칩으로 고른 것(단축키보다 우선)
+var tickDoneOpen = (function () { try { return localStorage.getItem('tickDoneOpen') === '1'; } catch (e) { return false; } })();
+var tickClearAsk = false;         // «완료 전부 지우기» 확인 기다리는 중
+/* 완료함 — 접어 두고, 펼치면 복원·지우기, 머리에서 전부 지우기 */
+function tickDoneHtml(d) {
+  var list = (d && d.done) || [];
+  if (tickList) list = list.filter(function (x) { return x.pid === tickList; });
+  if (!list.length) return '';
+  var h = '<div class="tddone"><div class="tddh">'
+    + '<button class="tdb tddt" data-tkdoneopen="1">' + (tickDoneOpen ? '▾' : '▸') + ' 완료 ' + list.length + '</button>'
+    + (tickDoneOpen
+      ? '<button class="tdb tddclr' + (tickClearAsk ? ' warn' : '') + '" data-tkdoneclear="1">'
+        + (tickClearAsk ? '정말 전부 지울까요? (틱틱에서도 지워집니다)' : '전부 지우기') + '</button>'
+      : '')
+    + '</div>';
+  if (tickDoneOpen) {
+    h += list.map(function (x) {
+      return '<div class="tdrow off">'
+        + '<button class="tdck on" data-tkundone="' + esc(x.id) + '" data-pid="' + esc(x.pid) + '" title="완료 되돌리기">☑</button>'
+        + '<span class="tdtx">' + esc(x.title || '')
+        + '<i class="tdmeta">' + esc(x.project || '') + (x.doneAt ? ' · ' + esc(x.doneAt) : '') + '</i></span>'
+        + '<span class="tdops">'
+        + '<button class="tdb" data-tkundone="' + esc(x.id) + '" data-pid="' + esc(x.pid) + '">복원</button>'
+        + '<button class="tdb tddel' + (tickDel === x.id ? ' warn' : '') + '" data-tkdel="' + esc(x.id) + '" data-pid="' + esc(x.pid) + '">' + (tickDel === x.id ? '정말 지울까요?' : '✕') + '</button>'
+        + '</span></div>';
+    }).join('');
+  }
+  return h + '</div>';
+}
 var tickSort = (function () { try { return localStorage.getItem('tickSort') || 'due'; } catch (e) { return 'due'; } })();
 var TK_PRI = { 5: '높음', 3: '중간', 1: '낮음', 0: '없음' };
 var TK_DOW = ['일', '월', '화', '수', '목', '금', '토'];
@@ -1032,6 +1060,7 @@ function viewTick() {
       + '" data-pid="' + esc(t.projectId) + '" title="지우기">' + (tickDel === t.id ? '정말 지울까요?' : '✕') + '</button>'
       + '</span></div>';
   }).join('');
+  h += tickDoneHtml(d);
   if (d && d.at) h += '<div class="rsaved">마지막 받음 · ' + esc(fmtStamp(d.at)) + '</div>';
   h += '<button class="tdclear" id="tkGetT"' + (tickBusy ? ' disabled' : '') + '>'
     + (tickBusy ? '…' : '⟳ 틱틱에서 다시 받기') + '</button>';
@@ -5033,6 +5062,16 @@ function wireViews(app) {
         widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
         return; }
       // ── 오른쪽 단 갈아 끼우기 · 틱틱 ──
+      if (b.dataset.tkdoneopen) {
+        tickDoneOpen = !tickDoneOpen; tickClearAsk = false;
+        try { localStorage.setItem('tickDoneOpen', tickDoneOpen ? '1' : '0'); } catch (e) { /* 그만 */ }
+        render(); return;
+      }
+      if (b.dataset.tkdoneclear) {                    // 두 번 눌러야 전부 지운다
+        if (!tickClearAsk) { tickClearAsk = true; tickDel = ''; render(); return; }
+        tickClearAsk = false; tickRun(widgetAPI.tickDoneClear()); return;
+      }
+      if (b.dataset.tkundone) { tickRun(widgetAPI.tickUndone(b.dataset.pid, b.dataset.tkundone)); return; }
       if (b.dataset.tksort) {
         tickSort = b.dataset.tksort;
         try { localStorage.setItem('tickSort', tickSort); } catch (e) { /* 못 적어도 그만 */ }

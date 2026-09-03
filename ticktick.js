@@ -1,4 +1,4 @@
-// 파일명: ticktick.js | @version 1.101.1
+// 파일명: ticktick.js | @version 1.102.0
 // 틱틱(TickTick) — 할 일을 읽고 만들고 완료한다 (진호알리미 전용).
 //
 // ★ 노션과 다른 점: 열쇠 한 줄이 아니라 «한 번 로그인해서 표를 받는» 방식(OAuth)이다.
@@ -172,6 +172,18 @@ function deleteTask(token, projectId, taskId) {
   return call(token, 'DELETE', '/project/' + encodeURIComponent(projectId)
     + '/task/' + encodeURIComponent(taskId));
 }
+/* 할 일 하나 읽기 — 완료된 것도 읽힌다(목록에는 안 오지만). 없으면 null */
+async function getTask(token, projectId, taskId) {
+  try {
+    return await call(token, 'GET', '/project/' + encodeURIComponent(projectId)
+      + '/task/' + encodeURIComponent(taskId));
+  } catch (e) { return null; }
+}
+/* 완료를 되돌린다 — status 0 으로 고치면 다시 목록에 온다(실측 2026-09-04) */
+function reopenTask(token, projectId, taskId) {
+  return call(token, 'POST', '/task/' + encodeURIComponent(taskId),
+    { id: taskId, projectId: projectId, status: 0 });
+}
 /* 아무 칸이나 고치기 — 우선순위·마감·보관함(projectId). id·projectId 는 늘 함께 보낸다 */
 function updateTask(token, projectId, taskId, patch) {
   const body = Object.assign({ id: taskId, projectId: projectId }, patch || {});
@@ -192,4 +204,4 @@ async function test(token) {
 }
 
 module.exports = { authUrl, waitForCode, exchange, loadAll, projects,
-  createTask, updateTask, completeTask, deleteTask, setDue, test, redirectUri, PORT };
+  createTask, updateTask, completeTask, deleteTask, setDue, getTask, reopenTask, test, redirectUri, PORT };

@@ -845,6 +845,11 @@
     border-radius: 6px; background: var(--card2); color: var(--fg); padding: 1px 4px; }
   .tdsort .wkb { font-size: calc(9px * var(--wf)); }
   .tddel.warn { color: var(--holfg); font-weight: 800; }
+  .tddone { margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 4px; }
+  .tddh { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .tddt { font-weight: 800; color: var(--dim); font-size: calc(10px * var(--wf)); }
+  .tddclr { font-size: calc(9px * var(--wf)); color: var(--dim); }
+  .tddclr.warn { color: var(--holfg); font-weight: 800; }
   .tdmeta .tdb { padding: 0; }
   .tdrow { display: flex; align-items: flex-start; gap: 5px; padding: calc(4px * var(--wf)) 0;
            border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
