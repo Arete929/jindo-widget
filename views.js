@@ -641,7 +641,7 @@ var tkNew = '', tkNewProj = '';
 var TODOS = [], TODOAT = '', tdOpen = false, tdBusy = false, tdErr = '', tdSaved = '';
 var TKSPLIT = 300;   // 오른쪽 단의 너비(px) — 칸막이를 끌어 정한다
 /* 오른쪽 단에 무엇을 볼까 — 내 할 일(이 PC) / 틱틱(핸드폰과 함께) */
-var tdSide = 'me', TICK = null, tickBusy = false, tickErr = '';
+var TICK = null, tickBusy = false, tickErr = '';
 /* 틱틱 거르기 — 기간(오늘·이번주·마감없음·전체)과 목록. 기본은 «이번주». */
 var tickWhen = 'week', tickList = '';
 
@@ -744,34 +744,16 @@ function tickAddNow(root) {
 }
 
 /* 할 일 명령 하나를 돌리고 결과를 화면에 반영한다 (저장시각 포함) */
-function tdRun(promise) {
-  if (tdBusy) return;
-  tdBusy = true; tdErr = '';
-  promise.then(function (r) {
-    tdBusy = false;
-    if (r && r.ok === false) tdErr = r.error || '하지 못했습니다';
-    else if (r && r.at) tdSaved = r.at;
-    render();
-  }).catch(function (e) {
-    tdBusy = false; tdErr = String((e && e.message) || e); render();
-  });
-}
-function tdAddNow(root) {
-  var box = root.querySelector('#tdNew');
-  var v = box ? String(box.value || '').trim() : '';
-  if (!v) { tdErr = '내용을 적어 주세요'; render(); return; }
-  if (box) box.value = '';
-  tdRun(widgetAPI.todoAdd(v));
-}
 
-/* 오른쪽 단 — 위에서 «내 할 일 / 틱틱» 을 갈아 끼운다 */
+
+
+/* 오른쪽 단 — 틱틱만 쓴다.
+   ★ 전에는 «내 할 일»(이 PC 저장)과 갈아 끼웠는데, 틱틱을 붙이고 나니 겹쳐서 뺐다.
+     («내 할 일» 에 적어 두셨던 것은 지우지 않고 상태 파일에 그대로 남겨 둔다) */
 function viewSide() {
-  var head = '<div class="tdtab">'
-    + '<button class="tdt' + (tdSide === 'me' ? ' on' : '') + '" data-tds="me">📝 내 할 일</button>'
-    + '<button class="tdt' + (tdSide === 'tick' ? ' on' : '') + '" data-tds="tick">✔ 틱틱</button>'
-    + '</div>';
-  return '<div class="tdbox">' + head
-    + (tdSide === 'tick' ? viewTick() : viewTodoList()) + '</div>';
+  return '<div class="tdbox">'
+    + '<div class="tdhead"><img class="tdlogo" src="assets/ticktick.svg" alt="TickTick"></div>'
+    + viewTick() + '</div>';
 }
 
 /* ── 틱틱 ── */
@@ -857,53 +839,9 @@ function viewTick() {
   return h;
 }
 
-function viewTodoList() {
-  var live = TODOS.filter(function (t) { return !t.done; });
-  var done = TODOS.filter(function (t) { return t.done; });
-  var h = '<div class="tkh">📝 내 할 일 <b>' + live.length + '</b></div>';
+/* «내 할 일»(이 PC 저장) 화면은 틱틱과 겹쳐 뺐다(2026-09-03).
+   적어 두셨던 것은 상태 파일에 그대로 남아 있고, 되살리려면 이 자리를 되돌리면 된다. */
 
-  h += '<div class="tdadd">'
-    + '<input class="bdi" id="tdNew" placeholder="적고 엔터" maxlength="200">'
-    + '<button class="bdgo" id="tdAdd"' + (tdBusy ? ' disabled' : '') + '>＋</button></div>';
-  if (tdErr) h += '<div class="tkerr">' + esc(tdErr) + '</div>';
-
-  if (!live.length) h += '<div class="tdempty">적어 두면 여기 쌓입니다.</div>';
-  h += live.map(function (t, i) {
-    return '<div class="tdrow">'
-      + '<button class="tdck" data-tdck="' + esc(t.id) + '" title="완료">☐</button>'
-      + '<span class="tdtx">' + esc(t.text) + '</span>'
-      + '<span class="tdops">'
-      + (i > 0 ? '<button class="tdb" data-tdup="' + esc(t.id) + '" title="위로">▲</button>' : '')
-      + (i < live.length - 1 ? '<button class="tdb" data-tddn="' + esc(t.id) + '" title="아래로">▼</button>' : '')
-      + '<button class="tdb x" data-tddel="' + esc(t.id) + '" title="지우기">✕</button>'
-      + '</span></div>';
-  }).join('');
-
-  /* 완료한 것 — 접어 두고, 펼치면 되돌리기·모두 지우기 */
-  if (done.length) {
-    h += '<div class="tddone">'
-      + '<button class="tdfold" id="tdFold">' + (tdOpen ? '▾' : '▸')
-      + ' 완료 <b>' + done.length + '</b>개</button>';
-    if (tdOpen) {
-      h += done.map(function (t) {
-        return '<div class="tdrow off">'
-          + '<button class="tdck on" data-tdck="' + esc(t.id) + '" title="되돌리기">☑</button>'
-          + '<span class="tdtx">' + esc(t.text) + '</span>'
-          + '<span class="tdops">'
-          + '<button class="tdb" data-tdck="' + esc(t.id) + '" title="되돌리기">↩ 복원</button>'
-          + '<button class="tdb x" data-tddel="' + esc(t.id) + '" title="지우기">✕</button>'
-          + '</span></div>';
-      }).join('')
-        + '<button class="tdclear" id="tdClear"' + (tdBusy ? ' disabled' : '') + '>'
-        + '완료한 ' + done.length + '개 모두 지우기</button>';
-    }
-    h += '</div>';
-  }
-  var stamp = tdSaved || TODOAT;
-  if (stamp) h += '<div class="rsaved">' + (tdSaved ? '✅ 저장됨 · ' : '마지막 저장 · ')
-    + esc(stamp) + '</div>';
-  return h;
-}
 
 function viewTasks() {
   var head = '<div class="wknav"><span class="wklab" style="text-align:left">업무관리'
@@ -4765,8 +4703,8 @@ function wireViews(app) {
   //   .wkb 만 훑던 때에는 눌러도 아무 일이 없어서 «펼쳐지지 않는다» 였다.
   /* ★ 여기 목록에 빠진 «단추 종류» 는 눌러도 아무 일이 없다. 새 단추를 만들면 꼭 넣을 것.
      (2026-09-02: 업무관리·내 할 일 단추를 만들고 여기 안 넣어서 체크박스가 안 먹었다) */
-  app.querySelectorAll('.wkb, .rach, .gph, .tkbtn, .tdck, .tdb, .tdclear, .tdfold, .tdt,'
-    + ' #tdAdd, #tkAddT')
+  app.querySelectorAll('.wkb, .rach, .gph, .tkbtn, .tdck, .tdb, .tdclear,'
+    + ' #tkAddT')
     .forEach(function (b) {
     b.addEventListener('click', function () {
       if (b.dataset.off !== undefined) { WK = null; loadWeek(Number(b.dataset.off)); return; }
@@ -4784,7 +4722,6 @@ function wireViews(app) {
         widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
         return; }
       // ── 오른쪽 단 갈아 끼우기 · 틱틱 ──
-      if (b.dataset.tds) { tdSide = b.dataset.tds; tdErr = ''; tickErr = ''; render(); return; }
       if (b.dataset.tkw) { tickWhen = b.dataset.tkw; render(); return; }
       if (b.dataset.tkl2 !== undefined) { tickList = b.dataset.tkl2; render(); return; }
       if (b.dataset.tkdone) { tickRun(widgetAPI.tickDone(b.dataset.pid, b.dataset.tkdone)); return; }
@@ -4793,13 +4730,6 @@ function wireViews(app) {
       if (b.id === 'tkGetT') { tickRun(widgetAPI.tickRefresh()); return; }
       if (b.id === 'tkAddT') { tickAddNow(app); return; }
       // ── 내 할 일 ──
-      if (b.id === 'tdFold') { tdOpen = !tdOpen; render(); return; }
-      if (b.dataset.tdck) { tdRun(widgetAPI.todoToggle(b.dataset.tdck)); return; }
-      if (b.dataset.tddel) { tdRun(widgetAPI.todoDel(b.dataset.tddel)); return; }
-      if (b.dataset.tdup) { tdRun(widgetAPI.todoMove(b.dataset.tdup, 'up')); return; }
-      if (b.dataset.tddn) { tdRun(widgetAPI.todoMove(b.dataset.tddn, 'down')); return; }
-      if (b.id === 'tdClear') { tdRun(widgetAPI.todoClearDone()); return; }
-      if (b.id === 'tdAdd') { tdAddNow(app); return; }
       // ── 업무관리(노션) ──
       if (b.dataset.tks !== undefined) { tkSub = b.dataset.tks; tkErr = ''; render(); return; }
       if (b.dataset.tkp !== undefined) { tkProj = b.dataset.tkp; render(); return; }
@@ -5261,11 +5191,7 @@ function wireViews(app) {
       widgetAPI.setUi({ taskSplit: 300 });
     });
   }
-  // 내 할 일 — 엔터로 바로 추가 (한글 조합 중 엔터는 무시)
-  var tdBox = app.querySelector('#tdNew');
-  if (tdBox) tdBox.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); tdAddNow(app); }
-  });
+  // 틱틱 — 엔터로 바로 추가 (한글 조합 중 엔터는 무시)
   var tkBoxT = app.querySelector('#tkNewT');
   if (tkBoxT) tkBoxT.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); tickAddNow(app); }
