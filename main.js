@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 1.94.0
-// 수정요약: v1.94.0 열쇠·설정 백업 — 파일 하나로 내보내기/가져오기, 암호(AES-256-GCM)로 잠금 / v1.93.0 오른쪽 단을 틱틱만으로 (내 할 일 화면 뺌 — 겹쳐서. 적어 둔 것은 상태 파일에 남아 있음) + 틱틱 로고 표시 / v1.92.1 틱틱 할 일이 스물몇 개씩 쏟아지던 것 — 기간(오늘·이번주·마감없음·전체)과 목록으로 거르기, 기본은 이번주 / v1.92.0 틱틱(TickTick) 연동 — 업무관리 오른쪽 단에서 «내 할 일»과 갈아 끼움. 핸드폰과 서로 반영 / v1.91.0 테마 둘 추가 — 한옥(한지 바탕·나무빛)·다크UI(짙은 남색·파랑). 대비를 재서 흐린 색은 짙게 조정 / v1.90.1 내 할 일 체크박스·✕ 와 업무관리 완료로·오늘로 단추가 눌러도 안 먹던 문제 — 단추 배선 목록에 새 종류가 빠져 있었다 / v1.90.0 학급 시간표에도 바뀐 수업 반영 — 컴시간이 변경분을 교사 시간표에만 줘서 학급 쪽은 옛 시간표였다. 교사 쪽 변경을 학급 칸에 옮겨 붙인다(빠짐·들어옴·맞바꿈) / v1.89.5 주간업무 가로 들여쓰기를 번호 단계로 통일 — 원문 앞 공백이 줄마다 달라 «2.» 와 그 아래 «가.» 가 같은 자리에 놓이던 문제 / v1.89.4 주간업무 해석기를 고쳐도 저장해 둔 옛 해석본이 그대로 보이던 문제 — 해석기 판(PARSE_VER)이 다르면 자동으로 다시 받는다 / v1.89.3 주간업무에서 «1.» 과 «가.» 가 같은 줄로 뭉개지던 문제 — 제 번호를 단 줄엔 목록 점을 안 붙인다 / v1.89.2 업무관리에서 «완료» 단추가 상태처럼 보이던 문제 — 모든 줄에 상태 배지(시작 전·진행 중) 표시, 단추는 «…로» 어미 외곽선으로 / v1.89.1 업무관리 2단 사이 칸막이를 끌어 너비 조절(시트처럼)·두 번 누르면 처음대로·너비 기억 / v1.89.0 업무관리 2단 — 오른쪽에 내가 쓰는 「내 할 일」(이 PC 저장·노션 무관). 완료는 접히고 복원·일괄삭제 가능 / v1.88.2 업무관리 탭을 눌러도 딴 탭으로 튕기던 문제(main VIEWS 에 task 누락) + 넓게 보기 차림표에도 업무관리 추가 / v1.88.1 v1.88.0 이 아예 안 켜지던 문제 — 새 파일 notion.js 가 빌드 목록에 빠졌었다(두 갈래 다 추가) / v1.88.0 업무관리 탭 신규(노션 PROJECTS·TASKS 연동 — 진호알리미 전용, 시간표와 주간업무 사이). 오늘·이번주/프로젝트별/마감없음 3갈래·완료·오늘로·진행중·추가 / v1.87.0 바뀐 수업(보강·교체)이 null-null 로 나오던 문제 — 컴시간이 «>11302» 같은 문자열로 주는 것을 못 읽었다. 파싱 보강 + 바뀐 칸 노란 테두리 표시 / v1.86.0 컴시간 자동 갱신(켤 때 1회 + 6시간마다) + 컴시간 탭 ⟳ 새로고침 버튼 / v1.85.0 숨은 창 로그인·캐시 메모리 전용(?widgetworker=1 — 격리로 손상되는 IndexedDB 회피, 로그인 몇 초 만에 풀리던 문제 뿌리 해결) + 켤 때 손상 창고·재기동 예약작업 찌꺼기 청소 / v1.84.0 구글 클라이언트를 파이어베이스와 같은 프로젝트 것으로 교체(audience 불일치 해소) + 판올림 재기동 wscript 숨김 실행(검은 콘솔 창 제거)
+// 파일명: main.js | @version 1.95.0
+// 수정요약: v1.95.0 «시간표» → «진호 시간표»(앱 로고). 그 안에 수업진도 대시보드 화면 셋(시간표계획·날짜별·진도표)을 웹앱 그대로 얹음(BrowserView) / v1.94.0 열쇠·설정 백업 — 파일 하나로 내보내기/가져오기, 암호(AES-256-GCM)로 잠금 / v1.93.0 오른쪽 단을 틱틱만으로 (내 할 일 화면 뺌 — 겹쳐서. 적어 둔 것은 상태 파일에 남아 있음) + 틱틱 로고 표시 / v1.92.1 틱틱 할 일이 스물몇 개씩 쏟아지던 것 — 기간(오늘·이번주·마감없음·전체)과 목록으로 거르기, 기본은 이번주 / v1.92.0 틱틱(TickTick) 연동 — 업무관리 오른쪽 단에서 «내 할 일»과 갈아 끼움. 핸드폰과 서로 반영 / v1.91.0 테마 둘 추가 — 한옥(한지 바탕·나무빛)·다크UI(짙은 남색·파랑). 대비를 재서 흐린 색은 짙게 조정 / v1.90.1 내 할 일 체크박스·✕ 와 업무관리 완료로·오늘로 단추가 눌러도 안 먹던 문제 — 단추 배선 목록에 새 종류가 빠져 있었다 / v1.90.0 학급 시간표에도 바뀐 수업 반영 — 컴시간이 변경분을 교사 시간표에만 줘서 학급 쪽은 옛 시간표였다. 교사 쪽 변경을 학급 칸에 옮겨 붙인다(빠짐·들어옴·맞바꿈) / v1.89.5 주간업무 가로 들여쓰기를 번호 단계로 통일 — 원문 앞 공백이 줄마다 달라 «2.» 와 그 아래 «가.» 가 같은 자리에 놓이던 문제 / v1.89.4 주간업무 해석기를 고쳐도 저장해 둔 옛 해석본이 그대로 보이던 문제 — 해석기 판(PARSE_VER)이 다르면 자동으로 다시 받는다 / v1.89.3 주간업무에서 «1.» 과 «가.» 가 같은 줄로 뭉개지던 문제 — 제 번호를 단 줄엔 목록 점을 안 붙인다 / v1.89.2 업무관리에서 «완료» 단추가 상태처럼 보이던 문제 — 모든 줄에 상태 배지(시작 전·진행 중) 표시, 단추는 «…로» 어미 외곽선으로 / v1.89.1 업무관리 2단 사이 칸막이를 끌어 너비 조절(시트처럼)·두 번 누르면 처음대로·너비 기억 / v1.89.0 업무관리 2단 — 오른쪽에 내가 쓰는 「내 할 일」(이 PC 저장·노션 무관). 완료는 접히고 복원·일괄삭제 가능 / v1.88.2 업무관리 탭을 눌러도 딴 탭으로 튕기던 문제(main VIEWS 에 task 누락) + 넓게 보기 차림표에도 업무관리 추가 / v1.88.1 v1.88.0 이 아예 안 켜지던 문제 — 새 파일 notion.js 가 빌드 목록에 빠졌었다(두 갈래 다 추가) / v1.88.0 업무관리 탭 신규(노션 PROJECTS·TASKS 연동 — 진호알리미 전용, 시간표와 주간업무 사이). 오늘·이번주/프로젝트별/마감없음 3갈래·완료·오늘로·진행중·추가 / v1.87.0 바뀐 수업(보강·교체)이 null-null 로 나오던 문제 — 컴시간이 «>11302» 같은 문자열로 주는 것을 못 읽었다. 파싱 보강 + 바뀐 칸 노란 테두리 표시 / v1.86.0 컴시간 자동 갱신(켤 때 1회 + 6시간마다) + 컴시간 탭 ⟳ 새로고침 버튼 / v1.85.0 숨은 창 로그인·캐시 메모리 전용(?widgetworker=1 — 격리로 손상되는 IndexedDB 회피, 로그인 몇 초 만에 풀리던 문제 뿌리 해결) + 켤 때 손상 창고·재기동 예약작업 찌꺼기 청소 / v1.84.0 구글 클라이언트를 파이어베이스와 같은 프로젝트 것으로 교체(audience 불일치 해소) + 판올림 재기동 wscript 숨김 실행(검은 콘솔 창 제거)
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
 // 수정요약: v1.83.0 겹침 방지 두 번째 잠금(포트) — V3 그림자 격리가 파일 잠금을 무력화해도 두 벌이 못 겹치게. 늦게 뜬 쪽이 살아남고, 안 물러나는 좀비는 강제로 내린다
 //
@@ -9,7 +9,7 @@
 //   앱이 화면을 그릴 때 쓰는 것과 똑같은 계산 결과라서, 앱 화면이 바뀌어도 안 깨진다.
 //   로그인은 진짜 크롬에서 하고 그 결과(구글 ID 토큰)만 127.0.0.1 로 넘겨받는다 — startLogin() 참고.
 
-const { app, BrowserWindow, Tray, Menu, ipcMain, shell, Notification, screen, powerMonitor, dialog,
+const { app, BrowserWindow, BrowserView, Tray, Menu, ipcMain, shell, Notification, screen, powerMonitor, dialog,
   globalShortcut } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
@@ -714,7 +714,8 @@ async function refreshGradePlan(grade) {
 // 둘은 스위치처럼 한 번에 하나만 뜬다. 다음에 켤 때도 그 모습으로 시작한다.
 function getViewMode() { return loadState().viewMode === 'easy' ? 'easy' : 'widget'; }
 const VIEWS = HAS_TT
-  ? ['today', 'week', 'progress', 'task', 'work', 'comci', 'cal', 'meal', 'rec', 'office', 'link']
+  ? ['today', 'week', 'progress', 'plan', 'daily', 'dgrid',
+     'task', 'work', 'comci', 'cal', 'meal', 'rec', 'office', 'link']
   : ['work', 'comci', 'note', 'grid', 'cal', 'meal', 'rec', 'office', 'link'];
 function getView() {
   const v = loadState().view;
@@ -1809,6 +1810,82 @@ ipcMain.handle('todo-move', (_e, id, dir) => {
   const tmp = live[i]; live[i] = live[j]; live[j] = tmp;
   saveTodos(live.concat(list.filter((v) => v.done)));
   return { ok: true, at: stampKST() };
+});
+
+/* ── 수업진도 대시보드 얹기 ──────────────────────────────────
+   ★ 4천 줄짜리 웹앱을 위젯 화면으로 «옮겨 적지» 않는다. 그러면 웹앱을 고칠 때마다
+     양쪽을 따로 고쳐야 하고, 오늘 겪은 «한쪽만 고쳐 안 맞는» 일이 늘 생긴다.
+     대신 그 앱을 «진짜 그대로» 탭 안에 얹는다(BrowserView). 웹앱을 고치면 여기도 따라온다.
+   ★ 로그인은 숨은 창과 같은 길을 쓴다 — 저장창고가 격리로 깨지는 PC 가 있어
+     이 창도 메모리 전용(?widgetworker=1)으로 띄우고, 액세스 토큰으로 이어 붙인다. */
+let dashView = null, dashOwner = null, dashScreen = '';
+const DASH_SCREENS = { plan: 'plan', daily: 'daily', grid: 'grid' };
+
+function dashDetach() {
+  if (!dashView) return;
+  try { if (dashOwner && !dashOwner.isDestroyed()) dashOwner.removeBrowserView(dashView); }
+  catch (e) { /* 무시 */ }
+  dashOwner = null;
+}
+function dashDestroy() {
+  dashDetach();
+  try { if (dashView && dashView.webContents && !dashView.webContents.isDestroyed()) dashView.webContents.destroy(); }
+  catch (e) { /* 무시 */ }
+  dashView = null; dashScreen = '';
+}
+/* 그 앱 안에서 화면을 갈아 끼운다 — 위쪽 탭 단추를 눌러 주는 것과 같다 */
+function dashGo(screen) {
+  if (!dashView) return;
+  const v = DASH_SCREENS[screen] || 'plan';
+  dashView.webContents.executeJavaScript(
+    '(function(){var b=document.querySelector(\'[data-view="' + v + '"]\');'
+    + 'if(b){ b.click(); return true; } return false; })()', true)
+    .catch(() => { /* 아직 안 떴으면 다 뜬 뒤에 다시 부른다 */ });
+}
+/* 로그인이 필요하면 숨은 창과 같은 방법으로 이어 붙인다 */
+async function dashLogin() {
+  if (!dashView) return;
+  try {
+    const need = await dashView.webContents.executeJavaScript(
+      '(function(){var g=document.getElementById("loginGate");'
+      + 'return !!(g && !g.classList.contains("hidden"));})()', true);
+    if (!need) return;
+    const at = await recordsmain.accessToken();
+    if (!at) { debugLog('수업진도 — 토큰이 없어 로그인 못 함'); return; }
+    const ok = await dashView.webContents.executeJavaScript(
+      'window.__widgetSignInAT ? window.__widgetSignInAT(' + JSON.stringify(at) + ') : null', true);
+    debugLog('수업진도 — 로그인 ' + (ok ? '이어 붙임' : '못 함(옛 웹)'));
+  } catch (e) { debugLog('수업진도 로그인 실패 — ' + ((e && e.message) || e)); }
+}
+function dashEnsure() {
+  if (dashView && dashView.webContents && !dashView.webContents.isDestroyed()) return dashView;
+  dashView = new BrowserView({
+    webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false }
+  });
+  dashView.webContents.loadURL(APP_URL + '?widgetworker=1');
+  dashView.webContents.on('did-finish-load', () => {
+    setTimeout(async () => { await dashLogin(); dashGo(dashScreen); }, 800);
+  });
+  /* 앱 안에서 바깥 링크를 누르면 진짜 브라우저로 */
+  dashView.webContents.setWindowOpenHandler(({ url }) => { openInBrowser(url); return { action: 'deny' }; });
+  return dashView;
+}
+/* 화면에 얹기 — 어느 창에서 불렀는지는 보낸 쪽을 보고 안다 */
+ipcMain.on('dash-show', (e, screen, r) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win || win.isDestroyed()) return;
+  const v = dashEnsure();
+  if (dashOwner !== win) { dashDetach(); win.addBrowserView(v); dashOwner = win; }
+  const b = { x: Math.round(r.x), y: Math.round(r.y),
+    width: Math.max(80, Math.round(r.w)), height: Math.max(80, Math.round(r.h)) };
+  v.setBounds(b);
+  if (dashScreen !== screen) { dashScreen = screen; dashGo(screen); }
+});
+ipcMain.on('dash-hide', () => dashDetach());
+ipcMain.handle('dash-reload', async () => {
+  if (!dashView) return { ok: false };
+  dashView.webContents.reloadIgnoringCache();
+  return { ok: true };
 });
 
 /* ── 열쇠·설정 백업 ──────────────────────────────────────────

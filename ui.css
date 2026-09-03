@@ -814,6 +814,10 @@
   /* ── 내 할 일 ── */
   .tdbox { border: 1px solid var(--line); border-radius: 11px; background: var(--card2);
            padding: calc(8px * var(--wf)) calc(9px * var(--wf)); }
+  /* 수업진도 대시보드를 얹을 자리 — 실제 화면은 메인이 이 위에 붙인다 */
+  .dashhost { position: relative; width: 100%;
+              height: calc(100vh - var(--toph, 46px) - 8px); min-height: 260px; }
+  .dashwait { padding: 18px 4px; font-size: calc(11px * var(--wf)); color: var(--dim); }
   /* 오른쪽 단 머리 — 틱틱 로고 (원래 색을 그대로 쓴다) */
   .tdhead { display: flex; align-items: center; margin-bottom: 8px; }
   .tdlogo { height: calc(17px * var(--wf)); width: auto; display: block; }

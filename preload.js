@@ -95,6 +95,10 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   tickDue: (pid, tid, ymd) => ipcRenderer.invoke('tick-due', pid, tid, ymd),
   tickTest: () => ipcRenderer.invoke('tick-test'),
   tickRedirect: () => ipcRenderer.invoke('tick-redirect'),
+  // 수업진도 대시보드 얹기
+  dashShow: (screen, rect) => ipcRenderer.send('dash-show', screen, rect),
+  dashHide: () => ipcRenderer.send('dash-hide'),
+  dashReload: () => ipcRenderer.invoke('dash-reload'),
   // 열쇠·설정 백업
   backupExport: (opt) => ipcRenderer.invoke('backup-export', opt),
   backupImport: (opt) => ipcRenderer.invoke('backup-import', opt),

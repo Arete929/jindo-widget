@@ -747,6 +747,28 @@ function tickAddNow(root) {
 
 
 
+/* ── 수업진도 대시보드 얹기 ────────────────────────────────
+   ★ 위젯 화면으로 옮겨 적지 않고 «그 앱을 그대로» 이 자리에 얹는다.
+     여기서는 «자리»만 잡아 두고, 실제 화면은 메인이 그 자리에 붙여 준다. */
+var DASHV = { plan: 'plan', daily: 'daily', dgrid: 'grid' };
+/* «진호 시간표» 탭 안의 화면들 — 클릭 배선에서도 봐야 해서 전역에 둔다 */
+var TT_SUB = ['today', 'week', 'progress', 'plan', 'daily', 'dgrid'];
+function viewDash() {
+  return '<div id="dashHost" class="dashhost">'
+    + '<div class="dashwait">수업진도 대시보드를 불러오는 중…</div></div>';
+}
+/* 자리를 재서 메인에 알려 준다 — 창 크기·굴림이 바뀌면 다시 잰다 */
+/* 창 크기가 바뀌거나 굴리면 자리도 따라가야 한다 */
+window.addEventListener('resize', function () { setTimeout(dashPlace, 0); });
+window.addEventListener('scroll', function () { dashPlace(); }, true);
+function dashPlace() {
+  var host = document.getElementById('dashHost');
+  if (!DASHV[VIEW] || !host) { widgetAPI.dashHide(); return; }
+  var r = host.getBoundingClientRect();
+  if (r.width < 40 || r.height < 40) return;
+  widgetAPI.dashShow(DASHV[VIEW], { x: r.left, y: r.top, w: r.width, h: r.height });
+}
+
 /* 오른쪽 단 — 틱틱만 쓴다.
    ★ 전에는 «내 할 일»(이 PC 저장)과 갈아 끼웠는데, 틱틱을 붙이고 나니 겹쳐서 뺐다.
      («내 할 일» 에 적어 두셨던 것은 지우지 않고 상태 파일에 그대로 남겨 둔다) */
@@ -4133,7 +4155,8 @@ function render() {
   }
 
   // 탭마다 그림 — 넓게 보기의 차림표와 «같은 그림» 을 쓴다
-  var NAVIMG = { tt: 'nav-home', task: 'nav-work', work: 'nav-work', comci: 'nav-comci', grid: 'nav-rec',
+  // ★ «진호 시간표» 는 앱 로고를 쓴다 — 이 탭이 앱의 얼굴이다
+  var NAVIMG = { tt: 'logo-jinho', task: 'nav-work', work: 'nav-work', comci: 'nav-comci', grid: 'nav-rec',
                  cal: 'nav-cal', meal: 'nav-meal', rec: 'nav-rec',
                  office: 'nav-office', link: 'nav-link' };
   function chipInner(v, label) {
@@ -4144,13 +4167,13 @@ function render() {
     return img + esc(label);
   }
   // 큰 탭 5개. «시간표» 안에서 오늘·이번주·진도를 다시 고른다.
-  var TT_SUB = ['today', 'week', 'progress'];
+  // TT_SUB 는 전역(아래 DASHV 옆)
   var tab = TT_SUB.indexOf(VIEW) >= 0 ? 'tt' : VIEW;
   html += '<div class="chips">'
     + inOrder(
         // ★ 진호알리미의 «바로가기» 는 런처보드다 — 이름만 다르고 화면 값(link)은 같다
         // ★ «업무관리»(노션)는 진호알리미에만 있다 — 시간표와 주간업무 사이
-        HAS_TT ? ['tt,시간표', 'task,업무관리', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,런처보드']
+        HAS_TT ? ['tt,진호 시간표', 'task,업무관리', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,런처보드']
                : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,바로가기'],
         TABORDER, function (s) { return s.split(',')[0]; }).map(function (s, i) {
         var p = s.split(',');
@@ -4163,8 +4186,10 @@ function render() {
     // ★ «이번주» 만 «오늘» 안으로 들어갔다. 진도는 그대로 제 탭이다.
     /* ★ 글자 크기(A− A+)를 여기 오른쪽 끝에 둔다 — 이 줄은 머리(.top)에 붙어 있어
        굴려도 늘 보인다. 열쇠는 tt 하나라 오늘·이번주·진도표가 함께 커지고 작아진다. */
+    /* ★ 뒤 셋(계획·날짜별·진도표)은 수업진도 웹앱을 «그대로» 얹어 보여 준다 */
     html += '<div class="chips sub">'
-      + ['today,오늘', 'progress,진도표'].map(function (s) {
+      + ['today,오늘', 'progress,주간진도', 'plan,시간표계획', 'daily,날짜별', 'dgrid,진도표']
+        .map(function (s) {
           var p = s.split(',');
           return '<button class="chip' + (VIEW === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">'
             + p[1] + '</button>';
@@ -4173,7 +4198,8 @@ function render() {
   }
 
   html += '</div>';   // 머리 끝 — 여기부터는 스크롤된다
-  html += VIEW === 'week' ? viewWeek(d)
+  html += DASHV[VIEW] ? viewDash()
+    : VIEW === 'week' ? viewWeek(d)
     : VIEW === 'progress' ? viewProgress(d)
     : VIEW === 'work' ? viewWork()
     : VIEW === 'task' ? viewTasks()
@@ -4202,6 +4228,8 @@ function render() {
   var t2 = app.querySelector('.top2');
   if (topEl && t2) topEl.appendChild(t2);
   app.style.setProperty('--toph', (topEl ? topEl.offsetHeight : 46) + 'px');
+  /* 수업진도를 얹을 자리 — 다 그린 뒤에 재야 제 크기가 나온다 */
+  setTimeout(dashPlace, 0);
 
   wireViews(app);
   report();
@@ -4977,8 +5005,11 @@ function wireViews(app) {
   app.querySelectorAll('.chip').forEach(function (b) {
     b.addEventListener('click', function () {
       var v = b.dataset.v;
-      if (v === 'tt') v = (['today', 'week', 'progress'].indexOf(LASTTT) >= 0) ? LASTTT : 'today';
-      if (['today', 'week', 'progress'].indexOf(v) >= 0) LASTTT = v;
+      /* «진호 시간표» 를 누르면 마지막으로 보던 그 안쪽 화면으로 돌아간다 */
+      if (v === 'tt') v = (TT_SUB.indexOf(LASTTT) >= 0) ? LASTTT : 'today';
+      if (TT_SUB.indexOf(v) >= 0) LASTTT = v;
+      /* 얹어 둔 수업진도 화면은 다른 데로 가면 반드시 걷는다 — 안 걷으면 위에 남는다 */
+      if (!DASHV[v]) widgetAPI.dashHide();
       VIEW = v;
       widgetAPI.setView(VIEW);
       render();
