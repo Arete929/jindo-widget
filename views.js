@@ -642,6 +642,8 @@ var TODOS = [], TODOAT = '', tdOpen = false, tdBusy = false, tdErr = '', tdSaved
 var TKSPLIT = 300;   // 오른쪽 단의 너비(px) — 칸막이를 끌어 정한다
 /* 오른쪽 단에 무엇을 볼까 — 내 할 일(이 PC) / 틱틱(핸드폰과 함께) */
 var tdSide = 'me', TICK = null, tickBusy = false, tickErr = '';
+/* 틱틱 거르기 — 기간(오늘·이번주·마감없음·전체)과 목록. 기본은 «이번주». */
+var tickWhen = 'week', tickList = '';
 
 /* ISO 시각 → «2026.09.02 12:10» (KST) */
 function fmtStamp(iso) {
@@ -791,8 +793,51 @@ function viewTick() {
     + '<input class="bdi" id="tkNewT" placeholder="틱틱에 적고 엔터" maxlength="300">'
     + '<button class="bdgo" id="tkAddT"' + (tickBusy ? ' disabled' : '') + '>＋</button></div>';
 
-  var list = ((d && d.tasks) || []).filter(function (t) { return t.status !== 2; });
-  if (!list.length) h += '<div class="tdempty">할 일이 없습니다 🎉</div>';
+  /* ★ 다 보여주면 스물몇 개가 쏟아진다(2026-09-03 실측 26개).
+     기간과 목록으로 걸러 «지금 볼 것» 만 남긴다. */
+  var all = ((d && d.tasks) || []).filter(function (t) { return t.status !== 2; });
+  var byList = tickList ? all.filter(function (t) { return t.projectId === tickList; }) : all;
+  var list = byList.filter(function (t) {
+    if (tickWhen === 'all') return true;
+    var n = tkDays(t.due);
+    if (n === null) return tickWhen === 'nodue';       // 마감 없는 것은 제 갈래에서만
+    if (tickWhen === 'nodue') return false;
+    return tickWhen === 'week' ? n <= 7 : n <= 0;      // 이번주 / 오늘까지
+  });
+
+  // 기간 고르기 — 몇 개인지 함께 적어 둔다
+  var cnt = function (k) {
+    return byList.filter(function (t) {
+      var n = tkDays(t.due);
+      if (k === 'all') return true;
+      if (n === null) return k === 'nodue';
+      if (k === 'nodue') return false;
+      return k === 'week' ? n <= 7 : n <= 0;
+    }).length;
+  };
+  h += '<div class="wknav wrap">'
+    + [['today', '오늘'], ['week', '이번주'], ['nodue', '마감없음'], ['all', '전체']]
+      .map(function (s) {
+        return '<button class="wkb' + (tickWhen === s[0] ? ' now' : '') + '" data-tkw="' + s[0] + '">'
+          + s[1] + ' ' + cnt(s[0]) + '</button>';
+      }).join('') + '</div>';
+
+  // 목록 고르기 — 둘 이상일 때만 (하나뿐이면 고를 것이 없다)
+  var ps = (d && d.projects) || [];
+  if (ps.length > 1) {
+    h += '<div class="wknav wrap">'
+      + '<button class="wkb' + (!tickList ? ' now' : '') + '" data-tkl2="">전체</button>'
+      + ps.map(function (p) {
+          return '<button class="wkb' + (tickList === p.id ? ' now' : '') + '" data-tkl2="'
+            + esc(p.id) + '">' + esc(p.name) + '</button>';
+        }).join('') + '</div>';
+  }
+
+  if (!list.length) {
+    h += '<div class="tdempty">'
+      + (all.length ? '이 갈래에는 없습니다 — 위에서 «전체» 를 눌러 보세요' : '할 일이 없습니다 🎉')
+      + '</div>';
+  }
   h += list.map(function (t) {
     var dd = tkDays(t.due);
     var when = t.due ? (Number(t.due.slice(5, 7)) + '/' + Number(t.due.slice(8, 10))) : '';
@@ -4740,6 +4785,8 @@ function wireViews(app) {
         return; }
       // ── 오른쪽 단 갈아 끼우기 · 틱틱 ──
       if (b.dataset.tds) { tdSide = b.dataset.tds; tdErr = ''; tickErr = ''; render(); return; }
+      if (b.dataset.tkw) { tickWhen = b.dataset.tkw; render(); return; }
+      if (b.dataset.tkl2 !== undefined) { tickList = b.dataset.tkl2; render(); return; }
       if (b.dataset.tkdone) { tickRun(widgetAPI.tickDone(b.dataset.pid, b.dataset.tkdone)); return; }
       if (b.dataset.tktoday) {
         tickRun(widgetAPI.tickDue(b.dataset.pid, b.dataset.tktoday, tkYmd(new Date()))); return; }
