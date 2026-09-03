@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.83.0
+/* 파일명: views.js | @version 1.96.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -998,6 +998,16 @@ function gpLoad(g, force) {
     render();
   });
 }
+/* ★ 켜 놓은 학년을 이 화면에도 적어 둔다 — 마지막 것이 늘 이긴다 */
+function gpRemember() {
+  try { localStorage.setItem('gradeOn', JSON.stringify(gpOn)); } catch (e) { /* 못 적어도 그만 */ }
+}
+function gpLastOn() {
+  try {
+    var v = JSON.parse(localStorage.getItem('gradeOn') || '[]');
+    return (v || []).map(Number).filter(function (g) { return g >= 1 && g <= 3; });
+  } catch (e) { return []; }
+}
 /* 주소가 있는 학년만 스위치를 준다 */
 function gpGrades() {
   return [1, 2, 3].filter(function (g) { return String(gpSheets[g] || '').trim(); });
@@ -1092,7 +1102,17 @@ function viewAcademic() {
   if (!AC) { loadAcademic(); return '<div class="empty">학사일정을 불러오는 중…</div>'; }
   var ms = (AC.months) || [];
   if (!ms.length) {
-    return '<div class="empty">아직 가져온 학사일정이 없습니다.'
+    /* ★ 다시 받는 동안 도구줄까지 통째로 사라지면 켜 둔 학년 스위치도 함께 없어져
+       «꺼진 것» 처럼 보인다. 스위치 줄은 그대로 두고 안내만 아래에 붙인다. */
+    return '<div class="top2"><div class="wknav">'
+      + gpGrades().map(function (g) {
+          return '<button class="wkb sw' + (gpOn.indexOf(g) >= 0 ? ' now' : '') + '" '
+            + 'data-gs="' + g + '" title="' + g + '학년부 일지를 학사일정 위에 함께 보기">'
+            + '<span class="track"><span class="knob"></span></span>' + g + '학년</button>';
+        }).join('')
+      + '<span class="spacer"></span>'
+      + '<button class="wkb" id="acGet" title="다시 가져오기">⟳</button></div></div>'
+      + '<div class="empty">아직 가져온 학사일정이 없습니다.'
       + (acBusy ? '<div style="margin-top:8px">받는 중…</div>' : '')
       + '<br><button class="btn" id="acGetBig">지금 가져오기</button>'
       + '<div style="margin-top:8px;font-size:10.5px;opacity:.8">'
@@ -4581,7 +4601,14 @@ widgetAPI.onData(function (p) {
   if (p.grade) {
     gpSheets = p.grade.sheets || {};
     if (!gpTouched) {
-      gpOn = (p.grade.on || []).map(Number).filter(function (g) { return g >= 1 && g <= 3; });
+      var gon = (p.grade.on || []).map(Number).filter(function (g) { return g >= 1 && g <= 3; });
+      /* ★ 꾸러미가 빈손이면 «마지막으로 켠 것» 을 되살린다.
+         어디선가 지워져도 화면에서 다시 살아나고, 곧바로 다시 적어 둔다. */
+      if (!gon.length) {
+        var last = gpLastOn();
+        if (last.length) { gon = last; widgetAPI.setUi({ gradeOn: gon }); }
+      }
+      gpOn = gon;
       gpOn.forEach(function (g) { if (!GPD[g]) gpLoad(g, false); });
     }
   }
@@ -4962,6 +4989,7 @@ function wireViews(app) {
         gpOn.sort();
         gpTouched = true; gpOpen = '';
         widgetAPI.setUi({ gradeOn: gpOn });
+        gpRemember();                       // ★ 이 화면에도 남긴다
         if (k < 0 && !GPD[g]) gpLoad(g, false);
         render(); return;
       }
