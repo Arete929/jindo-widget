@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.98.0
+/* 파일명: views.js | @version 1.99.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -2504,6 +2504,21 @@ function brandHtml() {
    ★ 그림은 인터넷에서 받아 오지 않는다 — 첫 글자를 동그라미에 넣는다.
      (파비콘을 받아 오면 인터넷이 없을 때 빈칸이 되고, 켤 때마다 느려진다) */
 var LINKS = [];
+var LINKSAT = '', lkFresh = false;   // 내 바로가기 저장시각(KST) · 방금 저장했나
+/* 저장시각 글귀 — 방금이면 ✅, 다시 열었으면 «마지막 저장» */
+function lkStamp(cls) {
+  if (!LINKSAT) return '';
+  return '<' + (cls ? 'div class="' + cls + '"' : 'small') + '>'
+    + (lkFresh ? '✅ 저장됨 · ' : '마지막 저장 · ') + esc(LINKSAT)
+    + (cls ? '</div>' : '</small>');
+}
+/* 지금 시각을 KST «yyyy.MM.dd HH:mm:ss» 로 — main 의 답이 오기 전에도 바로 보이게 */
+function lkNowKST() {
+  try {
+    return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' })
+      .replace(/-/g, '.');
+  } catch (e) { return ''; }
+}
 var TERMSTART = '';
 var NAVSTYLE = 'both';
 var TABORDER = [], DASHORDER = [], DASHOFF = [], DASHSIZE = {};
@@ -2884,6 +2899,12 @@ var LKPRE = [
   { t: '인디스쿨', u: 'https://indischool.com' },
   { t: '업무포털', u: '' }
 ];
+/* «저장» — 고치기 칸을 닫고 곧바로 타일로 보여 주며, 저장시각을 남긴다.
+   ★ 옮기기·빼기(lkSave)와 다르다. 그건 고치는 중이라 칸을 열어 둔다. */
+function lkSaved(list) {
+  lkEdit = false; lkFresh = true; LINKSAT = lkNowKST();
+  lkSave(list);
+}
 function lkSave(list) {
   LINKS = list;
   widgetAPI.setUi({ links: list });
@@ -2905,7 +2926,7 @@ function lkAddFrom(app) {
   if (!t || !u) return;
   var tv = t.value.trim(), uv = u.value.trim();
   if (!tv || !uv) { u.focus(); return; }
-  lkSave(LINKS.concat([{ t: tv, u: uv }]));
+  lkSaved(LINKS.concat([{ t: tv, u: uv }]));
 }
 
 function viewLinks() {
@@ -2935,7 +2956,8 @@ function viewLinks() {
       + '<div class="lkrow">'
       + '<input id="lkNewT" placeholder="제목" maxlength="40">'
       + '<input id="lkNewU" placeholder="주소 (neis.go.kr 처럼 적어도 됩니다)">'
-      + '<button class="ntb" id="lkNewGo">담기</button></div>'
+      + '<button class="ntb" id="lkNewGo">저장</button></div>'
+      + lkStamp('rsaved')
       + '<div class="lkpre">' + LKPRE.map(function (x, i) {
           return '<button class="wkb" data-lkpre="' + i + '">＋ ' + esc(x.t)
             + (x.u ? '' : ' ⌨') + '</button>';
@@ -2944,7 +2966,7 @@ function viewLinks() {
   }
 
   if (LINKS.length) {
-    h += '<div class="lgrp">내 바로가기</div><div class="lnks">'
+    h += '<div class="lgrp">내 바로가기' + lkStamp() + '</div><div class="lnks">'
       + LINKS.map(function (x, i) {
           if (!lkEdit) return linkTile(x, 'lnk="' + i);
           // 고치는 동안에는 타일 대신 «옮기고 빼는» 줄로 보여 준다
@@ -4577,6 +4599,7 @@ widgetAPI.onData(function (p) {
   VER = p.version || '';
   UPD = p.update || null;
   LINKS = p.links || [];
+  if (p.linksAt !== undefined) LINKSAT = p.linksAt || '';
   TERMSTART = p.termStart || '';
   NAVSTYLE = p.navStyle || 'both';
   TABORDER = p.tabOrder || [];
@@ -4766,7 +4789,7 @@ function wireViews(app) {
   app.querySelectorAll('[data-lkpre]').forEach(function (b) {
     b.addEventListener('click', function () {
       var x = LKPRE[Number(b.dataset.lkpre)];
-      if (x.u) { lkSave(LINKS.concat([{ t: x.t, u: x.u }])); return; }
+      if (x.u) { lkSaved(LINKS.concat([{ t: x.t, u: x.u }])); return; }
       // 주소가 시도마다 다른 것은 제목만 채우고 주소 칸으로 보낸다
       if (lkt) lkt.value = x.t;
       if (lku) { lku.value = ''; lku.focus(); }
