@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.96.0
+/* 파일명: views.js | @version 1.97.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -1238,7 +1238,16 @@ function viewAcademic() {
   }).join('');
   return h;
 }
-/* 그 날의 학년부 항목을 줄로 그린다. 세부사항은 눌러야 펼쳐진다(여러 줄이라 길다) */
+/* 그 날의 학년부 항목을 줄로 그린다. 세부사항(E열)은 내용(D열) 바로 아래에 줄바꿈해 함께 보인다. */
+/* 세부사항을 여러 줄로 편다.
+   시트 칸 안의 진짜 줄바꿈은 그대로 살리고,
+   한 줄에 «가. … 나. …» 처럼 붙어 온 것도 항목마다 줄을 나눈다. */
+function gpLines(v) {
+  var t = String(v == null ? '' : v).replace(/\r\n?/g, '\n');
+  t = t.replace(/\s*([가-힣]\.\s)/g, function (m, p, at) { return at ? '\n' + p : p; });
+  return t.split('\n').map(function (line) { return esc(line.trim()); })
+    .filter(function (line) { return line; }).join('<br>');
+}
 function gpRows(month, day) {
   var list = gpOf(month, day);
   if (!list.length) return '';
@@ -1253,9 +1262,9 @@ function gpRows(month, day) {
       + '<i class="gpk h' + gpHue(x.cat) + '">' + esc(x.cat || '·') + '</i>'
       + '<span class="gpt">' + esc(x.title || '') + '</span>'
       + (x.done ? '<em class="gpd" title="확인함">✔</em>' : '')
-      + (x.detail ? '<em class="gpa">' + (open ? '▾' : '▸') + '</em>' : '')
       + '</button>'
-      + (open && x.detail ? '<div class="gpb">' + esc(x.detail) + '</div>' : '')
+      /* ★ 시트의 «세부사항» 은 여러 줄인 채로 온다 — 줄바꿈을 그대로 살린다 */
+      + (x.detail ? '<div class="gpb">' + gpLines(x.detail) + '</div>' : '')
       + '</div>';
   }).join('') + '</div>';
 }
