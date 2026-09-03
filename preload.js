@@ -95,6 +95,9 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   tickDue: (pid, tid, ymd) => ipcRenderer.invoke('tick-due', pid, tid, ymd),
   tickTest: () => ipcRenderer.invoke('tick-test'),
   tickRedirect: () => ipcRenderer.invoke('tick-redirect'),
+  // 열쇠·설정 백업
+  backupExport: (opt) => ipcRenderer.invoke('backup-export', opt),
+  backupImport: (opt) => ipcRenderer.invoke('backup-import', opt),
 
   comciSearch: (name) => ipcRenderer.invoke('comci-search', name),
   comciFetch: () => ipcRenderer.invoke('comci-fetch'),

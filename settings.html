@@ -528,6 +528,34 @@
   </div>
 </section>
 
+<section id="secBak">
+  <h2>열쇠·설정 백업</h2>
+  <div class="hint" style="margin-top:0">
+    노션 열쇠·틱틱 앱 비밀·구글 연결·런처 관리자 열쇠와 여러 설정을 <b>파일 하나</b>로 챙깁니다.
+    다른 PC 에서 <b>가져오기</b> 하면 그대로 옮겨집니다.
+  </div>
+  <div class="row" style="margin-top:10px">
+    <label class="lb">담을 것</label>
+    <div class="chips" id="bkWhat">
+      <button class="on" data-bk="secrets">열쇠</button>
+      <button class="on" data-bk="settings">설정</button>
+    </div>
+  </div>
+  <div class="row">
+    <label class="lb">암호</label>
+    <input type="password" id="bkPass" placeholder="파일을 잠글 암호 (권장)" autocomplete="off">
+    <button id="bkOut">내보내기</button>
+    <button id="bkIn">가져오기</button>
+  </div>
+  <div class="hint" id="bkMsg" style="margin-top:2px"></div>
+  <div class="warnbox" style="margin-top:6px">
+    <b>암호를 꼭 넣으세요.</b> 이 파일 하나에 열쇠가 모두 들어 있어, 암호가 없으면
+    파일을 얻은 사람이 그대로 쓸 수 있습니다. <b>암호는 잊으면 못 엽니다</b> —
+    되살릴 방법이 없으니 기억할 수 있는 것으로 정하세요.<br>
+    <b>런처보드 관리자 열쇠</b> 는 다른 곳에 원본이 없습니다. 이 백업이 유일한 사본입니다.
+  </div>
+</section>
+
 <section id="secTick">
   <h2>틱틱 (TickTick)</h2>
   <div class="hint" style="margin-top:0">
@@ -1012,6 +1040,53 @@ function paintNt() {
     };
   });
 }
+/* ── 열쇠·설정 백업 ──────────────────────────────────────── */
+function bkWant() {
+  var on = {};
+  $('bkWhat').querySelectorAll('[data-bk]').forEach(function (b) {
+    on[b.dataset.bk] = b.classList.contains('on');
+  });
+  return on;
+}
+$('bkWhat').querySelectorAll('[data-bk]').forEach(function (b) {
+  b.onclick = function () {
+    b.classList.toggle('on');
+    // 둘 다 끄면 담을 것이 없다 — 마지막 하나는 못 끄게 한다
+    var any = [].slice.call($('bkWhat').querySelectorAll('[data-bk]'))
+      .some(function (x) { return x.classList.contains('on'); });
+    if (!any) b.classList.add('on');
+  };
+});
+$('bkOut').onclick = function () {
+  var w = bkWant(), pass = $('bkPass').value;
+  if (!pass && !confirm('암호 없이 저장하면 파일을 얻은 사람이 열쇠를 그대로 쓸 수 있습니다.\n\n'
+    + '그래도 암호 없이 저장할까요?')) return;
+  $('bkMsg').textContent = '저장할 자리를 고르세요…';
+  widgetAPI.backupExport({ secrets: w.secrets, settings: w.settings, pass: pass }).then(function (r) {
+    if (r && r.ok) {
+      $('bkMsg').innerHTML = '<span class="ok">✅ 저장됨 · ' + esc(r.at) + '</span> — '
+        + esc(r.msg) + '<br><span class="hint">' + esc(r.path) + '</span>';
+      $('bkPass').value = '';
+    } else if (r && r.error) {
+      $('bkMsg').innerHTML = '<span class="warn">' + esc(r.error) + '</span>';
+    } else { $('bkMsg').textContent = ''; }
+  });
+};
+$('bkIn').onclick = function () {
+  var w = bkWant(), pass = $('bkPass').value;
+  if (!confirm('백업 파일의 내용으로 지금 설정을 덮어씁니다.\n\n계속할까요?')) return;
+  $('bkMsg').textContent = '백업 파일을 고르세요…';
+  widgetAPI.backupImport({ secrets: w.secrets, settings: w.settings, pass: pass }).then(function (r) {
+    if (r && r.ok) {
+      $('bkMsg').innerHTML = '<span class="ok">✅ 가져옴 · ' + esc(r.at) + '</span> — ' + esc(r.msg);
+      $('bkPass').value = '';
+      setTimeout(load, 600);   // 되살린 값으로 화면을 새로 그린다
+    } else if (r && r.error) {
+      $('bkMsg').innerHTML = '<span class="warn">' + esc(r.error) + '</span>';
+    } else { $('bkMsg').textContent = ''; }
+  });
+};
+
 /* ── 틱틱 ────────────────────────────────────────────────── */
 function paintTk() {
   var sec = $('secTick');

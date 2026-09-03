@@ -38,6 +38,7 @@ files:
   - recordsmain.js
   - notion.js     # 업무관리 — 노션 PROJECTS·TASKS (진호알리미 전용)
   - ticktick.js   # 틱틱 할 일 (진호알리미 전용)
+  - backup.js     # 열쇠·설정 백업(암호 잠금)
   # 앱에 심어 두는 구글 클라이언트. 없어도 빌드는 되고, 그때는 설정에 직접 넣어야 한다
   - gclient.json
   - settings.html
