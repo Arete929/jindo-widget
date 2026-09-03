@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.97.1
+/* 파일명: views.js | @version 1.98.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -2920,7 +2920,8 @@ function viewLinks() {
     + (lbOn()
       ? '<input id="lbQ" class="lbq" placeholder="앱 찾기" value="' + esc(lbQ) + '">'
         + (lbAdmin()
-          ? '<button class="wkb' + (lbEdit ? ' now' : '') + '" id="lbEd">'
+          ? '<button class="wkb go" id="lbAddTop" title="런처보드에 새 앱·바로가기 담기">＋ 담기</button>'
+            + '<button class="wkb' + (lbEdit ? ' now' : '') + '" id="lbEd">'
             + (lbEdit ? '✓ 다 됐어요' : '✎ 앱 고치기') + '</button>'
           : '')
       : '<span class="spacer"></span>')
@@ -2959,7 +2960,9 @@ function viewLinks() {
             + (i === LINKS.length - 1 ? ' disabled' : '') + '>▼</button>'
             + '<button class="wkb" data-lkx="' + i + '" title="빼기">✕</button></div>';
         }).join('') + '</div>';
-  } else if (!lkEdit) {
+  } else if (!lkEdit && !lbOn()) {
+    /* ★ 런처보드가 켜져 있을 땐 이 안내를 접는다 — 런처보드가 본문인데
+       «바로가기가 없습니다» 가 맨 위를 차지해 «어디에 담으라는 건지» 헷갈렸다. */
     h += '<div class="empty">담아 둔 바로가기가 없습니다.<br>'
       + '위의 <b>✎ 고치기</b> 를 눌러 담아 보세요.</div>';
   }
@@ -3354,6 +3357,8 @@ function wireBoardBar(root) {
   });
   var ad = root.querySelector('#lbAdd');
   if (ad) ad.addEventListener('click', function () { lbOpenForm(null, 'app'); });
+  var at = root.querySelector('#lbAddTop');
+  if (at) at.addEventListener('click', function () { lbOpenForm(null, 'app'); });
   var al = root.querySelector('#lbAddLink');
   if (al) al.addEventListener('click', function () { lbOpenForm(null, 'link'); });
   // 칸 안의 고르개 — 누르면 그 자리에서 다시 그린다(적던 글자는 먼저 챙긴다)
