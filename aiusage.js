@@ -1,4 +1,4 @@
-// 파일명: aiusage.js | @version 1.0.0
+// 파일명: aiusage.js | @version 1.100.0
 // 클로드·제미나이 사용량을 위젯이 «직접» 읽어 온다.
 //
 // 어떻게 읽나
@@ -203,6 +203,49 @@ const GPT_LOGIN_CHECK_SCRIPT = `(function(){
   } catch (e) { return false; }
 })()`;
 
+/* ── 결제 화면 읽기(클로드) ──────────────────────────────────
+   «설정 → 결제» 페이지 글자에서 플랜·다음 결제일(또는 취소 예정일)·사용 크레딧 잔액만 긁는다.
+   ★ 카드 번호 같은 것은 보지도 담지도 않는다.
+   ★ 함수를 통째로 문자열로 바꿔 페이지에 넣는다 — 템플릿 문자열 안에서 역슬래시를
+     두 겹으로 쓰다 틀리는 일이 잦아서(실제로 여러 번), 그냥 진짜 함수로 적는다. */
+function claudeBillingExtract() {
+  var text = document.body.innerText || '';
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  var ymd = function (m) { return m ? (m[1] + '.' + pad(m[2]) + '.' + pad(m[3])) : ''; };
+  var K = '(\\d{4})년\\s*(\\d{1,2})월\\s*(\\d{1,2})일';
+  var out = { ok: false, plan: '', kind: '', date: '', credit: '', invoiceDate: '', invoiceAmt: '' };
+  var planM = text.match(/(맥스|Max|프로|Pro|무료|Free|팀|Team)\s*(?:플랜|plan)/i);
+  if (planM) {
+    out.plan = planM[1].replace(/^Max$/i, '맥스').replace(/^Pro$/i, '프로')
+      .replace(/^Free$/i, '무료').replace(/^Team$/i, '팀');
+  }
+  var m = text.match(new RegExp('구독이\\s*' + K + '에\\s*취소될\\s*예정'));
+  if (m) { out.kind = '취소'; out.date = ymd(m); }
+  if (!out.date) {
+    m = text.match(new RegExp('(?:갱신|다음\\s*결제|renew\\w*|next\\s*billing)[^\\n]{0,40}?' + K, 'i'));
+    if (m) { out.kind = '갱신'; out.date = ymd(m); }
+  }
+  if (!out.date) {
+    var MO = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
+      'september', 'october', 'november', 'december'];
+    var E = text.match(/(renews?|cancel\w*|billing)[^\n]{0,60}?(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s*(\d{4})/i);
+    if (E) {
+      out.kind = /cancel/i.test(E[1]) ? '취소' : '갱신';
+      out.date = E[4] + '.' + pad(MO.indexOf(E[2].toLowerCase()) + 1) + '.' + pad(E[3]);
+    }
+  }
+  var c = text.match(/US\$\s*([\d,]+(?:\.\d+)?)\s*\n\s*(?:현재\s*잔액|Current\s*balance)/i);
+  if (c) out.credit = 'US$' + c[1];
+  var inv = text.split(/청구서|Invoices/i)[1] || '';
+  var im = inv.match(new RegExp(K));
+  var ia = inv.match(/-?US\$\s*[\d,]+(?:\.\d+)?/);
+  if (im) out.invoiceDate = ymd(im);
+  if (ia) out.invoiceAmt = ia[0].replace(/\s+/g, '');
+  out.ok = !!(out.plan || out.date || out.credit);
+  return out;
+}
+const CLAUDE_BILLING_SCRIPT = '(' + claudeBillingExtract.toString() + ')()';
+
 const PROVIDERS = {
   claude: {
     key: 'claude',
@@ -212,7 +255,11 @@ const PROVIDERS = {
     usageUrl: () => `https://claude.ai/new?_w=${Date.now()}#settings/usage`,
     extract: CLAUDE_EXTRACT_SCRIPT,
     loginCheck: CLAUDE_LOGIN_CHECK_SCRIPT,
-    settle: 2600
+    settle: 2600,
+    // 결제일·크레딧 — 하루 한 번 «설정 → 결제» 를 따로 읽는다
+    billingUrl: () => `https://claude.ai/settings/billing?_w=${Date.now()}`,
+    billing: CLAUDE_BILLING_SCRIPT,
+    billingSettle: 3500
   },
   gemini: {
     key: 'gemini',
@@ -304,6 +351,39 @@ function withTimeout(promise, ms, what) {
   ]);
 }
 
+/* ── 결제 정보는 하루 한 번만 ─────────────────────────────────
+   창을 하나 더 여는 셈이라 매번 읽으면 갱신이 2~3초 늦는다. 20시간 지나면 다시 읽는다.
+   못 읽으면 지난 값을 그대로 두고 «못 읽었다» 만 적어 둔다. */
+const BILL_TTL_MS = 20 * 3600 * 1000;
+async function readBilling(key, w) {
+  const p = PROVIDERS[key];
+  if (!p.billingUrl || !last[key] || !last[key].ok) return;
+  const prev = last[key].billing;
+  if (prev && prev.at && !prev.error && Date.now() - prev.at < BILL_TTL_MS) return;
+  try {
+    await withTimeout((async () => {
+      await w.loadURL(p.billingUrl());
+      let got = null;
+      for (let i = 0; i < 4; i++) {
+        await wait(i === 0 ? p.billingSettle : 800);
+        got = await w.webContents.executeJavaScript(p.billing);
+        if (got && got.ok) break;
+      }
+      if (got && got.ok) {
+        got.at = Date.now();
+        last[key].billing = got;
+        debug(`[사용량:${key}] 결제 정보 읽음 — ${got.plan || ''} ${got.kind || ''} ${got.date || ''} ${got.credit || ''}`);
+      } else {
+        last[key].billing = Object.assign({}, prev || {}, { error: '결제 화면을 못 읽음' });
+        debug(`[사용량:${key}] 결제 화면을 못 읽음 — 지난 값 유지`);
+      }
+    })(), 20000, p.label + ' 결제');
+  } catch (e) {
+    last[key].billing = Object.assign({}, prev || {}, { error: String((e && e.message) || e) });
+    debug(`[사용량:${key}] 결제 정보 — ${(e && e.message) || e}`);
+  }
+}
+
 /* 한 곳을 읽는다. 잠깐 실패하면 마지막 값을 그대로 둔다 —
    화면이 갑자기 텅 비어 보이는 것보다 조금 지난 값이 낫다. */
 async function poll(key) {
@@ -326,12 +406,14 @@ async function poll(key) {
       if (got && (got.ok || got.needsLogin)) {
         got.at = Date.now();
         enrich(got.session); enrich(got.weekly); enrich(got.fable);
+        got.billing = (last[key] && last[key].billing) || null;   // 결제 정보는 이어받는다
         last[key] = got;
         debug(`[사용량:${key}] ${got.ok ? '읽음' : '로그인 필요'}`);
       } else {
         debug(`[사용량:${key}] 이번엔 못 읽음 — 지난 값 유지`);
       }
     })(), POLL_TIMEOUT_MS, p.label);
+    await readBilling(key, w);          // 결제일 — 하루 한 번만, 사용량과 따로 시한을 잰다
   } catch (e) {
     debug(`[사용량:${key}] ${(e && e.message) || e}`);
     try { if (w && !w.isDestroyed()) w.webContents.stop(); } catch (_) { /* 무시 */ }

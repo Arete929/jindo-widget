@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.99.0
+/* 파일명: views.js | @version 1.100.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -1683,7 +1683,29 @@ function usgBox(key, u) {
         + '<div class="rs">' + resetTxt(x.m) + '</div></div>';
     }).join('') + '</div>';
   }
+  h += usgBillLine(u.billing);
   return h + '</div>';
+}
+/* 결제 줄 — «맥스 · 구독 9월 4일 취소 예정 (D-1) · 크레딧 US$77.14» */
+function usgBillLine(b) {
+  if (!b) return '';
+  if (!b.date && !b.credit) return b.error ? '<div class="ubill">결제 정보 못 읽음</div>' : '';
+  var parts = [];
+  if (b.plan) parts.push(b.plan);
+  if (b.date) {
+    var m = String(b.date).match(/^(\d{4})\.(\d{2})\.(\d{2})$/);
+    var day = m ? (Number(m[2]) + '월 ' + Number(m[3]) + '일') : b.date;
+    var dd = '';
+    if (m) {
+      var t = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      var now = new Date(); now.setHours(0, 0, 0, 0);
+      var n = Math.round((t - now) / 86400000);
+      dd = n === 0 ? ' (오늘)' : n > 0 ? ' (D-' + n + ')' : '';
+    }
+    parts.push(b.kind === '취소' ? '구독 ' + day + ' 취소 예정' + dd : '다음 결제 ' + day + dd);
+  }
+  if (b.credit) parts.push('크레딧 ' + b.credit);
+  return '<div class="ubill" title="결제 정보는 하루 한 번 읽습니다">' + esc(parts.join(' · ')) + '</div>';
 }
 function usageBar() {
   var keys = (USG ? Object.keys(USG) : []).filter(function (k) { return USGON.indexOf(k) >= 0; });

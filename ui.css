@@ -260,6 +260,7 @@
     flex: 1; min-width: 0; background: var(--card); border-radius: 8px; padding: 6px 8px;
   }
   .usg .nm { display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; }
+  .usg .ubill { margin-top: 3px; font-size: calc(8.5px * var(--wf)); color: var(--dim); font-weight: 600; }
   .usg .nm i { font-style: normal; color: var(--dim); font-weight: 700; font-size: 9px;
                margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .usg .lg {
