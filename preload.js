@@ -96,7 +96,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   tickTest: () => ipcRenderer.invoke('tick-test'),
   tickRedirect: () => ipcRenderer.invoke('tick-redirect'),
   // 수업진도 대시보드 얹기
-  dashShow: (screen, rect) => ipcRenderer.send('dash-show', screen, rect),
+  dashShow: (screen, rect, colors) => ipcRenderer.send('dash-show', screen, rect, colors),
   dashHide: () => ipcRenderer.send('dash-hide'),
   dashReload: () => ipcRenderer.invoke('dash-reload'),
   // 열쇠·설정 백업

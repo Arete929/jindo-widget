@@ -766,7 +766,14 @@ function dashPlace() {
   if (!DASHV[VIEW] || !host) { widgetAPI.dashHide(); return; }
   var r = host.getBoundingClientRect();
   if (r.width < 40 || r.height < 40) return;
-  widgetAPI.dashShow(DASHV[VIEW], { x: r.left, y: r.top, w: r.width, h: r.height });
+  /* 지금 테마 색을 함께 보낸다 — 얹은 화면 바탕을 여기에 맞춘다 */
+  var cs = getComputedStyle(document.documentElement);
+  var col = {
+    bg: cs.getPropertyValue('--bg').trim(),
+    fg: cs.getPropertyValue('--fg').trim(),
+    line: cs.getPropertyValue('--line').trim()
+  };
+  widgetAPI.dashShow(DASHV[VIEW], { x: r.left, y: r.top, w: r.width, h: r.height }, col);
 }
 
 /* 오른쪽 단 — 틱틱만 쓴다.
