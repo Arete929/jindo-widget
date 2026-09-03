@@ -1,4 +1,4 @@
-// 파일명: ticktick.js | @version 1.100.0
+// 파일명: ticktick.js | @version 1.100.1
 // 틱틱(TickTick) — 할 일을 읽고 만들고 완료한다 (진호알리미 전용).
 //
 // ★ 노션과 다른 점: 열쇠 한 줄이 아니라 «한 번 로그인해서 표를 받는» 방식(OAuth)이다.
@@ -9,8 +9,7 @@
 //
 // ★ 틱틱 공개 API 는 «목록(프로젝트)별로만» 할 일을 준다.
 //   모든 할 일을 한 번에 주는 창구가 없어서 목록을 돌며 모은다.
-//   받은 편지함(Inbox)은 목록 목록에 안 나오는 일이 있다 — 그때는 못 읽는다.
-//   (앱이 만드는 할 일은 고른 목록에 넣으므로 이 문제를 피한다)
+//   받은 편지함(기본함·Inbox)은 목록 목록에 안 나오지만 /project/inbox/data 로 따로 읽는다.
 
 const http = require('http');
 const { request } = require('./httpx.js');
@@ -117,29 +116,22 @@ async function projectTasks(token, pid) {
   const d = await call(token, 'GET', '/project/' + encodeURIComponent(pid) + '/data');
   return (d && d.tasks) || [];
 }
-/* ── 기본함(Inbox) ──────────────────────────────────────────
-   목록 목록(/project)에 기본함은 안 나온다. 아이디는 «inbox+숫자» 꼴인데 알아낼
-   창구가 없어서, 할 일을 하나 만들어 «어디에 떨어지는지» 보고 곧바로 지운다.
-   ★ 한 번만 한다 — 알아낸 아이디는 main 이 설정에 적어 두고 다음부터는 그것을 쓴다. */
-async function findInbox(token) {
-  const made = await call(token, 'POST', '/task',
-    { title: '(진호알리미 기본함 찾기 — 곧바로 지워집니다)' });
-  const pid = made && made.projectId;
-  if (made && made.id && pid) {
-    try { await deleteTask(token, pid, made.id); } catch (e) { /* 못 지워도 아이디는 얻었다 */ }
-  }
-  if (!pid || !/^inbox/i.test(pid)) throw new Error('기본함을 찾지 못했습니다');
-  return pid;
-}
 /* 모든 목록을 돌며 모은다 — 한 번에 주는 창구가 없다.
-   inboxId 를 주면 기본함도 «기본함» 이라는 이름으로 맨 앞에 넣어 함께 읽는다. */
-async function loadAll(token, inboxId) {
+   ★ 기본함(Inbox)은 목록 목록(/project)에 안 나오지만 /project/inbox/data 로는 읽힌다
+     (실측 2026-09-03). 그 안의 할 일에 진짜 아이디(inbox+숫자)가 실려 오므로 그것을 쓴다.
+     비어 있으면 «inbox» 그대로 — 만들기(projectId:inbox)도 그 이름으로 받아 준다. */
+async function loadAll(token) {
   const ps = ((await projects(token)) || []).slice();
-  if (inboxId) ps.unshift({ id: inboxId, name: '기본함' });
+  let inboxTasks = [];
+  try { inboxTasks = await projectTasks(token, 'inbox'); } catch (e) { /* 기본함을 못 열어도 나머지는 본다 */ }
+  const inboxId = (inboxTasks[0] && inboxTasks[0].projectId) || 'inbox';
+  ps.unshift({ id: inboxId, name: '기본함', __tasks: inboxTasks });
   const out = [];
   for (const p of ps) {
-    let ts = [];
-    try { ts = await projectTasks(token, p.id); } catch (e) { /* 한 목록이 막혀도 나머지는 본다 */ }
+    let ts = p.__tasks || [];
+    if (!p.__tasks) {
+      try { ts = await projectTasks(token, p.id); } catch (e) { /* 한 목록이 막혀도 나머지는 본다 */ }
+    }
     ts.forEach((t) => {
       out.push({
         id: t.id, projectId: t.projectId || p.id, project: p.name || '',
@@ -185,5 +177,5 @@ async function test(token) {
   return { projects: ps.length, names: ps.slice(0, 5).map((p) => p.name) };
 }
 
-module.exports = { authUrl, waitForCode, exchange, loadAll, projects, findInbox,
+module.exports = { authUrl, waitForCode, exchange, loadAll, projects,
   createTask, completeTask, deleteTask, setDue, test, redirectUri, PORT };
