@@ -1,4 +1,4 @@
-// 파일명: aiusage.js | @version 1.100.1
+// 파일명: aiusage.js | @version 1.100.2
 // 클로드·제미나이 사용량을 위젯이 «직접» 읽어 온다.
 //
 // 어떻게 읽나
@@ -363,12 +363,14 @@ async function readBilling(key, w) {
   try {
     await withTimeout((async () => {
       await w.loadURL(p.billingUrl());
-      let got = null;
-      for (let i = 0; i < 4; i++) {
-        await wait(i === 0 ? p.billingSettle : 800);
+      /* ★ 크레딧 잔액 칸은 플랜·날짜보다 늦게 그려진다 — 잔액까지 나올 때까지 몇 번 더 본다 */
+      let got = null, best = null;
+      for (let i = 0; i < 5; i++) {
+        await wait(i === 0 ? p.billingSettle : 900);
         got = await w.webContents.executeJavaScript(p.billing);
-        if (got && got.ok) break;
+        if (got && got.ok) { best = got; if (got.credit) break; }
       }
+      got = best;
       if (got && got.ok) {
         got.at = Date.now();
         last[key].billing = got;
