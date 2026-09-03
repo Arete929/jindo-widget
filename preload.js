@@ -1,4 +1,4 @@
-// 파일명: preload.js | @version 1.101.0
+// 파일명: preload.js | @version 1.101.1
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {

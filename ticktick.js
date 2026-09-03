@@ -1,4 +1,4 @@
-// 파일명: ticktick.js | @version 1.101.0
+// 파일명: ticktick.js | @version 1.101.1
 // 틱틱(TickTick) — 할 일을 읽고 만들고 완료한다 (진호알리미 전용).
 //
 // ★ 노션과 다른 점: 열쇠 한 줄이 아니라 «한 번 로그인해서 표를 받는» 방식(OAuth)이다.
@@ -111,6 +111,14 @@ async function exchange(clientId, clientSecret, code) {
 
 /* ── 읽기 ── */
 function projects(token) { return call(token, 'GET', '/project'); }
+/* 마감을 «우리 날짜» 로 — 틱틱은 2026-09-10 을 2026-09-09T15:00:00+0000 처럼 UTC 로 준다.
+   앞 열 글자만 자르면 하루 이르게 보인다(실측). Date 로 풀어 현지 날짜를 쓴다. */
+function dueLocal(v) {
+  if (!v) return '';
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return String(v).slice(0, 10);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
 /* 목록 하나의 할 일 (완료 안 된 것만 온다) */
 async function projectTasks(token, pid) {
   const d = await call(token, 'GET', '/project/' + encodeURIComponent(pid) + '/data');
@@ -136,7 +144,7 @@ async function loadAll(token) {
       out.push({
         id: t.id, projectId: t.projectId || p.id, project: p.name || '',
         title: t.title || '(제목 없음)',
-        due: String(t.dueDate || '').slice(0, 10),
+        due: dueLocal(t.dueDate),
         priority: Number(t.priority) || 0,
         status: Number(t.status) || 0
       });
