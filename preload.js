@@ -87,6 +87,14 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   todoDel: (id) => ipcRenderer.invoke('todo-del', id),
   todoClearDone: () => ipcRenderer.invoke('todo-clear-done'),
   todoMove: (id, dir) => ipcRenderer.invoke('todo-move', id, dir),
+  // 틱틱
+  tickConnect: () => ipcRenderer.invoke('tick-connect'),
+  tickRefresh: () => ipcRenderer.invoke('tick-refresh'),
+  tickAdd: (title, ymd) => ipcRenderer.invoke('tick-add', title, ymd),
+  tickDone: (pid, tid) => ipcRenderer.invoke('tick-done', pid, tid),
+  tickDue: (pid, tid, ymd) => ipcRenderer.invoke('tick-due', pid, tid, ymd),
+  tickTest: () => ipcRenderer.invoke('tick-test'),
+  tickRedirect: () => ipcRenderer.invoke('tick-redirect'),
 
   comciSearch: (name) => ipcRenderer.invoke('comci-search', name),
   comciFetch: () => ipcRenderer.invoke('comci-fetch'),

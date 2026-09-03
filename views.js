@@ -639,7 +639,9 @@ var TASK = null, tkSub = 'now', tkProj = '', tkBusy = '', tkErr = '', tkOpen = {
 var tkNew = '', tkNewProj = '';
 /* 내 할 일 — 오른쪽 단. 완료한 것은 접어 둔다(tdOpen 이 켜져야 펼친다). */
 var TODOS = [], TODOAT = '', tdOpen = false, tdBusy = false, tdErr = '', tdSaved = '';
-var TKSPLIT = 300;   // 오른쪽 «내 할 일» 단의 너비(px) — 칸막이를 끌어 정한다
+var TKSPLIT = 300;   // 오른쪽 단의 너비(px) — 칸막이를 끌어 정한다
+/* 오른쪽 단에 무엇을 볼까 — 내 할 일(이 PC) / 틱틱(핸드폰과 함께) */
+var tdSide = 'me', TICK = null, tickBusy = false, tickErr = '';
 
 /* ISO 시각 → «2026.09.02 12:10» (KST) */
 function fmtStamp(iso) {
@@ -721,6 +723,24 @@ function tkSplitBar() {
   return '<div class="tksplit" id="tkSplit" title="끌어서 너비 조절 · 두 번 누르면 처음대로"></div>';
 }
 
+/* 틱틱 명령 하나 — 인터넷을 거치니 «하는 중» 을 보여 준다 */
+function tickRun(promise) {
+  if (tickBusy) return;
+  tickBusy = true; tickErr = ''; render();
+  promise.then(function (r) {
+    tickBusy = false;
+    if (r && r.ok === false) tickErr = r.error || '하지 못했습니다';
+    render();
+  }).catch(function (e) { tickBusy = false; tickErr = String((e && e.message) || e); render(); });
+}
+function tickAddNow(root) {
+  var box = root.querySelector('#tkNewT');
+  var v = box ? String(box.value || '').trim() : '';
+  if (!v) { tickErr = '내용을 적어 주세요'; render(); return; }
+  if (box) box.value = '';
+  tickRun(widgetAPI.tickAdd(v, ''));
+}
+
 /* 할 일 명령 하나를 돌리고 결과를 화면에 반영한다 (저장시각 포함) */
 function tdRun(promise) {
   if (tdBusy) return;
@@ -742,10 +762,60 @@ function tdAddNow(root) {
   tdRun(widgetAPI.todoAdd(v));
 }
 
-function viewTodos() {
+/* 오른쪽 단 — 위에서 «내 할 일 / 틱틱» 을 갈아 끼운다 */
+function viewSide() {
+  var head = '<div class="tdtab">'
+    + '<button class="tdt' + (tdSide === 'me' ? ' on' : '') + '" data-tds="me">📝 내 할 일</button>'
+    + '<button class="tdt' + (tdSide === 'tick' ? ' on' : '') + '" data-tds="tick">✔ 틱틱</button>'
+    + '</div>';
+  return '<div class="tdbox">' + head
+    + (tdSide === 'tick' ? viewTick() : viewTodoList()) + '</div>';
+}
+
+/* ── 틱틱 ── */
+function viewTick() {
+  if (!TICK || !TICK.on) {
+    return '<div class="tdempty">틱틱이 아직 연결되지 않았습니다.<br><br>'
+      + (TICK && TICK.hasApp
+          ? '설정에서 <b>틱틱 연결하기</b> 를 누르세요.'
+          : '설정 → <b>틱틱</b> 에 앱 아이디·비밀을 넣고 연결하세요.')
+      + '</div>'
+      + '<button class="bdgo" onclick="widgetAPI.openSettings()">설정 열기</button>';
+  }
+  var d = TICK.data;
+  var h = '';
+  if (tickErr) h += '<div class="tkerr">' + esc(tickErr) + '</div>';
+  if (d && d.error) h += '<div class="tkerr">' + esc(d.error) + '</div>';
+
+  h += '<div class="tdadd">'
+    + '<input class="bdi" id="tkNewT" placeholder="틱틱에 적고 엔터" maxlength="300">'
+    + '<button class="bdgo" id="tkAddT"' + (tickBusy ? ' disabled' : '') + '>＋</button></div>';
+
+  var list = ((d && d.tasks) || []).filter(function (t) { return t.status !== 2; });
+  if (!list.length) h += '<div class="tdempty">할 일이 없습니다 🎉</div>';
+  h += list.map(function (t) {
+    var dd = tkDays(t.due);
+    var when = t.due ? (Number(t.due.slice(5, 7)) + '/' + Number(t.due.slice(8, 10))) : '';
+    return '<div class="tdrow' + (dd !== null && dd < 0 ? ' late' : '') + '">'
+      + '<button class="tdck" data-tkdone="' + esc(t.id) + '" data-pid="' + esc(t.projectId)
+      + '" title="완료">☐</button>'
+      + '<span class="tdtx">' + esc(t.title)
+      + '<i class="tdmeta">' + (when ? esc(when) + ' · ' : '') + esc(t.project || '') + '</i></span>'
+      + '<span class="tdops">'
+      + '<button class="tdb" data-tktoday="' + esc(t.id) + '" data-pid="' + esc(t.projectId)
+      + '" title="마감일을 오늘로">오늘</button>'
+      + '</span></div>';
+  }).join('');
+  if (d && d.at) h += '<div class="rsaved">마지막 받음 · ' + esc(fmtStamp(d.at)) + '</div>';
+  h += '<button class="tdclear" id="tkGetT"' + (tickBusy ? ' disabled' : '') + '>'
+    + (tickBusy ? '…' : '⟳ 틱틱에서 다시 받기') + '</button>';
+  return h;
+}
+
+function viewTodoList() {
   var live = TODOS.filter(function (t) { return !t.done; });
   var done = TODOS.filter(function (t) { return t.done; });
-  var h = '<div class="tdbox"><div class="tkh">📝 내 할 일 <b>' + live.length + '</b></div>';
+  var h = '<div class="tkh">📝 내 할 일 <b>' + live.length + '</b></div>';
 
   h += '<div class="tdadd">'
     + '<input class="bdi" id="tdNew" placeholder="적고 엔터" maxlength="200">'
@@ -787,7 +857,7 @@ function viewTodos() {
   var stamp = tdSaved || TODOAT;
   if (stamp) h += '<div class="rsaved">' + (tdSaved ? '✅ 저장됨 · ' : '마지막 저장 · ')
     + esc(stamp) + '</div>';
-  return h + '</div>';
+  return h;
 }
 
 function viewTasks() {
@@ -804,7 +874,7 @@ function viewTasks() {
       + '<button class="btn" onclick="widgetAPI.openSettings()">설정에서 연결하기</button>'
       + '<div style="margin-top:8px;font-size:10.5px;color:#6f7885">'
       + '노션에서 <b>내부 통합</b>을 만들고 그 열쇠를 설정에 넣으면 됩니다.</div></div>'
-      + '</div>' + tkSplitBar() + '<div class="tkright">' + viewTodos() + '</div></div>';
+      + '</div>' + tkSplitBar() + '<div class="tkright">' + viewSide() + '</div></div>';
   }
   if (TASK.error) head += '<div class="tkerr">' + esc(TASK.error) + '</div>';
   if (tkErr) head += '<div class="tkerr">' + esc(tkErr) + '</div>';
@@ -880,7 +950,7 @@ function viewTasks() {
 
   /* 2단 — 넓으면 왼쪽 노션 / 오른쪽 내 할 일, 좁으면 위아래로 (CSS 가 정한다) */
   return head + tkWrapOpen() + '<div class="tkleft">' + body + '</div>'
-    + tkSplitBar() + '<div class="tkright">' + viewTodos() + '</div></div>';
+    + tkSplitBar() + '<div class="tkright">' + viewSide() + '</div></div>';
 }
 
 /* ── 학사일정 ── */
@@ -4450,6 +4520,7 @@ widgetAPI.onData(function (p) {
     if (p.task) {
       TODOS = p.task.todos || []; TODOAT = p.task.todosAt || '';
       if (p.task.split) TKSPLIT = p.task.split;
+      TICK = p.task.tick || null;
     }
   }
   FEED = (p.feed && p.feed.show && p.feed.data) ? p.feed.data : null;
@@ -4649,7 +4720,8 @@ function wireViews(app) {
   //   .wkb 만 훑던 때에는 눌러도 아무 일이 없어서 «펼쳐지지 않는다» 였다.
   /* ★ 여기 목록에 빠진 «단추 종류» 는 눌러도 아무 일이 없다. 새 단추를 만들면 꼭 넣을 것.
      (2026-09-02: 업무관리·내 할 일 단추를 만들고 여기 안 넣어서 체크박스가 안 먹었다) */
-  app.querySelectorAll('.wkb, .rach, .gph, .tkbtn, .tdck, .tdb, .tdclear, .tdfold, #tdAdd')
+  app.querySelectorAll('.wkb, .rach, .gph, .tkbtn, .tdck, .tdb, .tdclear, .tdfold, .tdt,'
+    + ' #tdAdd, #tkAddT')
     .forEach(function (b) {
     b.addEventListener('click', function () {
       if (b.dataset.off !== undefined) { WK = null; loadWeek(Number(b.dataset.off)); return; }
@@ -4666,6 +4738,13 @@ function wireViews(app) {
       if (b.id === 'workGet') { WORK = null; workBusy = true; render();
         widgetAPI.workFetch().then(function (d) { workBusy = false; WORK = d || { empty: true }; render(); });
         return; }
+      // ── 오른쪽 단 갈아 끼우기 · 틱틱 ──
+      if (b.dataset.tds) { tdSide = b.dataset.tds; tdErr = ''; tickErr = ''; render(); return; }
+      if (b.dataset.tkdone) { tickRun(widgetAPI.tickDone(b.dataset.pid, b.dataset.tkdone)); return; }
+      if (b.dataset.tktoday) {
+        tickRun(widgetAPI.tickDue(b.dataset.pid, b.dataset.tktoday, tkYmd(new Date()))); return; }
+      if (b.id === 'tkGetT') { tickRun(widgetAPI.tickRefresh()); return; }
+      if (b.id === 'tkAddT') { tickAddNow(app); return; }
       // ── 내 할 일 ──
       if (b.id === 'tdFold') { tdOpen = !tdOpen; render(); return; }
       if (b.dataset.tdck) { tdRun(widgetAPI.todoToggle(b.dataset.tdck)); return; }
@@ -5139,6 +5218,10 @@ function wireViews(app) {
   var tdBox = app.querySelector('#tdNew');
   if (tdBox) tdBox.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); tdAddNow(app); }
+  });
+  var tkBoxT = app.querySelector('#tkNewT');
+  if (tkBoxT) tkBoxT.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); tickAddNow(app); }
   });
   // 업무관리 — «마감 없는 일 n건 보기» 와 줄 눌러 비고 펼치기
   app.querySelectorAll('.tkmore').forEach(function (el) {

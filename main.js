@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 1.91.0
-// 수정요약: v1.91.0 테마 둘 추가 — 한옥(한지 바탕·나무빛)·다크UI(짙은 남색·파랑). 대비를 재서 흐린 색은 짙게 조정 / v1.90.1 내 할 일 체크박스·✕ 와 업무관리 완료로·오늘로 단추가 눌러도 안 먹던 문제 — 단추 배선 목록에 새 종류가 빠져 있었다 / v1.90.0 학급 시간표에도 바뀐 수업 반영 — 컴시간이 변경분을 교사 시간표에만 줘서 학급 쪽은 옛 시간표였다. 교사 쪽 변경을 학급 칸에 옮겨 붙인다(빠짐·들어옴·맞바꿈) / v1.89.5 주간업무 가로 들여쓰기를 번호 단계로 통일 — 원문 앞 공백이 줄마다 달라 «2.» 와 그 아래 «가.» 가 같은 자리에 놓이던 문제 / v1.89.4 주간업무 해석기를 고쳐도 저장해 둔 옛 해석본이 그대로 보이던 문제 — 해석기 판(PARSE_VER)이 다르면 자동으로 다시 받는다 / v1.89.3 주간업무에서 «1.» 과 «가.» 가 같은 줄로 뭉개지던 문제 — 제 번호를 단 줄엔 목록 점을 안 붙인다 / v1.89.2 업무관리에서 «완료» 단추가 상태처럼 보이던 문제 — 모든 줄에 상태 배지(시작 전·진행 중) 표시, 단추는 «…로» 어미 외곽선으로 / v1.89.1 업무관리 2단 사이 칸막이를 끌어 너비 조절(시트처럼)·두 번 누르면 처음대로·너비 기억 / v1.89.0 업무관리 2단 — 오른쪽에 내가 쓰는 「내 할 일」(이 PC 저장·노션 무관). 완료는 접히고 복원·일괄삭제 가능 / v1.88.2 업무관리 탭을 눌러도 딴 탭으로 튕기던 문제(main VIEWS 에 task 누락) + 넓게 보기 차림표에도 업무관리 추가 / v1.88.1 v1.88.0 이 아예 안 켜지던 문제 — 새 파일 notion.js 가 빌드 목록에 빠졌었다(두 갈래 다 추가) / v1.88.0 업무관리 탭 신규(노션 PROJECTS·TASKS 연동 — 진호알리미 전용, 시간표와 주간업무 사이). 오늘·이번주/프로젝트별/마감없음 3갈래·완료·오늘로·진행중·추가 / v1.87.0 바뀐 수업(보강·교체)이 null-null 로 나오던 문제 — 컴시간이 «>11302» 같은 문자열로 주는 것을 못 읽었다. 파싱 보강 + 바뀐 칸 노란 테두리 표시 / v1.86.0 컴시간 자동 갱신(켤 때 1회 + 6시간마다) + 컴시간 탭 ⟳ 새로고침 버튼 / v1.85.0 숨은 창 로그인·캐시 메모리 전용(?widgetworker=1 — 격리로 손상되는 IndexedDB 회피, 로그인 몇 초 만에 풀리던 문제 뿌리 해결) + 켤 때 손상 창고·재기동 예약작업 찌꺼기 청소 / v1.84.0 구글 클라이언트를 파이어베이스와 같은 프로젝트 것으로 교체(audience 불일치 해소) + 판올림 재기동 wscript 숨김 실행(검은 콘솔 창 제거)
+// 파일명: main.js | @version 1.92.0
+// 수정요약: v1.92.0 틱틱(TickTick) 연동 — 업무관리 오른쪽 단에서 «내 할 일»과 갈아 끼움. 핸드폰과 서로 반영 / v1.91.0 테마 둘 추가 — 한옥(한지 바탕·나무빛)·다크UI(짙은 남색·파랑). 대비를 재서 흐린 색은 짙게 조정 / v1.90.1 내 할 일 체크박스·✕ 와 업무관리 완료로·오늘로 단추가 눌러도 안 먹던 문제 — 단추 배선 목록에 새 종류가 빠져 있었다 / v1.90.0 학급 시간표에도 바뀐 수업 반영 — 컴시간이 변경분을 교사 시간표에만 줘서 학급 쪽은 옛 시간표였다. 교사 쪽 변경을 학급 칸에 옮겨 붙인다(빠짐·들어옴·맞바꿈) / v1.89.5 주간업무 가로 들여쓰기를 번호 단계로 통일 — 원문 앞 공백이 줄마다 달라 «2.» 와 그 아래 «가.» 가 같은 자리에 놓이던 문제 / v1.89.4 주간업무 해석기를 고쳐도 저장해 둔 옛 해석본이 그대로 보이던 문제 — 해석기 판(PARSE_VER)이 다르면 자동으로 다시 받는다 / v1.89.3 주간업무에서 «1.» 과 «가.» 가 같은 줄로 뭉개지던 문제 — 제 번호를 단 줄엔 목록 점을 안 붙인다 / v1.89.2 업무관리에서 «완료» 단추가 상태처럼 보이던 문제 — 모든 줄에 상태 배지(시작 전·진행 중) 표시, 단추는 «…로» 어미 외곽선으로 / v1.89.1 업무관리 2단 사이 칸막이를 끌어 너비 조절(시트처럼)·두 번 누르면 처음대로·너비 기억 / v1.89.0 업무관리 2단 — 오른쪽에 내가 쓰는 「내 할 일」(이 PC 저장·노션 무관). 완료는 접히고 복원·일괄삭제 가능 / v1.88.2 업무관리 탭을 눌러도 딴 탭으로 튕기던 문제(main VIEWS 에 task 누락) + 넓게 보기 차림표에도 업무관리 추가 / v1.88.1 v1.88.0 이 아예 안 켜지던 문제 — 새 파일 notion.js 가 빌드 목록에 빠졌었다(두 갈래 다 추가) / v1.88.0 업무관리 탭 신규(노션 PROJECTS·TASKS 연동 — 진호알리미 전용, 시간표와 주간업무 사이). 오늘·이번주/프로젝트별/마감없음 3갈래·완료·오늘로·진행중·추가 / v1.87.0 바뀐 수업(보강·교체)이 null-null 로 나오던 문제 — 컴시간이 «>11302» 같은 문자열로 주는 것을 못 읽었다. 파싱 보강 + 바뀐 칸 노란 테두리 표시 / v1.86.0 컴시간 자동 갱신(켤 때 1회 + 6시간마다) + 컴시간 탭 ⟳ 새로고침 버튼 / v1.85.0 숨은 창 로그인·캐시 메모리 전용(?widgetworker=1 — 격리로 손상되는 IndexedDB 회피, 로그인 몇 초 만에 풀리던 문제 뿌리 해결) + 켤 때 손상 창고·재기동 예약작업 찌꺼기 청소 / v1.84.0 구글 클라이언트를 파이어베이스와 같은 프로젝트 것으로 교체(audience 불일치 해소) + 판올림 재기동 wscript 숨김 실행(검은 콘솔 창 제거)
 // 진호알리미 / 혜원 데스크 — 바탕화면에 항상 떠 있는 작은 카드 (한 벌의 코드에서 두 갈래로 빌드한다)
 // 수정요약: v1.83.0 겹침 방지 두 번째 잠금(포트) — V3 그림자 격리가 파일 잠금을 무력화해도 두 벌이 못 겹치게. 늦게 뜬 쪽이 살아남고, 안 물러나는 좀비는 강제로 내린다
 //
@@ -20,6 +20,7 @@ const fs = require('fs');
 const aiusage = require('./aiusage.js');
 const recordsmain = require('./recordsmain.js');
 const notion = require('./notion.js');
+const ticktick = require('./ticktick.js');
 const roster = require('./roster.js');
 const gradeplan = require('./gradeplan.js');
 const weather = require('./weather.js');
@@ -481,6 +482,57 @@ function stampKST() {
     + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()) + ':' + z(d.getSeconds());
 }
 
+/* ── 틱틱 ───────────────────────────────────────────────────
+   핸드폰과 함께 쓰는 할 일. «내 할 일»(이 PC 저장)과 따로 둔다 —
+   틱틱 연결이 풀려도 이 PC 메모는 멀쩡해야 하기 때문이다. */
+let tickData = null;   // { projects:[…], tasks:[…], at, error }
+let tickAuthing = false;
+function getTickKey() { const s = loadState().tick || {}; return String(s.token || '').trim(); }
+function getTickApp() {
+  const s = loadState().tick || {};
+  return { id: String(s.clientId || '').trim(), secret: String(s.clientSecret || '').trim() };
+}
+function getTickList() { return String((loadState().tick || {}).listId || ''); }
+function saveTick(patch) {
+  saveState({ tick: Object.assign({}, loadState().tick || {}, patch) });
+}
+async function refreshTick(why) {
+  if (!HAS_TT) return;
+  if (!getTickKey()) { tickData = null; sendToWidget(); return; }
+  try {
+    const r = await ticktick.loadAll(getTickKey());
+    tickData = { projects: r.projects, tasks: r.tasks, at: r.at, error: '' };
+    debugLog(`틱틱 받기 완료 — 목록 ${r.projects.length} · 할 일 ${r.tasks.length}`
+      + (why ? ` (${why})` : ''));
+  } catch (e) {
+    const msg = (e && e.message) || String(e);
+    tickData = { projects: (tickData && tickData.projects) || [],
+      tasks: (tickData && tickData.tasks) || [], at: (tickData && tickData.at) || '', error: msg };
+    debugLog('틱틱 받기 실패 — ' + msg);
+  }
+  sendToWidget();
+}
+/* 처음 한 번 — 브라우저에서 틱틱 로그인·허용을 받는다 */
+async function tickConnect() {
+  const app0 = getTickApp();
+  if (!app0.id || !app0.secret) return { ok: false, error: '틱틱 앱 아이디·비밀을 먼저 넣어 주세요' };
+  if (tickAuthing) return { ok: false, error: '이미 로그인을 기다리는 중입니다' };
+  tickAuthing = true;
+  try {
+    const state = crypto.randomBytes(8).toString('hex');
+    const code = await ticktick.waitForCode(state,
+      () => openInBrowser(ticktick.authUrl(app0.id, state)), debugLog);
+    const t = await ticktick.exchange(app0.id, app0.secret, code);
+    saveTick({ token: t.token, at: stampKST() });
+    debugLog('틱틱 연결 완료');
+    await refreshTick('연결 직후');
+    return { ok: true, at: stampKST() };
+  } catch (e) {
+    debugLog('틱틱 연결 실패 — ' + ((e && e.message) || e));
+    return { ok: false, error: (e && e.message) || String(e) };
+  } finally { tickAuthing = false; }
+}
+
 /* ── 전광판 ────────────────────────────────────────────────
    같은 학교 선생님끼리 한 줄씩 주고받는다.
    ★ 이 앱에서 «바깥에 쓰는» 것은 이것뿐이다. 그래서 두 겹으로 막는다.
@@ -913,7 +965,9 @@ function sendToWidget() {
            hasKey: !!getFeedKey(), fav: getFeedFav(), fold: getFeedFold() },   // 런처 목록
     task: HAS_TT ? { show: getTaskShow(), hasKey: !!getNotionKey(), data: taskData,
       todos: getTodos(), todosAt: String(loadState().todosAt || ''),
-      split: getTaskSplit() } : null,
+      split: getTaskSplit(),
+      tick: { on: !!getTickKey(), hasApp: !!(getTickApp().id && getTickApp().secret),
+              listId: getTickList(), data: tickData } } : null,
     update: { state: updateState, version: updateVersion }
   };
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
@@ -1756,6 +1810,43 @@ ipcMain.handle('todo-move', (_e, id, dir) => {
   return { ok: true, at: stampKST() };
 });
 
+/* ── 틱틱 창구 ── */
+ipcMain.handle('tick-connect', () => tickConnect());
+ipcMain.handle('tick-refresh', async () => { await refreshTick('눌러서'); return tickData; });
+ipcMain.handle('tick-add', async (_e, title, ymd) => {
+  try {
+    if (!String(title || '').trim()) return { ok: false, error: '내용을 적어 주세요' };
+    await ticktick.createTask(getTickKey(), getTickList(), title, ymd);
+    debugLog('틱틱 — 새 할 일: ' + String(title).slice(0, 30));
+    await refreshTick('만든 뒤');
+    return { ok: true, at: stampKST() };
+  } catch (e) { return { ok: false, error: (e && e.message) || String(e) }; }
+});
+ipcMain.handle('tick-done', async (_e, pid, tid) => {
+  try {
+    await ticktick.completeTask(getTickKey(), pid, tid);
+    debugLog('틱틱 — 완료 처리');
+    await refreshTick('고친 뒤');
+    return { ok: true, at: stampKST() };
+  } catch (e) { return { ok: false, error: (e && e.message) || String(e) }; }
+});
+ipcMain.handle('tick-due', async (_e, pid, tid, ymd) => {
+  try {
+    await ticktick.setDue(getTickKey(), pid, tid, ymd);
+    debugLog('틱틱 — 마감일 바꿈: ' + (ymd || '(지움)'));
+    await refreshTick('고친 뒤');
+    return { ok: true, at: stampKST() };
+  } catch (e) { return { ok: false, error: (e && e.message) || String(e) }; }
+});
+ipcMain.handle('tick-test', async () => {
+  try {
+    const r = await ticktick.test(getTickKey());
+    return { ok: true, msg: '연결됐습니다 — 목록 ' + r.projects + '개 (' + r.names.join(', ') + ')' };
+  } catch (e) { return { ok: false, error: (e && e.message) || String(e) }; }
+});
+/* 되돌림 주소 — 설정 화면에서 그대로 베껴 넣게 보여 준다 */
+ipcMain.handle('tick-redirect', () => ticktick.redirectUri());
+
 /* 설정의 «지금 확인» — 열쇠와 연결이 맞는지 그 자리에서 알려 준다 */
 ipcMain.handle('task-test', async (_e, key) => {
   try {
@@ -2081,10 +2172,15 @@ ipcMain.handle('get-settings', () => ({
     usage: { show: getUsageShow(), on: getUsageOn(), style: getUsageStyle(),
              data: aiusage.snapshot() },
     sys: { show: getSysShow(), data: sysData },
-    // 업무관리(노션) — 열쇠 자체는 안 보낸다. «넣었는가» 와 읽어 둔 자료만.
+    // 업무관리(노션)·틱틱 — 열쇠 자체는 안 보낸다. «넣었는가» 와 읽어 둔 자료만.
+    tick: HAS_TT ? { on: !!getTickKey(), hasApp: !!(getTickApp().id && getTickApp().secret),
+      listId: getTickList(), data: tickData, redirect: ticktick.redirectUri(),
+      at: String((loadState().tick || {}).at || '') } : null,
     task: HAS_TT ? { show: getTaskShow(), hasKey: !!getNotionKey(), data: taskData,
       todos: getTodos(), todosAt: String(loadState().todosAt || ''),
-      split: getTaskSplit() } : null,
+      split: getTaskSplit(),
+      tick: { on: !!getTickKey(), hasApp: !!(getTickApp().id && getTickApp().secret),
+              listId: getTickList(), data: tickData } } : null,
     wx: { show: getWxShow(), spot: getWxSpot(), data: wxData },
     grade: { on: getGradeOn(), sheets: getGradeSheets() },
     rec: recordsmain.recState(),
@@ -2155,6 +2251,25 @@ ipcMain.on('set-ui', (_e, v) => {
     refreshTasks('표 바뀜');
   }
   if (v.taskShow !== undefined) { saveState({ taskShow: !!v.taskShow }); sendToWidget(); }
+  /* 틱틱 — 앱 아이디·비밀은 저장만 하고 화면으로 되돌리지 않는다 */
+  if (v.tickApp !== undefined) {
+    const a = v.tickApp || {};
+    saveTick({ clientId: String(a.clientId || '').trim().slice(0, 120),
+      clientSecret: String(a.clientSecret || '').trim().slice(0, 120) });
+    debugLog('틱틱 — 앱 정보 저장');
+    sendToWidget();
+  }
+  if (v.tickList !== undefined) {
+    saveTick({ listId: String(v.tickList || '') });
+    debugLog('틱틱 — 담을 목록 바꿈');
+    sendToWidget();
+  }
+  if (v.tickOff) {                      // 연결 끊기
+    saveTick({ token: '' });
+    tickData = null;
+    debugLog('틱틱 — 연결 끊음');
+    sendToWidget();
+  }
   /* 칸막이 너비 — 자주 바뀌므로 화면을 다시 그리지는 않는다(끌던 중에 깜빡이면 안 된다) */
   if (v.taskSplit !== undefined) {
     const n = Number(v.taskSplit);
@@ -3187,6 +3302,8 @@ if (!gotLock) {
     if (HAS_TT) {
       scheduleTask('task', '업무관리', 12 * 1000, () => refreshTasks('켤 때'));
       setInterval(() => refreshTasks('30분 주기'), 30 * 60 * 1000);
+      scheduleTask('tick', '틱틱', 18 * 1000, () => refreshTick('켤 때'));
+      setInterval(() => refreshTick('30분 주기'), 30 * 60 * 1000);
     }
 
     checkForUpdates();

@@ -528,6 +528,50 @@
   </div>
 </section>
 
+<section id="secTick">
+  <h2>틱틱 (TickTick)</h2>
+  <div class="hint" style="margin-top:0">
+    핸드폰 틱틱의 할 일을 위젯에서 보고, 여기서 만든 것도 틱틱에 올라갑니다.
+    <b>진호알리미에만</b> 있는 기능입니다.
+  </div>
+  <div class="row" style="margin-top:10px">
+    <label class="lb">되돌림 주소</label>
+    <input type="text" id="tkRedir" readonly>
+    <button id="tkCopy">복사</button>
+  </div>
+  <div class="hint" style="margin-top:2px">틱틱 앱을 만들 때 이 주소를 <b>그대로</b> 넣습니다.</div>
+  <div class="row">
+    <label class="lb">앱 아이디</label>
+    <input type="text" id="tkId" placeholder="Client ID" autocomplete="off">
+  </div>
+  <div class="row">
+    <label class="lb">앱 비밀</label>
+    <input type="password" id="tkSecret" placeholder="Client Secret" autocomplete="off">
+    <button id="tkAppSave">저장</button>
+  </div>
+  <div class="row">
+    <label class="lb">연결</label>
+    <span id="tkState" class="hint" style="margin:0;flex:1"></span>
+    <button id="tkGo">틱틱 연결하기</button>
+    <button id="tkOff">연결 끊기</button>
+  </div>
+  <div class="hint" id="tkMsg" style="margin-top:2px"></div>
+  <div class="row">
+    <label class="lb">담을 목록</label>
+    <div class="chips" id="tkListRow"></div>
+  </div>
+  <div class="hint">
+    <b>처음 한 번만 준비하면 됩니다.</b><br>
+    ① <b>developer.ticktick.com/manage</b> 에서 <b>New App</b> → 이름은 아무거나<br>
+    ② <b>Redirect URI</b> 에 위 <b>되돌림 주소</b>를 그대로 붙여넣습니다
+    <span style="color:#b23223">(한 글자만 달라도 연결이 안 됩니다)</span><br>
+    ③ 나온 <b>Client ID·Secret</b> 을 위에 넣고 <b>저장</b> → <b>틱틱 연결하기</b><br>
+    ④ 브라우저에서 틱틱 로그인·허용을 하면 끝입니다<br><br>
+    <b>담을 목록</b> — 위젯에서 만든 할 일이 들어갈 곳입니다. 안 고르면 기본 목록에 들어갑니다.
+    틱틱의 <b>받은 편지함</b>은 공개 API 로 못 읽는 일이 있어, 목록을 하나 정해 두시는 편이 확실합니다.
+  </div>
+</section>
+
 <section>
   <h2>학생기록</h2>
   <div class="hint" style="margin-top:0">
@@ -930,6 +974,7 @@ function __paint() {
   paintLks();
   paintFd();
   paintNt();
+  paintTk();
   paintTs();
   paintRec();
 }
@@ -967,6 +1012,79 @@ function paintNt() {
     };
   });
 }
+/* ── 틱틱 ────────────────────────────────────────────────── */
+function paintTk() {
+  var sec = $('secTick');
+  if (!sec) return;
+  var jinho = UI.flavor === 'jinho';
+  sec.style.display = jinho ? '' : 'none';   // 혜원이지에는 없는 기능
+  if (!jinho) return;
+  var t = UI.tick || {};
+  $('tkRedir').value = t.redirect || '';
+  $('tkId').value = '';
+  $('tkId').placeholder = t.hasApp ? '넣어 두었습니다 (바꾸려면 새로 적으세요)' : 'Client ID';
+  $('tkSecret').value = '';
+  $('tkSecret').placeholder = t.hasApp ? '넣어 두었습니다' : 'Client Secret';
+  var d = t.data;
+  $('tkState').innerHTML = t.on
+    ? '<span class="ok">연결됨</span>' + (t.at ? ' · ' + esc(t.at) : '')
+      + (d ? ' · 할 일 ' + ((d.tasks || []).length) + '개' : '')
+    : (t.hasApp ? '아직 연결 안 됨 — «틱틱 연결하기» 를 누르세요' : '앱 아이디·비밀을 먼저 넣으세요');
+  if (d && d.error) $('tkMsg').innerHTML = '<span class="warn">' + esc(d.error) + '</span>';
+  // 담을 목록 — 드롭다운 대신 단추 팔레트
+  var row = $('tkListRow');
+  var ps = (d && d.projects) || [];
+  row.innerHTML = ps.length
+    ? '<button class="chip' + (!t.listId ? ' on' : '') + '" data-tkl="">기본</button>'
+      + ps.map(function (p) {
+          return '<button class="chip' + (t.listId === p.id ? ' on' : '') + '" data-tkl="'
+            + esc(p.id) + '">' + esc(p.name) + '</button>';
+        }).join('')
+    : '<span class="hint" style="margin:0">연결하면 목록이 나옵니다</span>';
+  row.querySelectorAll('[data-tkl]').forEach(function (b) {
+    b.onclick = function () {
+      if (!UI.tick) UI.tick = {};
+      UI.tick.listId = b.dataset.tkl;
+      widgetAPI.setUi({ tickList: b.dataset.tkl });
+      paintTk();
+    };
+  });
+}
+$('tkCopy').onclick = function () {
+  var el = $('tkRedir');
+  el.select();
+  try { document.execCommand('copy'); $('tkMsg').innerHTML = '<span class="ok">주소를 복사했습니다</span>'; }
+  catch (e) { $('tkMsg').textContent = '복사하지 못했습니다 — 직접 긁어서 복사하세요'; }
+};
+$('tkAppSave').onclick = function () {
+  var id = $('tkId').value.trim(), sc = $('tkSecret').value.trim();
+  if (!id || !sc) { $('tkMsg').innerHTML = '<span class="warn">아이디와 비밀을 모두 넣어 주세요</span>'; return; }
+  widgetAPI.setUi({ tickApp: { clientId: id, clientSecret: sc } });
+  if (!UI.tick) UI.tick = {};
+  UI.tick.hasApp = true;
+  $('tkMsg').innerHTML = '<span class="ok">✅ 저장됨 · ' + stampNow() + '</span> — 이제 «틱틱 연결하기»';
+  paintTk();
+};
+$('tkGo').onclick = function () {
+  $('tkMsg').textContent = '브라우저에서 틱틱 로그인·허용을 해 주세요…';
+  widgetAPI.tickConnect().then(function (r) {
+    $('tkMsg').innerHTML = (r && r.ok)
+      ? '<span class="ok">✅ 연결됐습니다 · ' + esc(r.at || stampNow()) + '</span>'
+      : '<span class="warn">' + esc((r && r.error) || '연결하지 못했습니다') + '</span>';
+    load();   // 목록을 받아와 «담을 목록» 단추를 채운다
+  }).catch(function (e) {
+    $('tkMsg').innerHTML = '<span class="warn">' + esc(String((e && e.message) || e)) + '</span>';
+  });
+};
+$('tkOff').onclick = function () {
+  if (!confirm('틱틱 연결을 끊을까요?\n\n틱틱의 할 일은 그대로 남습니다.')) return;
+  widgetAPI.setUi({ tickOff: true });
+  if (!UI.tick) UI.tick = {};
+  UI.tick.on = false; UI.tick.data = null;
+  $('tkMsg').textContent = '연결을 끊었습니다';
+  paintTk();
+};
+
 $('ntSave').onclick = function () {
   var v = $('ntKey').value.trim();
   widgetAPI.setUi({ notionKey: v });
