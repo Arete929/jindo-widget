@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.102.0
+/* 파일명: views.js | @version 1.102.1
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -1050,7 +1050,7 @@ function viewTick() {
       + '<span class="tdtx">' + esc(t.title)
       + '<i class="tdmeta">'
       + '<button class="tdb tdtag date' + (late ? ' late' : '') + '" data-tkpop="' + esc(t.id + '|due') + '" title="날짜 바꾸기">📅 ' + esc(t.due ? tkWhenLabel(t.due) : '날짜') + '</button>'
-      + '<button class="tdb tdtag pri p' + pri + '" data-tkpop="' + esc(t.id + '|pri') + '" title="우선순위 바꾸기">!' + (pri ? TK_PRI[pri] : '·') + '</button>'
+      + '<button class="tdb tdtag pri p' + pri + '" data-tkpop="' + esc(t.id + '|pri') + '" title="우선순위 바꾸기 — 눌러서 높음·중간·낮음">!' + (pri ? TK_PRI[pri] : '없음') + '</button>'
       + '<button class="tdb tdtag list" data-tkpop="' + esc(t.id + '|list') + '" title="보관함 옮기기">^' + esc(t.project || '') + '</button>'
       + '</i>'
       + tkPopHtml(t.id, 'due', t.due || '') + tkPopHtml(t.id, 'pri', pri) + tkPopHtml(t.id, 'list', t.projectId)

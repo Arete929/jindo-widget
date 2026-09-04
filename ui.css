@@ -831,12 +831,12 @@
   /* 틱틱 — 칩(날짜·우선순위·보관함)·팔레트·입력칸 미리보기 */
   .tdnew { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 2px 0 6px; }
   .tdprev { font-size: calc(9.5px * var(--wf)); color: var(--dim); }
-  .tdtag { border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; margin-right: 3px;
+  .tdb.tdtag { border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; margin-right: 3px;
     font-size: calc(8.5px * var(--wf)); line-height: 1.7; color: var(--fg2); background: var(--card2); }
-  .tdtag.late { color: var(--holfg); border-color: var(--holfg); font-weight: 800; }
-  .tdtag.p5 { background: color-mix(in srgb, #c0392b 30%, var(--bg)); color: var(--fg); font-weight: 800; }
-  .tdtag.p3 { background: color-mix(in srgb, #c9a227 34%, var(--bg)); color: var(--fg); font-weight: 800; }
-  .tdtag.p1 { background: color-mix(in srgb, #1e6fbf 30%, var(--bg)); color: var(--fg); font-weight: 700; }
+  .tdb.tdtag.late { color: var(--holfg); border-color: var(--holfg); font-weight: 800; }
+  .tdb.tdtag.p5 { background: color-mix(in srgb, #c0392b 30%, var(--bg)); color: var(--fg); font-weight: 800; }
+  .tdb.tdtag.p3 { background: color-mix(in srgb, #c9a227 34%, var(--bg)); color: var(--fg); font-weight: 800; }
+  .tdb.tdtag.p1 { background: color-mix(in srgb, #1e6fbf 30%, var(--bg)); color: var(--fg); font-weight: 700; }
   .tdpop { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; margin: 3px 0 4px; padding: 5px;
     border: 1px solid var(--line); border-radius: 8px; background: var(--card); width: 100%; box-sizing: border-box; }
   .tdpop .wkb { font-size: calc(9px * var(--wf)); padding: 1px 7px; }
@@ -850,7 +850,8 @@
   .tddt { font-weight: 800; color: var(--dim); font-size: calc(10px * var(--wf)); }
   .tddclr { font-size: calc(9px * var(--wf)); color: var(--dim); }
   .tddclr.warn { color: var(--holfg); font-weight: 800; }
-  .tdmeta .tdb { padding: 0; }
+  .tdmeta .tdb.tdtag { padding: 0 6px; margin-top: 2px; cursor: pointer; }
+  .tdb.tdtag:hover { filter: brightness(0.93); border-color: var(--accent); }
   .tdrow { display: flex; align-items: flex-start; gap: 5px; padding: calc(4px * var(--wf)) 0;
            border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
   .tdrow:last-child { border-bottom: 0; }
