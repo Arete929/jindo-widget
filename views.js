@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.103.0
+/* 파일명: views.js | @version 1.104.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -810,6 +810,26 @@ function tickDoneHtml(d) {
 }
 var tickSort = (function () { try { return localStorage.getItem('tickSort') || 'due'; } catch (e) { return 'due'; } })();
 var TK_PRI = { 5: '높음', 3: '중간', 1: '낮음', 0: '없음' };
+var tickPopIdx = 0, tickPopQ = '';           // 팔레트에서 키보드로 고른 자리 · «!높» 처럼 이어 친 글자
+/* 팔레트 선택지 — 이어 친 글자(q)로 거른다. 화면 그리기와 Enter 고르기가 같은 목록을 본다 */
+function tkPopOptions(kind, q) {
+  var opts;
+  if (kind === 'pri') {
+    opts = [5, 3, 1, 0].map(function (n) { return { v: String(n), label: TK_PRI[n],
+      keys: [TK_PRI[n], { 5: 'high h 3', 3: 'medium mid m 2', 1: 'low l 1', 0: 'none n 0' }[n]] }; });
+  } else if (kind === 'list') {
+    opts = ((TICK && TICK.data && TICK.data.projects) || []).map(function (p) { return { v: p.id, label: p.name, keys: [p.name] }; });
+  } else {
+    opts = [{ v: tkPlus(0), label: '오늘' }, { v: tkPlus(1), label: '내일' }, { v: tkPlus(2), label: '모레' }]
+      .concat([1, 2, 3, 4, 5, 6, 0].map(function (d) { return { v: tkWeekday(d, 0), label: '이번주 ' + TK_DOW[d] }; }))
+      .concat([1, 2, 3, 4, 5, 6, 0].map(function (d) { return { v: tkWeekday(d, 1), label: '다음주 ' + TK_DOW[d] }; }))
+      .concat([{ v: '', label: '지우기' }]);
+    opts.forEach(function (o) { o.keys = [o.label]; });
+  }
+  var s = String(q || '').toLowerCase();
+  if (!s) return opts;
+  return opts.filter(function (o) { return o.keys.join(' ').toLowerCase().indexOf(s) >= 0; });
+}
 var TK_DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
 function tkPlus(n) { var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + n); return tkYmd(d); }
@@ -901,7 +921,16 @@ function tkPopHtml(id, kind, cur) {
     return '<button class="wkb' + (on ? ' now' : '') + '" data-tkset="' + esc(key + '|' + v) + '">' + esc(label) + '</button>';
   };
   var h = '<div class="tdpop">';
-  if (kind === 'pri') {
+  if (id === 'new' && kind !== 'due') {
+    /* ★ 키보드로 고르는 자리 — «!높» 처럼 이어 친 글자로 걸러지고, ↑↓ 로 옮기고 Enter 로 고른다 */
+    var opts = tkPopOptions(kind, tickPopQ);
+    if (!opts.length) return h + '<span class="tdpl">맞는 것이 없습니다</span></div>';
+    if (tickPopIdx >= opts.length) tickPopIdx = 0;
+    h += opts.map(function (o, i) {
+      return '<button class="wkb' + (String(cur) === o.v ? ' now' : '') + (i === tickPopIdx ? ' hl' : '')
+        + '" data-tkset="' + esc(key + '|' + o.v) + '">' + esc(o.label) + '</button>';
+    }).join('') + '<span class="tdpl">↑↓ Enter</span>';
+  } else if (kind === 'pri') {
     h += [5, 3, 1, 0].map(function (v) { return chip(v, TK_PRI[v], Number(cur) === v); }).join('');
   } else if (kind === 'list') {
     var ps = (TICK && TICK.data && TICK.data.projects) || [];
@@ -931,7 +960,8 @@ function tickApply(key) {
        «!» «^» 를 쳐서 연 것이면 그 글자를 지워 준다(틱틱과 같다). */
     var root = appEl();
     var box = root && root.querySelector('#tkNewT');
-    if (box && /(^|\s)[!^]$/.test(box.value)) { box.value = box.value.replace(/(^|\s)[!^]$/, '$1'); tickDraft = box.value; }
+    if (box && /(^|\s)[!^][^\s!^]*$/.test(box.value)) { box.value = box.value.replace(/(^|\s)[!^][^\s!^]*$/, '$1'); tickDraft = box.value; }
+    tickPopQ = ''; tickPopIdx = 0;
     if (root) tickPaintNew(root); else render();
     if (box) { box.focus(); try { box.setSelectionRange(box.value.length, box.value.length); } catch (e) { /* 그만 */ } }
     return;
@@ -5596,13 +5626,31 @@ function wireViews(app) {
       tickDraft = tkIn.value;
       /* ★ 틱틱처럼 — «!» 를 치면 우선순위, «^» 를 치면 보관함 단추가 그 자리에서 뜬다.
          맨 앞이거나 빈칸 뒤에서만(주소 속 ! 같은 것엔 안 뜬다). 고르면 그 글자는 지워지고 칩이 된다. */
-      var m = tkIn.value.match(/(^|\s)([!^])$/);
-      if (m) tickPop = m[2] === '!' ? 'new|pri' : 'new|list';
-      else if (tickPop.indexOf('new|') === 0 && !/[!^]/.test(tkIn.value)) tickPop = '';
+      var m = tkIn.value.match(/(^|\s)([!^])([^\s!^]*)$/);
+      if (m) {
+        var want = m[2] === '!' ? 'new|pri' : 'new|list';
+        if (tickPop !== want) tickPopIdx = 0;
+        tickPop = want; tickPopQ = m[3] || '';
+      } else if (tickPop.indexOf('new|') === 0 && !/[!^]/.test(tkIn.value)) { tickPop = ''; tickPopQ = ''; }
       tickPaintNew(app);
     });
     tkIn.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && tickPop) { e.preventDefault(); tickPop = ''; tickPaintNew(app); }
+      if (tickPop.indexOf('new|') !== 0) return;
+      var kind = tickPop.split('|')[1];
+      if (e.key === 'Escape') { e.preventDefault(); tickPop = ''; tickPopQ = ''; tickPaintNew(app); return; }
+      var opts = kind === 'due' ? tkPopOptions('due', '') : tkPopOptions(kind, tickPopQ);
+      if (!opts.length) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        tickPopIdx = (tickPopIdx + (e.key === 'ArrowDown' ? 1 : opts.length - 1)) % opts.length;
+        tickPaintNew(app); return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        /* ★ 팔레트가 열려 있을 때의 Enter 는 «고르기» — 뒤에 붙은 «담기» 배선까지 막는다 */
+        e.preventDefault(); e.stopImmediatePropagation();
+        var pick = opts[Math.min(tickPopIdx, opts.length - 1)];
+        tickApply(tickPop + '|' + pick.v);
+      }
     });
   }
   app.querySelectorAll('.tkcal').forEach(function (el) {

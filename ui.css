@@ -840,6 +840,7 @@
   .tdpop { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; margin: 3px 0 4px; padding: 5px;
     border: 1px solid var(--line); border-radius: 8px; background: var(--card); width: 100%; box-sizing: border-box; }
   .tdpop .wkb { font-size: calc(9px * var(--wf)); padding: 1px 7px; }
+  .tdpop .wkb.hl { outline: 2px solid var(--accent); outline-offset: 1px; }
   .tdpl { font-size: calc(8.5px * var(--wf)); color: var(--dim); margin: 0 2px 0 4px; }
   .tkcal { font-family: inherit; font-size: calc(9px * var(--wf)); border: 1px solid var(--line);
     border-radius: 6px; background: var(--card2); color: var(--fg); padding: 1px 4px; }
