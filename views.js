@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.102.1
+/* 파일명: views.js | @version 1.103.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -927,7 +927,14 @@ function tickApply(key) {
     if (kind === 'pri') tickNew.pri = Number(val) || 0;
     else if (kind === 'list') tickNew.pid = val;
     else tickNew.due = val;                              // '' 면 «날짜 없음» 으로 고른 것
-    render(); return;
+    /* 입력칸은 건드리지 않고 칩 줄만 — 커서가 입력칸에 그대로 남는다.
+       «!» «^» 를 쳐서 연 것이면 그 글자를 지워 준다(틱틱과 같다). */
+    var root = appEl();
+    var box = root && root.querySelector('#tkNewT');
+    if (box && /(^|\s)[!^]$/.test(box.value)) { box.value = box.value.replace(/(^|\s)[!^]$/, '$1'); tickDraft = box.value; }
+    if (root) tickPaintNew(root); else render();
+    if (box) { box.focus(); try { box.setSelectionRange(box.value.length, box.value.length); } catch (e) { /* 그만 */ } }
+    return;
   }
   var t = (((TICK && TICK.data && TICK.data.tasks) || []).filter(function (x) { return x.id === id; }))[0];
   if (!t) { render(); return; }
@@ -997,7 +1004,7 @@ function viewTick() {
   if (d && d.error) h += '<div class="tkerr">' + esc(d.error) + '</div>';
 
   h += '<div class="tdadd">'
-    + '<input class="bdi" id="tkNewT" placeholder="틱틱에 적고 엔터 — !높음 ^보관함 내일" maxlength="300" value="' + esc(tickDraft) + '">'
+    + '<input class="bdi" id="tkNewT" placeholder="틱틱에 적고 엔터 — ! 우선순위 · ^ 보관함 · 내일/이번주 금" maxlength="300" value="' + esc(tickDraft) + '">'
     + '<button class="bdgo" id="tkAddT"' + (tickBusy ? ' disabled' : '') + '>＋</button></div>'
     + '<div class="tdnew" id="tdNew">' + tickNewHtml() + '</div>';
 
@@ -5047,6 +5054,8 @@ function wireViews(app) {
     + ' #tkAddT')
     .forEach(function (b) {
     b.addEventListener('click', function () {
+      // 틱틱 칩 줄 안의 단추는 통(#tdNew)의 위임 배선이 맡는다 — 여기서도 받으면 두 번 먹는다
+      if (b.closest && b.closest('#tdNew')) return;
       if (b.dataset.off !== undefined) { WK = null; loadWeek(Number(b.dataset.off)); return; }
       if (b.dataset.doc) { workDoc = b.dataset.doc; workOff = 0; render(); return; }
       if (b.dataset.woff !== undefined) { workOff = Number(b.dataset.woff); followHit = false; render(); return; }
@@ -5570,7 +5579,32 @@ function wireViews(app) {
   // 틱틱 — 엔터로 바로 추가 (한글 조합 중 엔터는 무시)
   /* 틱틱 입력칸 — 치는 대로 단축키 미리보기(입력칸은 안 건드린다) · 달력 고르기 */
   var tkIn = app.querySelector('#tkNewT');
-  if (tkIn) tkIn.addEventListener('input', function () { tickDraft = tkIn.value; tickPaintNew(app); });
+  /* ★ 칩 줄(#tdNew)은 «!» 를 칠 때마다 innerHTML 로 갈아 끼운다 — 새로 생긴 단추엔
+     아래 «단추마다 붙는» 배선이 없다. 그래서 통에 한 번 붙여 두고 위임으로 받는다.
+     (2026-09-04: 이것 때문에 팔레트가 뜨긴 하는데 골라도 아무 일이 없었다) */
+  var tdNewBox = app.querySelector('#tdNew');
+  if (tdNewBox) tdNewBox.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-tkset],[data-tkpop]') : null;
+    if (!b || !tdNewBox.contains(b)) return;
+    if (b.dataset.tkset !== undefined) { tickApply(b.dataset.tkset); return; }
+    tickDel = '';
+    tickPop = (tickPop === b.dataset.tkpop) ? '' : b.dataset.tkpop;
+    tickPaintNew(app);
+  });
+  if (tkIn) {
+    tkIn.addEventListener('input', function () {
+      tickDraft = tkIn.value;
+      /* ★ 틱틱처럼 — «!» 를 치면 우선순위, «^» 를 치면 보관함 단추가 그 자리에서 뜬다.
+         맨 앞이거나 빈칸 뒤에서만(주소 속 ! 같은 것엔 안 뜬다). 고르면 그 글자는 지워지고 칩이 된다. */
+      var m = tkIn.value.match(/(^|\s)([!^])$/);
+      if (m) tickPop = m[2] === '!' ? 'new|pri' : 'new|list';
+      else if (tickPop.indexOf('new|') === 0 && !/[!^]/.test(tkIn.value)) tickPop = '';
+      tickPaintNew(app);
+    });
+    tkIn.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && tickPop) { e.preventDefault(); tickPop = ''; tickPaintNew(app); }
+    });
+  }
   app.querySelectorAll('.tkcal').forEach(function (el) {
     el.addEventListener('change', function () { tickApply(el.dataset.tkcal + '|' + (el.value || '')); });
   });
