@@ -257,17 +257,28 @@
   .usg { display: flex; gap: 6px; margin-bottom: 8px; -webkit-app-region: drag; }
   .usg button { -webkit-app-region: no-drag; }
   .usg .box {
-    flex: 1; min-width: 0; background: var(--card); border-radius: 8px; padding: 6px 8px;
+    flex: 1; min-width: 0; background: var(--card); border-radius: 8px;
+    padding: calc(6px * var(--uf, 1)) calc(8px * var(--uf, 1));
   }
-  .usg .nm { display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; }
-  .usg .ubill { margin-top: 3px; font-size: calc(8.5px * var(--wf)); color: var(--dim); font-weight: 600; }
-  .usg .nm i { font-style: normal; color: var(--dim); font-weight: 700; font-size: 9px;
+  .usg .nm { display: flex; align-items: center; gap: 4px; font-weight: 800;
+             font-size: calc(10px * var(--uf, 1)); }
+  /* ── AI 사용량 크기(--uf) ── 원형은 viewBox 라 svg 만 키우면 글자까지 함께 커진다 ── */
+  .usg .ring svg { width: calc(42px * var(--uf, 1)); height: calc(42px * var(--uf, 1)); }
+  .usg .ring .lb { font-size: calc(8.5px * var(--uf, 1)); }
+  .usg .ring .rs { font-size: calc(8px * var(--uf, 1)); }
+  .usg .rings { gap: calc(8px * var(--uf, 1)); }
+  .usg .brow .bt { font-size: calc(9.5px * var(--uf, 1)); }
+  .usg .brow .bt b { font-size: calc(10.5px * var(--uf, 1)); }
+  .usg .brow .bk { height: calc(5px * var(--uf, 1)); }
+  .usg .brow .rs { font-size: calc(8px * var(--uf, 1)); }
+  .usg .ubill { margin-top: 3px; font-size: calc(8.5px * var(--uf, 1)); color: var(--dim); font-weight: 600; }
+  .usg .nm i { font-style: normal; color: var(--dim); font-weight: 700; font-size: calc(9px * var(--uf, 1));
                margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .usg .lg {
     -webkit-app-region: no-drag;
     display: block; width: 100%; margin-top: 5px; padding: 4px 0; border: 0; border-radius: 6px;
     background: var(--accent); color: var(--on); font-family: inherit;
-    font-size: 10px; font-weight: 800; cursor: pointer;
+    font-size: calc(10px * var(--uf, 1)); font-weight: 800; cursor: pointer;
   }
   /* ── 도구: 명렬표 ── */
   .rsh { display: flex; align-items: baseline; gap: 8px; padding: 8px 2px 5px;

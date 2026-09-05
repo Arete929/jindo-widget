@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.104.0
+/* 파일명: views.js | @version 1.105.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -12,7 +12,7 @@ var TODAYEV = '';
 /* 업데이트 내역 — 새 버전으로 켜졌을 때 한 번 보여주고, 닫으면 다시 안 뜬다 */
 var NOTES = null;
 /* 탭마다 글자 크기 배율을 따로 둔다. 메인이 저장해 두므로 껐다 켜도 그대로다. */
-var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1, task: 1 };
+var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1, task: 1, usage: 1 };
 function fsKey() {
   /* ★ 시간표 탭(오늘·이번주·진도표)은 셋이 한 탭이라 크기도 하나로 묶는다 — 열쇠 tt.
      전에는 이 셋이 아예 빠져 있어서 «--wf» 가 늘 1 이었다. 그래서 이미
@@ -1909,7 +1909,7 @@ function usgBox(key, u) {
         + '</div>';
     }).join('') + '</div>';
     // 원형은 좁아서 초기화 시각을 아래에 한 줄로 따로 적는다
-    if (ms.length) h += '<div class="rs" style="font-size:8.5px;color:var(--dim);margin-top:3px">'
+    if (ms.length) h += '<div class="rs" style="font-size:calc(8.5px * var(--uf,1));color:var(--dim);margin-top:3px">'
       + esc(atOf(ms[0].m)) + ' 초기화</div>';
   } else {
     h += '<div class="bars">' + ms.map(function (x) {
@@ -1951,6 +1951,8 @@ function usageBar() {
     + keys.map(function (k) { return usgBox(k, USG[k] || {}); }).join('')
     + sys
     + '<div class="usgset">'
+    /* ★ 사용량은 어느 탭에서나 머리에 있으므로 탭별 --wf 와 따로 «--uf» 로 키운다 */
+    + fontBtns('usage')
     + '<button class="wkb' + (USGSTYLE === 'ring' ? ' now' : '') + '" data-usgstyle="ring" title="원형">◍</button>'
     + '<button class="wkb' + (USGSTYLE === 'bar' ? ' now' : '') + '" data-usgstyle="bar" title="막대">▤</button>'
     + '<button class="wkb" id="usgGet" title="지금 다시 읽기">⟳</button>'
@@ -4560,6 +4562,7 @@ function render() {
      줄은 남긴다. 이것이 없으면 긴 화면에서 «더 있는지 끝인지» 를 다시 알 수 없다. */
   html += '<div class="foot"><span class="fby">@JINHOKIM</span></div>';
   app.style.setProperty('--wf', String(FS[fsKey()] || 1));
+  app.style.setProperty('--uf', String(FS.usage || 1));   // 사용량 상자 크기(탭과 따로)
   app.innerHTML = html;
   // 두 번째 고정 줄이 머리 «바로 아래»에 붙도록, 머리 높이를 재서 알려 준다.
   // 머리는 업데이트 띠·사용량 띠가 있고 없고에 따라 높이가 달라져서 고정값을 쓸 수 없다.
