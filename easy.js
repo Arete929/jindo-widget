@@ -1,4 +1,4 @@
-/* 파일명: easy.js | @version 1.105.1
+/* 파일명: easy.js | @version 1.105.2
    혜원이지 — 넓은 창의 뼈대. 왼쪽 메뉴 · 대시보드 · 화면 갈아 끼우기.
 
    ★ 자료를 읽어 오고 화면 조각을 만드는 일은 views.js 가 그대로 한다.
@@ -517,8 +517,8 @@ render = function () {
     // 머리는 «제목 + 그 화면의 조작 줄» 이다. 조작 줄(.top2)은 그린 뒤에 옮겨 넣는다.
     h = '<div class="ehead"><div class="ph"><h1>' + esc(m.t) + '</h1>'
       + '<span class="sub">' + esc(m.d) + '</span></div></div>'
-      /* 읽는 화면(주간업무·학사일정)만 글줄 상한을 두고, 나머지는 창을 다 쓴다 */
-      + '<div id="view"' + (['work', 'cal'].indexOf(VIEW) >= 0 ? ' class="rd"' : '') + '>'
+      /* 모든 화면이 창을 다 쓴다 — 상한 없음 */
+      + '<div id="view">'
       + (VIEW === 'task' ? viewTasks()
         : VIEW === 'work' ? viewWork()
         : VIEW === 'cal' ? viewAcademic()
