@@ -227,18 +227,33 @@
     transition: transform .15s, opacity .15s;
   }
   .gear:hover { opacity: 1; transform: rotate(45deg); }
-  /* ── 제목 줄의 작은 AI 사용량(진호알리미) ── 큰 상자를 접어 두어도 숫자는 늘 보인다 ── */
-  .umini {
+  /* ── 제목 줄로 옮긴 AI 사용량 타일(진호알리미) ── */
+  .utiles {
     -webkit-app-region: no-drag;
-    margin-left: 10px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
-    background: none; border: 0; padding: 0; cursor: pointer; font-family: inherit;
+    margin-left: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    min-width: 0;
   }
-  .umi { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px;
-         border-radius: 999px; background: var(--card); border: 1px solid var(--line);
-         font-size: 10px; font-weight: 700; color: var(--dim); white-space: nowrap; }
-  .umi b { font-size: 11px; font-weight: 800; color: var(--fg); }
-  .umi.off { color: var(--holfg); }
-  .umini:hover .umi { border-color: var(--accent); }
+  .ut { display: inline-flex; align-items: center; gap: 7px;
+        background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+        padding: 3px calc(9px * var(--uf, 1)); }
+  .utn { font-style: normal; font-size: calc(10px * var(--uf, 1)); font-weight: 800;
+         color: var(--fg2); white-space: nowrap; }
+  .utm { display: inline-flex; flex-direction: column; align-items: center; gap: 0; }
+  .utm svg { display: block; width: calc(34px * var(--uf, 1)); height: calc(34px * var(--uf, 1)); }
+  .utm i { font-style: normal; font-size: calc(8px * var(--uf, 1)); color: var(--dim);
+           white-space: nowrap; margin-top: -1px; }
+  .ut text { font-size: 12px; font-weight: 800; fill: var(--fg); }
+  /* 막대꼴 — 원형 대신 가로 막대로 */
+  .utb { display: inline-flex; align-items: center; gap: 4px; }
+  .utb i { font-style: normal; font-size: calc(8.5px * var(--uf, 1)); color: var(--dim); white-space: nowrap; }
+  .utb .bk { width: calc(46px * var(--uf, 1)); height: calc(5px * var(--uf, 1));
+             border-radius: 3px; background: var(--card2); overflow: hidden; }
+  .utb .bk i { display: block; height: 100%; border-radius: 3px; }
+  .utb b { font-size: calc(9.5px * var(--uf, 1)); font-weight: 800; color: var(--fg); }
+  .utset { display: inline-flex; align-items: center; gap: 3px; }
+  .utset .wkb, .utset .wfs .wkb { font-size: 9.5px; padding: 1px 6px; }
+  .ut .lg.mini { width: auto; margin: 0; padding: 2px 8px; font-size: 9.5px; }
+
   /* 톱니 옆 사용량 스위치 */
   .ubtn {
     -webkit-app-region: no-drag;

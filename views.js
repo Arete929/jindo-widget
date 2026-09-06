@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.106.0
+/* 파일명: views.js | @version 1.106.1
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -1947,41 +1947,68 @@ function usgBillLine(b) {
   if (b.credit) parts.push('크레딧 ' + b.credit);
   return '<div class="ubill" title="결제 정보는 하루 한 번 읽습니다">' + esc(parts.join(' · ')) + '</div>';
 }
-/* 제목 줄에 놓는 «작은 사용량» — 진호알리미만. 눌러도 큰 상자가 펼쳐진다.
-   ★ 여기는 창을 끄는 자리(-webkit-app-region: drag)라 단추에 no-drag 를 줘야 눌린다. */
-function usgMini() {
-  if (FLAVOR !== 'jinho') return '';
+/* ── 제목 줄로 옮긴 AI 사용량 타일(진호알리미) ─────────────────
+   ★ 아래에 따로 띠를 두면 두 줄을 통째로 먹는다. 이름 옆 빈 자리가 늘 비어 있으니
+     타일을 그리로 옮겼다(2026-09-04). 제목 줄 높이(로고 68px) 안에 들어가도록
+     원형은 작게, 초기화 시각 같은 잔글씨는 «올리면 뜨는 풀이» 로 돌렸다. */
+function usgTile(name, ms, tip) {
+  if (!ms.length) return '';
+  var h = '<span class="ut"' + (tip ? ' title="' + esc(tip) + '"' : '') + '>'
+    + '<i class="utn">' + esc(name) + '</i>';
+  h += ms.map(function (x) {
+    var p = pctOf(x.m !== undefined ? x.m : x);
+    var lb = x.lb, sub = x.m ? atOf(x.m) + ' 초기화' : (x.sub || '');
+    if (USGSTYLE === 'bar') {
+      return '<span class="utb" title="' + esc(lb + (sub ? ' · ' + sub : '')) + '">'
+        + '<i>' + esc(lb) + '</i>'
+        + '<span class="bk"><i style="width:' + Math.min(100, p) + '%;background:' + usgFill(p) + '"></i></span>'
+        + '<b>' + p + '</b></span>';
+    }
+    return '<span class="utm" title="' + esc(lb + (sub ? ' · ' + sub : '')) + '">'
+      + ringSvg(p) + '<i>' + esc(lb) + '</i></span>';
+  }).join('');
+  return h + '</span>';
+}
+function usgInline() {
+  if (FLAVOR !== 'jinho' || !USGPANEL) return '';
   var keys = (USG ? Object.keys(USG) : []).filter(function (k) { return USGON.indexOf(k) >= 0; });
-  if (!keys.length) return '';
-  var pills = [];
+  var out = [];
   keys.forEach(function (k) {
     var u = USG[k] || {};
-    if (u.needsLogin) { pills.push('<span class="umi off">' + esc(u.label || k) + ' 로그인</span>'); return; }
-    var ms = usgMetrics(u);
-    if (!ms.length) return;
-    pills.push('<span class="umi">' + esc(u.label || k)
-      + ms.map(function (x) {
-          var p = pctOf(x.m);
-          /* 색은 큰 상자와 같은 규칙(usgTone) — 많이 쓸수록 붉어진다 */
-          return '<b style="color:' + usgTone(p).b + '" title="' + esc(x.lb + ' · ' + atOf(x.m) + ' 초기화')
-            + '">' + p + '</b>';
-        }).join('')
-      + '</span>');
+    if (u.needsLogin) {
+      out.push('<span class="ut"><i class="utn">' + esc(u.label || k) + '</i>'
+        + '<button class="lg mini" data-usglogin="' + k + '">로그인</button></span>');
+      return;
+    }
+    var b = u.billing, tip = '';
+    if (b && (b.date || b.credit)) {
+      tip = [b.plan, b.date ? (b.kind === '취소' ? '구독 ' + b.date + ' 취소 예정' : '다음 결제 ' + b.date) : '',
+        b.credit ? '크레딧 ' + b.credit : ''].filter(Boolean).join(' · ');
+    }
+    out.push(usgTile(u.label || k, usgMetrics(u), tip));
   });
-  if (!pills.length) return '';
-  return '<button class="umini" id="usgMini" title="눌러서 사용량 크게 보기">' + pills.join('') + '</button>';
+  out.push(usgTile('내 PC', sysMetrics(), ''));
+  out = out.filter(Boolean);
+  if (!out.length) return '';
+  return '<span class="utiles">' + out.join('')
+    + '<span class="utset">' + fontBtns('usage')
+    + '<button class="wkb" data-usgstyle="' + (USGSTYLE === 'ring' ? 'bar' : 'ring') + '" title="'
+    + (USGSTYLE === 'ring' ? '막대로' : '원형으로') + '">' + (USGSTYLE === 'ring' ? '▤' : '◍') + '</button>'
+    + '<button class="wkb" id="usgGet" title="지금 다시 읽기">⟳</button>'
+    + '</span></span>';
 }
+
 /* 톱니 옆 스위치 — 큰 상자를 펼치고 접는다 */
 function usgToggleBtn() {
   if (FLAVOR !== 'jinho') return '';
   var keys = (USG ? Object.keys(USG) : []).filter(function (k) { return USGON.indexOf(k) >= 0; });
   if (!keys.length) return '';
   return '<button class="ubtn' + (USGPANEL ? ' on' : '') + '" id="usgPanel" title="AI 사용량 '
-    + (USGPANEL ? '접기' : '펼치기') + '">◍</button>';
+    + (USGPANEL ? '감추기' : '보이기') + '">◍</button>';
 }
 function usageBar() {
-  /* 진호알리미는 평소에 접어 둔다 — 제목 줄의 작은 숫자로 보고, 스위치로 펼친다 */
-  if (FLAVOR === 'jinho' && !USGPANEL) return '';
+  /* ★ 진호알리미는 타일이 제목 줄로 갔다 — 여기 띠는 그리지 않는다(혜원이지는 그대로) */
+  if (FLAVOR === 'jinho') return '';
   var keys = (USG ? Object.keys(USG) : []).filter(function (k) { return USGON.indexOf(k) >= 0; });
   var sys = sysBox();
   if (!keys.length && !sys) return '';
@@ -4458,8 +4485,8 @@ function titleBar() {
     + 'title="두 번 누르면 넓게 보기">'
     + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
     + '<span class="ttl">' + brandHtml() + '</span>'
-    /* ★ 이름 옆 빈 자리에 작은 사용량 — 큰 상자를 접어 두어도 숫자는 늘 보인다 */
-    + usgMini()
+    /* ★ 사용량 타일은 이름 옆 빈 자리에 — 아래 띠를 없애 두 줄을 돌려받는다 */
+    + usgInline()
     + '<button class="gear" title="설정" onclick="widgetAPI.openSettings()"></button>'
     + usgToggleBtn()
     + '<button class="tclose" title="닫기 — 끄는 것이 아니라 감춥니다.'
@@ -5746,7 +5773,7 @@ function wireViews(app) {
       .catch(function () { render(); });
   });
   /* AI 사용량 큰 상자 펼치기·접기 — 톱니 옆 스위치와 제목 줄의 작은 숫자 */
-  ['#usgPanel', '#usgMini'].forEach(function (sel) {
+  ['#usgPanel'].forEach(function (sel) {
     var b = app.querySelector(sel);
     if (!b) return;
     b.addEventListener('click', function () {
