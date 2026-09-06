@@ -1,10 +1,11 @@
-/* 파일명: views.js | @version 1.106.2
+/* 파일명: views.js | @version 1.107.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜원이지는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
 
 var STATE = null, VIEW = 'today', SCALE = 1, VER = '', UPD = null, LASTTT = 'today', THEME = '';
+var DASHVER = null;   // 얹은 수업진도 웹앱의 판 { ver, at }
 var FONT = 'pretendard';
 /* 오늘 일정 — 수업진도 앱이 주는 note 가 없을 때 학사일정에서 뽑아 온 것.
    혜원 데스크에는 수업진도 자료가 아예 없으므로 이것이 유일한 길이다. */
@@ -4605,6 +4606,11 @@ function render() {
           return '<button class="chip' + (VIEW === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">'
             + p[1] + '</button>';
         }).join('')
+      /* 얹은 수업진도 웹앱의 판 — 진호알리미 제 판(제목 줄)과 헷갈리지 않게 이름을 붙인다 */
+      + (DASHVER && DASHVER.ver
+        ? '<span class="ttver" title="진호 시간표(수업진도 웹앱) 판'
+          + (DASHVER.at ? ' · 배포 ' + esc(DASHVER.at) : '') + '">진호 시간표 v' + esc(DASHVER.ver) + '</span>'
+        : '')
       + fontBtns('tt') + '</div>';
   }
 
@@ -4927,6 +4933,7 @@ widgetAPI.onData(function (p) {
   if (VIEW === 'week') { VIEW = 'today'; widgetAPI.setView('today'); }
   VER = p.version || '';
   UPD = p.update || null;
+  if (p.dashVer !== undefined) DASHVER = p.dashVer;
   LINKS = p.links || [];
   if (p.linksAt !== undefined) LINKSAT = p.linksAt || '';
   TERMSTART = p.termStart || '';
