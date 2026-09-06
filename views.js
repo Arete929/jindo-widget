@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.106.1
+/* 파일명: views.js | @version 1.106.2
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -5658,7 +5658,9 @@ function wireViews(app) {
       var move = function (ev) {
         var r = wrap.getBoundingClientRect();
         var w = Math.round(r.right - ev.clientX - 3);       // 칸막이 두께만큼 뺀다
-        w = Math.max(180, Math.min(620, Math.min(w, Math.round(r.width - 240))));
+        /* ★ 620px 상한이 박혀 있어 창이 아무리 넓어도 그 뒤로는 안 늘어났다(2026-09-04).
+           이제는 창을 따라간다 — 왼쪽 목록에 280px 만 남기면 어디까지든 끌린다. */
+        w = Math.max(180, Math.min(w, Math.round(r.width - 280)));
         TKSPLIT = w;
         wrap.style.setProperty('--tkr', w + 'px');
       };
