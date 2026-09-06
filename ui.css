@@ -227,6 +227,27 @@
     transition: transform .15s, opacity .15s;
   }
   .gear:hover { opacity: 1; transform: rotate(45deg); }
+  /* ── 제목 줄의 작은 AI 사용량(진호알리미) ── 큰 상자를 접어 두어도 숫자는 늘 보인다 ── */
+  .umini {
+    -webkit-app-region: no-drag;
+    margin-left: 10px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+    background: none; border: 0; padding: 0; cursor: pointer; font-family: inherit;
+  }
+  .umi { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px;
+         border-radius: 999px; background: var(--card); border: 1px solid var(--line);
+         font-size: 10px; font-weight: 700; color: var(--dim); white-space: nowrap; }
+  .umi b { font-size: 11px; font-weight: 800; color: var(--fg); }
+  .umi.off { color: var(--holfg); }
+  .umini:hover .umi { border-color: var(--accent); }
+  /* 톱니 옆 사용량 스위치 */
+  .ubtn {
+    -webkit-app-region: no-drag;
+    width: 19px; height: 19px; padding: 0; border: 0; border-radius: 6px;
+    background: none; color: var(--dim); font-size: 13px; line-height: 1; cursor: pointer;
+    opacity: .85; font-family: inherit;
+  }
+  .ubtn:hover { opacity: 1; color: var(--fg); }
+  .ubtn.on { background: var(--accent); color: var(--on); opacity: 1; }
   /* 밝은 바탕(기본 고스트·칠화이트)에는 검정 톱니 */
   :root .gear,
   :root[data-theme="chillwhite"] .gear,

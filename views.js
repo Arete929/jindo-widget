@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.105.2
+/* 파일명: views.js | @version 1.106.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -1816,6 +1816,10 @@ var TASKS = [];
    위젯이 보이지 않는 창으로 직접 읽어 온다. 원형과 막대 중에 고를 수 있고,
    «얼마나 남았는지»와 «언제 초기화되는지»를 함께 보여준다. */
 var USG = null, USGSHOW = true, USGSTYLE = 'ring';
+/* ★ 사용량 큰 상자를 펼쳐 두었나 — 진호알리미만 쓴다.
+   자리를 많이 차지해 평소엔 접어 두고, 제목 줄의 작은 숫자로 본다.
+   접고 편 것은 main 이 기억한다(껐다 켜도 그대로). */
+var USGPANEL = false;
 var USGON = [];   // 켜 놓은 AI 들
 
 function pctOf(m) { return m && m.pct !== null && m.pct !== undefined ? Number(m.pct) : null; }
@@ -1943,7 +1947,41 @@ function usgBillLine(b) {
   if (b.credit) parts.push('크레딧 ' + b.credit);
   return '<div class="ubill" title="결제 정보는 하루 한 번 읽습니다">' + esc(parts.join(' · ')) + '</div>';
 }
+/* 제목 줄에 놓는 «작은 사용량» — 진호알리미만. 눌러도 큰 상자가 펼쳐진다.
+   ★ 여기는 창을 끄는 자리(-webkit-app-region: drag)라 단추에 no-drag 를 줘야 눌린다. */
+function usgMini() {
+  if (FLAVOR !== 'jinho') return '';
+  var keys = (USG ? Object.keys(USG) : []).filter(function (k) { return USGON.indexOf(k) >= 0; });
+  if (!keys.length) return '';
+  var pills = [];
+  keys.forEach(function (k) {
+    var u = USG[k] || {};
+    if (u.needsLogin) { pills.push('<span class="umi off">' + esc(u.label || k) + ' 로그인</span>'); return; }
+    var ms = usgMetrics(u);
+    if (!ms.length) return;
+    pills.push('<span class="umi">' + esc(u.label || k)
+      + ms.map(function (x) {
+          var p = pctOf(x.m);
+          /* 색은 큰 상자와 같은 규칙(usgTone) — 많이 쓸수록 붉어진다 */
+          return '<b style="color:' + usgTone(p).b + '" title="' + esc(x.lb + ' · ' + atOf(x.m) + ' 초기화')
+            + '">' + p + '</b>';
+        }).join('')
+      + '</span>');
+  });
+  if (!pills.length) return '';
+  return '<button class="umini" id="usgMini" title="눌러서 사용량 크게 보기">' + pills.join('') + '</button>';
+}
+/* 톱니 옆 스위치 — 큰 상자를 펼치고 접는다 */
+function usgToggleBtn() {
+  if (FLAVOR !== 'jinho') return '';
+  var keys = (USG ? Object.keys(USG) : []).filter(function (k) { return USGON.indexOf(k) >= 0; });
+  if (!keys.length) return '';
+  return '<button class="ubtn' + (USGPANEL ? ' on' : '') + '" id="usgPanel" title="AI 사용량 '
+    + (USGPANEL ? '접기' : '펼치기') + '">◍</button>';
+}
 function usageBar() {
+  /* 진호알리미는 평소에 접어 둔다 — 제목 줄의 작은 숫자로 보고, 스위치로 펼친다 */
+  if (FLAVOR === 'jinho' && !USGPANEL) return '';
   var keys = (USG ? Object.keys(USG) : []).filter(function (k) { return USGON.indexOf(k) >= 0; });
   var sys = sysBox();
   if (!keys.length && !sys) return '';
@@ -4420,7 +4458,10 @@ function titleBar() {
     + 'title="두 번 누르면 넓게 보기">'
     + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
     + '<span class="ttl">' + brandHtml() + '</span>'
+    /* ★ 이름 옆 빈 자리에 작은 사용량 — 큰 상자를 접어 두어도 숫자는 늘 보인다 */
+    + usgMini()
     + '<button class="gear" title="설정" onclick="widgetAPI.openSettings()"></button>'
+    + usgToggleBtn()
     + '<button class="tclose" title="닫기 — 끄는 것이 아니라 감춥니다.'
     + ' 트레이 아이콘을 누르면 다시 나옵니다" onclick="widgetAPI.hideWidget()">✕</button>'
     + (VER ? '<span class="tver">v' + esc(VER) + '</span>' : '')
@@ -4935,6 +4976,7 @@ widgetAPI.onData(function (p) {
     USGSHOW = p.usage.show !== false;
     USGON = p.usage.on || [];
     USGSTYLE = p.usage.style === 'bar' ? 'bar' : 'ring';
+    if (p.usage.panel !== undefined) USGPANEL = !!p.usage.panel;
   }
   if (p.theme !== undefined && p.theme !== THEME) {
     THEME = p.theme || '';
@@ -5702,6 +5744,16 @@ function wireViews(app) {
     wxg.classList.add('busy');
     widgetAPI.wxRefresh().then(function (d) { if (d) WX = d; render(); })
       .catch(function () { render(); });
+  });
+  /* AI 사용량 큰 상자 펼치기·접기 — 톱니 옆 스위치와 제목 줄의 작은 숫자 */
+  ['#usgPanel', '#usgMini'].forEach(function (sel) {
+    var b = app.querySelector(sel);
+    if (!b) return;
+    b.addEventListener('click', function () {
+      USGPANEL = !USGPANEL;
+      widgetAPI.setUi({ usagePanel: USGPANEL });
+      render();
+    });
   });
   var ug = app.querySelector('#usgGet');
   if (ug) ug.addEventListener('click', function () { widgetAPI.usageRefresh(); });
