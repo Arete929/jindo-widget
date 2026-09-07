@@ -254,6 +254,12 @@
   .utm i { font-style: normal; font-size: calc(8px * var(--uf, 1)); color: var(--dim);
            white-space: nowrap; margin-top: -1px; }
   .ut text { font-size: 12px; font-weight: 800; fill: var(--fg); }
+  /* [1.110.0] 초기화 시각 — 올려야 보이던 것을 글자로 내놓는다 */
+  .utm em.uts, .utb em.uts { font-style: normal; font-size: calc(7.5px * var(--uf, 1));
+                             color: var(--dim); white-space: nowrap; line-height: 1.15; }
+  .utm em.uts { margin-top: 0; }
+  .utb em.uts { margin-left: 2px; }
+  .ring .rs2 { font-size: calc(8.5px * var(--wf, 1)); color: var(--dim); white-space: nowrap; margin-top: 1px; }
   /* 막대꼴 — 원형 대신 가로 막대로 */
   .utb { display: inline-flex; align-items: center; gap: 4px; }
   .utb i { font-style: normal; font-size: calc(8.5px * var(--uf, 1)); color: var(--dim); white-space: nowrap; }

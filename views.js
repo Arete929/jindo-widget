@@ -1845,6 +1845,18 @@ function atOf(m) {
   }
   return String(m.reset || '');
 }
+/* [1.110.0] 타일에 넣을 «짧은 초기화 시각» — 자리가 좁아 오늘이면 시:분만 적는다.
+   오늘 15:20 / 내일 15시 / 9/12 15시. 시각을 못 읽었으면 빈 문자열. */
+function atShort(m) {
+  if (!m || !m.resetAt) return '';
+  var d = new Date(m.resetAt), n = new Date();
+  var day = function (x) { return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(); };
+  var diff = Math.round((day(d) - day(n)) / 86400000);
+  var hm = d.getHours() + ':' + pad(d.getMinutes());
+  if (diff <= 0) return hm;
+  if (diff === 1) return '내일 ' + (d.getMinutes() ? hm : d.getHours() + '시');
+  return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + (d.getMinutes() ? hm : d.getHours() + '시');
+}
 /* «1시간 39분 남음 · 8/25(화) 오후 3:20 초기화» */
 function resetTxt(m) {
   var bits = [];
@@ -1911,11 +1923,9 @@ function usgBox(key, u) {
       return '<div class="ring">' + ringSvg(pctOf(x.m))
         + '<div class="lb">' + esc(x.lb) + '</div>'
         + '<div class="rs" title="' + esc(atOf(x.m)) + '">' + (leftOf(x.m) ? esc(leftOf(x.m)) + ' 남음' : esc(atOf(x.m))) + '</div>'
+        + (atShort(x.m) ? '<div class="rs2">' + esc(atShort(x.m)) + ' 초기화</div>' : '')   // [1.110.0]
         + '</div>';
     }).join('') + '</div>';
-    // 원형은 좁아서 초기화 시각을 아래에 한 줄로 따로 적는다
-    if (ms.length) h += '<div class="rs" style="font-size:calc(8.5px * var(--uf,1));color:var(--dim);margin-top:3px">'
-      + esc(atOf(ms[0].m)) + ' 초기화</div>';
   } else {
     h += '<div class="bars">' + ms.map(function (x) {
       var p = pctOf(x.m);
@@ -1959,14 +1969,17 @@ function usgTile(name, ms, tip) {
   h += ms.map(function (x) {
     var p = pctOf(x.m !== undefined ? x.m : x);
     var lb = x.lb, sub = x.m ? atOf(x.m) + ' 초기화' : (x.sub || '');
+    var rs = x.m ? atShort(x.m) : '';               // [1.110.0] 초기화 시각을 글자로
     if (USGSTYLE === 'bar') {
       return '<span class="utb" title="' + esc(lb + (sub ? ' · ' + sub : '')) + '">'
         + '<i>' + esc(lb) + '</i>'
         + '<span class="bk"><i style="width:' + Math.min(100, p) + '%;background:' + usgFill(p) + '"></i></span>'
-        + '<b>' + p + '</b></span>';
+        + '<b>' + p + '</b>'
+        + (rs ? '<em class="uts">' + esc(rs) + '</em>' : '') + '</span>';
     }
     return '<span class="utm" title="' + esc(lb + (sub ? ' · ' + sub : '')) + '">'
-      + ringSvg(p) + '<i>' + esc(lb) + '</i></span>';
+      + ringSvg(p) + '<i>' + esc(lb) + '</i>'
+      + (rs ? '<em class="uts">' + esc(rs) + '</em>' : '') + '</span>';
   }).join('');
   return h + '</span>';
 }
