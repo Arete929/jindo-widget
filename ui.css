@@ -1294,6 +1294,19 @@
   .rta:focus { border-color: var(--accent); }
   .rbyte { font-size: 10px; font-weight: 700; color: var(--dim); font-variant-numeric: tabular-nums; }
   .rsaved { font-size: 10.5px; font-weight: 700; color: var(--now); margin-top: -2px; }
+  /* 학생기록 — 기록 내용과 행발 누가기록을 갈라 보여 준다 */
+  .rlab { font-size: calc(10px * var(--wf)); font-weight: 800; color: var(--fg2);
+          margin: 7px 0 3px; display: flex; align-items: center; gap: 6px; }
+  .rlab.hb { color: var(--accent); }
+  .rlab .wkb.tiny { font-size: calc(9px * var(--wf)); padding: 1px 7px; }
+  .rlab .rbyte { margin-left: auto; }
+  .rta.hid { display: none; }
+  .rta.hbta { background: color-mix(in srgb, var(--accent) 7%, var(--card)); }
+  .rachb { font-style: normal; font-size: calc(8.5px * var(--wf)); font-weight: 800;
+           color: var(--accent); border: 1px solid var(--accent); border-radius: 999px;
+           padding: 0 5px; margin-left: 4px; }
+  .rhint { font-size: calc(9.5px * var(--wf)); color: var(--dim); margin: 4px 0 2px; }
+  .rshow .tdpl { margin-right: 2px; }
   /* 시트 바로가기 — 표준 시트 그림 */
   .shbtn {
     -webkit-app-region: no-drag;

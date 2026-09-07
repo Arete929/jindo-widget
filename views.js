@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.108.1
+/* 파일명: views.js | @version 1.109.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -2036,6 +2036,10 @@ var RECDATA = null;      // 시트에서 읽어 온 기록·카테고리
 var recBusy = false, recErr = '';
 var recMode = 'write';   // write | stat | cats
 var recCls = '', recSid = '', recCat = '';
+var recClsSet = false;            // 꾸러미에서 마지막 학급을 한 번 받아 왔나
+var recShow = 'both';             // 보기 — both | text | note
+var recNote = '';                 // 새로 쓰는 칸의 누가기록
+var recHint = '';                 // 변환하며 바꾼 자리 요약
 var recDraft = '', recSavedAt = '', recOpen = 0;   // recOpen = 펼쳐 놓은 기록의 줄 번호
 var recWhen = '';        // 기록한 날 (yyyy.MM.dd). 비어 있으면 «오늘»
 var statStu = [], statCat = [], statMon = [], statCls = [];   // 통계에서 고른 것들 (여러 개)
@@ -2212,6 +2216,118 @@ function recSetup() {
   return h + '</div>';
 }
 
+/* ── 행발 누가기록 변환 ────────────────────────────────────
+   관찰해 적어 둔 «기록 내용» 을 생활기록부 누가기록 문장으로 다듬는다.
+   ★ 노션 «10. 생활기록부 작성 기준 - 행동특성»(2026-01-26) 을 그대로 옮겨 담았다.
+     현재형(~함) · 관찰 가능한 사실 · 대명사 금지 · 평가/추측 금지 ·
+     외래어와 군더더기 순화 · 띄어쓰기 교정.
+   ★ 사람이 손보라고 만든 «초안» 이다 — 바꾼 자리는 아래에 세어서 알려 준다. */
+var HB_RULES = [
+  /* 1) 대명사·주어 지우기 (관찰자 시점) */
+  { p: /(^|[\s.])(?:이\s*)?학생(?:은|는|이|가|의|을|를)\s*/g, r: '$1', why: '대명사' },
+  { p: /(^|[\s.])본인(?:은|는|이|가|의|을|를)\s*/g, r: '$1', why: '대명사' },
+  { p: /(^|[\s.])담임(?:교사)?(?:은|는|이|가)\s*/g, r: '$1', why: '대명사' },
+
+  /* 2) 과거형 → 현재형 (~함) */
+  { p: /하였음/g, r: '함', why: '현재형' },
+  { p: /하였고/g, r: '하고', why: '현재형' },
+  { p: /하였으며/g, r: '하며', why: '현재형' },
+  { p: /하였다/g, r: '함', why: '현재형' },
+  { p: /했음/g, r: '함', why: '현재형' },
+  { p: /했고/g, r: '하고', why: '현재형' },
+  { p: /했으며/g, r: '하며', why: '현재형' },
+  { p: /되었음/g, r: '됨', why: '현재형' },
+  { p: /되었으며/g, r: '되며', why: '현재형' },
+  { p: /되었고/g, r: '되고', why: '현재형' },
+  { p: /보였음/g, r: '보임', why: '현재형' },
+  { p: /주었음/g, r: '줌', why: '현재형' },
+  { p: /였음/g, r: '임', why: '현재형' },
+
+  /* 3) 평가·추측·내면 서술 (쓸 수 없는 말) */
+  { p: /[^\s]*\s*이해함을\s*드러냄/g, r: '설명함', why: '평가금지' },
+  { p: /이해하고\s*있음/g, r: '설명함', why: '평가금지' },
+  { p: /이해함/g, r: '설명함', why: '평가금지' },
+  { p: /깨닫고\s*있음/g, r: '정리함', why: '평가금지' },
+  { p: /깨달음/g, r: '정리함', why: '평가금지' },
+  { p: /,?\s*가능성이\s*있음\.?/g, r: '', why: '추측삭제' },
+  { p: /,?\s*성장이\s*기대됨\.?/g, r: '', why: '추측삭제' },
+  { p: /,?\s*이어질\s*전망임\.?/g, r: '', why: '추측삭제' },
+  { p: /조용한\s*카리스마/g, r: '구심점 역할', why: '미사여구' },
+  { p: /밝은\s*웃음/g, r: '긍정적인 태도', why: '미사여구' },
+  { p: /아름다운\s*/g, r: '', why: '미사여구' },
+  { p: /눈부신\s*/g, r: '', why: '미사여구' },
+
+  /* 4) 외래어·한자어 순화 */
+  { p: /피드백/g, r: '조언', why: '순화' },
+  { p: /리더십/g, r: '지도력', why: '순화' },
+  { p: /템포/g, r: '속도', why: '순화' },
+  { p: /파워/g, r: '힘', why: '순화' },
+  { p: /기여함/g, r: '이바지함', why: '순화' },
+  { p: /기여하/g, r: '이바지하', why: '순화' },
+  { p: /다각도로/g, r: '여러모로', why: '순화' },
+  { p: /지체\s*없이/g, r: '바로', why: '순화' },
+  { p: /중시여김/g, r: '중요시함', why: '순화' },
+
+  /* 5) 피동·사동 → 능동 */
+  { p: /발달됨/g, r: '발달함', why: '능동형' },
+  { p: /향상시킴/g, r: '향상함', why: '능동형' },
+  { p: /향상됨/g, r: '향상함', why: '능동형' },
+  { p: /적용\s*시키는/g, r: '적용하는', why: '능동형' },
+  { p: /확장시켜/g, r: '확장해', why: '능동형' },
+
+  /* 6) 띄어쓰기 — 의존명사 «데», 보조 용언 */
+  { p: /([가-힣])는데(?=\s|$|[,.])/g, r: '$1는 데', why: '띄어쓰기' },
+  { p: /만들어냄/g, r: '만들어 냄', why: '띄어쓰기' },
+  { p: /성장해나가는/g, r: '성장해 나가는', why: '띄어쓰기' },
+  { p: /깨달아가는/g, r: '깨달아 가는', why: '띄어쓰기' },
+  { p: /쌓아감/g, r: '쌓아 감', why: '띄어쓰기' },
+
+  /* 7) 합성어 붙여쓰기 */
+  { p: /네\s*컷\s*만화/g, r: '네컷만화', why: '합성어' },
+  { p: /보드\s*게임/g, r: '보드게임', why: '합성어' },
+  { p: /일상\s*생활/g, r: '일상생활', why: '합성어' },
+  { p: /기본\s*자세/g, r: '기본자세', why: '합성어' },
+
+  /* 8) 조사·호응 */
+  { p: /팀원와의/g, r: '팀원과의', why: '조사' },
+  { p: /수업을\s*참여/g, r: '수업에 참여', why: '조사' },
+  { p: /사고를\s*향상/g, r: '사고력을 향상', why: '호응' },
+  { p: /디딤발을\s*디디며/g, r: '디딤발을 내디디며', why: '호응' },
+  { p: /흐름을\s*이끔/g, r: '흐름을 이끎', why: '호응' },
+
+  /* 9) 따옴표·군더더기 */
+  { p: /"([^"]{1,20})"/g, r: '‘$1’', why: '따옴표' },
+  { p: /“([^”]{1,20})”/g, r: '‘$1’', why: '따옴표' },
+  { p: /자신의\s+/g, r: '', why: '군더더기' },
+  { p: /을\s*통해\s*/g, r: '으로 ', why: '군더더기' },
+  { p: /를\s*통해\s*/g, r: '로 ', why: '군더더기' }
+];
+/* 관찰 기록을 누가기록 초안으로. 돌려주는 값: { text, changed:[{why,n}] } */
+function hbConvert(src) {
+  var t = String(src || '').replace(/\r\n?/g, '\n').trim();
+  if (!t) return { text: '', changed: [] };
+  var 센것 = {};
+  HB_RULES.forEach(function (rule) {
+    var before = t;
+    t = t.replace(rule.p, rule.r);
+    if (t !== before) 센것[rule.why] = (센것[rule.why] || 0) + 1;
+  });
+  /* 줄바꿈을 한 문단으로 (누가기록은 한 문단) */
+  t = t.split('\n').map(function (s) { return s.trim(); }).filter(Boolean).join(' ');
+  t = t.replace(/\s{2,}/g, ' ').replace(/\s+([,.])/g, '$1').trim();
+  /* 문장 끝 마침표 — 명사형으로 끝나면 붙인다 */
+  if (t && !/[.!?]$/.test(t)) t += '.';
+  var changed = Object.keys(센것).map(function (k) { return { why: k, n: 센것[k] }; });
+  return { text: t, changed: changed };
+}
+
+/* 지금 화면에 적힌 누가기록 — 저장할 때 함께 보낸다 */
+function 누가값(row) {
+  var app0 = appEl();
+  if (!app0) return row ? '' : (recNote || '');
+  var e = app0.querySelector(row ? '#recNoteEdit' : '#recNoteNew');
+  return e ? String(e.value || '') : (row ? '' : (recNote || ''));
+}
 /* ── 쓰기 ── */
 function recWrite() {
   var classes = recClassList();
@@ -2243,6 +2359,12 @@ function recWrite() {
   var cats = recCats();
   if (!recCat) recCat = cats[0].name;
   h += '<div class="rhead">' + esc(me.id) + ' ' + esc(me.name) + '</div>';
+  /* 보기 — 기록 내용과 누가기록을 함께 볼지, 하나만 볼지 */
+  h += '<div class="wknav rshow"><span class="tdpl">보기</span>'
+    + [['both', '둘 다'], ['text', '기록만'], ['note', '누가기록만']].map(function (s) {
+        return '<button class="wkb' + (recShow === s[0] ? ' now' : '') + '" data-rshow="' + s[0] + '">'
+          + s[1] + '</button>';
+      }).join('') + '</div>';
   h += '<div class="wknav">' + cats.map(function (c) {
     var n = recList(me.id, c.name).length;
     return '<button class="wkb' + (c.name === recCat ? ' now' : '') + '" data-rk="' + esc(c.name) + '">'
@@ -2263,10 +2385,21 @@ function recWrite() {
         + '<span class="racd">' + esc(String(r.at).slice(2, 10)) + '</span>'
         + '<span class="racc">' + esc(r.cat) + '</span>'
         + '<span class="racs1">' + esc(one.slice(0, 60)) + (one.length > 60 ? '…' : '') + '</span>'
+        + (r.note ? '<em class="rachb" title="행발 누가기록이 있습니다">행발</em>' : '')
         + '<em>' + neisBytes(r.text) + 'B</em></button>'
         + (open
           ? '<div class="racb">'
-            + '<textarea class="rta" id="recEdit" data-row="' + r.row + '">' + esc(r.text) + '</textarea>'
+            + (recShow !== 'note'
+              ? '<div class="rlab">기록 내용</div>'
+                + '<textarea class="rta" id="recEdit" data-row="' + r.row + '">' + esc(r.text) + '</textarea>'
+              : '<textarea class="rta hid" id="recEdit" data-row="' + r.row + '">' + esc(r.text) + '</textarea>')
+            + (recShow !== 'text'
+              ? '<div class="rlab hb">행발 누가기록'
+                + '<button class="wkb tiny" data-rhb="' + r.row + '" title="기록 내용을 누가기록 문장으로 다듬습니다">↻ 변환</button>'
+                + '<span class="rbyte">' + neisBytes(r.note || '') + ' Byte · ' + (r.note || '').length + '자</span>'
+                + '</div>'
+                + '<textarea class="rta hbta" id="recNoteEdit" data-row="' + r.row + '" placeholder="↻ 변환을 누르거나 직접 적습니다">' + esc(r.note || '') + '</textarea>'
+              : '<textarea class="rta hid" id="recNoteEdit" data-row="' + r.row + '">' + esc(r.note || '') + '</textarea>')
             + '<div class="wknav">'
             + '<button class="wkb go" data-rup="' + r.row + '">고쳐 저장</button>'
             + '<span class="rbyte">' + neisBytes(r.text) + ' Byte · ' + r.text.length + '자</span>'
@@ -2284,8 +2417,19 @@ function recWrite() {
   // ── 새로 쓰는 칸 (지난 기록은 위에 그대로 남는다)
   h += '<div class="rnew">새로 쓰기</div>';
   h += recDateBar();
-  h += '<textarea class="rta" id="recText" placeholder="' + esc(recCat) + ' 내용을 적어 주세요">'
-    + esc(recDraft || '') + '</textarea>';
+  h += (recShow !== 'note'
+    ? '<div class="rlab">기록 내용</div>'
+      + '<textarea class="rta" id="recText" placeholder="' + esc(recCat) + ' 내용을 적어 주세요">'
+      + esc(recDraft || '') + '</textarea>'
+    : '<textarea class="rta hid" id="recText">' + esc(recDraft || '') + '</textarea>');
+  h += (recShow !== 'text'
+    ? '<div class="rlab hb">행발 누가기록'
+      + '<button class="wkb tiny" data-rhb="" title="기록 내용을 누가기록 문장으로 다듬습니다">↻ 변환</button>'
+      + '<span class="rbyte">' + neisBytes(recNote || '') + ' Byte · ' + (recNote || '').length + '자</span>'
+      + '</div>'
+      + '<textarea class="rta hbta" id="recNoteNew" placeholder="↻ 변환을 누르거나 직접 적습니다">' + esc(recNote || '') + '</textarea>'
+    : '<textarea class="rta hid" id="recNoteNew">' + esc(recNote || '') + '</textarea>');
+  if (recHint) h += '<div class="rhint">' + esc(recHint) + '</div>';
   h += '<div class="wknav"><button class="wkb go" id="recSave">저장</button>'
     + '<span class="rbyte">' + neisBytes(recDraft || '') + ' Byte · ' + (recDraft || '').length + '자</span>'
     + '</div>';
@@ -4976,6 +5120,9 @@ widgetAPI.onData(function (p) {
   if (p.todayEvent !== undefined) TODAYEV = p.todayEvent;
   if (p.notes !== undefined) NOTES = p.notes;
   if (p.rec) {
+    /* 마지막에 고른 학급·보기를 되살린다(처음 한 번만 — 지금 고른 것을 덮지 않게) */
+    if (!recClsSet && p.rec.cls) { recCls = p.rec.cls; recClsSet = true; }
+    if (p.rec.show) recShow = p.rec.show;
     var wasSheet = REC && REC.sheet && REC.sheet.id;
     REC = p.rec;
     // 시트가 바뀌었으면 들고 있던 기록은 버린다
@@ -5279,7 +5426,38 @@ function wireViews(app) {
       if (b.id === 'pwGet') { ALLW = null; loadAllWeeks(); render(); return; }
       // 학생기록
       if (b.dataset.rm) { recMode = b.dataset.rm; render(); return; }
-      if (b.dataset.rc) { recCls = b.dataset.rc; recSid = ''; recDraft = ''; recSavedAt = ''; render(); return; }
+      if (b.dataset.rc) {
+        recCls = b.dataset.rc; recSid = ''; recDraft = ''; recSavedAt = '';
+        widgetAPI.setUi({ recCls: recCls });        // 마지막 학급 기억
+        render(); return;
+      }
+      if (b.dataset.rshow) {                        // 보기 — 둘 다/기록만/누가기록만
+        recShow = b.dataset.rshow;
+        widgetAPI.setUi({ recShow: recShow });
+        render(); return;
+      }
+      if (b.dataset.rhb !== undefined) {            // 행발 누가기록으로 변환
+        var app0 = appEl();
+        var 원문 = '', 넣을곳 = null;
+        if (b.dataset.rhb) {                        // 저장해 둔 기록에서
+          var ta = app0.querySelector('#recEdit');
+          원문 = ta ? ta.value : '';
+          넣을곳 = app0.querySelector('#recNoteEdit');
+        } else {                                    // 새로 쓰는 칸에서
+          var t0 = app0.querySelector('#recText');
+          원문 = t0 ? t0.value : (recDraft || '');
+          recDraft = 원문;
+          넣을곳 = app0.querySelector('#recNoteNew');
+        }
+        var 결과 = hbConvert(원문);
+        if (!결과.text) { recHint = '먼저 기록 내용을 적어 주세요'; render(); return; }
+        recHint = 결과.changed.length
+          ? '다듬음 — ' + 결과.changed.map(function (c) { return c.why + ' ' + c.n; }).join(' · ')
+          : '고칠 곳이 없었습니다 (한 문단으로만 정리)';
+        if (넣을곳) { 넣을곳.value = 결과.text; if (!b.dataset.rhb) recNote = 결과.text; }
+        else if (!b.dataset.rhb) recNote = 결과.text;
+        render(); return;
+      }
       if (b.dataset.rk) { recCat = b.dataset.rk; recDraft = ''; recSavedAt = ''; render(); return; }
       if (b.dataset.rw) {          // 기록한 날 고르기
         var ta0 = app.querySelector('#recText');
@@ -5300,7 +5478,8 @@ function wireViews(app) {
         var te = app.querySelector('#recEdit');
         if (!te) return;
         recBusy = true;
-        widgetAPI.recSave({ student: {}, cat: recCat, text: te.value, row: Number(b.dataset.rup) })
+        widgetAPI.recSave({ student: {}, cat: recCat, text: te.value,
+          row: Number(b.dataset.rup), note: 누가값(1) })
           .then(function (r) {
             recBusy = false; recSavedAt = (r && r.at) || ''; RECDATA = null; recLoad(true);
           })
@@ -5385,7 +5564,7 @@ function wireViews(app) {
         if (!me || !txt.trim()) return;
         recBusy = true;
         // 늘 «새 줄»로 쌓는다 — 지난 기록은 위쪽 아코디언에 그대로 남는다
-        widgetAPI.recSave({ student: me, cat: recCat, text: txt, row: 0, when: recWhen })
+        widgetAPI.recSave({ student: me, cat: recCat, text: txt, row: 0, when: recWhen , note: 누가값() })
           .then(function (r) {
             recBusy = false; recSavedAt = (r && r.at) || ''; recDraft = '';
             recWhen = '';                    // 다음 기록이 엉뚱한 날로 가지 않게 되돌린다

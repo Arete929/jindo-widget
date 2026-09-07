@@ -1,4 +1,4 @@
-// 파일명: records.js | @version 1.2.0
+// 파일명: records.js | @version 1.109.0
 // 학생기록 — 구글 시트를 만들고 읽고 쓴다.
 //
 // 시트 짜임
@@ -19,7 +19,8 @@ const TAB_NOTE = '수업메모';   // 컴시간 시간표로 적는 수업 메�
 const TAB_CAT = '카테고리';
 const TAB_CFG = '설정';
 
-const REC_HEAD = ['학번', '이름', '학년', '반', '번호', '카테고리', '내용', '작성일시', '수정일시'];
+/* ★ J칸 «누가기록» 은 2026-09-08 에 늘렸다 — 옛 시트에는 없으므로 읽을 때 빈칸으로 본다 */
+const REC_HEAD = ['학번', '이름', '학년', '반', '번호', '카테고리', '내용', '작성일시', '수정일시', '누가기록'];
 const DEFAULT_CATS = ['행발', '세특', '자율', '동아리', '진로', '자유학기'];
 /* 수업메모 — 날짜와 교시가 «어느 수업인지» 를 가리키고, 메모 한 줄이 알맹이다.
    차시는 그 학급에 적은 메모의 순번이다(시간표로 세면 휴업일까지 따져야 해서). */
@@ -166,7 +167,7 @@ async function saveNote(token, id, o) {
 /* ── 통째로 읽어 오기 ── */
 async function loadAll(token, id) {
   const [rec, cat, cfg] = await Promise.all([
-    readRange(token, id, `${TAB_REC}!A2:I`),
+    readRange(token, id, `${TAB_REC}!A2:J`),
     readRange(token, id, `${TAB_CAT}!A2:C`),
     readRange(token, id, `${TAB_CFG}!A2:B`)
   ]);
@@ -174,7 +175,7 @@ async function loadAll(token, id) {
     row: i + 2,                   // 시트에서 몇 번째 줄인지 — 고칠 때 쓴다
     id: String(r[0] || ''), name: String(r[1] || ''),
     grade: Number(r[2]) || 0, cls: Number(r[3]) || 0, no: Number(r[4]) || 0,
-    cat: String(r[5] || ''), text: String(r[6] || ''),
+    cat: String(r[5] || ''), text: String(r[6] || ''), note: String(r[9] || ''),
     at: String(r[7] || ''), edited: String(r[8] || '')
   })).filter((x) => x.id && x.cat);
   const cats = cat
@@ -187,27 +188,29 @@ async function loadAll(token, id) {
 }
 
 /* ── 한 건 저장 ── 같은 학생·같은 카테고리 것이 있으면 고쳐 쓴다 ── */
-async function saveRecord(token, id, s, cat, text, existingRow, when) {
+async function saveRecord(token, id, s, cat, text, existingRow, when, note) {
   const now = stamp();
   // 고른 날짜가 있으면 «작성일시» 는 그 날로 적는다. 시각까지는 안 정하므로
   // 그 날 09:00 으로 둔다 — 시트에서 날짜만 보고 줄을 세울 수 있으면 된다.
   const at = /^\d{4}\.\d{2}\.\d{2}$/.test(String(when || '')) ? when + ' 09:00:00' : now;
   if (existingRow) {
     // 내용·수정일시만 바꾼다 (작성일시는 그대로 둔다)
-    await writeRange(token, id, `${TAB_REC}!G${existingRow}:I${existingRow}`, [[text, '', now]]);
+    /* 내용·수정일시·누가기록을 함께 적는다(작성일시 H 는 아래에서 되살린다) */
+    await writeRange(token, id, `${TAB_REC}!G${existingRow}:J${existingRow}`,
+      [[text, '', now, String(note || '')]]);
     // 작성일시 칸을 비우지 않도록 다시 채운다
     const back = await readRange(token, id, `${TAB_REC}!H${existingRow}`);
     if (!back.length || !back[0][0]) await writeRange(token, id, `${TAB_REC}!H${existingRow}`, [[now]]);
     return { at: now, row: existingRow };
   }
   await appendRow(token, id, `${TAB_REC}!A1`,
-    [s.id, s.name, s.grade, s.cls, s.no, cat, text, at, now]);
+    [s.id, s.name, s.grade, s.cls, s.no, cat, text, at, now, String(note || '')]);
   return { at: now, row: 0 };
 }
 
 /* ── 한 건 지우기 (내용을 비운다 — 줄을 없애면 다른 줄 번호가 밀린다) ── */
 async function clearRecord(token, id, row) {
-  await writeRange(token, id, `${TAB_REC}!G${row}:I${row}`, [['', '', stamp()]]);
+  await writeRange(token, id, `${TAB_REC}!G${row}:J${row}`, [['', '', stamp(), '']]);
   return stamp();
 }
 
