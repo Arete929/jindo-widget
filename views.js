@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.109.0
+/* 파일명: views.js | @version 1.110.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -2334,6 +2334,32 @@ function hbConvert(src) {
   return { text: t, changed: changed };
 }
 
+/* ── 노셔나이 «#행특» 꼴로 만들기 ──────────────────────────
+   ★ 노션에 붙여넣기만 하면 노셔나이가 [DB] 2026 학생기록에 페이지를 만들고
+     누가기록 문장을 지어 준다(2026-09-05 지침). 그래서 여기서는 열쇠도 인터넷도
+     쓰지 않는다 — 글자를 만들어 클립보드에 담을 뿐이다.
+   ★ 아래에 붙이는 것은 «다듬은 글» 이 아니라 관찰 원문이다.
+     노셔나이가 원문을 봐야 제 기준으로 문장을 짓는다. */
+function hbNotionText(o) {
+  var s = o || {};
+  var 날 = String(s.when || '').replace(/\./g, '-').replace(/-$/, '');   // 2026.09.08 → 2026-09-08
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(날)) 날 = tkYmd(new Date());
+  var 원문 = String(s.text || '').trim();
+  var 주제 = String(s.topic || '').trim();
+  if (!주제) {
+    /* 첫 줄을 주제로 삼되, 길면 낱말 경계에서 끊는다(어중간하게 잘리면 제목이 어색하다) */
+    var 첫줄 = 원문.split(String.fromCharCode(10))[0].trim();
+    var 끝 = 첫줄.indexOf('.');
+    if (끝 > 4 && 끝 <= 30) 첫줄 = 첫줄.slice(0, 끝);
+    if (첫줄.length > 26) {
+      var 잘라 = 첫줄.slice(0, 26);
+      var 빈칸 = 잘라.lastIndexOf(' ');
+      첫줄 = (빈칸 > 10 ? 잘라.slice(0, 빈칸) : 잘라);
+    }
+    주제 = 첫줄.trim();
+  }
+  return ['#행특', 날, String(s.sid || '') + String(s.name || ''), 주제, 원문].join('\n');
+}
 /* 지금 화면에 적힌 누가기록 — 저장할 때 함께 보낸다 */
 function 누가값(row) {
   var app0 = appEl();
@@ -2418,6 +2444,7 @@ function recWrite() {
             + '<span class="rbyte">' + neisBytes(r.text) + ' Byte · ' + r.text.length + '자</span>'
             + '<span class="spacer"></span>'
             + '<button class="wkb" data-rcp="' + r.row + '" title="복사">⧉</button>'
+            + '<button class="wkb" data-rnt="' + r.row + '" title="노셔나이 #행특 꼴로 복사 — 노션에 붙여넣으면 누가기록을 지어 줍니다">#행특</button>'
             + '<button class="wkb" data-rdel="' + r.row + '">지우기</button>'
             + '</div>'
             + (r.edited ? '<div class="rsaved">마지막 저장 · ' + esc(r.edited) + '</div>' : '')
@@ -2444,6 +2471,7 @@ function recWrite() {
     : '<textarea class="rta hid" id="recNoteNew">' + esc(recNote || '') + '</textarea>');
   if (recHint) h += '<div class="rhint">' + esc(recHint) + '</div>';
   h += '<div class="wknav"><button class="wkb go" id="recSave">저장</button>'
+    + '<button class="wkb" data-rnt="" title="노셔나이 #행특 꼴로 복사 — 노션에 붙여넣으면 누가기록을 지어 줍니다">#행특 복사</button>'
     + '<span class="rbyte">' + neisBytes(recDraft || '') + ' Byte · ' + (recDraft || '').length + '자</span>'
     + '</div>';
   if (recSavedAt) h += '<div class="rsaved">✅ 저장됨 · ' + esc(recSavedAt) + '</div>';
@@ -5497,6 +5525,29 @@ function wireViews(app) {
             recBusy = false; recSavedAt = (r && r.at) || ''; RECDATA = null; recLoad(true);
           })
           .catch(function (e) { recBusy = false; recErr = (e && e.message) || String(e); render(); });
+        return;
+      }
+      if (b.dataset.rnt !== undefined) {         // 노셔나이 «#행특» 꼴로 복사
+        var app1 = appEl();
+        var 학생 = recStudents().filter(function (s) { return s.id === recSid; })[0] || {};
+        var 글, 언제;
+        if (b.dataset.rnt) {                     // 저장해 둔 기록에서
+          var 줄 = ((RECDATA && RECDATA.records) || []).filter(function (r) {
+            return String(r.row) === String(b.dataset.rnt); })[0] || {};
+          var te3 = app1.querySelector('#recEdit');
+          글 = te3 ? te3.value : (줄.text || '');
+          언제 = String(줄.at || '').slice(0, 10);
+        } else {                                 // 새로 쓰는 칸에서
+          var t1 = app1.querySelector('#recText');
+          글 = t1 ? t1.value : (recDraft || '');
+          언제 = recWhen;
+        }
+        if (!String(글).trim()) { recHint = '먼저 기록 내용을 적어 주세요'; render(); return; }
+        var 꼴 = hbNotionText({ when: 언제, sid: 학생.id, name: 학생.name, text: 글 });
+        navigator.clipboard.writeText(꼴);
+        b.textContent = '✓ 복사됨';
+        recHint = '노션에 붙여넣으면 노셔나이가 누가기록을 지어 줍니다';
+        setTimeout(render, 1200);
         return;
       }
       if (b.dataset.rcp !== undefined) {         // 나이스에 붙여넣기용 복사
