@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.107.0
+/* 파일명: views.js | @version 1.107.1
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -4611,6 +4611,8 @@ function render() {
         ? '<span class="ttver" title="진호 시간표(수업진도 웹앱) 판'
           + (DASHVER.at ? ' · 배포 ' + esc(DASHVER.at) : '') + '">진호 시간표 v' + esc(DASHVER.ver) + '</span>'
         : '')
+      /* 얹은 화면을 그 자리에서 새로 받아 온다 — 웹앱을 새로 배포했을 때 */
+      + '<button class="chip ttget" id="ttGet" title="진호 시간표 새로 받기(캐시 비우고)">⟳</button>'
       + fontBtns('tt') + '</div>';
   }
 
@@ -5790,6 +5792,12 @@ function wireViews(app) {
       widgetAPI.setUi({ usagePanel: USGPANEL });
       render();
     });
+  });
+  /* 진호 시간표 새로 받기 */
+  var ttg = app.querySelector('#ttGet');
+  if (ttg) ttg.addEventListener('click', function () {
+    ttg.textContent = '…';
+    widgetAPI.dashReload().then(function () { setTimeout(render, 1200); });
   });
   var ug = app.querySelector('#usgGet');
   if (ug) ug.addEventListener('click', function () { widgetAPI.usageRefresh(); });

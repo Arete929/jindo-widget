@@ -227,6 +227,7 @@
     transition: transform .15s, opacity .15s;
   }
   .gear:hover { opacity: 1; transform: rotate(45deg); }
+  .ttget { margin-right: 4px; padding: 1px 8px; }
   /* 진호 시간표(수업진도 웹앱)의 판 — 서브칩 줄 오른쪽 */
   .ttver { margin-left: auto; margin-right: 6px; align-self: center;
            font-size: calc(9.5px * var(--wf, 1)); font-weight: 700; color: var(--dim); white-space: nowrap; }
