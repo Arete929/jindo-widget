@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.111.0
+/* 파일명: views.js | @version 1.111.1
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -2052,6 +2052,9 @@ var recCls = '', recSid = '', recCat = '';
 var recClsSet = false;            // 꾸러미에서 마지막 학급을 한 번 받아 왔나
 var recShow = 'both';             // 보기 — both | text | note
 var recNote = '';                 // 새로 쓰는 칸의 누가기록
+/* ★ 저장해 둔 기록에서 변환하면 값을 칸에 넣자마자 render() 가 다시 그려 지워졌다
+   (2026-09-08). 줄 번호별로 담아 두고, 그릴 때 그것을 먼저 쓴다. */
+var recNoteDraft = {};
 var recHint = '';                 // 변환하며 바꾼 자리 요약
 var recDraft = '', recSavedAt = '', recOpen = 0;   // recOpen = 펼쳐 놓은 기록의 줄 번호
 var recWhen = '';        // 기록한 날 (yyyy.MM.dd). 비어 있으면 «오늘»
@@ -2435,10 +2438,11 @@ function recWrite() {
             + (recShow !== 'text'
               ? '<div class="rlab hb">행발 누가기록'
                 + '<button class="wkb tiny" data-rhb="' + r.row + '" title="기록 내용을 누가기록 문장으로 다듬습니다">↻ 변환</button>'
-                + '<span class="rbyte">' + neisBytes(r.note || '') + ' Byte · ' + (r.note || '').length + '자</span>'
+                + (function () { var nv = recNoteDraft[r.row] !== undefined ? recNoteDraft[r.row] : (r.note || '');
+                    return '<span class="rbyte">' + neisBytes(nv) + ' Byte · ' + nv.length + '자</span>'; })()
                 + '</div>'
-                + '<textarea class="rta hbta" id="recNoteEdit" data-row="' + r.row + '" placeholder="↻ 변환을 누르거나 직접 적습니다">' + esc(r.note || '') + '</textarea>'
-              : '<textarea class="rta hid" id="recNoteEdit" data-row="' + r.row + '">' + esc(r.note || '') + '</textarea>')
+                + '<textarea class="rta hbta" id="recNoteEdit" data-row="' + r.row + '" placeholder="↻ 변환을 누르거나 직접 적습니다">' + esc(recNoteDraft[r.row] !== undefined ? recNoteDraft[r.row] : (r.note || '')) + '</textarea>'
+              : '<textarea class="rta hid" id="recNoteEdit" data-row="' + r.row + '">' + esc(recNoteDraft[r.row] !== undefined ? recNoteDraft[r.row] : (r.note || '')) + '</textarea>')
             + '<div class="wknav">'
             + '<button class="wkb go" data-rup="' + r.row + '">고쳐 저장</button>'
             + '<span class="rbyte">' + neisBytes(r.text) + ' Byte · ' + r.text.length + '자</span>'
@@ -5495,8 +5499,9 @@ function wireViews(app) {
         recHint = 결과.changed.length
           ? '다듬음 — ' + 결과.changed.map(function (c) { return c.why + ' ' + c.n; }).join(' · ')
           : '고칠 곳이 없었습니다 (한 문단으로만 정리)';
-        if (넣을곳) { 넣을곳.value = 결과.text; if (!b.dataset.rhb) recNote = 결과.text; }
-        else if (!b.dataset.rhb) recNote = 결과.text;
+        if (b.dataset.rhb) recNoteDraft[b.dataset.rhb] = 결과.text;   // 줄에 담아 둔다
+        else recNote = 결과.text;
+        if (넣을곳) 넣을곳.value = 결과.text;
         render(); return;
       }
       if (b.dataset.rk) { recCat = b.dataset.rk; recDraft = ''; recSavedAt = ''; render(); return; }
@@ -5519,6 +5524,7 @@ function wireViews(app) {
         var te = app.querySelector('#recEdit');
         if (!te) return;
         recBusy = true;
+        delete recNoteDraft[b.dataset.rup];          // 저장하면 시트 값이 참이 된다
         widgetAPI.recSave({ student: {}, cat: recCat, text: te.value,
           row: Number(b.dataset.rup), note: 누가값(1) })
           .then(function (r) {
