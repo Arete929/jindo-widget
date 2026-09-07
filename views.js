@@ -1,6 +1,6 @@
-/* 파일명: views.js | @version 1.107.1
+/* 파일명: views.js | @version 1.108.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
-   위젯(진호알리미·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
+   위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜원이지는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
 
@@ -35,9 +35,9 @@ function bumpFont(key, dir) {
   widgetAPI.setUi({ fontScale: patch });
   render();
 }
-/* 갈래 — jinho(진호알리미, 시간표 있음) / hyewon(혜원 데스크, 시간표 없음).
+/* 갈래 — jinho(지비스, 시간표 있음) / hyewon(혜원 데스크, 시간표 없음).
    메인이 그릴 때마다 알려 준다. 시간표에 딸린 것만 가리고 나머지는 둘 다 같다. */
-var FLAVOR = 'jinho', HAS_TT = true, APPNAME = '진호알리미';
+var FLAVOR = 'jinho', HAS_TT = true, APPNAME = '지비스';
 /* 지금 열리는 브라우저 이름 — 안내 글에 쓴다.
    ★ 전에는 «크롬» 이라고 글자로 박아 두어, 웨일이 열려도 크롬이라고 했다. */
 var BROWSER = '크롬';
@@ -635,7 +635,7 @@ function viewComci() {
 
 /* ── 업무관리(노션) ────────────────────────────────────────
    노션의 PROJECTS·TASKS 를 «오늘·이번주 / 프로젝트별 / 마감 없음» 세 갈래로 본다.
-   ★ 진호알리미에만 있다. 고치면 노션에 바로 반영된다. */
+   ★ 지비스에만 있다. 고치면 노션에 바로 반영된다. */
 var TASK = null, tkSub = 'now', tkProj = '', tkBusy = '', tkErr = '', tkOpen = {};
 var tkNew = '', tkNewProj = '';
 /* 내 할 일 — 오른쪽 단. 완료한 것은 접어 둔다(tdOpen 이 켜져야 펼친다). */
@@ -1817,7 +1817,7 @@ var TASKS = [];
    위젯이 보이지 않는 창으로 직접 읽어 온다. 원형과 막대 중에 고를 수 있고,
    «얼마나 남았는지»와 «언제 초기화되는지»를 함께 보여준다. */
 var USG = null, USGSHOW = true, USGSTYLE = 'ring';
-/* ★ 사용량 큰 상자를 펼쳐 두었나 — 진호알리미만 쓴다.
+/* ★ 사용량 큰 상자를 펼쳐 두었나 — 지비스만 쓴다.
    자리를 많이 차지해 평소엔 접어 두고, 제목 줄의 작은 숫자로 본다.
    접고 편 것은 main 이 기억한다(껐다 켜도 그대로). */
 var USGPANEL = false;
@@ -1948,7 +1948,7 @@ function usgBillLine(b) {
   if (b.credit) parts.push('크레딧 ' + b.credit);
   return '<div class="ubill" title="결제 정보는 하루 한 번 읽습니다">' + esc(parts.join(' · ')) + '</div>';
 }
-/* ── 제목 줄로 옮긴 AI 사용량 타일(진호알리미) ─────────────────
+/* ── 제목 줄로 옮긴 AI 사용량 타일(지비스) ─────────────────
    ★ 아래에 따로 띠를 두면 두 줄을 통째로 먹는다. 이름 옆 빈 자리가 늘 비어 있으니
      타일을 그리로 옮겼다(2026-09-04). 제목 줄 높이(로고 68px) 안에 들어가도록
      원형은 작게, 초기화 시각 같은 잔글씨는 «올리면 뜨는 풀이» 로 돌렸다. */
@@ -2008,7 +2008,7 @@ function usgToggleBtn() {
     + (USGPANEL ? '감추기' : '보이기') + '">◍</button>';
 }
 function usageBar() {
-  /* ★ 진호알리미는 타일이 제목 줄로 갔다 — 여기 띠는 그리지 않는다(혜원이지는 그대로) */
+  /* ★ 지비스는 타일이 제목 줄로 갔다 — 여기 띠는 그리지 않는다(혜원이지는 그대로) */
   if (FLAVOR === 'jinho') return '';
   var keys = (USG ? Object.keys(USG) : []).filter(function (k) { return USGON.indexOf(k) >= 0; });
   var sys = sysBox();
@@ -2447,7 +2447,7 @@ function notesCard() {
     + '지난 내역은 <b>설정 → 정보 → «업데이트 내역 보기»</b> 에서 언제든 볼 수 있어요.</div>'
     + '</div>';
 }
-/* 이름 — 혜원이지는 뒤 두 글자를 색 상자로 준다. 진호알리미는 그대로.
+/* 이름 — 혜원이지는 뒤 두 글자를 색 상자로 준다. 지비스는 그대로.
    ★ 위젯 제목 줄과 넓은 창이 같이 쓴다(한 곳에서만 고치도록). */
 /* 담아 둔 순서대로 늘어놓는다. 목록에 없는 것(새로 생긴 화면)은 뒤에 붙는다.
    ★ 순서를 담아 두는 곳이 하나뿐이라, 위젯과 넓게 보기가 늘 같은 순서가 된다. */
@@ -2821,7 +2821,11 @@ function bdSend(app) {
 
 function brandHtml() {
   var n = String(APPNAME || '');
-  if (HAS_TT || n.length < 3) return esc(n);
+  /* ★ 지비스는 제목 줄에서 손글씨 «JI-VIS» 로 쓴다(Pacifico).
+     한글 «지비스» 는 트레이·알림·설정 같은 딴 자리에 그대로 쓴다 —
+     Pacifico 에는 한글 글자가 없어서 제목에 한글을 넣으면 손글씨가 안 나온다. */
+  if (HAS_TT) return '<span class="hw" title="지비스 · JI-VIS">JI-VIS</span>';
+  if (n.length < 3) return esc(n);
   return '<em class="bchip">' + esc(n.slice(0, 2)) + '</em>'
     + '<span class="brest">' + esc(n.slice(2)) + '</span>';
 }
@@ -2862,7 +2866,7 @@ var FEED = null, FEEDFAV = [];
 var lbEdit = false, lbQ = '', lbBusy = '', lbErr = '', lbOkAt = '', lbForm = null;
 function lbOn() { return FLAVOR === 'jinho' && !!FEED; }
 /* 런처에서 온 앱 묶음의 이름 — 갈래마다 «누구 것인가» 가 다르다.
-   진호알리미는 내가 담은 «내 앱», 혜원이지는 내가 나눠 준 것을 «선생님들이» 본다. */
+   지비스는 내가 담은 «내 앱», 혜원이지는 내가 나눠 준 것을 «선생님들이» 본다. */
 function feedName() { return FLAVOR === 'jinho' ? '내 앱' : '함께 쓰는 앱'; }
 /* 런처보드는 두 가지를 담는다 — 내가 만든 앱, 그리고 그냥 담아 둔 주소.
    ★ 갈라 보여 주되 나만/공유는 똑같이 쓴다. */
@@ -4044,7 +4048,7 @@ function lbPaint(root) {
    컴시간이 «몇 교시 · 어느 반 · 무슨 과목» 을 이미 알려 준다.
    사람이 넣을 것은 «이번 시간에 뭘 했나» 한 줄뿐이다.
    차시는 그 학급에 적은 메모의 순번이라 저절로 붙는다.
-   ★ 혜원이지에만 있다 — 진호알리미에는 수업진도 대시보드가 따로 있다. */
+   ★ 혜원이지에만 있다 — 지비스에는 수업진도 대시보드가 따로 있다. */
 var NT = null, ntBusy = false, ntErr = '', ntCls = '', ntSaved = {};
 var NTDOW = ['일', '월', '화', '수', '목', '금', '토'];
 function ntLoad(force) {
@@ -4583,8 +4587,8 @@ function render() {
   var tab = TT_SUB.indexOf(VIEW) >= 0 ? 'tt' : VIEW;
   html += '<div class="chips">'
     + inOrder(
-        // ★ 진호알리미의 «바로가기» 는 런처보드다 — 이름만 다르고 화면 값(link)은 같다
-        // ★ «업무관리»(노션)는 진호알리미에만 있다 — 시간표와 주간업무 사이
+        // ★ 지비스의 «바로가기» 는 런처보드다 — 이름만 다르고 화면 값(link)은 같다
+        // ★ «업무관리»(노션)는 지비스에만 있다 — 시간표와 주간업무 사이
         HAS_TT ? ['tt,진호 시간표', 'task,업무관리', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,런처보드']
                : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,바로가기'],
         TABORDER, function (s) { return s.split(',')[0]; }).map(function (s, i) {
@@ -4606,7 +4610,7 @@ function render() {
           return '<button class="chip' + (VIEW === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">'
             + p[1] + '</button>';
         }).join('')
-      /* 얹은 수업진도 웹앱의 판 — 진호알리미 제 판(제목 줄)과 헷갈리지 않게 이름을 붙인다 */
+      /* 얹은 수업진도 웹앱의 판 — 지비스 제 판(제목 줄)과 헷갈리지 않게 이름을 붙인다 */
       + (DASHVER && DASHVER.ver
         ? '<span class="ttver" title="진호 시간표(수업진도 웹앱) 판'
           + (DASHVER.at ? ' · 배포 ' + esc(DASHVER.at) : '') + '">진호 시간표 v' + esc(DASHVER.ver) + '</span>'
@@ -4947,7 +4951,7 @@ widgetAPI.onData(function (p) {
   DASHOFF = p.dashOff || [];
   DASHSIZE = p.dashSize || {};
   DUTY = p.duty || null;
-  // 업무관리(노션) — 진호알리미에만 온다
+  // 업무관리(노션) — 지비스에만 온다
   if (p.task !== undefined) {
     TASK = (p.task && p.task.show) ? (p.task.data || null) : null;
     if (p.task) {
@@ -4979,7 +4983,7 @@ widgetAPI.onData(function (p) {
   }
   if (p.flavor) {
     HAS_TT = FLAVOR === 'jinho';
-    APPNAME = p.appName || (HAS_TT ? '진호알리미' : '혜원이지');
+    APPNAME = p.appName || (HAS_TT ? '지비스' : '혜원이지');
     if (!HAS_TT && ['today', 'week', 'progress'].indexOf(VIEW) >= 0) VIEW = IS_EASY ? 'home' : 'work';
   }
   if (p.easyFav) EASYFAV = p.easyFav;

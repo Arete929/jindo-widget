@@ -206,7 +206,13 @@
     width: 68px; height: 68px; object-fit: contain; flex: 0 0 auto;
     -webkit-user-drag: none; user-select: none; pointer-events: none;
   }
+  /* 손글씨 제목 — 구글 폰트 Pacifico 를 앱 안에 심었다(인터넷 없어도 뜬다) */
+  @font-face { font-family: 'Pacifico'; font-style: normal; font-weight: 400;
+               font-display: swap; src: url('assets/pacifico.woff2') format('woff2'); }
   .ttl { font-size: 17px; font-weight: 800; letter-spacing: -.3px; color: var(--fg); }
+  .ttl .hw { font-family: 'Pacifico', cursive; font-weight: 400; font-size: 26px;
+             letter-spacing: 0; line-height: 1.35; display: inline-block;
+             padding-top: 2px; }
   /* 이름 — 「혜원」 은 그냥 두고 「이지」 만 색 상자로 준다.
      네 글자가 모두 같은 굵기라 눈에 안 들어온다는 지적이 있었다. */
   /* 이름 — 상자를 걷어내고 «색과 굵기» 로만 가른다.

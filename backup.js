@@ -56,7 +56,7 @@ function lock(body, pass, appVersion) {
 function unlock(text, pass) {
   let j = null;
   try { j = JSON.parse(String(text || '')); } catch (e) { throw new Error('백업 파일이 아닙니다'); }
-  if (!j || j.kind !== 'jindo-backup') throw new Error('진호알리미 백업 파일이 아닙니다');
+  if (!j || j.kind !== 'jindo-backup') throw new Error('지비스 백업 파일이 아닙니다');
   if (!j.enc) return { body: j.data || {}, at: j.at || '', app: j.app || '' };
   if (!String(pass || '')) throw new Error('암호가 걸린 파일입니다 — 암호를 넣어 주세요');
   try {

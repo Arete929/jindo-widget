@@ -1,5 +1,5 @@
 // 파일명: ticktick.js | @version 1.105.0
-// 틱틱(TickTick) — 할 일을 읽고 만들고 완료한다 (진호알리미 전용).
+// 틱틱(TickTick) — 할 일을 읽고 만들고 완료한다 (지비스 전용).
 //
 // ★ 노션과 다른 점: 열쇠 한 줄이 아니라 «한 번 로그인해서 표를 받는» 방식(OAuth)이다.
 //   그래서 처음에만 브라우저에서 틱틱 로그인·허용을 한다. 받은 표는 오래 간다.
@@ -70,7 +70,7 @@ function waitForCode(state, onOpen, log) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end('<meta charset="utf-8"><body style="font-family:sans-serif;padding:40px">'
         + (code && st === state
-            ? '<h2>진호알리미에 연결됐습니다 ✅</h2><p>이 탭은 닫으셔도 됩니다.</p>'
+            ? '<h2>지비스에 연결됐습니다 ✅</h2><p>이 탭은 닫으셔도 됩니다.</p>'
             : '<h2>연결하지 못했습니다</h2><p>' + (err || '확인값이 맞지 않습니다') + '</p>')
         + '</body>');
       if (code && st === state) finish(resolve, code);

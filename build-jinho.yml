@@ -1,8 +1,8 @@
-# 진호알리미 — 지금까지 쓰던 것 그대로 (시간표 있음)
+# 지비스 — 지금까지 쓰던 것 그대로 (시간표 있음)
 #
 # ★ 설치 이름(JindoWidget)과 appId 를 «일부러» 안 바꾼다.
 #   바꾸면 설치 경로가 달라져서, 이미 깔려 있는 것이 자동 업데이트를 못 받고
-#   옛 버전 그대로 남는다. 사람이 보는 이름만 진호알리미로 바꿨다(main.js 의 APP_NAME).
+#   옛 버전 그대로 남는다. 사람이 보는 이름만 지비스로 바꿨다(main.js 의 APP_NAME).
 appId: kr.hyewon.jindowidget
 productName: JindoWidget
 extraMetadata:
@@ -36,8 +36,8 @@ files:
   - records.js
   - roster.js
   - recordsmain.js
-  - notion.js     # 업무관리 — 노션 PROJECTS·TASKS (진호알리미 전용)
-  - ticktick.js   # 틱틱 할 일 (진호알리미 전용)
+  - notion.js     # 업무관리 — 노션 PROJECTS·TASKS (지비스 전용)
+  - ticktick.js   # 틱틱 할 일 (지비스 전용)
   - backup.js     # 열쇠·설정 백업(암호 잠금)
   # 앱에 심어 두는 구글 클라이언트. 없어도 빌드는 되고, 그때는 설정에 직접 넣어야 한다
   - gclient.json
@@ -55,7 +55,7 @@ nsis:
   perMachine: false
   runAfterFinish: true
   deleteAppDataOnUninstall: false
-  shortcutName: 진호알리미
+  shortcutName: 지비스
 publish:
   - provider: github
     owner: Arete929

@@ -1,4 +1,4 @@
-/* 파일명: easy.js | @version 1.107.1
+/* 파일명: easy.js | @version 1.108.0
    혜원이지 — 넓은 창의 뼈대. 왼쪽 메뉴 · 대시보드 · 화면 갈아 끼우기.
 
    ★ 자료를 읽어 오고 화면 조각을 만드는 일은 views.js 가 그대로 한다.
@@ -14,7 +14,7 @@ var EBAR = document.getElementById('ebar');   // 맨 위를 가로지르는 띠
 // 그림 아이콘은 Music\\진호아이콘 에서 가져와 assets/nav-*.png 로 넣어 두었다
 var MENU = [
   { v: 'home', p: 'nav-home', t: '대시보드', d: '오늘 것을 한눈에', g: '' },
-  // ★ 업무관리(노션)는 진호알리미에만 — 혜원이지에는 이 기능이 없다
+  // ★ 업무관리(노션)는 지비스에만 — 혜원이지에는 이 기능이 없다
   { v: 'task', p: 'nav-work', t: '업무관리', d: '노션 할 일 — 오늘·이번주·프로젝트별', g: '오늘 볼 것', jinho: true },
   { v: 'work', p: 'nav-work', t: '주간업무', d: '표·들여쓰기까지 원문 그대로', g: '오늘 볼 것' },
   { v: 'cal', p: 'nav-cal', t: '학사일정', d: '3월부터 이듬해 2월까지', g: '오늘 볼 것' },
@@ -23,8 +23,8 @@ var MENU = [
   { v: 'rec', p: 'nav-rec', t: '학생기록', d: '학급 → 학생 → 분류로 쓰고 모아 보기', g: '기록' },
   { v: 'office', p: 'nav-office', t: '교무실', d: '부서별 자료·서식·링크', g: '오늘 볼 것' },
   { v: 'link', p: 'nav-link', t: '바로가기', d: '자주 가는 곳을 담아 두고 한 번에', g: '바로가기' },
-  // ★ 진호알리미에서는 이 칸이 «런처보드» 다 — 이름만 갈아 끼운다(menus 에서).
-  // ★ 진도표는 혜원이지에만 — 진호알리미에는 수업진도 대시보드가 따로 있다
+  // ★ 지비스에서는 이 칸이 «런처보드» 다 — 이름만 갈아 끼운다(menus 에서).
+  // ★ 진도표는 혜원이지에만 — 지비스에는 수업진도 대시보드가 따로 있다
   { v: 'grid', p: 'nav-comci', t: '진도표', d: '칸을 눌러 그 자리에서 적습니다', g: '기록', hyewon: true }
 ];
 function navImg(m) { return '<img src="assets/' + m.p + '.png" alt="">'; }
@@ -32,7 +32,7 @@ function navImg(m) { return '<img src="assets/' + m.p + '.png" alt="">'; }
 function menus() {
   var list = MENU.filter(function (m) { return !(m.hyewon && HAS_TT) && !(m.jinho && !HAS_TT); })
     .map(function (m) {
-      // 진호알리미의 «바로가기» 는 런처보드다 — 내 앱을 담고 고치는 곳
+      // 지비스의 «바로가기» 는 런처보드다 — 내 앱을 담고 고치는 곳
       if (m.v === 'link' && FLAVOR === 'jinho') {
         return { v: m.v, p: m.p, t: '런처보드', g: m.g,
                  d: '내 GAS 앱을 담고 고치고, 공유를 켜면 혜원이지에도' };
@@ -159,7 +159,7 @@ function drawTop() {
 
 /* ── 왼쪽 메뉴 ── */
 function drawSide() {
-  // ★ 이름·아이콘은 갈래대로 (박아 두면 진호알리미가 혜원이지로 보인다)
+  // ★ 이름·아이콘은 갈래대로 (박아 두면 지비스가 혜원이지로 보인다)
   // ★ 운영체제 아이콘(icon.png)은 흰 네모가 꽉 차 있다 — 위젯 제목 줄과 같은
   //   투명한 로고를 쓴다
   var h = '<div class="brand"><img src="assets/'
@@ -309,7 +309,7 @@ function dcMeal() {
         }).join('') + '</div></div>';
   }).join('');
 }
-/* ③ 오늘 수업 — 시간표가 있는 갈래(진호알리미)에서만 */
+/* ③ 오늘 수업 — 시간표가 있는 갈래(지비스)에서만 */
 function dcLesson() {
   if (!HAS_TT || !STATE) return '';
   var ls = STATE.lessons || [];

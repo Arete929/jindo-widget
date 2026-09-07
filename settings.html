@@ -377,7 +377,7 @@
     누르면 위 <b>「바깥 주소를 열 브라우저」</b> 에서 고른 것으로 열립니다.<br>
     <b>▲▼</b> 로 순서를 바꾸고 <b>✕</b> 로 뺍니다.
     주소 앞에 <b>https://</b> 를 안 적어도 알아서 붙습니다.<br><br>
-    <b>관리자 열쇠</b> 를 넣으면 <b>진호알리미의 「런처보드」</b> 에서
+    <b>관리자 열쇠</b> 를 넣으면 <b>지비스의 「런처보드」</b> 에서
     앱을 담고·고치고·빼고, <b>공유 스위치</b> 로 <b>혜원이지</b> 에 보일지 정할 수 있습니다.
     열쇠가 없는 PC 는 공유로 켜 둔 앱만 보이고 고치는 단추가 아예 안 나옵니다.
   </div>
@@ -504,7 +504,7 @@
   <h2>업무관리 (노션)</h2>
   <div class="hint" style="margin-top:0">
     노션의 <b>PROJECTS·TASKS</b> 를 위젯에서 보고, 완료·마감일·추가까지 바로 합니다.
-    <b>진호알리미에만</b> 있는 기능입니다.
+    <b>지비스에만</b> 있는 기능입니다.
   </div>
   <div class="row" style="margin-top:10px">
     <label class="lb">노션 열쇠</label>
@@ -560,7 +560,7 @@
   <h2>틱틱 (TickTick)</h2>
   <div class="hint" style="margin-top:0">
     핸드폰 틱틱의 할 일을 위젯에서 보고, 여기서 만든 것도 틱틱에 올라갑니다.
-    <b>진호알리미에만</b> 있는 기능입니다.
+    <b>지비스에만</b> 있는 기능입니다.
   </div>
   <div class="row" style="margin-top:10px">
     <label class="lb">되돌림 주소</label>
@@ -1888,7 +1888,7 @@ document.addEventListener('keydown', function (e) {
 var helpDrawn = false;
 function drawHelp() {
   if (helpDrawn) return;
-  var parts = helpParts(UI.flavor || "jinho", UI.appName || "진호알리미");
+  var parts = helpParts(UI.flavor || "jinho", UI.appName || "지비스");
   $("tocw").innerHTML = parts.map(function (p, i) {
     return '<button type="button" data-go="' + p.id + '"'
       + (i === 0 ? ' class="now"' : '') + '>' + esc(p.t) + '</button>';
@@ -1896,7 +1896,7 @@ function drawHelp() {
   $("helpBody").innerHTML = parts.map(function (p) {
     return '<section class="hsec" id="h_' + p.id + '">'
       + '<h2>' + esc(p.t)
-      + (p.only === "jinho" ? '<span class="only">진호알리미</span>' : "")
+      + (p.only === "jinho" ? '<span class="only">지비스</span>' : "")
       + (p.only === "hyewon" ? '<span class="only hy">혜원이지</span>' : "")
       + '</h2>' + p.body + '</section>';
   }).join("");
