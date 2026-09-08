@@ -209,8 +209,12 @@
   /* 손글씨 제목 — 구글 폰트 Pacifico 를 앱 안에 심었다(인터넷 없어도 뜬다) */
   @font-face { font-family: 'Pacifico'; font-style: normal; font-weight: 400;
                font-display: swap; src: url('assets/pacifico.woff2') format('woff2'); }
-  .ttl { font-size: 17px; font-weight: 800; letter-spacing: -.3px; color: var(--fg); }
+  /* ★ 창이 좁아지면 «JI-VIS» 가 두 줄로 꺾였다(2026-09-08). 이름은 안 꺾이게 하고,
+     자리가 모자라면 옆의 사용량 타일이 먼저 줄어들게 한다. */
+  .ttl { font-size: 17px; font-weight: 800; letter-spacing: -.3px; color: var(--fg);
+         white-space: nowrap; flex: 0 0 auto; }
   .ttl .hw { font-family: 'Pacifico', cursive; font-weight: 400; font-size: 26px;
+             white-space: nowrap;
              letter-spacing: 0; line-height: 1.35; display: inline-block;
              padding-top: 2px; }
   /* 이름 — 「혜원」 은 그냥 두고 「이지」 만 색 상자로 준다.
@@ -239,12 +243,16 @@
            font-size: calc(9.5px * var(--wf, 1)); font-weight: 700; color: var(--dim); white-space: nowrap; }
 
   /* ── 제목 줄로 옮긴 AI 사용량 타일(진호알리미) ── */
+  /* 타일은 남는 자리만 차지한다 — 좁아지면 여기가 먼저 줄어들고, 넘치면 굴러간다 */
   .utiles {
+    flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none;
     -webkit-app-region: no-drag;
     margin-left: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     min-width: 0;
   }
-  .ut { display: inline-flex; align-items: center; gap: 7px;
+  .utiles::-webkit-scrollbar { height: 0; }
+  .ut { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto;
         background: var(--card); border: 1px solid var(--line); border-radius: 10px;
         padding: 3px calc(9px * var(--uf, 1)); }
   .utn { font-style: normal; font-size: calc(10px * var(--uf, 1)); font-weight: 800;

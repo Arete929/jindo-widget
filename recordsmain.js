@@ -14,6 +14,7 @@ const path = require('path');
 const fs = require('fs');
 const gauth = require('./googleauth.js');
 const rec = require('./records.js');
+const nrec = require('./notionrec.js');
 const roster = require('./roster.js');
 
 let S = null;   // main 이 넣어 주는 도우미 모음
@@ -286,6 +287,23 @@ function register(helpers) {
     if (!st || !st.id) throw new Error('먼저 시트를 만들어 주세요');
     const t = await token();
     return rec.saveRecord(t, st.id, p.student, p.cat, p.text, p.row, p.when, p.note);
+  });
+
+  /* ── 노션으로 보내기·가져오기 ── */
+  ipcMain.handle('rec-notion-send', async (_e, p) => {
+    const key = S.load().notionKey || '';
+    const r = await nrec.send(key, p || {});
+    S.log('학생기록 → 노션 페이지 만듦' + (r.linked ? ' (학생 연결됨)' : ' (학생 연결 못 함)'));
+    return r;
+  });
+  ipcMain.handle('rec-notion-get', async (_e, p) => {
+    const key = S.load().notionKey || '';
+    let id = (p && p.pageId) || '';
+    if (!id) id = await nrec.findPage(key, p || {});
+    if (!id) return { ok: false, error: '노션에서 그 기록을 못 찾았습니다 — 먼저 «노션으로 보내기» 를 하세요' };
+    const note = await nrec.fetchNote(key, id);
+    if (!note) return { ok: false, error: '노션 쪽 누가기록이 아직 비어 있습니다 — 그 페이지에서 «#행특» 을 한 번 시켜 주세요', pageId: id };
+    return { ok: true, note: note, pageId: id };
   });
 
   ipcMain.handle('rec-clear', async (_e, row) => {

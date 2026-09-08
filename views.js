@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.112.0
+/* 파일명: views.js | @version 1.113.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -2055,6 +2055,8 @@ var recNote = '';                 // 새로 쓰는 칸의 누가기록
 /* ★ 저장해 둔 기록에서 변환하면 값을 칸에 넣자마자 render() 가 다시 그려 지워졌다
    (2026-09-08). 줄 번호별로 담아 두고, 그릴 때 그것을 먼저 쓴다. */
 var recNoteDraft = {};
+var recNotionPage = {};           // 줄 번호 → 노션 페이지 id (보낸 뒤 담아 둔다)
+var recNotionBusy = '';           // 지금 오가는 중인 줄
 var recHint = '';                 // 변환하며 바꾼 자리 요약
 var recDraft = '', recSavedAt = '', recOpen = 0;   // recOpen = 펼쳐 놓은 기록의 줄 번호
 var recWhen = '';        // 기록한 날 (yyyy.MM.dd). 비어 있으면 «오늘»
@@ -2514,8 +2516,13 @@ function recWrite() {
             + '<span class="spacer"></span>'
             + '<button class="wkb" data-rcp="' + r.row + '" title="복사">⧉</button>'
             + '<button class="wkb" data-rnt="' + r.row + '" title="노셔나이 #행특 꼴로 복사 — 노션에 붙여넣으면 누가기록을 지어 줍니다">#행특</button>'
+            + '<button class="wkb" data-nsend="' + r.row + '"' + (recNotionBusy === String(r.row) ? ' disabled' : '')
+            + ' title="노션 [DB] 2026 학생기록 에 페이지를 만듭니다">↗ 노션으로</button>'
+            + '<button class="wkb" data-nget="' + r.row + '"' + (recNotionBusy === String(r.row) ? ' disabled' : '')
+            + ' title="노션에서 누가기록을 읽어 옵니다 — 그 페이지에서 #행특 을 한 번 시킨 뒤에">↙ 가져오기</button>'
             + '<button class="wkb" data-rdel="' + r.row + '">지우기</button>'
             + '</div>'
+            + (recHint && recOpen === r.row ? '<div class="rhint">' + esc(recHint) + '</div>' : '')
             + (r.edited ? '<div class="rsaved">마지막 저장 · ' + esc(r.edited) + '</div>' : '')
             + '</div>'
           : '')
@@ -5597,6 +5604,50 @@ function wireViews(app) {
             recBusy = false; recSavedAt = (r && r.at) || ''; RECDATA = null; recLoad(true);
           })
           .catch(function (e) { recBusy = false; recErr = (e && e.message) || String(e); render(); });
+        return;
+      }
+      if (b.dataset.nsend !== undefined || b.dataset.nget !== undefined) {
+        /* ── 노션으로 보내기 · 노션에서 가져오기 ──────────────────
+           ★ 사이에 한 번은 노션에서 «#행특» 을 시키셔야 한다 —
+             API 로 만든 페이지에는 노셔나이가 저절로 붙지 않는다. */
+        var 보냄 = b.dataset.nsend !== undefined;
+        var 줄번호 = 보냄 ? b.dataset.nsend : b.dataset.nget;
+        var app2 = appEl();
+        var 그줄 = ((RECDATA && RECDATA.records) || []).filter(function (x) {
+          return String(x.row) === String(줄번호); })[0] || {};
+        var 학생2 = recStudents().filter(function (s) { return s.id === recSid; })[0] || {};
+        var te4 = app2.querySelector('#recEdit');
+        var 본문 = te4 ? te4.value : (그줄.text || '');
+        var 날짜 = String(그줄.at || '').slice(0, 10).replace(/\./g, '-');
+        var 짐 = { pageId: recNotionPage[줄번호] || '', sid: 학생2.id, name: 학생2.name,
+          when: 날짜, cat: 그줄.cat || recCat, text: 본문,
+          topic: String(본문).split('\n')[0].slice(0, 26),
+          note: (app2.querySelector('#recNoteEdit') || {}).value || 그줄.note || '' };
+        recNotionBusy = String(줄번호); recHint = 보냄 ? '노션으로 보내는 중…' : '노션에서 읽어 오는 중…';
+        render();
+        var 일 = 보냄 ? widgetAPI.recNotionSend(짐) : widgetAPI.recNotionGet(짐);
+        일.then(function (r) {
+          recNotionBusy = '';
+          if (보냄) {
+            recNotionPage[줄번호] = (r && r.id) || '';
+            recHint = '노션에 만들었습니다' + (r && r.linked ? ' (학생 연결됨)' : ' — 학생 연결은 못 했습니다')
+              + '. 그 페이지에서 «#행특» 을 시킨 뒤 ↙ 가져오기 를 누르세요';
+            if (r && r.url) widgetAPI.openUrl(r.url);
+          } else if (r && r.ok) {
+            recNoteDraft[줄번호] = r.note;
+            if (r.pageId) recNotionPage[줄번호] = r.pageId;
+            recHint = '노션에서 누가기록을 가져왔습니다 — 확인하고 «고쳐 저장» 하세요';
+          } else {
+            if (r && r.pageId) recNotionPage[줄번호] = r.pageId;
+            recHint = (r && r.error) || '가져오지 못했습니다';
+          }
+          render();
+        }).catch(function (e) {
+          recNotionBusy = '';
+          recHint = String((e && e.message) || e).replace(/^Error invoking remote method '[^']*':\s*/, '')
+            .replace(/^Error:\s*/, '');
+          render();
+        });
         return;
       }
       if (b.dataset.rnt !== undefined) {         // 노셔나이 «#행특» 꼴로 복사

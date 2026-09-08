@@ -124,6 +124,8 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   recAttach: (url) => ipcRenderer.invoke('rec-attach', url),
   recLoad: () => ipcRenderer.invoke('rec-load'),
   recSave: (p) => ipcRenderer.invoke('rec-save', p),
+  recNotionSend: (o) => ipcRenderer.invoke('rec-notion-send', o),
+  recNotionGet: (o) => ipcRenderer.invoke('rec-notion-get', o),
   recClear: (row) => ipcRenderer.invoke('rec-clear', row),
   recCats: (cats) => ipcRenderer.invoke('rec-cats', cats),
   recOpenSheet: () => ipcRenderer.send('rec-open-sheet'),
