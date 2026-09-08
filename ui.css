@@ -1320,6 +1320,13 @@
            color: var(--accent); border: 1px solid var(--accent); border-radius: 999px;
            padding: 0 5px; margin-left: 4px; }
   .rhint { font-size: calc(9.5px * var(--wf)); color: var(--dim); margin: 4px 0 2px; }
+  /* 노션 왕복 진행 게이지 */
+  .rgauge { margin: 6px 0 2px; }
+  .rgbar { height: 6px; border-radius: 4px; background: var(--card2); overflow: hidden; }
+  .rgbar i { display: block; height: 100%; border-radius: 4px; background: var(--accent);
+             transition: width .35s ease; }
+  .rgtx { margin-top: 3px; font-size: calc(9.5px * var(--wf)); color: var(--dim); font-weight: 700; }
+  .rgtx.dim { font-weight: 500; opacity: .75; }
   .rshow .tdpl { margin-right: 2px; }
   /* 시트 바로가기 — 표준 시트 그림 */
   .shbtn {

@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.113.0
+/* 파일명: views.js | @version 1.114.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -2057,6 +2057,27 @@ var recNote = '';                 // 새로 쓰는 칸의 누가기록
 var recNoteDraft = {};
 var recNotionPage = {};           // 줄 번호 → 노션 페이지 id (보낸 뒤 담아 둔다)
 var recNotionBusy = '';           // 지금 오가는 중인 줄
+var recRun = null;                // { row, step, of, msg } — 진행 게이지
+/* 진행 게이지 — 어디까지 왔는지 눈에 보이게. 오래 걸리는 것은 노션 AI 쪽이다. */
+function recGauge() {
+  if (!recRun) return '';
+  var 칸 = 10, 찬 = Math.max(0, Math.min(칸, Math.round(recRun.step / recRun.of * 칸)));
+  return '<div class="rgauge">'
+    + '<div class="rgbar"><i style="width:' + (찬 / 칸 * 100) + '%"></i></div>'
+    + '<div class="rgtx">' + recRun.step + '/' + recRun.of + ' · ' + esc(recRun.msg || '') + '</div>'
+    + (recRun.step === 3 ? '<div class="rgtx dim">노션 AI 는 보통 2~5분 걸립니다 — 그동안 다른 일을 하셔도 됩니다</div>' : '')
+    + '</div>';
+}
+/* 메인이 알려 주는 진행 — 게이지만 갈아 끼운다(입력칸을 건드리지 않게) */
+widgetAPI.onRecProgress(function (o) {
+  if (!recRun) return;
+  recRun.step = o.step; recRun.of = o.of; recRun.msg = o.msg;
+  if (o.pageId) recNotionPage[recRun.row] = o.pageId;
+  if (o.url) recRun.url = o.url;
+  var app0 = appEl();
+  var box = app0 && app0.querySelector('#recGauge');
+  if (box) box.innerHTML = recGauge(); else render();
+});
 var recHint = '';                 // 변환하며 바꾼 자리 요약
 var recDraft = '', recSavedAt = '', recOpen = 0;   // recOpen = 펼쳐 놓은 기록의 줄 번호
 var recWhen = '';        // 기록한 날 (yyyy.MM.dd). 비어 있으면 «오늘»
@@ -2504,7 +2525,7 @@ function recWrite() {
               : '<textarea class="rta hid" id="recEdit" data-row="' + r.row + '">' + esc(r.text) + '</textarea>')
             + (recShow !== 'text'
               ? '<div class="rlab hb">행발 누가기록'
-                + '<button class="wkb tiny" data-rhb="' + r.row + '" title="기록 내용을 누가기록 문장으로 다듬습니다">↻ 변환</button>'
+                + '<button class="wkb tiny" data-rhb="' + r.row + '"' + (recRun && recRun.row === r.row ? ' disabled' : '') + ' title="노션에 쓰고, 노션 AI 가 지은 누가기록을 가져옵니다">↻ 변환</button>'
                 + (function () { var nv = recNoteDraft[r.row] !== undefined ? recNoteDraft[r.row] : (r.note || '');
                     return '<span class="rbyte">' + neisBytes(nv) + ' Byte · ' + nv.length + '자</span>'; })()
                 + '</div>'
@@ -2516,12 +2537,10 @@ function recWrite() {
             + '<span class="spacer"></span>'
             + '<button class="wkb" data-rcp="' + r.row + '" title="복사">⧉</button>'
             + '<button class="wkb" data-rnt="' + r.row + '" title="노셔나이 #행특 꼴로 복사 — 노션에 붙여넣으면 누가기록을 지어 줍니다">#행특</button>'
-            + '<button class="wkb" data-nsend="' + r.row + '"' + (recNotionBusy === String(r.row) ? ' disabled' : '')
-            + ' title="노션 [DB] 2026 학생기록 에 페이지를 만듭니다">↗ 노션으로</button>'
-            + '<button class="wkb" data-nget="' + r.row + '"' + (recNotionBusy === String(r.row) ? ' disabled' : '')
-            + ' title="노션에서 누가기록을 읽어 옵니다 — 그 페이지에서 #행특 을 한 번 시킨 뒤에">↙ 가져오기</button>'
+            + (recNotionPage[r.row] ? '<button class="wkb" data-nopen="' + r.row + '" title="노션에서 열기">노션 ↗</button>' : '')
             + '<button class="wkb" data-rdel="' + r.row + '">지우기</button>'
             + '</div>'
+            + '<div id="recGauge">' + (recRun && recRun.row === r.row ? recGauge() : '') + '</div>'
             + (recHint && recOpen === r.row ? '<div class="rhint">' + esc(recHint) + '</div>' : '')
             + (r.edited ? '<div class="rsaved">마지막 저장 · ' + esc(r.edited) + '</div>' : '')
             + '</div>'
@@ -5553,6 +5572,11 @@ function wireViews(app) {
         widgetAPI.setUi({ recShow: recShow });
         render(); return;
       }
+      if (b.dataset.nopen !== undefined) {          // 노션에서 열기
+        var u = recNotionPage[b.dataset.nopen];
+        if (u) widgetAPI.openUrl(String(u).indexOf('http') === 0 ? u : 'https://notion.so/' + String(u).replace(/-/g, ''));
+        return;
+      }
       if (b.dataset.rhb !== undefined) {            // 행발 누가기록으로 변환
         var app0 = appEl();
         var 원문 = '', 넣을곳 = null;
@@ -5575,6 +5599,42 @@ function wireViews(app) {
         if (b.dataset.rhb) recNoteDraft[b.dataset.rhb] = 결과.text;   // 줄에 담아 둔다
         else recNote = 결과.text;
         if (넣을곳) 넣을곳.value = 결과.text;
+        /* ★ 규칙으로 다듬은 것은 «곧바로 보이는 초안» 일 뿐이다.
+           이어서 노션에 쓰고, 노션 AI 가 지은 문장으로 갈아 끼운다. */
+        if (b.dataset.rhb) {
+          var 줄N = b.dataset.rhb;
+          var 그줄N = ((RECDATA && RECDATA.records) || []).filter(function (x) {
+            return String(x.row) === String(줄N); })[0] || {};
+          var 학생N = recStudents().filter(function (s) { return s.id === recSid; })[0] || {};
+          recRun = { row: Number(줄N), step: 0, of: 6, msg: '시작합니다…' };
+          recHint = '';
+          render();
+          widgetAPI.recNotionRun({
+            sid: 학생N.id, name: 학생N.name,
+            when: String(그줄N.at || '').slice(0, 10).replace(/\./g, '-'),
+            cat: 그줄N.cat || recCat, text: 원문,
+            topic: String(원문).split('\n')[0].slice(0, 26),
+            note: 결과.text, prop: '누가기록', wait: 360
+          }).then(function (r) {
+            recRun = null;
+            if (r && r.pageId) recNotionPage[줄N] = r.url || r.pageId;
+            if (r && r.ok) {
+              recNoteDraft[줄N] = r.note;
+              recHint = '노션 AI 가 쓴 문장을 가져왔습니다'
+                + (r.piled ? ' · 학생 페이지에도 쌓았습니다' : '')
+                + ' — 확인하고 «고쳐 저장» 하세요';
+            } else {
+              recHint = (r && r.error) || '노션에서 가져오지 못했습니다 (규칙으로 다듬은 초안은 그대로 있습니다)';
+            }
+            render();
+          }).catch(function (e2) {
+            recRun = null;
+            recHint = String((e2 && e2.message) || e2).replace(/^Error invoking remote method '[^']*':\s*/, '')
+              .replace(/^Error:\s*/, '');
+            render();
+          });
+          return;
+        }
         render(); return;
       }
       if (b.dataset.rk) { recCat = b.dataset.rk; recDraft = ''; recSavedAt = ''; render(); return; }

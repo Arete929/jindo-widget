@@ -1,4 +1,4 @@
-// 파일명: recordsmain.js | @version 1.0.0
+// 파일명: recordsmain.js | @version 1.114.0
 // 학생기록의 «뒤쪽 일» — 구글 연결, 시트 만들기·지우기, 기록 읽고 쓰기, 명렬표 받기.
 //
 // main.js 가 너무 길어져서 학생기록만 따로 뺐다. main.js 는 register() 한 번만 부른다.
@@ -287,6 +287,54 @@ function register(helpers) {
     if (!st || !st.id) throw new Error('먼저 시트를 만들어 주세요');
     const t = await token();
     return rec.saveRecord(t, st.id, p.student, p.cat, p.text, p.row, p.when, p.note);
+  });
+
+  /* ── ↻ 변환 — 노션에 쓰고, AI 가 채우기를 기다렸다가, 도로 가져온다 ──
+     ★ 진행 상황을 그때그때 화면에 보낸다(게이지). 끝나면 문장을 돌려준다. */
+  ipcMain.handle('rec-notion-run', async (e, p) => {
+    const key = S.load().notionKey || '';
+    const 알림 = (step, of, msg, extra) => {
+      try { e.sender.send('rec-progress', Object.assign({ step, of, msg }, extra || {})); }
+      catch (err) { /* 창이 닫혔으면 그만 */ }
+    };
+    const 총 = 6;
+    try {
+      알림(1, 총, '노션에 페이지 만드는 중…');
+      const made = await nrec.send(key, p || {});
+      알림(2, 총, made.linked ? '학생 연결됨' : '학생 연결 못 함 — 그대로 진행', { pageId: made.id, url: made.url });
+      알림(3, 총, '노션 AI 가 쓰는 중…');
+      const 문장 = await nrec.waitProp(key, made.id, p && p.prop ? p.prop : '누가기록',
+        { seconds: Number((p && p.wait) || 360),
+          onStep: (sec, all) => 알림(3, 총, '노션 AI 가 쓰는 중… (' + sec + '초째 / 최대 ' + all + '초)') });
+      if (!문장) {
+        알림(총, 총, '아직 안 채워졌습니다');
+        return { ok: false, pageId: made.id, url: made.url,
+          error: '노션 AI 가 아직 안 썼습니다 — 노션이 밀리는 듯합니다. 그 페이지를 열어 «누가기록» 을 보시거나, 조금 뒤 다시 눌러 주세요' };
+      }
+      알림(4, 총, '문장을 받았습니다');
+      /* 그 기록 페이지 본문 콜아웃에도 같은 문장을 남긴다 — 노션에서 바로 읽히게 */
+      알림(5, 총, '기록 페이지에 남기는 중…');
+      try { await nrec.putNote(key, made.id, 문장); }
+      catch (err) { S.log('노션 콜아웃 채우기 실패 — ' + ((err && err.message) || err)); }
+      /* ★ 그 학생 페이지 본문에도 «날짜 · 구분 — 문장» 한 줄을 쌓는다.
+         표 칸에만 남으면 학생별로 모아 볼 수가 없다. */
+      let 쌓음 = false;
+      if (made.student) {
+        알림(6, 총, '학생 페이지에 쌓는 중…');
+        try {
+          쌓음 = await nrec.putStudent(key, made.student,
+            { when: (p && p.when) || '', cat: (p && p.cat) || '', text: 문장, url: made.url });
+        } catch (err) { S.log('학생 페이지 쌓기 실패 — ' + ((err && err.message) || err)); }
+      }
+      알림(총, 총, 쌓음 ? '다 됐습니다 — 학생 페이지에도 쌓았습니다' : '다 됐습니다');
+      S.log('학생기록 → 노션 왕복 완료 (' + String(문장).length + '자)');
+      return { ok: true, note: 문장, pageId: made.id, url: made.url,
+        linked: made.linked, piled: 쌓음, student: made.student || '' };
+    } catch (err) {
+      const msg = (err && err.message) || String(err);
+      알림(총, 총, '멈췄습니다 — ' + msg);
+      return { ok: false, error: msg };
+    }
   });
 
   /* ── 노션으로 보내기·가져오기 ── */

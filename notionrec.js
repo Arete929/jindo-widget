@@ -1,8 +1,9 @@
-// 파일명: notionrec.js | @version 1.113.0
+// 파일명: notionrec.js | @version 1.114.0
 // 학생기록 ↔ 노션 [DB] 2026 학생기록 오가기 (지비스 전용).
 //
-// ★ API 로 만든 페이지에는 노셔나이가 저절로 붙지 않는다 — 노션에서 «#행특» 을
-//   한 번 시키셔야 문장이 채워진다. 이 파일은 그 앞뒤(보내기·가져오기)만 맡는다.
+// ★ [DB] 2026 학생기록 의 «누가기록» 속성이 «AI 자동 채우기 · 페이지 생성 시» 로
+//   맞춰져 있다. 그래서 페이지를 만들기만 하면 노션 AI 가 알아서 쓴다 —
+//   이 파일은 만들고 · 기다리고 · 읽어 오고 · 학생 페이지에 쌓는 일을 맡는다.
 
 const { request } = require('./httpx.js');
 
@@ -68,19 +69,16 @@ async function nrSend(token, o) {
   };
   if (작성일) props['작성일'] = { date: { start: 작성일 } };
   if (학생) props['학번이름'] = { relation: [{ id: 학생 }] };
-  const 본문 = [
-    { object: 'block', type: 'callout',
-      callout: { icon: { type: 'emoji', emoji: '🔵' }, color: 'blue_background',
-        rich_text: nrRich(CALLOUT_TITLE + '\n' + (s.note || '')) } },
-    { object: 'block', type: 'toggle',
-      toggle: { rich_text: nrRich('원문'),
-        children: String(s.text || '').split('\n').slice(0, 40).map((line) => ({
-          object: 'block', type: 'paragraph', paragraph: { rich_text: nrRich(line || ' ') } })) } },
-    { object: 'block', type: 'paragraph', paragraph: { rich_text: nrRich('#행특') } }
-  ];
+  /* ★ 원문은 «그냥 보이는 문단» 으로 둔다.
+     토글 안에 감추면 AI 가 못 읽을 수 있고, 누가기록 초안을 미리 써 두면
+     AI 가 내용을 다시 짜지 않고 그것을 베껴 버린다. 원문만 준다. */
+  const 본문 = [{ object: 'block', type: 'heading_3',
+    heading_3: { rich_text: nrRich('원문') } }].concat(
+    String(s.text || '').split('\n').slice(0, 40).map((line) => ({
+      object: 'block', type: 'paragraph', paragraph: { rich_text: nrRich(line || ' ') } })));
   const page = await nrCall(token, 'POST', '/pages',
     { parent: { database_id: REC_DB }, properties: props, children: 본문 });
-  return { id: page.id, url: page.url, linked: !!학생 };
+  return { id: page.id, url: page.url, linked: !!학생, student: 학생 || '' };
 }
 /* ② 노션에서 가져오기 — 그 페이지의 «생활기록부 누가기록» 콜아웃 글을 읽는다 */
 async function nrFetchNote(token, pageId) {
@@ -101,6 +99,40 @@ async function nrFetchNote(token, pageId) {
     .filter((s) => s && s.indexOf('#행특') < 0 && s.length > 20);
   return 문단[0] || '';
 }
+/* 본문의 «생활기록부 누가기록» 콜아웃에 문장을 채운다 — 노션에서도 바로 읽히게 */
+async function nrPutNote(token, pageId, text) {
+  const bl = await nrCall(token, 'GET', '/blocks/' + pageId + '/children?page_size=50');
+  const 콜 = ((bl && bl.results) || []).filter((b) => b.type === 'callout')
+    .filter((b) => (b.callout.rich_text || []).map((x) => x.plain_text).join('').indexOf(CALLOUT_TITLE) >= 0)[0];
+  if (콜) {
+    await nrCall(token, 'PATCH', '/blocks/' + 콜.id,
+      { callout: { rich_text: nrRich(CALLOUT_TITLE + '\n' + String(text || '')) } });
+    return true;
+  }
+  /* 없으면 맨 위에 새로 만든다 */
+  await nrCall(token, 'PATCH', '/blocks/' + pageId + '/children',
+    { children: [{ object: 'block', type: 'callout',
+      callout: { icon: { type: 'emoji', emoji: '🔵' }, color: 'blue_background',
+        rich_text: nrRich(CALLOUT_TITLE + '\n' + String(text || '')) } }] });
+  return true;
+}
+
+/* ── ★ 학생 페이지에 누가기록 한 줄 쌓기 ───────────────────
+   표 칸에만 남으면 학생별로 모아 볼 수가 없다. 그 학생 페이지 본문에
+   «날짜 · 구분 — 문장» 한 줄을 덧붙여 줄줄이 쌓이게 한다.
+   문장에는 그 기록 페이지 링크를 걸어 원문으로 바로 갈 수 있게 한다. */
+async function nrPutStudent(token, studentId, o) {
+  if (!studentId) return false;
+  const s = o || {};
+  const 앞 = String(s.when || '') + (s.cat ? ' · ' + s.cat : '') + ' — ';
+  const 줄 = [{ type: 'text', text: { content: 앞 }, annotations: { color: 'gray' } },
+    { type: 'text', text: { content: String(s.text || '').slice(0, 1800),
+      link: s.url ? { url: s.url } : null } }];
+  await nrCall(token, 'PATCH', '/blocks/' + studentId + '/children',
+    { children: [{ object: 'block', type: 'bulleted_list_item',
+      bulleted_list_item: { rich_text: 줄 } }] });
+  return true;
+}
 /* 학생·날짜로 페이지를 되찾는다 — 보낸 id 를 잃었을 때 */
 async function nrFindPage(token, o) {
   const s = o || {};
@@ -120,5 +152,54 @@ async function nrFindPage(token, o) {
   return 결과[0] ? 결과[0].id : '';
 }
 
+
+/* ── 속성 읽기 ─────────────────────────────────────────────
+   «AI 자동 채우기» 속성은 종류가 무엇으로 오든(rich_text·formula·문자열)
+   글자만 뽑아 쓴다 — 노션이 종류를 바꿔도 안 깨지게. */
+function nrPropText(prop) {
+  if (!prop) return '';
+  const p = prop;
+  const rich = (arr) => (arr || []).map((x) => x.plain_text || (x.text && x.text.content) || '').join('');
+  if (p.type === 'rich_text') return rich(p.rich_text).trim();
+  if (p.type === 'title') return rich(p.title).trim();
+  if (p.type === 'formula') return String((p.formula && (p.formula.string || p.formula.number)) || '').trim();
+  if (p.type === 'rollup') return String((p.rollup && p.rollup.string) || '').trim();
+  if (typeof p.string === 'string') return p.string.trim();
+  /* 모르는 종류 — 안에 글자가 있으면 긁어 온다 */
+  const j = JSON.stringify(p);
+  const m = j.match(/"plain_text":"([^"]{5,})"/);
+  return m ? m[1] : '';
+}
+async function nrReadProp(token, pageId, name) {
+  const page = await nrCall(token, 'GET', '/pages/' + pageId);
+  const props = (page && page.properties) || {};
+  if (props[name]) return nrPropText(props[name]);
+  /* 이름이 조금 달라도 찾아 준다 */
+  const key = Object.keys(props).filter((k) => k.replace(/\s/g, '').indexOf(String(name).replace(/\s/g, '')) >= 0)[0];
+  return key ? nrPropText(props[key]) : '';
+}
+/* AI 가 채울 때까지 기다린다 — 채워지면 곧바로 돌려준다.
+   onStep 으로 «몇 초째» 를 알려 주어 게이지가 움직이게 한다. */
+async function nrWaitProp(token, pageId, name, opt) {
+  const o = opt || {};
+  /* ★ 실제로 재 보니 노션 AI 가 채우는 데 4분 30초가 걸렸다(2026-09-08).
+     짧게 잡으면 «안 채워졌습니다» 로 헛물을 켠다. 넉넉히 기다리고,
+     그동안 노션을 너무 두드리지 않도록 5초에 한 번만 본다. */
+  const 총 = Number(o.seconds || 360), 간격 = 5000;
+  const 끝 = Date.now() + 총 * 1000;
+  let 첫값 = '';
+  try { 첫값 = await nrReadProp(token, pageId, name); } catch (e) { /* 처음엔 없을 수 있다 */ }
+  if (첫값) return 첫값;
+  while (Date.now() < 끝) {
+    await new Promise((r) => setTimeout(r, 간격));
+    let v = '';
+    try { v = await nrReadProp(token, pageId, name); } catch (e) { /* 잠깐 미끄러져도 계속 */ }
+    if (v) return v;
+    if (o.onStep) o.onStep(Math.round((총 * 1000 - (끝 - Date.now())) / 1000), 총);
+  }
+  return '';
+}
+
 module.exports = { send: nrSend, fetchNote: nrFetchNote, findPage: nrFindPage,
+  readProp: nrReadProp, waitProp: nrWaitProp, putNote: nrPutNote, putStudent: nrPutStudent,
   studentDb: nrStudentDb, REC_DB };

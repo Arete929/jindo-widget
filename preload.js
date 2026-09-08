@@ -1,4 +1,4 @@
-// 파일명: preload.js | @version 1.105.0
+// 파일명: preload.js | @version 1.114.0
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
@@ -126,6 +126,8 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   recSave: (p) => ipcRenderer.invoke('rec-save', p),
   recNotionSend: (o) => ipcRenderer.invoke('rec-notion-send', o),
   recNotionGet: (o) => ipcRenderer.invoke('rec-notion-get', o),
+  recNotionRun: (o) => ipcRenderer.invoke('rec-notion-run', o),
+  onRecProgress: (cb) => ipcRenderer.on('rec-progress', (_e, o) => cb(o)),
   recClear: (row) => ipcRenderer.invoke('rec-clear', row),
   recCats: (cats) => ipcRenderer.invoke('rec-cats', cats),
   recOpenSheet: () => ipcRenderer.send('rec-open-sheet'),
