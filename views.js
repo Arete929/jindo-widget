@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.111.1
+/* 파일명: views.js | @version 1.112.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -2318,23 +2318,87 @@ var HB_RULES = [
   { p: /을\s*통해\s*/g, r: '으로 ', why: '군더더기' },
   { p: /를\s*통해\s*/g, r: '로 ', why: '군더더기' }
 ];
-/* 관찰 기록을 누가기록 초안으로. 돌려주는 값: { text, changed:[{why,n}] } */
-function hbConvert(src) {
+/* ── 문장 끝을 «~함» 꼴로 ────────────────────────────────────
+   지침 4.1 «현재형 종결 원칙(~함)» — 과거형·평서형을 명사형 현재로 바꾼다.
+   ★ 문장 «끝» 에서만 바꾼다. 가운데서 바꾸면 «잔다고 한다» 가 «잠고 함» 이 된다. */
+var HB_TAIL = [
+  ['하였습니다', '함'], ['했습니다', '함'], ['합니다', '함'], ['입니다', '임'],
+  ['하였다', '함'], ['했다', '함'], ['한다', '함'], ['하였음', '함'], ['했음', '함'],
+  ['되었다', '됨'], ['됐다', '됨'], ['된다', '됨'], ['되었음', '됨'],
+  ['왔다', '옴'], ['온다', '옴'], ['갔다', '감'], ['간다', '감'],
+  ['보았다', '봄'], ['봤다', '봄'], ['본다', '봄'],
+  ['주었다', '줌'], ['줬다', '줌'], ['준다', '줌'],
+  ['있었다', '있음'], ['있다', '있음'], ['없었다', '없음'], ['없다', '없음'],
+  ['이었다', '임'], ['였다', '임'], ['이다', '임'],
+  ['시켰다', '시킴'], ['냈다', '냄'], ['섰다', '섬'], ['샀다', '삼'],
+  ['았다', '음'], ['었다', '음'], ['린다', '림'], ['진다', '짐'], ['난다', '남'],
+  ['겠다', '겠음'], ['싶다', '싶음'], ['같다', '같음']
+];
+function hbTail(s) {
+  var t = String(s || '').trim();
+  if (!t) return '';
+  for (var i = 0; i < HB_TAIL.length; i++) {
+    var 끝 = HB_TAIL[i][0];
+    if (t.slice(-끝.length) === 끝) return t.slice(0, t.length - 끝.length) + HB_TAIL[i][1];
+  }
+  return t;
+}
+/* 관찰 기록을 누가기록 초안으로. name 을 주면 그 이름(과 붙은 조사)을 지운다.
+   돌려주는 값: { text, changed:[{why,n}], dropped:[버린 문장] } */
+function hbConvert(src, opts) {
+  var o = opts || {};
   var t = String(src || '').replace(/\r\n?/g, '\n').trim();
-  if (!t) return { text: '', changed: [] };
-  var 센것 = {};
+  if (!t) return { text: '', changed: [], dropped: [] };
+  var 센것 = {}, 버린것 = [];
+  var 센다 = function (why) { 센것[why] = (센것[why] || 0) + 1; };
+
+  /* 1) 이름·1인칭 지우기 — 누가기록은 관찰자 시점이라 주어를 쓰지 않는다 */
+  if (o.name) {
+    /* ★ «최슬비» 로 넘어와도 본문에는 «슬비» 로만 적는다 — 성을 뗀 이름도 함께 지운다 */
+    var 이름들 = [String(o.name)];
+    if (String(o.name).length >= 3) 이름들.push(String(o.name).slice(1));
+    이름들.forEach(function (nm) {
+      var 안전 = nm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      var 앞 = t;
+      t = t.replace(new RegExp('(^|[\\s.,])' + 안전 + '(?:은|는|이|가|의|을|를|에게|와|과|도)?\\s*', 'g'), '$1');
+      if (t !== 앞) 센다('이름');
+    });
+  }
+  var 앞2 = t;
+  t = t.replace(/(^|[\s.,])(?:내가|제가|나는|저는|나도|저도)\s*/g, '$1');
+  if (t !== 앞2) 센다('1인칭');
+
+  /* 2) 문장으로 나눈다 — 물음표·마침표를 남겨 둔 채 */
+  var 문장 = t.replace(/\n+/g, ' ').split(/(?<=[.!?])\s+/).map(function (s) { return s.trim(); })
+    .filter(Boolean);
+
+  /* 3) 혼잣말·물음은 버린다 (누가기록에 들어갈 글이 아니다) */
+  var 남길것 = [];
+  문장.forEach(function (s) {
+    if (/[?？]$/.test(s) || /(?:할까|일까|을까|ㄹ까)[.?]?$/.test(s)) { 버린것.push(s); 센다('물음삭제'); return; }
+    남길것.push(s);
+  });
+  if (!남길것.length) { 남길것 = 문장; 버린것 = []; }
+
+  /* 4) 문장마다 끝을 «~함» 으로 */
+  t = 남길것.map(function (s) {
+    var 알맹이 = s.replace(/[.!?]+$/, '').trim();
+    var 바꾼 = hbTail(알맹이);
+    if (바꾼 !== 알맹이) 센다('현재형');
+    return 바꾼;
+  }).join('. ');
+
+  /* 5) 낱말 규칙 (대명사·평가·순화·띄어쓰기 …) */
   HB_RULES.forEach(function (rule) {
     var before = t;
     t = t.replace(rule.p, rule.r);
-    if (t !== before) 센것[rule.why] = (센것[rule.why] || 0) + 1;
+    if (t !== before) 센다(rule.why);
   });
-  /* 줄바꿈을 한 문단으로 (누가기록은 한 문단) */
-  t = t.split('\n').map(function (s) { return s.trim(); }).filter(Boolean).join(' ');
+
   t = t.replace(/\s{2,}/g, ' ').replace(/\s+([,.])/g, '$1').trim();
-  /* 문장 끝 마침표 — 명사형으로 끝나면 붙인다 */
   if (t && !/[.!?]$/.test(t)) t += '.';
   var changed = Object.keys(센것).map(function (k) { return { why: k, n: 센것[k] }; });
-  return { text: t, changed: changed };
+  return { text: t, changed: changed, dropped: 버린것 };
 }
 
 /* ── 노셔나이 «#행특» 꼴로 만들기 ──────────────────────────
@@ -2351,7 +2415,7 @@ function hbNotionText(o) {
   var 주제 = String(s.topic || '').trim();
   if (!주제) {
     /* 첫 줄을 주제로 삼되, 길면 낱말 경계에서 끊는다(어중간하게 잘리면 제목이 어색하다) */
-    var 첫줄 = 원문.split(String.fromCharCode(10))[0].trim();
+    var 첫줄 = 원문.split('\n')[0].trim();
     var 끝 = 첫줄.indexOf('.');
     if (끝 > 4 && 끝 <= 30) 첫줄 = 첫줄.slice(0, 끝);
     if (첫줄.length > 26) {
@@ -2363,7 +2427,8 @@ function hbNotionText(o) {
   }
   return ['#행특', 날, String(s.sid || '') + String(s.name || ''), 주제, 원문].join('\n');
 }
-/* 지금 화면에 적힌 누가기록 — 저장할 때 함께 보낸다 */
+/* 지금 화면에 적힌 누가기록 — 저장할 때 함께 보낸다
+   ★ 변환기를 갈아 끼우다 이 함수가 함께 지워져 «저장» 이 통째로 멎은 적이 있다(2026-09-08). */
 function 누가값(row) {
   var app0 = appEl();
   if (!app0) return row ? '' : (recNote || '');
@@ -5494,7 +5559,8 @@ function wireViews(app) {
           recDraft = 원문;
           넣을곳 = app0.querySelector('#recNoteNew');
         }
-        var 결과 = hbConvert(원문);
+        var 학생0 = recStudents().filter(function (s) { return s.id === recSid; })[0] || {};
+        var 결과 = hbConvert(원문, { name: 학생0.name });
         if (!결과.text) { recHint = '먼저 기록 내용을 적어 주세요'; render(); return; }
         recHint = 결과.changed.length
           ? '다듬음 — ' + 결과.changed.map(function (c) { return c.why + ' ' + c.n; }).join(' · ')
