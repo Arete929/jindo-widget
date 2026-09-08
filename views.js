@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.114.0
+/* 파일명: views.js | @version 1.114.1
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -2057,26 +2057,47 @@ var recNote = '';                 // 새로 쓰는 칸의 누가기록
 var recNoteDraft = {};
 var recNotionPage = {};           // 줄 번호 → 노션 페이지 id (보낸 뒤 담아 둔다)
 var recNotionBusy = '';           // 지금 오가는 중인 줄
-var recRun = null;                // { row, step, of, msg } — 진행 게이지
+/* ★ 진행 상태는 «줄마다» 따로 둔다 — 하나로 두면 두 줄을 잇달아 변환할 때
+   나중 것이 앞 것의 게이지를 덮어써서, 먼저 누른 줄이 멈춘 것처럼 보인다.
+   { 줄번호: { row, step, of, msg, t0 } } */
+var recRuns = {};
+function recRunning() { return Object.keys(recRuns).length > 0; }
 /* 진행 게이지 — 어디까지 왔는지 눈에 보이게. 오래 걸리는 것은 노션 AI 쪽이다. */
-function recGauge() {
-  if (!recRun) return '';
-  var 칸 = 10, 찬 = Math.max(0, Math.min(칸, Math.round(recRun.step / recRun.of * 칸)));
+function recGauge(row) {
+  var 것 = recRuns[row];
+  if (!것) return '';
+  var 칸 = 10, 찬 = Math.max(0, Math.min(칸, Math.round(것.step / 것.of * 칸)));
+  var 초 = 것.t0 ? Math.round((Date.now() - 것.t0) / 1000) : 0;
   return '<div class="rgauge">'
     + '<div class="rgbar"><i style="width:' + (찬 / 칸 * 100) + '%"></i></div>'
-    + '<div class="rgtx">' + recRun.step + '/' + recRun.of + ' · ' + esc(recRun.msg || '') + '</div>'
-    + (recRun.step === 3 ? '<div class="rgtx dim">노션 AI 는 보통 2~5분 걸립니다 — 그동안 다른 일을 하셔도 됩니다</div>' : '')
+    + '<div class="rgtx">' + 것.step + '/' + 것.of + ' · ' + esc(것.msg || '')
+    + (초 ? ' · ' + Math.floor(초 / 60) + '분 ' + (초 % 60) + '초째' : '') + '</div>'
+    + (것.step === 3 ? '<div class="rgtx dim">노션 AI 는 보통 2~5분 걸립니다 — 그동안 다른 일을 하셔도 됩니다</div>' : '')
     + '</div>';
 }
-/* 메인이 알려 주는 진행 — 게이지만 갈아 끼운다(입력칸을 건드리지 않게) */
+/* ★ 게이지가 «나왔다 안 나왔다» 하던 것(2026-09-08) — 다른 곳에서 화면을 다시 그리면
+   자리째 사라졌다가 다음 소식 때에야 돌아왔다. 소식은 5초에 한 번뿐이라 그사이가 빈다.
+   그래서 1초마다 제 자리를 스스로 되찾게 한다. 자리가 아예 없으면 통째로 다시 그린다. */
+setInterval(function () {
+  if (!recRunning()) return;
+  var app1 = appEl(); if (!app1) return;
+  var 빠진것 = false;
+  Object.keys(recRuns).forEach(function (row) {
+    var slot = app1.querySelector('#recGauge' + row);
+    if (slot) slot.innerHTML = recGauge(row); else 빠진것 = true;
+  });
+  if (빠진것 && !isTyping()) render();
+}, 1000);
+/* 메인이 알려 주는 진행 — 그 줄의 게이지만 갈아 끼운다(입력칸을 건드리지 않게) */
 widgetAPI.onRecProgress(function (o) {
-  if (!recRun) return;
-  recRun.step = o.step; recRun.of = o.of; recRun.msg = o.msg;
-  if (o.pageId) recNotionPage[recRun.row] = o.pageId;
-  if (o.url) recRun.url = o.url;
+  var 것 = recRuns[o && o.row];
+  if (!것) return;
+  것.step = o.step; 것.of = o.of; 것.msg = o.msg;
+  if (o.pageId) recNotionPage[것.row] = o.pageId;
+  if (o.url) 것.url = o.url;
   var app0 = appEl();
-  var box = app0 && app0.querySelector('#recGauge');
-  if (box) box.innerHTML = recGauge(); else render();
+  var box = app0 && app0.querySelector('#recGauge' + 것.row);
+  if (box) box.innerHTML = recGauge(것.row); else render();
 });
 var recHint = '';                 // 변환하며 바꾼 자리 요약
 var recDraft = '', recSavedAt = '', recOpen = 0;   // recOpen = 펼쳐 놓은 기록의 줄 번호
@@ -2525,7 +2546,7 @@ function recWrite() {
               : '<textarea class="rta hid" id="recEdit" data-row="' + r.row + '">' + esc(r.text) + '</textarea>')
             + (recShow !== 'text'
               ? '<div class="rlab hb">행발 누가기록'
-                + '<button class="wkb tiny" data-rhb="' + r.row + '"' + (recRun && recRun.row === r.row ? ' disabled' : '') + ' title="노션에 쓰고, 노션 AI 가 지은 누가기록을 가져옵니다">↻ 변환</button>'
+                + '<button class="wkb tiny" data-rhb="' + r.row + '"' + (recRuns[r.row] ? ' disabled' : '') + ' title="노션에 쓰고, 노션 AI 가 지은 누가기록을 가져옵니다">↻ 변환</button>'
                 + (function () { var nv = recNoteDraft[r.row] !== undefined ? recNoteDraft[r.row] : (r.note || '');
                     return '<span class="rbyte">' + neisBytes(nv) + ' Byte · ' + nv.length + '자</span>'; })()
                 + '</div>'
@@ -2540,7 +2561,7 @@ function recWrite() {
             + (recNotionPage[r.row] ? '<button class="wkb" data-nopen="' + r.row + '" title="노션에서 열기">노션 ↗</button>' : '')
             + '<button class="wkb" data-rdel="' + r.row + '">지우기</button>'
             + '</div>'
-            + '<div id="recGauge">' + (recRun && recRun.row === r.row ? recGauge() : '') + '</div>'
+            + '<div id="recGauge' + r.row + '">' + recGauge(r.row) + '</div>'
             + (recHint && recOpen === r.row ? '<div class="rhint">' + esc(recHint) + '</div>' : '')
             + (r.edited ? '<div class="rsaved">마지막 저장 · ' + esc(r.edited) + '</div>' : '')
             + '</div>'
@@ -5606,7 +5627,8 @@ function wireViews(app) {
           var 그줄N = ((RECDATA && RECDATA.records) || []).filter(function (x) {
             return String(x.row) === String(줄N); })[0] || {};
           var 학생N = recStudents().filter(function (s) { return s.id === recSid; })[0] || {};
-          recRun = { row: Number(줄N), step: 0, of: 6, msg: '시작합니다…' };
+          if (recRuns[줄N]) return;               // 그 줄은 이미 오가는 중
+          recRuns[줄N] = { row: 줄N, step: 0, of: 6, msg: '시작합니다…', t0: Date.now() };
           recHint = '';
           render();
           widgetAPI.recNotionRun({
@@ -5614,12 +5636,13 @@ function wireViews(app) {
             when: String(그줄N.at || '').slice(0, 10).replace(/\./g, '-'),
             cat: 그줄N.cat || recCat, text: 원문,
             topic: String(원문).split('\n')[0].slice(0, 26),
-            note: 결과.text, prop: '누가기록', wait: 360
+            note: 결과.text, prop: '누가기록', wait: 360, row: 줄N
           }).then(function (r) {
-            recRun = null;
+            delete recRuns[줄N];
             if (r && r.pageId) recNotionPage[줄N] = r.url || r.pageId;
             if (r && r.ok) {
               recNoteDraft[줄N] = r.note;
+              recOpen = Number(줄N);
               recHint = '노션 AI 가 쓴 문장을 가져왔습니다'
                 + (r.piled ? ' · 학생 페이지에도 쌓았습니다' : '')
                 + ' — 확인하고 «고쳐 저장» 하세요';
@@ -5628,7 +5651,7 @@ function wireViews(app) {
             }
             render();
           }).catch(function (e2) {
-            recRun = null;
+            delete recRuns[줄N];
             recHint = String((e2 && e2.message) || e2).replace(/^Error invoking remote method '[^']*':\s*/, '')
               .replace(/^Error:\s*/, '');
             render();

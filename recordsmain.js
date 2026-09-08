@@ -1,4 +1,4 @@
-// 파일명: recordsmain.js | @version 1.114.0
+// 파일명: recordsmain.js | @version 1.114.1
 // 학생기록의 «뒤쪽 일» — 구글 연결, 시트 만들기·지우기, 기록 읽고 쓰기, 명렬표 받기.
 //
 // main.js 가 너무 길어져서 학생기록만 따로 뺐다. main.js 는 register() 한 번만 부른다.
@@ -293,8 +293,10 @@ function register(helpers) {
      ★ 진행 상황을 그때그때 화면에 보낸다(게이지). 끝나면 문장을 돌려준다. */
   ipcMain.handle('rec-notion-run', async (e, p) => {
     const key = S.load().notionKey || '';
+    /* ★ «어느 줄» 인지 함께 보낸다 — 두 줄을 잇달아 변환하면 소식이 뒤섞인다 */
+    const 줄 = (p && p.row) || '';
     const 알림 = (step, of, msg, extra) => {
-      try { e.sender.send('rec-progress', Object.assign({ step, of, msg }, extra || {})); }
+      try { e.sender.send('rec-progress', Object.assign({ row: 줄, step, of, msg }, extra || {})); }
       catch (err) { /* 창이 닫혔으면 그만 */ }
     };
     const 총 = 6;
@@ -305,7 +307,7 @@ function register(helpers) {
       알림(3, 총, '노션 AI 가 쓰는 중…');
       const 문장 = await nrec.waitProp(key, made.id, p && p.prop ? p.prop : '누가기록',
         { seconds: Number((p && p.wait) || 360),
-          onStep: (sec, all) => 알림(3, 총, '노션 AI 가 쓰는 중… (' + sec + '초째 / 최대 ' + all + '초)') });
+          onStep: (sec, all) => 알림(3, 총, '노션 AI 가 쓰는 중… (최대 ' + Math.round(all / 60) + '분까지 기다립니다)') });
       if (!문장) {
         알림(총, 총, '아직 안 채워졌습니다');
         return { ok: false, pageId: made.id, url: made.url,
