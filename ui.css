@@ -1327,6 +1327,10 @@
              transition: width .35s ease; }
   .rgtx { margin-top: 3px; font-size: calc(9.5px * var(--wf)); color: var(--dim); font-weight: 700; }
   .rgtx.dim { font-weight: 500; opacity: .75; }
+  /* 주간업무 원문에 들어 있던 그림 — 칸을 넘지 않게, 너무 크지 않게 */
+  .wkimgw { margin: 6px 0; }
+  .wkimg { max-width: 100%; height: auto; max-height: 60vh;
+           border: 1px solid var(--line); border-radius: 6px; background: #fff; }
   .rshow .tdpl { margin-right: 2px; }
   /* 시트 바로가기 — 표준 시트 그림 */
   .shbtn {

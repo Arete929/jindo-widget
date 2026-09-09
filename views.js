@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.114.3
+/* 파일명: views.js | @version 1.115.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -368,6 +368,12 @@ function wlevel(t) {
   return 0;
 }
 function wblock(b) {
+  /* 원문에 들어 있던 그림 — 문서 안에 data: 로 박혀 온 것만 그린다 */
+  if (b.k === 'img') {
+    return '<div class="wkimgw"><img class="wkimg" src="' + esc(b.src) + '"'
+      + (b.w ? ' width="' + b.w + '"' : '') + (b.h ? ' height="' + b.h + '"' : '')
+      + ' alt="' + esc(b.alt || '주간업무 그림') + '" loading="lazy"></div>';
+  }
   // 원문이 가운데(또는 오른쪽) 정렬이면 그대로 따라간다 — 급식지도 안내표의 이름 등
   if (b.k === 'p') {
     var lv = wlevel(b.t);

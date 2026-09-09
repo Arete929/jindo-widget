@@ -1,4 +1,4 @@
-// 파일명: worknotice.js | @version 2.1.0
+// 파일명: worknotice.js | @version 1.115.0
 // 주간업무계획 구글 문서를 위젯이 직접 받아 «원문 모양 그대로» 정리한다.
 //
 // ★ 드라이브 권한이 필요 없다.
@@ -75,6 +75,37 @@ function textOf(html) {
       .replace(/<[^>]+>/g, '')
   ).replace(/​/g, '');
 }
+/* ── 그림 ────────────────────────────────────────────────
+   구글 문서를 html 로 내보내면 그림이 «data:image/…;base64» 로 문서 안에 통째로
+   박혀 온다. 따로 받아 올 필요도, 드라이브 권한도 없다.
+   ★ 그런데 textOf() 가 태그를 몽땅 벗겨 내면서 이것이 통째로 사라지고 있었다
+     (2026-09-09 «주간업무에 그림이 안 들어온다» 로 드러남).
+   ★ 바깥 주소(https://…)로 오는 그림은 담지 않는다 — 학교 망에서 막히면 깨진 칸이
+     되고, 문서를 볼 권한이 없는 분께는 어차피 안 보인다. 문서 안에 박힌 것만 쓴다. */
+const IMG_MAX = 3 * 1024 * 1024;      // 그림 하나 3MB 까지
+const IMG_ALL = 8 * 1024 * 1024;      // 문서 하나 통틀어 8MB 까지
+let imgSum = 0;
+function imgsIn(html) {
+  const out = [];
+  const re = /<img\b[^>]*>/gi;
+  let m;
+  while ((m = re.exec(String(html || '')))) {
+    const tag = m[0];
+    const src = (tag.match(/src\s*=\s*"([^"]*)"/i) || [])[1] || '';
+    if (!/^data:image\//i.test(src)) continue;
+    if (src.length > IMG_MAX || imgSum + src.length > IMG_ALL) continue;
+    imgSum += src.length;
+    const b = { k: 'img', src: src };
+    const ww = (tag.match(/width\s*[:=]\s*"?(\d+)/i) || [])[1];
+    const hh = (tag.match(/height\s*[:=]\s*"?(\d+)/i) || [])[1];
+    if (ww) b.w = Number(ww);
+    if (hh) b.h = Number(hh);
+    const al = (tag.match(/alt\s*=\s*"([^"]+)"/i) || [])[1];
+    if (al) b.alt = decode(al);
+    out.push(b);
+  }
+  return out;
+}
 /* 눈에 보이는 글자가 있는지 (공백·♣ 만 있는 칸은 비어 있는 것으로 본다) */
 function hasInk(t) {
   return /[^\s ♣·:\-]/.test(String(t || ''));
@@ -148,6 +179,8 @@ function pushParas(out, html) {
   // <p>·<li> 단위로 자른다. 목록은 앞에 표식을 붙여 단계가 보이게 한다.
   const parts = String(html).split(/(?=<p\b)|(?=<li\b)/i);
   parts.forEach((part) => {
+    /* 그림은 대개 제 문단에 홀로 있다. 글자보다 먼저 담는다 */
+    imgsIn(part).forEach((im) => out.push(im));
     if (!/<p\b|<li\b/i.test(part)) {
       const bare = textOf(part);
       bare.split('\n').forEach((ln) => { if (hasInk(ln)) out.push({ k: 'p', t: trimEnd(ln) }); });
@@ -260,6 +293,7 @@ function blockText(blocks) {
 
 /* ── 문서 전체를 주차 목록으로 ─────────────────────────────── */
 function parseWork(html) {
+  imgSum = 0;                              // 문서마다 다시 센다
   readAligns(html);
   const body = String(html || '').slice(Math.max(0, String(html || '').indexOf('<body')));
   const blocks = blocksOf(body);
@@ -326,6 +360,7 @@ function parseWork(html) {
 }
 function blockInk(b) {
   if (!b) return false;
+  if (b.k === 'img') return true;          // 그림은 글자가 없어도 내용이다
   if (b.k === 'p') return hasInk(b.t);
   return (b.rows || []).some((r) => r.some((c) => hasInk(cellText(c))));
 }
