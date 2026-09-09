@@ -48,6 +48,13 @@
     padding: 20px 22px; margin-bottom: 14px;
   }
   .card h2 { font-size: 18px; margin-bottom: 8px; }
+  /* 작업표시줄 안내 그림 — 사진 대신 그려 넣는다(글자가 늘 또렷하고 가볍다) */
+  .fig { display: block; width: 100%; max-width: 460px; height: auto; margin: 14px auto 16px; }
+  .kbd {
+    display: inline-block; min-width: 22px; padding: 1px 7px; border-radius: 6px;
+    border: 1px solid var(--line); border-bottom-width: 2px; background: #fbfbff;
+    font-weight: 800; font-size: 13px; color: var(--fg);
+  }
   .card p { color: var(--dim); font-size: 14px; }
   .card p + p { margin-top: 8px; }
   ol { margin: 8px 0 0 20px; font-size: 14px; color: var(--dim); }
@@ -94,6 +101,58 @@
     </ol>
     <p>창을 닫아도 꺼지지 않고 <b>작업표시줄 오른쪽 아래</b>에 남아 있습니다.
        제목 줄의 <b>⤢</b> 를 누르면 <b>넓은 창</b>으로 크게 볼 수 있습니다.</p>
+  </div>
+
+  <div class="card">
+    <h2>작업표시줄에 붙여 두고 <span class="kbd">⊞</span>+<span class="kbd">1</span> 로 부르기</h2>
+    <p>자주 쓰시면 이렇게 해 두세요. 어느 화면에 있든 <b>키 두 개</b>로 곧바로 올라옵니다.</p>
+
+    <svg class="fig" viewBox="0 0 460 176" role="img"
+         aria-label="윈도우 키와 숫자 1을 함께 누르면, 작업표시줄 왼쪽 첫 번째 앱인 혜원이지가 열립니다">
+      <!-- 누르는 키 -->
+      <g>
+        <rect x="96" y="10" width="76" height="46" rx="9" fill="#fff" stroke="#c9c4e6" stroke-width="2"/>
+        <text x="134" y="33" text-anchor="middle" font-size="17" font-weight="800" fill="#27187E">⊞</text>
+        <text x="134" y="48" text-anchor="middle" font-size="10" fill="#6b6a86">윈도우</text>
+        <text x="186" y="41" text-anchor="middle" font-size="20" font-weight="800" fill="#6b6a86">+</text>
+        <rect x="200" y="10" width="46" height="46" rx="9" fill="#fff" stroke="#c9c4e6" stroke-width="2"/>
+        <text x="223" y="41" text-anchor="middle" font-size="21" font-weight="800" fill="#27187E">1</text>
+        <text x="268" y="40" font-size="13" fill="#6b6a86">함께 누르면</text>
+      </g>
+      <!-- 아래로 -->
+      <path d="M230 62v14" stroke="#c9c4e6" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M225 71l5 6 5-6" fill="none" stroke="#c9c4e6" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- 작업표시줄 -->
+      <rect x="10" y="86" width="440" height="52" rx="12" fill="#ecebf6" stroke="#ddd9ef"/>
+      <!-- 시작 단추 — 세지 않는다 -->
+      <rect x="26" y="98" width="28" height="28" rx="6" fill="#dcd8ee"/>
+      <text x="40" y="117" text-anchor="middle" font-size="14" fill="#8b87a8">⊞</text>
+      <text x="40" y="153" text-anchor="middle" font-size="10" fill="#a09cba">안 셈</text>
+      <!-- 첫 번째 = 혜원이지 -->
+      <rect x="72" y="94" width="36" height="36" rx="8" fill="#fff" stroke="#27187E" stroke-width="2"/>
+      <image href="logo.png" x="77" y="99" width="26" height="26"/>
+      <text x="90" y="153" text-anchor="middle" font-size="12" font-weight="800" fill="#27187E">1</text>
+      <!-- 나머지 -->
+      <rect x="124" y="98" width="28" height="28" rx="6" fill="#dcd8ee"/>
+      <text x="138" y="153" text-anchor="middle" font-size="11" fill="#a09cba">2</text>
+      <rect x="168" y="98" width="28" height="28" rx="6" fill="#dcd8ee"/>
+      <text x="182" y="153" text-anchor="middle" font-size="11" fill="#a09cba">3</text>
+      <text x="216" y="117" font-size="12" fill="#6b6a86">← 앱 아이콘만 왼쪽부터 셉니다</text>
+    </svg>
+
+    <ol>
+      <li><b>시작</b> 단추를 누르고 <b>혜원이지</b>를 찾습니다 (바탕화면 아이콘도 됩니다)</li>
+      <li>마우스 <b>오른쪽 클릭</b> → <b>작업 표시줄에 고정</b>
+          <br><span style="color:var(--dim)">안 보이면 「추가 옵션 표시」나 「자세히」 안에 있습니다</span></li>
+      <li>작업표시줄에 생긴 아이콘을 <b>왼쪽 끝으로</b> 끌어다 놓습니다</li>
+      <li>이제 <span class="kbd">⊞</span>+<span class="kbd">1</span> 로 부릅니다
+          <br><span style="color:var(--dim)">⊞ 는 스페이스바 왼쪽의 창문 모양 키입니다</span></li>
+    </ol>
+    <p><b>몇 번째에 두었는지에 따라 숫자가 바뀝니다</b> — 두 번째면 <span class="kbd">⊞</span>+<span class="kbd">2</span>,
+       세 번째면 <span class="kbd">⊞</span>+<span class="kbd">3</span>. 시작·검색·위젯 단추는 세지 않고 <b>앱 아이콘만</b> 셉니다.</p>
+    <p>혜원이지는 창을 닫아도 꺼지지 않으므로, <span class="kbd">⊞</span>+<span class="kbd">1</span> 을 누르면
+       새로 켜지는 것이 아니라 <b>있던 창이 그대로 다시 올라옵니다.</b></p>
   </div>
 
   <div class="card">
