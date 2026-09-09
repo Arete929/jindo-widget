@@ -1,4 +1,4 @@
-// 파일명: recordsmain.js | @version 1.114.1
+// 파일명: recordsmain.js | @version 1.114.3
 // 학생기록의 «뒤쪽 일» — 구글 연결, 시트 만들기·지우기, 기록 읽고 쓰기, 명렬표 받기.
 //
 // main.js 가 너무 길어져서 학생기록만 따로 뺐다. main.js 는 register() 한 번만 부른다.
@@ -314,8 +314,15 @@ function register(helpers) {
           error: '노션 AI 가 아직 안 썼습니다 — 노션이 밀리는 듯합니다. 그 페이지를 열어 «누가기록» 을 보시거나, 조금 뒤 다시 눌러 주세요' };
       }
       알림(4, 총, '문장을 받았습니다');
-      /* 그 기록 페이지 본문 콜아웃에도 같은 문장을 남긴다 — 노션에서 바로 읽히게 */
+      /* ★ 노션 AI 가 지은 한 줄 제목(«제목» 속성)이 있으면 «내용» 을 그것으로 바꾼다.
+         없으면 그대로 둔다 — 만들 때 이미 단어 경계에서 잘라 넣었다.
+         «제목» 은 «누가기록» 보다 짧아 대개 먼저 끝나 있다. 잠깐만 더 기다린다. */
       알림(5, 총, '기록 페이지에 남기는 중…');
+      try {
+        const 제목 = await nrec.waitProp(key, made.id, '제목', { seconds: 30 });
+        if (제목) await nrec.setTitle(key, made.id, 제목);
+      } catch (err) { S.log('노션 제목 채우기 건너뜀 — ' + ((err && err.message) || err)); }
+      /* 그 기록 페이지 본문 콜아웃에도 같은 문장을 남긴다 — 노션에서 바로 읽히게 */
       try { await nrec.putNote(key, made.id, 문장); }
       catch (err) { S.log('노션 콜아웃 채우기 실패 — ' + ((err && err.message) || err)); }
       /* ★ 그 학생 페이지 본문에도 «날짜 · 구분 — 문장» 한 줄을 쌓는다.

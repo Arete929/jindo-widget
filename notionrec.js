@@ -1,4 +1,4 @@
-// 파일명: notionrec.js | @version 1.114.1
+// 파일명: notionrec.js | @version 1.114.3
 // 학생기록 ↔ 노션 [DB] 2026 학생기록 오가기 (지비스 전용).
 //
 // ★ [DB] 2026 학생기록 의 «누가기록» 속성이 «AI 자동 채우기 · 페이지 생성 시» 로
@@ -55,6 +55,26 @@ async function nrFindStudent(token, key) {
   return hit ? hit.id : '';
 }
 function nrRich(s) { return [{ type: 'text', text: { content: String(s || '').slice(0, 1900) } }]; }
+/* ★ 제목을 «단어 한복판» 에서 자르지 않는다 — 노션 표에서 «…전화했으나 안» 처럼
+   말이 끊겨 무슨 기록인지 알아볼 수가 없었다(2026-09-09). 띄어쓰기에서 자르고 «…» 를 붙인다.
+   노션 AI 가 지은 «제목» 속성이 오면 이것을 그것으로 갈아 끼운다. */
+function nrCutTitle(s, 최대) {
+  var t = String(s || '').replace(/s+/g, ' ').trim();
+  var 끝 = Number(최대 || 26);
+  if (t.length <= 끝) return t;
+  var 잘린 = t.slice(0, 끝);
+  var 빈칸 = 잘린.lastIndexOf(' ');
+  if (빈칸 >= Math.floor(끝 / 2)) 잘린 = 잘린.slice(0, 빈칸);
+  return 잘린.replace(/[,·-]+$/, '') + '…';
+}
+/* 노션 AI 가 지은 한 줄 제목으로 «내용»(제목 속성) 을 갈아 끼운다 */
+async function nrSetTitle(token, pageId, text) {
+  var t = String(text || '').replace(/s+/g, ' ').trim().replace(/^["'«»“”]+|["'«»“”]+$/g, '');
+  if (!t) return false;
+  await nrCall(token, 'PATCH', '/pages/' + pageId,
+    { properties: { '내용': { title: nrRich(t.slice(0, 90)) } } });
+  return true;
+}
 /* ① 노션으로 보내기 — 페이지를 만들고 페이지 id 를 돌려준다 */
 async function nrSend(token, o) {
   const s = o || {};
@@ -62,7 +82,7 @@ async function nrSend(token, o) {
   const 작성일 = /^\d{4}-\d{2}-\d{2}$/.test(String(s.when || '')) ? s.when : null;
   const 달 = 작성일 ? Number(작성일.slice(5, 7)) : (new Date()).getMonth() + 1;
   const props = {
-    '내용': { title: nrRich(s.topic || '행동특성 기록') },
+    '내용': { title: nrRich(nrCutTitle(s.topic, 26) || '행동특성 기록') },
     '구분': { select: { name: s.cat || '행동특성' } },
     '학기': { select: { name: (달 >= 3 && 달 <= 8) ? '1학기' : '2학기' } },
     'NEIS': { checkbox: false }
@@ -202,4 +222,5 @@ async function nrWaitProp(token, pageId, name, opt) {
 
 module.exports = { send: nrSend, fetchNote: nrFetchNote, findPage: nrFindPage,
   readProp: nrReadProp, waitProp: nrWaitProp, putNote: nrPutNote, putStudent: nrPutStudent,
+  setTitle: nrSetTitle, cutTitle: nrCutTitle,
   studentDb: nrStudentDb, REC_DB };

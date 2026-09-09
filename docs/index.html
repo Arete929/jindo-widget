@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>혜원이지 — 내려받기</title>
 <meta name="description" content="혜원여자중학교 선생님을 위한 바탕화면 도우미. 주간업무·시간표·학사일정·급식·학생기록을 한 창에." />
+<link rel="icon" href="logo.png" type="image/png" />
+<link rel="apple-touch-icon" href="logo.png" />
 <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <style>
@@ -16,6 +18,10 @@
     padding: 40px 20px 70px;
   }
   .wrap { max-width: 640px; margin: 0 auto; }
+  /* 로고 — 학교 교표. 앱 아이콘과 같은 그림이라 «이 앱이 그 앱» 임을 바로 안다 */
+  .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+  .brand img { width: 56px; height: 56px; flex: 0 0 auto; }
+  @media (max-width: 420px) { .brand img { width: 46px; height: 46px; } }
   h1 { font-size: 32px; letter-spacing: -.6px; margin-bottom: 6px; }
   .sub { color: var(--dim); font-size: 15px; margin-bottom: 28px; }
 
@@ -55,7 +61,10 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>혜원이지</h1>
+  <div class="brand">
+    <img src="logo.png" alt="혜원여자중학교 교표" width="56" height="56">
+    <h1>혜원이지</h1>
+  </div>
   <div class="sub">주간업무 · 시간표 · 학사일정 · 급식 · 학생기록을 바탕화면 한 창에서</div>
 
   <div class="hero">
