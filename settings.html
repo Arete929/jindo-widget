@@ -716,11 +716,19 @@
   <div class="row">
     <label class="lb">테마</label>
     <div class="chips" id="thRow">
-      <button data-th="">고스트</button><button data-th="black">블랙</button>
-      <button data-th="slate">슬레이트</button><button data-th="slatelight">슬레이트 라이트</button>
-      <button data-th="persian">페르시안</button><button data-th="chillwhite">칠화이트</button>
-      <button data-th="night">나이트</button><button data-th="hanok">한옥</button>
+      <!-- ★ 갈래마다 보이는 것이 다르다 — 아래 paintThemeBtns() 가 data-fl 로 가린다.
+           j=지비스만 · h=혜원이지만 · (없음)=둘 다 -->
+      <button data-th="gold" data-fl="j">금박</button>
+      <button data-th="lavender" data-fl="j">라벤더</button>
+      <button data-th="chillwhite">칠화이트</button>
+      <button data-th="hanok">한옥</button>
+      <button data-th="night">나이트</button>
       <button data-th="darkui">다크UI</button>
+      <button data-th="slatelight">슬레이트 라이트</button>
+      <button data-th="" data-fl="h">고스트</button>
+      <button data-th="black" data-fl="h">블랙</button>
+      <button data-th="slate" data-fl="h">슬레이트</button>
+      <button data-th="persian" data-fl="h">페르시안</button>
     </div>
   </div>
   <div class="row">
@@ -895,6 +903,10 @@ function __paint() {
     b.className = (Number(b.dataset.op) === Number(UI.opacity)) ? 'on' : '';
   });
   $('thRow').querySelectorAll('button').forEach(function (b) {
+    /* 갈래에 안 맞는 테마 단추는 감춘다 */
+    var fl = b.dataset.fl || '';
+    var 내것 = !fl || (fl === 'j' ? UI.flavor === 'jinho' : UI.flavor !== 'jinho');
+    b.style.display = 내것 ? '' : 'none';
     b.className = (b.dataset.th === (UI.theme || '')) ? 'on' : '';
   });
   // 바깥 주소를 열 브라우저

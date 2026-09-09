@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.2.0
+/* 파일명: ui.css | @version 1.116.0
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -99,6 +99,18 @@
   }
   /* 나이트 — 검은 바탕, «글자는 흰빛» 이고 키위색은 강조에만 남긴다.
      글자까지 형광 연두면 오래 보기 어렵다. */
+  /* 금박 — 검정 위 금색. 강조 대비 9.1 로 지금 테마 중 가장 또렷하다 */
+  :root[data-theme="gold"] {
+    --bg: #0F0F0F; --fg: #F3E5AB; --accent: #D4AF37; --on: #0F0F0F; --now: #4FD6A0;
+    --card: #1F1E1A; --card2: #2D2B23; --line: #413E31;
+    --dim: #8C8565; --fg2: #D8CB98;
+  }
+  /* 라벤더 — 짙은 남보라 위 연보라. 눈이 편하다 */
+  :root[data-theme="lavender"] {
+    --bg: #2D274B; --fg: #EAEFFE; --accent: #9787F3; --on: #2D274B; --now: #4FD6A0;
+    --card: #3A3558; --card2: #464162; --line: #575372;
+    --dim: #9595AD; --fg2: #D3D7E9;
+  }
   :root[data-theme="night"] {
     --bg: #222222; --fg: #EFF3E8; --accent: #89E900; --on: #222222; --now: #C6FF6B;
     --card: #2C2E29; --card2: #383B33; --line: #43473D;
@@ -297,7 +309,9 @@
   :root[data-theme="slate"] .gear,
   :root[data-theme="persian"] .gear,
   :root[data-theme="darkui"] .gear,
-  :root[data-theme="night"] .gear { background-image: url('assets/setting_blue.png'); }
+  :root[data-theme="night"] .gear,
+  :root[data-theme="gold"] .gear,
+  :root[data-theme="lavender"] .gear { background-image: url('assets/setting_blue.png'); }
   /* 제목 줄 오른쪽 끝 — 지금 쓰는 버전 */
   .tver {
     margin-left: 7px; font-size: 9.5px; font-weight: 700;
