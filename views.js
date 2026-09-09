@@ -1,8 +1,8 @@
-/* 파일명: views.js | @version 1.116.1
+/* 파일명: views.js | @version 1.117.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
-   위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
+   위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
-   ★ 창의 뼈대는 각자 다르다 — 혜원이지는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
+   ★ 창의 뼈대는 각자 다르다 — 혜비스는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
 
 var STATE = null, VIEW = 'today', SCALE = 1, VER = '', UPD = null, LASTTT = 'today', THEME = '';
 var DASHVER = null;   // 얹은 수업진도 웹앱의 판 { ver, at }
@@ -44,9 +44,9 @@ var BROWSER = '크롬';
 // 지금 그리고 있는 창이 «넓은 창»(easy.html)인가. 왼쪽 메뉴가 있으면 넓은 창이다.
 // ★ 갈래로 가르지 않는다 — 한 프로그램이 위젯 창과 넓은 창을 함께 띄우기 때문이다.
 var IS_EASY = !!document.getElementById('side');
-var EASYFAV = [];         // 혜원이지 대시보드 즐겨찾기
+var EASYFAV = [];         // 혜비스 대시보드 즐겨찾기
 
-/* 화면이 담기는 통. 위젯은 #app, 혜원이지는 #main 이다.
+/* 화면이 담기는 통. 위젯은 #app, 혜비스는 #main 이다.
    스크롤·자리 재기를 하는 곳이 서로 다르므로 여기서 한 번에 가른다. */
 function appEl() {
   return document.getElementById('app') || document.getElementById('main');
@@ -1537,7 +1537,7 @@ function scrollToEl(el, gap) {
   if (!el || !app) return false;
   var top = el.getBoundingClientRect().top - app.getBoundingClientRect().top + app.scrollTop;
   var head = parseFloat(getComputedStyle(app).getPropertyValue('--toph')) || 46;
-  // 머리에 «붙어 있는» 줄만 빼 준다. 혜원이지는 이 줄이 같이 흘러가므로 뺄 것이 없다.
+  // 머리에 «붙어 있는» 줄만 빼 준다. 혜비스는 이 줄이 같이 흘러가므로 뺄 것이 없다.
   var nav = app.querySelector('.top2');
   var stuck = nav && getComputedStyle(nav).position !== 'static';
   app.scrollTop = Math.max(0, top - head - (stuck ? nav.offsetHeight : 0) - (gap || 6));
@@ -2027,7 +2027,7 @@ function usgToggleBtn() {
     + (USGPANEL ? '감추기' : '보이기') + '">◍</button>';
 }
 function usageBar() {
-  /* ★ 지비스는 타일이 제목 줄로 갔다 — 여기 띠는 그리지 않는다(혜원이지는 그대로) */
+  /* ★ 지비스는 타일이 제목 줄로 갔다 — 여기 띠는 그리지 않는다(혜비스는 그대로) */
   if (FLAVOR === 'jinho') return '';
   var keys = (USG ? Object.keys(USG) : []).filter(function (k) { return USGON.indexOf(k) >= 0; });
   var sys = sysBox();
@@ -2755,7 +2755,7 @@ function notesCard() {
     + '지난 내역은 <b>설정 → 정보 → «업데이트 내역 보기»</b> 에서 언제든 볼 수 있어요.</div>'
     + '</div>';
 }
-/* 이름 — 혜원이지는 뒤 두 글자를 색 상자로 준다. 지비스는 그대로.
+/* 이름 — 혜비스는 뒤 두 글자를 색 상자로 준다. 지비스는 그대로.
    ★ 위젯 제목 줄과 넓은 창이 같이 쓴다(한 곳에서만 고치도록). */
 /* 담아 둔 순서대로 늘어놓는다. 목록에 없는 것(새로 생긴 화면)은 뒤에 붙는다.
    ★ 순서를 담아 두는 곳이 하나뿐이라, 위젯과 넓게 보기가 늘 같은 순서가 된다. */
@@ -3128,14 +3128,16 @@ function bdSend(app) {
 }
 
 function brandHtml() {
-  var n = String(APPNAME || '');
-  /* ★ 지비스는 제목 줄에서 손글씨 «JI-VIS» 로 쓴다(Pacifico).
-     한글 «지비스» 는 트레이·알림·설정 같은 딴 자리에 그대로 쓴다 —
-     Pacifico 에는 한글 글자가 없어서 제목에 한글을 넣으면 손글씨가 안 나온다. */
-  if (HAS_TT) return '<span class="hw" title="지비스 · JI-VIS">JI-VIS</span>';
-  if (n.length < 3) return esc(n);
-  return '<em class="bchip">' + esc(n.slice(0, 2)) + '</em>'
-    + '<span class="brest">' + esc(n.slice(2)) + '</span>';
+  /* ★ 두 갈래 모두 제목 줄은 영문 로고체(Lilita One)로 쓴다 —
+     한글은 이 글씨체에 글자가 없어서, 한글 이름은 트레이·알림·설정 같은 딴 자리에만 쓴다.
+     아래 풀이 줄은 앞글자만 강조해 약자임이 보이게 한다(창이 좁으면 CSS 가 감춘다). */
+  var 이름 = HAS_TT ? 'JI-VIS' : 'HYE-VIS';
+  var 풀이 = HAS_TT
+    ? '<b>J</b>inho\u2019s <b>I</b>ntelligent <b>V</b>ersatile <b>I</b>nformation <b>S</b>ystem'
+    : '<b>H</b>yewon\u2019s <b>E</b>veryday <b>V</b>ersatile <b>I</b>nformation <b>S</b>ystem';
+  return '<span class="brandwrap" title="' + esc(APPNAME) + ' · ' + 이름 + '">'
+    + '<span class="hw">' + 이름 + '</span>'
+    + '<span class="tagline">' + 풀이 + '</span></span>';
 }
 /* ── 바로가기 ──────────────────────────────────────────────
    제목과 주소만 담긴 타일. 누르면 «설정에서 고른 브라우저» 로 열린다.
@@ -3168,13 +3170,13 @@ try { dutyHidDay = localStorage.getItem('dutyHid') || ''; } catch (e) { /* 못 �
 var FEED = null, FEEDFAV = [];
 /* ── 런처보드 ──────────────────────────────────────────────
    런처 GAS(내 앱 대시보드) 시트를 이 화면에서 바로 고친다.
-   ★ «공유» 를 켠 것만 혜원이지에 나타난다. 꺼 두면 나만 본다.
+   ★ «공유» 를 켠 것만 혜비스에 나타난다. 꺼 두면 나만 본다.
    ★ ⟳ 는 구글 드라이브를 훑어 새로 만든 앱을 담아 온다 — 누를 때만 한다.
      (저절로 하면 앱 켤 때마다 드라이브를 뒤져 느려진다) */
 var lbEdit = false, lbQ = '', lbBusy = '', lbErr = '', lbOkAt = '', lbForm = null;
 function lbOn() { return FLAVOR === 'jinho' && !!FEED; }
 /* 런처에서 온 앱 묶음의 이름 — 갈래마다 «누구 것인가» 가 다르다.
-   지비스는 내가 담은 «내 앱», 혜원이지는 내가 나눠 준 것을 «선생님들이» 본다. */
+   지비스는 내가 담은 «내 앱», 혜비스는 내가 나눠 준 것을 «선생님들이» 본다. */
 function feedName() { return FLAVOR === 'jinho' ? '내 앱' : '함께 쓰는 앱'; }
 /* 런처보드는 두 가지를 담는다 — 내가 만든 앱, 그리고 그냥 담아 둔 주소.
    ★ 갈라 보여 주되 나만/공유는 똑같이 쓴다. */
@@ -3680,7 +3682,7 @@ function lbListHtml() {
   var cats = lbCats();
 
   /* ★ 공유 중인 것을 맨 위로 — «남이 지금 뭘 보나» 가 가장 궁금한 것이다 */
-  [{ k: 'y', t: '함께 쓰는 중', d: '혜원이지에 보입니다' },
+  [{ k: 'y', t: '함께 쓰는 중', d: '혜비스에 보입니다' },
    { k: 'n', t: '나만 보기', d: '나에게만 보입니다' }].forEach(function (band) {
     var mine = rest.filter(function (x) { return (band.k === 'y') === !!x.shared; });
     if (!mine.length) return;
@@ -3758,7 +3760,7 @@ function lbTools() {
     + '<button class="wkb" id="lbCatNew">＋ 묶음</button>'
     + '<button class="wkb" id="lbFoldAll">모두 접기</button>'
     + '<button class="wkb" id="lbOpenAll">모두 펼치기</button>'
-    + '<span class="lbhint"><b>함께</b> 로 둔 것만 <b>혜원이지</b> 에 보입니다. 줄을 끌어 다른 묶음으로 옮길 수 있습니다.</span>'
+    + '<span class="lbhint"><b>함께</b> 로 둔 것만 <b>혜비스</b> 에 보입니다. 줄을 끌어 다른 묶음으로 옮길 수 있습니다.</span>'
     + '</div>'
     + (lbNewCat
       ? '<div class="lbform"><div class="lbfr"><i>새 묶음</i>'
@@ -3889,7 +3891,7 @@ function lbSeg(x, i) {
     + '<button class="' + (x.shared ? '' : 'on') + '" data-lbset="' + i + ',n"'
     + ' title="나만 보기" aria-label="나만 보기">' + ofSvg('lock') + '</button>'
     + '<button class="' + (x.shared ? 'on' : '') + '" data-lbset="' + i + ',y"'
-    + ' title="함께 쓰기 — 혜원이지에 보입니다" aria-label="함께 쓰기">'
+    + ' title="함께 쓰기 — 혜비스에 보입니다" aria-label="함께 쓰기">'
     + ofSvg('users') + '</button>'
     + '</span>';
 }
@@ -4356,7 +4358,7 @@ function lbPaint(root) {
    컴시간이 «몇 교시 · 어느 반 · 무슨 과목» 을 이미 알려 준다.
    사람이 넣을 것은 «이번 시간에 뭘 했나» 한 줄뿐이다.
    차시는 그 학급에 적은 메모의 순번이라 저절로 붙는다.
-   ★ 혜원이지에만 있다 — 지비스에는 수업진도 대시보드가 따로 있다. */
+   ★ 혜비스에만 있다 — 지비스에는 수업진도 대시보드가 따로 있다. */
 var NT = null, ntBusy = false, ntErr = '', ntCls = '', ntSaved = {};
 var NTDOW = ['일', '월', '화', '수', '목', '금', '토'];
 function ntLoad(force) {
@@ -4863,7 +4865,7 @@ function render() {
     + '<button class="ico img" title="넓게 보기 — 사이드바가 있는 큰 창" onclick="widgetAPI.openEasy()">'
     + '<img src="assets/wide.png" alt="넓게 보기"></button>'
     + (HAS_TT ? '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>' : '')
-    // ★ 혜원 데스크·혜원이지는 수업진도를 안 쓴다. 예전에는 여기서도 refreshNow() 를
+    // ★ 혜원 데스크·혜비스는 수업진도를 안 쓴다. 예전에는 여기서도 refreshNow() 를
     //   불러서 위젯이 통째로 「수업진도에 로그인해 주세요」로 덮였다.
     + (HAS_TT
         ? '<button class="ico" title="지금 새로고침" onclick="widgetAPI.refreshNow()">⟳</button>'
@@ -5241,7 +5243,7 @@ widgetAPI.onData(function (p) {
   if (p.flavor) FLAVOR = p.flavor;
   if (p.browserLabel) BROWSER = p.browserLabel;
   STATE = p.data;
-  // 혜원이지는 대시보드라는 «위젯에 없는» 화면이 있어서, 보던 화면을 스스로 챙긴다
+  // 혜비스는 대시보드라는 «위젯에 없는» 화면이 있어서, 보던 화면을 스스로 챙긴다
   if (!IS_EASY) VIEW = p.view || VIEW;
   // ★ «이번주» 는 «오늘» 안으로 들어갔다. 옛 판에서 그걸 보던 사람은 빈 화면이 된다.
   if (VIEW === 'week') { VIEW = 'today'; widgetAPI.setView('today'); }
@@ -5294,7 +5296,7 @@ widgetAPI.onData(function (p) {
   }
   if (p.flavor) {
     HAS_TT = FLAVOR === 'jinho';
-    APPNAME = p.appName || (HAS_TT ? '지비스' : '혜원이지');
+    APPNAME = p.appName || (HAS_TT ? '지비스' : '혜비스');
     if (!HAS_TT && ['today', 'week', 'progress'].indexOf(VIEW) >= 0) VIEW = IS_EASY ? 'home' : 'work';
   }
   if (p.easyFav) EASYFAV = p.easyFav;
@@ -5371,7 +5373,7 @@ setInterval(function () {
 
 
 /* ── 화면 안의 단추·입력칸 연결 ──
-   위젯(#app)과 혜원이지(#main)가 «같은 연결»을 쓴다. 화면 조각이 같으니
+   위젯(#app)과 혜비스(#main)가 «같은 연결»을 쓴다. 화면 조각이 같으니
    단추도 같아야 한다 — 한 군데만 고치면 두 프로그램이 같이 고쳐진다. */
 function wireViews(app) {
   // 진도표 격자 — 이번 주 / 전체 · 주 넘기기 · 이번주로
@@ -6217,7 +6219,7 @@ function wireViews(app) {
   });
   var nx = app.querySelector('#notesX');
   if (nx) nx.addEventListener('click', function () { NOTES = null; widgetAPI.notesSeen(); render(); });
-  // ⟳ — 보고 있는 탭의 자료를 다시 받는다 (혜원 데스크·혜원이지)
+  // ⟳ — 보고 있는 탭의 자료를 다시 받는다 (혜원 데스크·혜비스)
   var reB = app.querySelector('#reGet');
   if (reB) reB.addEventListener('click', function () {
     reB.textContent = '…';

@@ -1,12 +1,12 @@
 <!-- 파일명: easy.html | @version 1.7.0 -->
-<!-- 혜원이지 (HYEWON EASY) — 위젯과 달리 «열어서 일하는» 넓은 창.
+<!-- 혜비스 (HYEWON EASY) — 위젯과 달리 «열어서 일하는» 넓은 창.
      색·모양은 위젯과 같은 ui.css 를 함께 쓴다(테마 일곱). 자료를 읽어 오는 부분은
      위젯이 쓰던 그대로다 — 여기서는 화면만 넓게 다시 그린다. -->
 <!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8" />
-<title>혜원이지</title>
+<title>혜비스</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
@@ -29,9 +29,16 @@
     padding: 16px 12px; display: flex; flex-direction: column; gap: 3px;
   }
   .brand { display: flex; align-items: center; gap: 8px; padding: 2px 6px 14px; }
-  @font-face { font-family: 'Pacifico'; font-style: normal; font-weight: 400;
-               font-display: swap; src: url('assets/pacifico.woff2') format('woff2'); }
-  .brand .hw { font-family: 'Pacifico', cursive; font-weight: 400; letter-spacing: 0; }
+  @font-face { font-family: 'Lilita One'; font-style: normal; font-weight: 400;
+               font-display: swap; src: url('assets/lilitaone.woff2') format('woff2'); }
+  .brand .hw { font-family: 'Lilita One', cursive; font-weight: 400; letter-spacing: .4px;
+               font-size: 25px; line-height: 1.08; }
+  /* 이름 아래 풀이 — 앞글자만 강조. 왼쪽 차림표가 좁아지면 감춘다 */
+  .brandwrap { display: inline-flex; flex-direction: column; align-items: flex-start; }
+  .tagline { font-size: 8.5px; font-weight: 500; letter-spacing: .1px; color: var(--dim);
+             white-space: nowrap; margin-top: 1px; padding-left: 2px; }
+  .tagline b { color: var(--accent); font-weight: 800; font-size: 9.5px; }
+  @media (max-width: 900px) { .tagline { display: none; } }
   .brand img { width: 36px; height: 36px; object-fit: contain; -webkit-user-drag: none; }
   .brand b { font-size: 17px; font-weight: 800; letter-spacing: -.4px; }
 

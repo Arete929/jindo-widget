@@ -15,7 +15,7 @@ const 판 = JSON.parse(fs.readFileSync(path.join(뿌리, 'package.json'), 'utf8'
 const 설치본 = path.join(뿌리, 'dist', 'HyewonDesk-Setup-' + 판 + '.exe');
 
 if (!fs.existsSync(설치본)) {
-  console.error('★ ' + path.basename(설치본) + ' 이 없습니다 — 혜원이지를 먼저 빌드하세요');
+  console.error('★ ' + path.basename(설치본) + ' 이 없습니다 — 혜비스를 먼저 빌드하세요');
   process.exit(1);
 }
 const 메가 = Math.round(fs.statSync(설치본).size / 1048576) + 'MB';

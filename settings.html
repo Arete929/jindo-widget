@@ -378,7 +378,7 @@
     <b>▲▼</b> 로 순서를 바꾸고 <b>✕</b> 로 뺍니다.
     주소 앞에 <b>https://</b> 를 안 적어도 알아서 붙습니다.<br><br>
     <b>관리자 열쇠</b> 를 넣으면 <b>지비스의 「런처보드」</b> 에서
-    앱을 담고·고치고·빼고, <b>공유 스위치</b> 로 <b>혜원이지</b> 에 보일지 정할 수 있습니다.
+    앱을 담고·고치고·빼고, <b>공유 스위치</b> 로 <b>혜비스</b> 에 보일지 정할 수 있습니다.
     열쇠가 없는 PC 는 공유로 켜 둔 앱만 보이고 고치는 단추가 아예 안 나옵니다.
   </div>
 </section>
@@ -717,7 +717,7 @@
     <label class="lb">테마</label>
     <div class="chips" id="thRow">
       <!-- ★ 갈래마다 보이는 것이 다르다 — 아래 paintThemeBtns() 가 data-fl 로 가린다.
-           j=지비스만 · h=혜원이지만 · (없음)=둘 다 -->
+           j=지비스만 · h=혜비스만 · (없음)=둘 다 -->
       <button data-th="gold" data-fl="j">금박</button>
       <button data-th="lavender" data-fl="j">라벤더</button>
       <button data-th="" data-fl="h">고스트</button>
@@ -938,13 +938,13 @@ function __paint() {
     b.className = (b.dataset.usgstyle === (UI.usageStyle || 'ring')) ? 'on' : '';
     b.disabled = !usgOn;
   });
-  // 시간표가 없는 판(혜원 데스크·혜원이지)에서는 구글 로그인 줄을 숨긴다
+  // 시간표가 없는 판(혜원 데스크·혜비스)에서는 구글 로그인 줄을 숨긴다
   if (UI.flavor !== 'jinho') {
     var lr = $('loginState').closest('.row');
     if (lr) lr.style.display = 'none';
     document.title = (UI.appName || '위젯') + ' 설정';
   }
-  // 혜원이지는 «떠 있는 위젯»이 아니다 — 위젯에만 뜻이 있는 항목을 감춘다
+  // 혜비스는 «떠 있는 위젯»이 아니다 — 위젯에만 뜻이 있는 항목을 감춘다
   if (UI.flavor === 'easy') {
     ['sizeRow', 'opRow', 'usgRow'].forEach(function (k) {
       var r = $(k) && $(k).closest('.row');
@@ -1023,7 +1023,7 @@ function __paint() {
 function paintNt() {
   var sec = $('secTask');
   if (!sec) return;
-  // 혜원이지에는 이 기능이 없다 — 아예 감춘다
+  // 혜비스에는 이 기능이 없다 — 아예 감춘다
   var jinho = UI.flavor === 'jinho';
   sec.style.display = jinho ? '' : 'none';
   if (!jinho) return;
@@ -1104,7 +1104,7 @@ function paintTk() {
   var sec = $('secTick');
   if (!sec) return;
   var jinho = UI.flavor === 'jinho';
-  sec.style.display = jinho ? '' : 'none';   // 혜원이지에는 없는 기능
+  sec.style.display = jinho ? '' : 'none';   // 혜비스에는 없는 기능
   if (!jinho) return;
   var t = UI.tick || {};
   $('tkRedir').value = t.redirect || '';
@@ -1909,7 +1909,7 @@ function drawHelp() {
     return '<section class="hsec" id="h_' + p.id + '">'
       + '<h2>' + esc(p.t)
       + (p.only === "jinho" ? '<span class="only">지비스</span>' : "")
-      + (p.only === "hyewon" ? '<span class="only hy">혜원이지</span>' : "")
+      + (p.only === "hyewon" ? '<span class="only hy">혜비스</span>' : "")
       + '</h2>' + p.body + '</section>';
   }).join("");
 
