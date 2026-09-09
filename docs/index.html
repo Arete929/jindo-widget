@@ -110,29 +110,48 @@
 </div>
 
 <script>
-/* 최신판 내려받기 주소를 찾아 단추에 건다.
-   ★ 파일 이름에 판 번호가 들어 있어서 «고정된 주소» 를 쓸 수 없다.
-     그래서 깃허브에 물어 그때그때 채운다.
-   ★ 못 물어도 단추는 «내려받는 곳» 으로 그대로 열린다 — 헛걸음이 없다. */
+/* 최신 혜원이지 설치본을 찾아 단추에 건다.
+   ★ «가장 최근 릴리스» 만 보면 안 된다 — 지비스만 낸 판에는 혜원이지 설치본이 없어서,
+     못 찾고 영문 릴리스 목록으로 떨어진다(2026-09-09에 실제로 이랬다).
+     그래서 릴리스를 훑어 «혜원이지 설치본이 실린 가장 최근 것» 을 고른다.
+   ★ 판 번호는 릴리스 이름이 아니라 파일 이름에서 뽑는다 — 릴리스 이름은 지비스 것이라
+     v1.114.1 인데 혜원이지 알맹이는 1.100.0 인 식으로 어긋난다.
+   ★ 못 물어봐도(망 차단·한도 초과) 단추는 마지막으로 확인된 설치본을 그대로 가리킨다. */
 (function () {
-  var API = 'https://api.github.com/repos/Arete929/jindo-widget/releases/latest';
+  var API = 'https://api.github.com/repos/Arete929/jindo-widget/releases?per_page=30';
+  var 대비주소 = 'https://github.com/Arete929/jindo-widget/releases/download/v1.113.0/HyewonDesk-Setup.exe';
   var dl = document.getElementById('dl');
   var ver = document.getElementById('ver');
+  dl.href = 대비주소;                    // 먼저 걸어 둔다 — 물어보다 실패해도 눌리게
+  function 판번호(이름) {
+    var m = String(이름).match(/(d+.d+.d+)/);
+    return m ? m[1] : '';
+  }
   fetch(API, { headers: { Accept: 'application/vnd.github+json' } })
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-    .then(function (j) {
-      var a = (j.assets || []).filter(function (x) {
-        return /^HyewonDesk-Setup.*\.exe$/.test(x.name);
-      })[0];
-      if (!a) throw new Error('설치 파일을 못 찾음');
-      dl.href = a.browser_download_url;
-      var mb = Math.round((a.size || 0) / 1048576);
-      var day = String(j.published_at || '').slice(0, 10).replace(/-/g, '. ');
-      ver.innerHTML = '<b>' + (j.tag_name || '') + '</b>'
+    .then(function (list) {
+      var 찾음 = null;
+      (list || []).some(function (rel) {
+        if (rel.draft) return false;
+        var 것들 = (rel.assets || []).filter(function (x) {
+          return /^HyewonDesk-Setup.*.exe$/.test(x.name);
+        });
+        if (!것들.length) return false;
+        /* 판 번호가 박힌 이름을 먼저 쓴다 — 눌러 받은 파일이 무엇인지 알아보기 쉽다 */
+        var 고른것 = 것들.filter(function (x) { return 판번호(x.name); })[0] || 것들[0];
+        찾음 = { rel: rel, a: 고른것 };
+        return true;
+      });
+      if (!찾음) throw new Error('설치 파일을 못 찾음');
+      dl.href = 찾음.a.browser_download_url;
+      var mb = Math.round((찾음.a.size || 0) / 1048576);
+      var 판 = 판번호(찾음.a.name) || String(찾음.rel.tag_name || '').replace(/^v/, '');
+      var day = String(찾음.rel.published_at || '').slice(0, 10).replace(/-/g, '. ');
+      ver.innerHTML = '<b>' + (판 ? '판 ' + 판 : '') + '</b>'
         + (mb ? ' · ' + mb + 'MB' : '') + (day ? ' · ' + day : '');
     })
     .catch(function () {
-      ver.textContent = '눌러서 내려받는 곳으로 갑니다';
+      ver.textContent = '눌러서 내려받습니다';
     });
 })();
 </script>

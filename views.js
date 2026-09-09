@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.114.1
+/* 파일명: views.js | @version 1.114.2
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -2546,7 +2546,8 @@ function recWrite() {
               : '<textarea class="rta hid" id="recEdit" data-row="' + r.row + '">' + esc(r.text) + '</textarea>')
             + (recShow !== 'text'
               ? '<div class="rlab hb">행발 누가기록'
-                + '<button class="wkb tiny" data-rhb="' + r.row + '"' + (recRuns[r.row] ? ' disabled' : '') + ' title="노션에 쓰고, 노션 AI 가 지은 누가기록을 가져옵니다">↻ 변환</button>'
+                + '<button class="wkb tiny" data-rhb="' + r.row + '"' + (recRuns[r.row] ? ' disabled' : '')
+                + ' title="' + (HAS_TT ? '노션에 쓰고, 노션 AI 가 지은 누가기록을 가져옵니다' : '기록 내용을 누가기록 문장으로 다듬습니다') + '">↻ 변환</button>'
                 + (function () { var nv = recNoteDraft[r.row] !== undefined ? recNoteDraft[r.row] : (r.note || '');
                     return '<span class="rbyte">' + neisBytes(nv) + ' Byte · ' + nv.length + '자</span>'; })()
                 + '</div>'
@@ -2557,8 +2558,8 @@ function recWrite() {
             + '<span class="rbyte">' + neisBytes(r.text) + ' Byte · ' + r.text.length + '자</span>'
             + '<span class="spacer"></span>'
             + '<button class="wkb" data-rcp="' + r.row + '" title="복사">⧉</button>'
-            + '<button class="wkb" data-rnt="' + r.row + '" title="노셔나이 #행특 꼴로 복사 — 노션에 붙여넣으면 누가기록을 지어 줍니다">#행특</button>'
-            + (recNotionPage[r.row] ? '<button class="wkb" data-nopen="' + r.row + '" title="노션에서 열기">노션 ↗</button>' : '')
+            + (HAS_TT ? '<button class="wkb" data-rnt="' + r.row + '" title="노셔나이 #행특 꼴로 복사 — 노션에 붙여넣으면 누가기록을 지어 줍니다">#행특</button>' : '')
+            + (HAS_TT && recNotionPage[r.row] ? '<button class="wkb" data-nopen="' + r.row + '" title="노션에서 열기">노션 ↗</button>' : '')
             + '<button class="wkb" data-rdel="' + r.row + '">지우기</button>'
             + '</div>'
             + '<div id="recGauge' + r.row + '">' + recGauge(r.row) + '</div>'
@@ -2587,7 +2588,7 @@ function recWrite() {
     : '<textarea class="rta hid" id="recNoteNew">' + esc(recNote || '') + '</textarea>');
   if (recHint) h += '<div class="rhint">' + esc(recHint) + '</div>';
   h += '<div class="wknav"><button class="wkb go" id="recSave">저장</button>'
-    + '<button class="wkb" data-rnt="" title="노셔나이 #행특 꼴로 복사 — 노션에 붙여넣으면 누가기록을 지어 줍니다">#행특 복사</button>'
+    + (HAS_TT ? '<button class="wkb" data-rnt="" title="노셔나이 #행특 꼴로 복사 — 노션에 붙여넣으면 누가기록을 지어 줍니다">#행특 복사</button>' : '')
     + '<span class="rbyte">' + neisBytes(recDraft || '') + ' Byte · ' + (recDraft || '').length + '자</span>'
     + '</div>';
   if (recSavedAt) h += '<div class="rsaved">✅ 저장됨 · ' + esc(recSavedAt) + '</div>';
@@ -5601,7 +5602,7 @@ function wireViews(app) {
       if (b.dataset.rhb !== undefined) {            // 행발 누가기록으로 변환
         var app0 = appEl();
         var 원문 = '', 넣을곳 = null;
-        if (b.dataset.rhb) {                        // 저장해 둔 기록에서
+        if (HAS_TT && b.dataset.rhb) {      // 노션 왕복은 지비스에만                        // 저장해 둔 기록에서
           var ta = app0.querySelector('#recEdit');
           원문 = ta ? ta.value : '';
           넣을곳 = app0.querySelector('#recNoteEdit');
