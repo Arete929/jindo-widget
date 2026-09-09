@@ -21,6 +21,11 @@
   /* 로고 — 학교 교표. 앱 아이콘과 같은 그림이라 «이 앱이 그 앱» 임을 바로 안다 */
   .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
   .brand img { width: 56px; height: 56px; flex: 0 0 auto; }
+  .vbadge {
+    align-self: center; margin-left: 2px; padding: 3px 9px; border-radius: 999px;
+    background: #ece9fb; color: var(--fg); font-size: 12px; font-weight: 800;
+    letter-spacing: .2px; white-space: nowrap;
+  }
   @media (max-width: 420px) { .brand img { width: 46px; height: 46px; } }
   h1 { font-size: 32px; letter-spacing: -.6px; margin-bottom: 6px; }
   .sub { color: var(--dim); font-size: 15px; margin-bottom: 28px; }
@@ -64,13 +69,14 @@
   <div class="brand">
     <img src="logo.png" alt="혜원여자중학교 교표" width="56" height="56">
     <h1>혜원이지</h1>
+    <span class="vbadge" id="vtop"><!--VER-->1.114.3<!--/VER--></span>
   </div>
   <div class="sub">주간업무 · 시간표 · 학사일정 · 급식 · 학생기록을 바탕화면 한 창에서</div>
 
   <div class="hero">
     <a class="dl" id="dl"
        href="https://github.com/Arete929/jindo-widget/releases/latest">Windows 용 내려받기</a>
-    <span class="ver" id="ver">최신판을 찾는 중…</span>
+    <span class="ver" id="ver">판 <b><!--VER-->1.114.3<!--/VER--></b> · <!--SIZE-->81MB<!--/SIZE--> · <!--DATE-->2026. 09. 09<!--/DATE--></span>
   </div>
 
   <div class="warn">
@@ -132,6 +138,7 @@
   var dl = document.getElementById('dl');
   var ver = document.getElementById('ver');
   dl.href = 대비주소;                    // 먼저 걸어 둔다 — 물어보다 실패해도 눌리게
+  var vtop = document.getElementById('vtop');
   function 판번호(이름) {
     var m = String(이름).match(/(d+.d+.d+)/);
     return m ? m[1] : '';
@@ -156,11 +163,12 @@
       var mb = Math.round((찾음.a.size || 0) / 1048576);
       var 판 = 판번호(찾음.a.name) || String(찾음.rel.tag_name || '').replace(/^v/, '');
       var day = String(찾음.rel.published_at || '').slice(0, 10).replace(/-/g, '. ');
-      ver.innerHTML = '<b>' + (판 ? '판 ' + 판 : '') + '</b>'
+      if (vtop && 판) vtop.textContent = 판;
+      ver.innerHTML = (판 ? '판 <b>' + 판 + '</b>' : '')
         + (mb ? ' · ' + mb + 'MB' : '') + (day ? ' · ' + day : '');
     })
     .catch(function () {
-      ver.textContent = '눌러서 내려받습니다';
+      /* 못 물어봤다 — 박아 둔 판 글자를 그대로 둔다(지우면 아무것도 안 보인다) */
     });
 })();
 </script>
