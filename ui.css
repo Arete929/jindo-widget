@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.121.0
+/* 파일명: ui.css | @version 1.121.1
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -1408,25 +1408,78 @@
   .atwarn .wkb, .atcaution .wkb { margin-top: 5px; }
   .atsum { margin: 6px 2px 5px; color: var(--fg2); font-size: calc(11px * var(--wf)); }
   .atpend { color: #c0392b; }
-  .atl { display: flex; flex-direction: column; gap: 5px; }
-  .atr {
-    background: var(--card); border-left: 3px solid var(--line); border-radius: 7px;
-    padding: 6px 9px 7px; display: flex; flex-direction: column; gap: 3px;
+  /* 표 — 시트 3-2 탭과 같은 칸 차례 */
+  /* 좁은 위젯에서는 옆으로 굴려 본다 — 칸을 시트처럼 한 줄에 다 두기 위해 */
+  .attw { overflow-x: auto; }
+  .attt { border-collapse: collapse; width: 100%; min-width: calc(500px * var(--wf)); table-layout: fixed; font-size: calc(10.5px * var(--wf)); }
+  .attt th, .attt td { border: 1px solid var(--line); padding: 3px 4px; vertical-align: middle; }
+  .attt th { background: color-mix(in srgb, #FDDCE8 45%, var(--card)); color: var(--fg); font-weight: 700;
+             text-align: center; white-space: nowrap; font-size: calc(10px * var(--wf)); }
+  .attt td.c { text-align: center; white-space: nowrap; }
+  .attt td.rs { word-break: break-word; }
+  .attt td small { display: block; color: var(--dim); font-size: calc(9px * var(--wf)); }
+  .attt col.c0 { width: calc(24px * var(--wf)); }
+  .attt col.c1 { width: calc(56px * var(--wf)); }
+  .attt col.c2 { width: calc(38px * var(--wf)); }
+  .attt col.c3 { width: calc(46px * var(--wf)); }
+  .attt col.c4 { width: calc(70px * var(--wf)); }
+  .attt col.c5 { width: calc(54px * var(--wf)); }
+  .attt col.c6 { width: calc(60px * var(--wf)); }
+  .attt tr.atr td { background: var(--card); }
+  .attt tr.atr.r-in td { background: color-mix(in srgb, #FFDCDC 60%, var(--card)); }
+  .attt tr.atr.r-ill td { background: color-mix(in srgb, #F3EEFF 60%, var(--card)); }
+  .attt td.h-late { background: color-mix(in srgb, #D9EAD3 70%, var(--card)) !important; }
+  .attt td.h-early { background: color-mix(in srgb, #FFF2CC 70%, var(--card)) !important; }
+  .attt tr.atr.pend td:first-child { box-shadow: inset 3px 0 0 #c0392b; }
+  .attt tr.atr.hid td { opacity: .6; }
+  .attt tr.atr.local td { background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+  .attt td .gpk { display: inline-block; }
+  .atapp { font-style: normal; font-weight: 800; font-size: calc(9px * var(--wf)); color: var(--accent); }
+  .atlocal { color: var(--accent); font-weight: 700; }
+  /* 누르면 칩이 뜨는 셀 */
+  .attt td.atcell { position: relative; }
+  .attt td.atcell.pick { cursor: pointer; -webkit-app-region: no-drag; }
+  .attt td.atcell.pick:hover { box-shadow: inset 0 0 0 2px var(--accent); }
+  .attt td.atcell.off { color: var(--dim); cursor: default; }
+  /* ★ 머리(제목·탭·달 줄) 바로 밑에 떠 있는 판 — 학년부 일지 넣기 칸(.gpadd)과 같은 방식.
+       표 안에 두면 가로 스크롤 통에 잘리고, 맨 아래 새 줄에서는 화면 밖으로 열렸다 */
+  .atpop {
+    position: fixed; z-index: 40;
+    top: calc(var(--toph, 46px) + var(--top2h, 0px) + 6px);
+    left: 14px; right: 14px; max-width: 560px; margin-left: auto;
+    max-height: calc(100vh - var(--toph, 46px) - var(--top2h, 0px) - 24px); overflow-y: auto;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px 10px;
+    display: flex; flex-wrap: wrap; gap: 4px; align-items: center; text-align: left; white-space: normal;
+    font-size: calc(10.5px * var(--wf));
+    box-shadow: 0 10px 30px rgba(0,0,0,.25), 0 2px 6px rgba(0,0,0,.12); cursor: default;
   }
-  .atr.pend { border-left-color: #c0392b; }
-  .atr.hid { opacity: .72; }
-  .atr1 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .atseq {
-    flex: 0 0 auto; min-width: calc(18px * var(--wf)); height: calc(18px * var(--wf));
-    display: inline-flex; align-items: center; justify-content: center;
-    border-radius: 999px; background: var(--card2); color: var(--fg2);
-    font-size: calc(9.5px * var(--wf)); font-weight: 800; padding: 0 4px;
+  .atpopt { display: flex; align-items: center; gap: 6px; width: 100%; margin-bottom: 3px; color: var(--fg2); }
+  .atpopt b { color: var(--fg); font-size: calc(11.5px * var(--wf)); }
+  .atdt { display: flex; flex-direction: column; gap: 2px; align-items: stretch; }
+  .atdt small { color: var(--dim); font-size: calc(9px * var(--wf)); }
+  .atpr { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; width: 100%; }
+  .atpr i { font-style: normal; color: var(--dim); font-size: calc(9.5px * var(--wf)); width: 34px; }
+  .atpr.loc { border-top: 1px dashed var(--line); padding-top: 4px; margin-top: 2px; }
+  .atpr i small { display: block; font-size: calc(8px * var(--wf)); color: var(--accent); }
+  .atpop .wkb.gpac.on { box-shadow: inset 0 0 0 2px var(--accent); font-weight: 800; }
+  /* 맨 아래 새로 적는 줄 */
+  .attt tr.atnew td { background: color-mix(in srgb, var(--accent) 7%, var(--card)); }
+  .attt tr.atnew.local td { background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
+  .attt tr.atnew input[type="date"], .attt tr.atnew input[type="time"] {
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px;
+    padding: 2px 4px; font-family: inherit; font-size: calc(10px * var(--wf)); width: 100%; box-sizing: border-box;
   }
-  .atnm { font-size: calc(11.5px * var(--wf)); }
-  .atdt { color: var(--dim); font-size: calc(10px * var(--wf)); }
-  .atrs { color: var(--fg2); font-size: calc(10.5px * var(--wf)); line-height: 1.5;
-          word-break: break-word; padding-left: 2px; }
-  .atr2 { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .attt tr.atnew input[type="time"] { margin-top: 2px; }
+  .atnr { display: flex; gap: 4px; align-items: center; }
+  .atnr .gpai { flex: 1 1 auto; min-width: 0; }
+  .attt tr.atnew2 td { background: color-mix(in srgb, var(--accent) 4%, var(--card)); }
+  .atnl { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .atsep { width: 8px; }
+  .atx { border: 0; background: none; color: var(--dim); cursor: pointer; font-size: calc(10px * var(--wf));
+         margin-left: 4px; padding: 0 3px; -webkit-app-region: no-drag; }
+  .atx:hover { color: #c0392b; }
+  .attt tr.atreqr td { padding: 0 4px 4px; background: var(--card); }
+  /* (옛 카드 모양 .atr/.atr1/.atr2 는 표(.attt)로 바뀌며 뺐다 — 2026-09-11) */
   .atgl { color: var(--dim); font-size: calc(9.5px * var(--wf)); font-weight: 700; margin-right: 2px; }
   .wkb.gpac.atg.on { box-shadow: inset 0 0 0 2px var(--accent); font-weight: 800; }
   .wkb.gpac:disabled { opacity: .5; cursor: default; }

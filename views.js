@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 1.121.0
-   수정요약: v1.121.0 «출결» 탭(지비스만) — 담임 출결 넣기·구분·연번·수정여부·접기·월별 출력 / v1.120.4 학년부 «구분 줄» 이 월 줄 밑에 딱 붙게
+/* 파일명: views.js | @version 1.121.1
+   수정요약: v1.121.1 출결 — 시트 칸 차례 표·맨 아래 새 줄(칩 판)·구분도 함께·미인정(앱에만)·인쇄를 시트 «N월 인쇄하기» 와 똑같이 / v1.121.0 «출결» 탭 신설
    위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜비스는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -1665,7 +1665,9 @@ var attFoldBusy = false;           // 접기·펴기는 시트에서 몇 초 걸
 var ATT_TYPES = [
   ['질병', ['질병결석', '질병지각', '질병조퇴', '질병결과']],
   ['인정', ['인정결석', '인정지각', '인정조퇴', '인정결과']],
-  ['기타', ['보건실', '상담실', '외출']]
+  ['기타', ['보건실', '상담실', '외출']],
+  /* ★ 시트 유형 목록에 없다 — 고르면 «앱에만» 남기고 시트엔 안 쓴다(2026-09-11 지시) */
+  ['미인정', ['미인정결석', '미인정지각', '미인정조퇴', '미인정결과']]
 ];
 var ATT_GUBUN = ['나이스', '종이서류', '서류없음'];
 var ATT_FIXES = ['수정완료', '보고서 상신완료', '재제출'];
@@ -1696,6 +1698,7 @@ function attLoad() {
     if (r && r.ok) {
       ATT = r;
       if (!attMon) attMon = attThisMon();
+      attApplyPendGubun();          // 새 줄에 골라 둔 구분을 반 탭에
       attSeqSync();
     } else {
       attErr = (r && r.msg) || '출결 목록을 읽지 못했습니다';
@@ -1709,7 +1712,8 @@ function attLoad() {
     render();
   });
 }
-function attRows() { return (ATT && ATT.rows) || []; }
+function attRows() { return ((ATT && ATT.rows) || []).concat(attLocalRows()); }
+function attSheetRows() { return (ATT && ATT.rows) || []; }
 function attSort(a, b) {
   return String(a.start).localeCompare(String(b.start))
     || String(a.id).localeCompare(String(b.id)) || (a.r - b.r);
@@ -1724,8 +1728,10 @@ function attMonths() {
   s[attThisMon()] = 1;
   return Object.keys(s).sort();
 }
-function attFolded(mon) { var l = attOf(mon); return l.length > 0 && l.every(function (x) { return x.hidden; }); }
-function attAnyHidden(mon) { return attOf(mon).some(function (x) { return x.hidden; }); }
+/* 접힘은 시트 줄로만 본다 — 앱에만 있는 줄은 시트에 없다 */
+function attSheetOf(mon) { return attOf(mon).filter(function (x) { return !x.local; }); }
+function attFolded(mon) { var l = attSheetOf(mon); return l.length > 0 && l.every(function (x) { return x.hidden; }); }
+function attAnyHidden(mon) { return attSheetOf(mon).some(function (x) { return x.hidden; }); }
 function attPending(x) { return !!x.req && !x.fix; }
 /* '2026-09-03' → '9/3(목)' */
 function attMd(s) {
@@ -1760,7 +1766,7 @@ function attSeqPlan() {
   attMonths().forEach(function (mon) { if (attAnyHidden(mon)) 마지막접힘 = mon; });
   attMonths().forEach(function (mon) {
     if (attAnyHidden(mon) || mon <= 마지막접힘) return;
-    attOf(mon).forEach(function (x, i) {
+    attSheetOf(mon).forEach(function (x, i) {
       if (String(x.seq) !== String(i + 1)) items.push({ r: x.r, sig: x.sig, seq: i + 1 });
     });
   });
@@ -1789,7 +1795,7 @@ function attSeqSync() {
 }
 /* 시트가 아직 정렬 전인가 — 새로 넣은 줄이 맨 아래에 있으면 날짜가 거꾸로 선다 */
 function attUnsorted() {
-  var l = attRows().slice().sort(function (a, b) { return a.r - b.r; });
+  var l = attSheetRows().slice().sort(function (a, b) { return a.r - b.r; });
   for (var i = 1; i < l.length; i++) {
     if (/^\d{4}-/.test(l[i].start) && /^\d{4}-/.test(l[i - 1].start) && l[i].start < l[i - 1].start) return true;
   }
@@ -1803,15 +1809,16 @@ function viewAtt() {
   var list = attOf(attMon);
   var folded = attFolded(attMon);
   var nPend = list.filter(attPending).length;
-  var h = attBar() + attAddBox() + attNotes();
+  var nLocal = list.filter(function (x) { return x.local; }).length;
+  var h = attBar() + attNotes();
   h += '<div class="atsum"><b>' + esc(attCls()) + '</b> · ' + Number(attMon.slice(5)) + '월 · '
     + list.length + '건'
+    + (nLocal ? ' <span class="atlocal">앱에만 ' + nLocal + '</span>' : '')
     + (nPend ? ' · <b class="atpend">답할 것 ' + nPend + '</b>' : '')
     + (folded ? ' · 접어 둔 달' : '')
     + (attBusy ? ' · 읽는 중…' : '') + '</div>';
   if (folded) h += '<div class="rhint">검토가 끝나 시트에서 접어 둔 달입니다. 고치려면 먼저 «펴기» 를 누르세요.</div>';
-  if (!list.length && !(ATT && ATT.spillErr)) h += '<div class="empty">이 달에는 아직 출결이 없습니다.</div>';
-  h += '<div class="atl">' + list.map(function (x) { return attRowHtml(x, folded); }).join('') + '</div>';
+  h += attTable(list, folded);
   return h;
 }
 
@@ -1825,11 +1832,10 @@ function attBar() {
       + (p ? ' · 답할 것 ' + p : '') + '">' + Number(m.slice(5)) + '월'
       + (p ? '<em class="atbad">' + p + '</em>' : '') + '</button>';
   }).join('');
-  var has = ATT && attOf(attMon).length, f = ATT && attFolded(attMon);
+  var has = ATT && attOf(attMon).some(function (x) { return !x.local; }), f = ATT && attFolded(attMon);
   return '<div class="top2"><div class="wknav atbar">' + chips
     + '<span class="spacer"></span>'
-    + '<button class="wkb go" id="atNew" title="«입력» 탭 맨 아래에 한 줄 넣습니다">＋ 출결</button>'
-    + (has ? '<button class="wkb" id="atPrint" title="이 달 출결 목록 — 인쇄·PDF">🖨 출력</button>' : '')
+    + (has ? '<button class="wkb" id="atPrint" title="시트의 «N월 인쇄하기» 와 같은 종이">🖨 ' + Number(attMon.slice(5)) + '월 인쇄</button>' : '')
     + (has ? '<button class="wkb" id="atFold"' + (attFoldBusy ? ' disabled' : '') + ' title="'
       + (f ? '이 달 줄을 시트에서 다시 보이게' : '검토 끝난 달 — 시트에서 이 달 줄을 숨깁니다') + '">'
       + (attFoldBusy ? (f ? '펴는 중…' : '접는 중…') : (f ? '펴기' : '접기')) + '</button>' : '')
@@ -1864,33 +1870,72 @@ function attNotes() {
   return h;
 }
 
+/* ── 표 — 시트 3-2 탭과 같은 칸 차례. 맨 아래 줄이 «새로 적는 줄» ─────────
+   ★ 셀을 누르면 그 자리에 칩(학생·유형·구분·정문)이 뜬다 — 시트의 드롭다운 자리. select 는 안 쓴다. */
+var ATT_COLS = ['연번', '구분', '학번', '이름', '시작일', '종료일', '유형', '신청사유(근거자료)'];
+function attTable(list, folded) {
+  var h = '<div class="attw"><table class="attt"><colgroup>'
+    + '<col class="c0"><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"><col class="c7">'
+    + '</colgroup><thead><tr>' + ATT_COLS.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead><tbody>';
+  h += list.map(function (x) { return attRowHtml(x, folded); }).join('');
+  h += attNewRow(folded);
+  return h + '</tbody></table></div>';
+}
+/* 팝업(칩 팔레트) — 어느 셀에 떠 있나. { kind:'st'|'type'|'gubun'|'end', key:'new'|sig } */
+var attPop = null;
+function attPopOpen(kind, key) { return attPop && attPop.kind === kind && attPop.key === key; }
+var ATT_POP_T = { gubun: '구분', st: '학생', type: '유형', end: '종료' };
+function attChipPop(kind, key, inner) {
+  if (!attPopOpen(kind, key)) return '';
+  return '<div class="atpop" data-atpopbox="1"><div class="atpopt"><b>' + ATT_POP_T[kind] + '</b>'
+    + (key === 'new' ? ' 고르기 — 새 줄' : ' 바꾸기') + '<span class="spacer"></span>'
+    + '<button class="wkb" data-atpopx="1">닫기</button></div>' + inner + '</div>';
+}
+function attGubunPop(key, cur) {
+  return attChipPop('gubun', key,
+    ATT_GUBUN.map(function (g) {
+      return '<button class="wkb gpac' + (cur === g ? ' on' : '') + '" data-atpick="gubun§' + esc(key) + '§' + esc(g) + '">' + esc(g) + '</button>';
+    }).join('') + (cur ? '<button class="wkb gpac" data-atpick="gubun§' + esc(key) + '§">비우기</button>' : ''));
+}
+function attTypePop(key, cur) {
+  return attChipPop('type', key,
+    ATT_TYPES.map(function (g) {
+      return '<div class="atpr' + (g[0] === '미인정' ? ' loc' : '') + '"><i>' + esc(g[0]) + (g[0] === '미인정' ? '<small>앱에만</small>' : '') + '</i>' + g[1].map(function (t) {
+        return '<button class="wkb gpac' + (cur === t ? ' on' : '') + ' h' + attHue(t) + '" data-atpick="type§' + esc(key) + '§' + esc(t) + '">' + esc(t) + '</button>';
+      }).join('') + '</div>';
+    }).join(''));
+}
+function attStPop(key, cur) {
+  var ss = attStudents();
+  return attChipPop('st', key,
+    (ss.length ? ss.map(function (s) {
+      return '<button class="wkb gpac atst' + (cur === s.id ? ' on' : '') + '" data-atpick="st§' + esc(key) + '§' + esc(s.id + '|' + s.name) + '">'
+        + esc(s.no) + ' ' + esc(s.name) + '</button>';
+    }).join('') : '<input id="atNewId" class="gpai" placeholder="학번" style="width:5em"> <input id="atNewName" class="gpai" placeholder="이름" style="width:6em">'));
+}
 function attRowHtml(x, folded) {
   var busy = !!attRowBusy[x.sig];
   var lock = folded || x.hidden;
-  var endIsDate = /^\d{4}-\d{2}-\d{2}$/.test(x.end);
-  var dt = attMd(x.start)
-    + (endIsDate && x.end !== x.start ? ' ~ ' + attMd(x.end) : '')
-    + (x.time ? ' · ' + x.time : '')
-    + (!endIsDate && x.endTxt ? ' · ' + x.endTxt : '');
-  var h = '<div class="atr' + (attPending(x) ? ' pend' : '') + (x.hidden ? ' hid' : '') + '">'
-    + '<div class="atr1"><span class="atseq" title="연번">' + esc(x.seq || '·') + '</span>'
-    + '<b class="atnm">' + esc(Number(String(x.id).slice(2))) + ' ' + esc(x.name) + '</b>'
-    + '<i class="gpk h' + attHue(x.type) + '">' + esc(x.type) + '</i>'
-    + '<span class="atdt">' + esc(dt) + '</span></div>'
-    + (x.reason ? '<div class="atrs">' + esc(x.reason) + '</div>' : '')
-    + '<div class="atr2"><span class="atgl">구분</span>'
-    + ATT_GUBUN.map(function (g) {
-        return '<button class="wkb gpac atg' + (x.gubun === g ? ' on' : '') + '" data-atg="' + esc(g)
-          + '" data-sig="' + esc(x.sig) + '" data-r="' + x.r + '"' + (lock || busy ? ' disabled' : '') + '>'
-          + esc(g) + '</button>';
-      }).join('')
-    + (x.gubun && ATT_GUBUN.indexOf(x.gubun) < 0 ? '<span class="atok">' + esc(x.gubun) + '</span>' : '')
-    + (x.doc ? '<span class="atok">서류 ✓</span>' : '')
-    + (x.neis ? '<span class="atok">NEIS ✓</span>' : '')
-    + (busy ? '<span class="atbusy">적는 중…</span>' : '')
-    + '</div>';
-  if (x.req || x.fix) h += attReqHtml(x, lock);
-  return h + '</div>';
+  var tone = attRowTone(x.type), ht = attTypeTone(x.type);
+  var cls = 'atr' + (tone ? ' ' + tone : '') + (attPending(x) ? ' pend' : '') + (x.hidden ? ' hid' : '') + (x.local ? ' local' : '');
+  var dateCell = esc(x.startTxt || x.start) + (x.time ? '<small>' + esc(x.time) + '</small>' : '');
+  var h = '<tr class="' + cls + '">'
+    + '<td class="c">' + (x.local ? '<i class="atapp" title="앱에만 있음 — 시트엔 없음">앱</i>' : esc(x.seq || '')) + '</td>'
+    + '<td class="c atcell' + (x.local || lock ? '' : ' pick') + (busy ? ' busy' : '') + '"'
+      + (x.local || lock ? '' : ' data-atpop="gubun§' + esc(x.sig) + '"') + '>'
+      + (busy ? '…' : esc(x.gubun || (x.local || lock ? '' : '·')))
+      + (x.local || lock ? '' : attGubunPop(x.sig, x.gubun)) + '</td>'
+    + '<td class="c">' + esc(x.id) + '</td>'
+    + '<td class="c">' + esc(x.name) + '</td>'
+    + '<td class="c">' + dateCell + '</td>'
+    + '<td class="c">' + esc(x.endTxt || '') + '</td>'
+    + '<td class="c' + (ht ? ' ' + ht : '') + '"><span class="gpk h' + attHue(x.type) + '">' + esc(x.type) + '</span></td>'
+    + '<td class="rs">' + esc(x.reason)
+      + (x.doc ? ' <span class="atok">서류✓</span>' : '') + (x.neis ? ' <span class="atok">NEIS✓</span>' : '')
+      + (x.local ? '<button class="atx" data-atldel="' + esc(x.key) + '" title="앱에서 지우기">✕</button>' : '')
+      + '</td></tr>';
+  if (x.req || x.fix) h += '<tr class="atreqr"><td colspan="8">' + attReqHtml(x, lock) + '</td></tr>';
+  return h;
 }
 /* 학년부장의 수정요청 → 내가 적는 수정여부 */
 function attReqHtml(x, lock) {
@@ -1903,87 +1948,63 @@ function attReqHtml(x, lock) {
     + '<input class="gpai wide" data-atfxi="' + esc(x.sig) + '" value="' + esc(val)
     + '" placeholder="어떻게 고쳤는지 적어 주세요"' + (lock ? ' disabled' : '') + '>'
     + '<button class="wkb go" data-atfxs="' + esc(x.sig) + '" data-r="' + x.r + '"'
-    + (lock || busy ? ' disabled' : '') + '>' + (busy ? '저장 중…' : '저장') + '</button></div>'
-    + (lock ? '' : '<div class="atfx">' + ATT_FIXES.map(function (t) {
+    + (lock || busy ? ' disabled' : '') + '>' + (busy ? '저장 중…' : '저장') + '</button>'
+    + (lock ? '' : ATT_FIXES.map(function (t) {
         return '<button class="wkb gpac" data-atfxc="' + esc(t) + '" data-sig="' + esc(x.sig) + '">' + esc(t) + '</button>';
-      }).join('') + '</div>')
+      }).join(''))
+    + '</div>'
     + (x.fixAt ? '<div class="rsaved">' + (attFixJust[x.sig] ? '✅ 저장됨 · ' : '마지막 저장 · ') + esc(x.fixAt) + '</div>' : '')
     + '</div>';
 }
 
-/* ── 한 줄 넣기 칸 ── 드롭다운 없이 칩으로(전역 규칙) */
-function attAddBox() {
-  if (!attAdd) return '';
-  var A = attAdd, t = A.type || '';
-  var 결석 = t.indexOf('결석') >= 0, 조퇴 = /조퇴|외출/.test(t), 지각 = t.indexOf('지각') >= 0;
-  var 결과 = t.indexOf('결과') >= 0;
-  var ss = attStudents();
-  var h = '<div class="atadd">'
-    + '<div class="gparow"><b>' + esc(attCls()) + ' 출결 넣기</b><span class="spacer"></span>'
-    + '<span class="atto">«입력» 탭 맨 아래 · 교사확인 ' + esc((ATTCFG && ATTCFG.teacher) || '') + '</span>'
-    + '<button class="wkb" id="atX">닫기</button></div>';
-  /* 학생 */
-  h += '<div class="gparow wrap"><label class="gpal">학생</label>';
-  if (ss.length) {
-    h += ss.map(function (s) {
-      return '<button class="wkb gpac atst' + (A.id === s.id ? ' on' : '') + '" data-ats="' + esc(s.id + '|' + s.name) + '">'
-        + esc(s.no) + ' ' + esc(s.name) + '</button>';
-    }).join('');
-  } else {
-    h += '<input id="atId" class="gpai" placeholder="학번" value="' + esc(A.id) + '" style="width:5em">'
-      + '<input id="atName" class="gpai" placeholder="이름" value="' + esc(A.name) + '" style="width:6em">';
-  }
-  h += '</div>';
-  /* 유형 */
-  ATT_TYPES.forEach(function (g) {
-    h += '<div class="gparow wrap"><label class="gpal">' + (g[0] === '질병' ? '유형' : '') + '</label>'
-      + g[1].map(function (x) {
-          return '<button class="wkb gpac' + (t === x ? ' on' : '') + ' h' + attHue(x) + '" data-aty="' + esc(x) + '">' + esc(x) + '</button>';
-        }).join('') + '</div>';
-  });
-  /* 일자 · 종료일 · 시간 */
-  h += '<div class="gparow wrap"><label class="gpal">일자</label>'
-    + '<input type="date" id="atDate" value="' + esc(A.date || '') + '">';
+/* ── 맨 아래 «새로 적는 줄» ── 시트에서 다음 빈 줄에 적듯이 */
+var attNew = { gubun: '', id: '', name: '', date: '', time: '', end: '', type: '', reason: '' };
+function attNewRow(folded) {
+  var A = attNew;
+  if (!A.date) A.date = gpToday();
+  var t = A.type || '';
+  var 결석 = t.indexOf('결석') >= 0, 조퇴 = /조퇴|외출/.test(t), 지각 = t.indexOf('지각') >= 0, 결과 = t.indexOf('결과') >= 0;
+  var 앱만 = attIsLocalType(t);
+  var h = '<tr class="atnew' + (앱만 ? ' local' : '') + '">'
+    + '<td class="c"><b>＋</b></td>'
+    + '<td class="c atcell pick' + (앱만 ? ' off' : '') + '" data-atpop="gubun§new">' + (앱만 ? '—' : esc(A.gubun || '구분')) + attGubunPop('new', A.gubun) + '</td>'
+    + '<td class="c atcell pick" data-atpop="st§new" colspan="2">' + (A.id ? esc(A.id) + ' ' + esc(A.name) : '학생') + attStPop('new', A.id) + '</td>'
+    + '<td class="c" colspan="2"><div class="atdt"><input type="date" id="atNewDate" value="' + esc(A.date) + '">'
+      + (t && !결석 ? '<input type="time" id="atNewTime" value="' + esc(A.time || '') + '">' : '')
+      + (A.end ? '<small>' + esc(/^\d{4}-/.test(A.end) ? '~ ' + attMd(A.end) : A.end) + '</small>' : '') + '</div></td>'
+    + '<td class="c atcell pick" data-atpop="type§new">' + (t ? '<span class="gpk h' + attHue(t) + '">' + esc(t) + '</span>' : '유형') + attTypePop('new', t) + '</td>'
+    + '<td class="rs"><div class="atnr"><input id="atNewReason" class="gpai wide" placeholder="신청사유" value="' + esc(A.reason || '') + '">'
+      + '<button class="wkb go" id="atSave"' + (attAddBusy || folded ? ' disabled' : '') + '>' + (attAddBusy ? '…' : '저장') + '</button></div></td>'
+    + '</tr>';
+  /* 아래 한 줄 — 교시·자주 쓰는 사유 칩, 알림, 되돌리기 */
+  var chips = '';
+  /* 종료일·정문 — 유형을 고르면 칩 줄 맨 앞에 */
   if (결석) {
-    h += '<label class="gpal" style="width:auto">~ 종료일</label>'
-      + '<input type="date" id="atEnd" value="' + esc(/^\d{4}-/.test(A.end) ? A.end : '') + '">'
-      + '<span class="atto">여러 날일 때만</span>';
+    chips += '<label class="atto">~ 종료일 <input type="date" id="atNewEnd" value="' + esc(/^\d{4}-/.test(A.end) ? A.end : '') + '"></label><span class="atsep"></span>';
+  } else if (조퇴 || 지각) {
+    chips += ['정문확인', '정문통과'].map(function (x) {
+      return '<button class="wkb gpac' + (A.end === x ? ' on' : '') + '" data-atpick="end§new§' + esc(x) + '">' + esc(x) + '</button>';
+    }).join('') + '<span class="atsep"></span>';
   }
-  if (t && !결석) {
-    h += '<label class="gpal" style="width:auto">시간</label>'
-      + '<input type="time" id="atTime" value="' + esc(A.time || '') + '">';
-  }
-  if (조퇴 || 지각) {
-    h += ['정문확인', '정문통과'].map(function (x) {
-      return '<button class="wkb gpac' + (A.end === x ? ' on' : '') + '" data-atend="' + x + '">' + x + '</button>';
-    }).join('');
-  }
-  h += '</div>';
-  /* 신청사유 */
-  h += '<div class="gparow"><label class="gpal">신청사유</label>'
-    + '<input id="atReason" class="gpai wide" placeholder="생리통·질병은 문장으로 자세히 (매뉴얼)" value="' + esc(A.reason || '') + '"></div>';
   if (조퇴 || 지각 || 결과) {
-    h += '<div class="gparow wrap"><label class="gpal">교시</label>'
-      + [1, 2, 3, 4, 5, 6, 7].map(function (n) {
-          var p = 조퇴 ? '(' + n + '교시~)' : 지각 ? '(~' + n + '교시)' : '(' + n + '교시)';
-          return '<button class="wkb gpac" data-atp="' + esc(p) + '">' + esc(p) + '</button>';
-        }).join('') + '</div>';
+    chips += [1, 2, 3, 4, 5, 6, 7].map(function (n) {
+      var p = 조퇴 ? '(' + n + '교시~)' : 지각 ? '(~' + n + '교시)' : '(' + n + '교시)';
+      return '<button class="wkb gpac" data-atp="' + esc(p) + '">' + esc(p) + '</button>';
+    }).join('') + '<span class="atsep"></span>';
   }
-  h += '<div class="gparow wrap"><label class="gpal"></label>'
-    + attReasonChips().map(function (x) {
-        return '<button class="wkb gpac" data-atrs="' + esc(x) + '">' + esc(x.length > 16 ? x.slice(0, 16) + '…' : x) + '</button>';
-      }).join('') + '</div>';
-  /* 저장 */
-  h += '<div class="gparow"><button class="wkb go" id="atSave"' + (attAddBusy ? ' disabled' : '') + '>'
-    + (attAddBusy ? '넣는 중…' : '저장') + '</button>'
+  chips += attReasonChips().map(function (x) {
+    return '<button class="wkb gpac" data-atrs="' + esc(x) + '">' + esc(x.length > 16 ? x.slice(0, 16) + '…' : x) + '</button>';
+  }).join('');
+  h += '<tr class="atnew2"><td colspan="8"><div class="atnl">' + chips
     + (attLast ? '<button class="wkb" id="atUndo"' + (attAddBusy ? ' disabled' : '') + '>되돌리기</button>' : '')
-    + '<span class="spacer"></span>'
-    + (attAddAt ? '<span class="rsaved">✅ 저장됨 · ' + esc(attAddAt) + '</span>' : '')
     + '</div>'
+    + (앱만 ? '<div class="rhint">미인정은 시트에 없는 유형이라 <b>앱에만</b> 남깁니다 — 시트에는 쓰지 않습니다.</div>' : '')
     + (attAddMsg ? '<div class="rhint">' + esc(attAddMsg) + '</div>' : '')
-    + '</div>';
+    + (attAddAt ? '<div class="rsaved">✅ 저장됨 · ' + esc(attAddAt) + '</div>' : '')
+    + '</td></tr>';
   return h;
 }
+function attIsLocalType(t) { return String(t || '').indexOf('미인정') === 0; }
 /* 자주 쓰는 사유 — 우리 반 기록에서 많이 나온 것 먼저, 모자라면 기본 것 */
 function attReasonChips() {
   var n = {};
@@ -1997,34 +2018,88 @@ function attReasonChips() {
   return top;
 }
 
-/* 월별 출력 — 연번·구분·학번·이름·시작일·종료일·유형·신청사유 (시간은 시트처럼 뺀다) */
+/* ── 앱에만 두는 출결(미인정) — 시트엔 없는 유형. 메인이 OneDrive 로 두 PC 에 나눈다 ── */
+var ATTLOCAL = [];
+function attLocalRows() {
+  return (ATTLOCAL || []).map(function (o) {
+    var d = String(o.date || '');
+    var m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return { local: true, key: o.key, r: 0, sig: 'L' + o.key, seq: '', gubun: '',
+      id: String(o.id || ''), name: String(o.name || ''), start: d,
+      startTxt: m ? m[1] + '. ' + Number(m[2]) + '. ' + Number(m[3]) : d,
+      time: String(o.time || ''), end: String(o.end || ''), endTxt: String(o.end || ''),
+      type: String(o.type || ''), reason: String(o.reason || ''),
+      doc: null, neis: null, req: '', fix: '', fixAt: '', hidden: false };
+  });
+}
+
+/* 월별 출력 — 시트의 «N월 인쇄하기»(스크립트) 결과와 똑같이.
+   시트에 없는 것(앱 이름·뽑은 날·앱에만 있는 미인정)은 넣지 않는다(2026-09-11 지시).
+   ★ 아래 값은 시트를 xlsx 로 받아 뜯어 본 실제 값 + 스크립트 인쇄물 캡처 (2026-09-11):
+     A4 세로 · 가로 가운데 · 여백 위 1.18in 아래 .75in 좌우 .25in
+     제목 «2026학년도 3학년 2반 9월 출결색인» 굵게 가운데 · 머리글 분홍 #FDDCE8 굵게
+     Arial 10pt · 모든 칸 가운데 · 얇은 검정 테두리
+     칸 너비(문자 단위→픽셀 ×7+5) 연번 6.63 · 구분 12 · 학번 6.63 · 이름 6.63 · 시작일 10.25 · (시간 숨김) · 종료일 10.25 · 유형 9.38 · 사유 47.88
+     구글이 «폭 맞춤» 으로 쪽을 줄이듯 zoom 으로 인쇄 폭(745px)에 맞춘다
+     조건부 서식 — 우선순위대로: 인정결석 줄 전체 #FFDCDC → 질병결석 줄 전체 #F3EEFF
+       → 그 밖의 줄은 유형 칸만: 지각 #D9EAD3 · 질병조퇴 #FFF2CC
+     첫 줄이 틀 고정이라 쪽마다 머리글을 되풀이한다 → thead 가 같은 일을 한다 */
+var ATT_PRINT_CSS = ''
+  + '@page{size:A4 portrait;margin:30mm 6.35mm 19mm}'
+  + 'body{margin:0;background:#fff;font-family:Arial,"Malgun Gothic",sans-serif;font-size:10pt;line-height:1.25;color:#000}'
+  + '.sheet-ttl{text-align:center;font-size:20pt;font-weight:700;margin:0 0 14pt;letter-spacing:.5pt}'
+  + '.sheet{border-collapse:collapse;table-layout:fixed;margin:0 auto}'
+  + '.sheet th,.sheet td{border:.5pt solid #000;padding:0 3px;text-align:center;vertical-align:middle;'
+  + 'height:18pt;font-weight:400;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}'
+  + '.sheet th{background:#FDDCE8;font-weight:700}'
+  + '.sheet tr{break-inside:avoid;page-break-inside:avoid}'
+  + '.sheet tr.r-in td{background:#FFDCDC}'
+  + '.sheet tr.r-ill td{background:#F3EEFF}'
+  + '.sheet td.h-late{background:#D9EAD3}'
+  + '.sheet td.h-early{background:#FFF2CC}';
+/* 줄 색 — 시트 조건부 서식과 같은 순서. 목록 화면에서도 같은 색을 쓴다 */
+function attRowTone(t) {
+  t = String(t || '');
+  if (t === '인정결석') return 'r-in';
+  if (t === '질병결석') return 'r-ill';
+  return '';
+}
+function attTypeTone(t) {
+  t = String(t || '');
+  if (attRowTone(t)) return '';                 // 줄 전체 색이 먼저다
+  if (t.indexOf('지각') >= 0) return 'h-late';
+  if (t === '질병조퇴') return 'h-early';
+  return '';
+}
+function attPrintTitle(mon) {
+  var y = Number(mon.slice(0, 4)), m = Number(mon.slice(5));
+  var 학년도 = m >= 3 ? y : y - 1;
+  var c = attCls().split('-');
+  return 학년도 + '학년도 ' + c[0] + '학년 ' + c[1] + '반 ' + m + '월 출결색인';
+}
 function attPrintHtml(mon) {
-  var list = attOf(mon);
+  var list = attOf(mon).filter(function (x) { return !x.local; });   // 앱에만 있는 미인정은 종이에 없다
   if (!list.length) return null;
-  var css = '<style>'
-    + '.att{border-collapse:collapse;width:100%;font-size:9.5pt;line-height:1.45}'
-    + '.att th,.att td{border:.6pt solid #888;padding:3pt 4pt;vertical-align:top;color:#111}'
-    + '.att th{background:#eee;font-weight:700;text-align:center;white-space:nowrap}'
-    + '.att td.c{text-align:center;white-space:nowrap}'
-    + '.att td.r{word-break:break-word}'
-    + '.att tr{break-inside:avoid;page-break-inside:avoid}'
-    + '</style>';
-  var cols = '<colgroup><col style="width:6%"><col style="width:9%"><col style="width:7%">'
-    + '<col style="width:8%"><col style="width:11%"><col style="width:11%"><col style="width:9%"><col></colgroup>';
-  var head = '<thead><tr>' + ['연번', '구분', '학번', '이름', '시작일', '종료일', '유형', '신청사유(근거자료)']
-    .map(function (x) { return '<th>' + x + '</th>'; }).join('') + '</tr></thead>';
-  var body = '<tbody>' + list.map(function (x, i) {
-    return '<tr><td class="c">' + esc(x.seq || String(i + 1)) + '</td>'
-      + '<td class="c">' + esc(x.gubun) + '</td><td class="c">' + esc(x.id) + '</td>'
-      + '<td class="c">' + esc(x.name) + '</td><td class="c">' + esc(x.startTxt || x.start) + '</td>'
-      + '<td class="c">' + esc(x.endTxt || '') + '</td><td class="c">' + esc(x.type) + '</td>'
-      + '<td class="r">' + esc(x.reason) + '</td></tr>';
+  var W = [6.63, 12, 6.63, 6.63, 10.25, 10.25, 9.38, 47.88]
+    .map(function (w) { return Math.round(w * 7 + 5); });          // 시트가 쓰는 픽셀 너비
+  var sum = W.reduce(function (a, b) { return a + b; }, 0);
+  var zoom = (745 / sum).toFixed(4);
+  var cols = '<colgroup>' + W.map(function (w) { return '<col style="width:' + w + 'px">'; }).join('') + '</colgroup>';
+  var head = '<thead><tr>' + ATT_COLS.map(function (x) { return '<th>' + x + '</th>'; }).join('') + '</tr></thead>';
+  var body = '<tbody>' + list.map(function (x) {
+    var rt = attRowTone(x.type), ht = attTypeTone(x.type);
+    return '<tr' + (rt ? ' class="' + rt + '"' : '') + '>'
+      + '<td>' + esc(x.seq) + '</td><td>' + esc(x.gubun) + '</td><td>' + esc(x.id) + '</td>'
+      + '<td>' + esc(x.name) + '</td><td>' + esc(x.startTxt || x.start) + '</td>'
+      + '<td>' + esc(x.endTxt || '') + '</td>'
+      + '<td' + (ht ? ' class="' + ht + '"' : '') + '>' + esc(x.type) + '</td>'
+      + '<td>' + esc(x.reason) + '</td></tr>';
   }).join('') + '</tbody>';
   return {
-    title: attCls() + ' 출결 목록 ' + mon,
-    range: attCls() + ' 출결 목록 — ' + mon.slice(0, 4) + '년 ' + Number(mon.slice(5)) + '월',
-    doc: '3학년 출결목록 · ' + list.length + '건',
-    body: css + '<table class="att">' + cols + head + body + '</table>'
+    plain: true, css: ATT_PRINT_CSS,
+    title: attPrintTitle(mon),
+    body: '<div class="sheet-ttl">' + esc(attPrintTitle(mon)) + '</div>'
+      + '<table class="sheet" style="width:' + sum + 'px;zoom:' + zoom + '">' + cols + head + body + '</table>'
   };
 }
 
@@ -2048,96 +2123,144 @@ function attSetCell(x, field, value) {
     render();
   }).catch(function (e) { delete attRowBusy[x.sig]; attErr = attErrText(e); render(); });
 }
+/* 새 줄에 고른 구분 — «입력» 에 넣은 뒤 반 탭으로 넘어오면 그때 B 칸에 적는다 */
+var attPendGubun = {};
+function attApplyPendGubun() {
+  Object.keys(attPendGubun).forEach(function (sig) {
+    var x = attRows().filter(function (y) { return y.sig === sig; })[0];
+    if (!x) return;
+    var g = attPendGubun[sig];
+    delete attPendGubun[sig];
+    if (g && !x.gubun) attSetCell(x, 'gubun', g);
+  });
+}
 
 function wireAtt(app) {
   if (!HAS_TT || VIEW !== 'att') return;
   var on = function (sel, fn) {
     app.querySelectorAll(sel).forEach(function (b) { b.addEventListener('click', function (ev) { fn(b, ev); }); });
   };
-  on('[data-atm]', function (b) { attMon = b.dataset.atm; render(); });
+  on('[data-atm]', function (b) { attMon = b.dataset.atm; attPop = null; render(); });
   on('#atGet', function () { attSeqTried = ''; attMsg = ''; attLoad(); render(); });
-  on('#atNew', function () {
-    attAdd = attAdd ? null : { id: '', name: '', type: '', date: gpToday(), time: '', end: '', reason: '' };
-    attAddMsg = '';
+  /* 셀을 누르면 칩 팝업 — 같은 셀을 다시 누르면 닫힘. 팝업 안을 누른 것은 셀 누름으로 안 친다 */
+  on('[data-atpop]', function (b, ev) {
+    if (ev.target.closest && ev.target.closest('[data-atpopbox]')) return;
+    if (b.classList.contains('off')) return;
+    var p = b.dataset.atpop.split('§');
+    attPop = attPopOpen(p[0], p[1]) ? null : { kind: p[0], key: p[1] };
     render();
-    var a = appEl(); if (attAdd && a) a.scrollTop = 0;
+    if (attPop && attPop.kind === 'st') { var i = app.querySelector('#atNewId'); if (i) i.focus(); }
   });
-  on('#atX', function () { attAdd = null; attAddMsg = ''; render(); });
-  on('[data-ats]', function (b) {
-    if (!attAdd) return;
-    var p = b.dataset.ats.split('|');
-    attAdd.id = p[0]; attAdd.name = p[1] || ''; render();
+  on('[data-atpopx]', function (b, ev) { ev.stopPropagation(); attPop = null; render(); });
+  on('[data-atpick]', function (b, ev) {
+    ev.stopPropagation();
+    var p = b.dataset.atpick.split('§');
+    var kind = p[0], key = p[1], val = p.slice(2).join('§');
+    if (kind !== 'end') attPop = null;
+    if (key === 'new') {
+      if (kind === 'gubun') attNew.gubun = val;
+      else if (kind === 'st') { var q = val.split('|'); attNew.id = q[0]; attNew.name = q[1] || ''; }
+      else if (kind === 'end') attNew.end = (attNew.end === val ? '' : val);
+      else if (kind === 'type') {
+        attNew.type = val;
+        if (val.indexOf('결석') >= 0) { attNew.time = ''; if (!/^\d{4}-/.test(attNew.end)) attNew.end = ''; }
+        else if (/^\d{4}-/.test(attNew.end)) attNew.end = '';
+        if (attIsLocalType(val)) attNew.gubun = '';
+      }
+      render();
+      var ri = app.querySelector('#atNewReason'); if (ri && kind === 'type') ri.focus();
+      return;
+    }
+    if (kind === 'gubun') {
+      var x = attRows().filter(function (y) { return y.sig === key; })[0];
+      if (x && x.gubun !== val) attSetCell(x, 'gubun', val); else render();
+    }
   });
-  on('[data-aty]', function (b) {
-    if (!attAdd) return;
-    var t = b.dataset.aty;
-    attAdd.type = t;
-    if (t.indexOf('결석') >= 0) { attAdd.time = ''; if (!/^\d{4}-/.test(attAdd.end)) attAdd.end = ''; }
-    else if (/^\d{4}-/.test(attAdd.end)) attAdd.end = '';
-    render();
-  });
-  on('[data-atend]', function (b) {
-    if (!attAdd) return;
-    attAdd.end = attAdd.end === b.dataset.atend ? '' : b.dataset.atend; render();
-  });
+  /* 팝업 밖을 누르면 닫는다 */
+  if (attPop) {
+    var closer = function (ev) {
+      if (ev.target.closest && (ev.target.closest('[data-atpopbox]') || ev.target.closest('[data-atpop]'))) return;
+      document.removeEventListener('click', closer, true);
+      attPop = null; render();
+    };
+    setTimeout(function () { document.addEventListener('click', closer, true); }, 0);
+  }
   on('[data-atp]', function (b) {
-    if (!attAdd) return;
-    var rest = String(attAdd.reason || '').replace(/^\((\d교시~|~\d교시|\d교시)\)\s*/, '');
-    attAdd.reason = b.dataset.atp + ' ' + rest; render();
+    var rest = String(attNew.reason || '').replace(/^\((\d교시~|~\d교시|\d교시)\)\s*/, '');
+    attNew.reason = b.dataset.atp + ' ' + rest; render();
   });
   on('[data-atrs]', function (b) {
-    if (!attAdd) return;
-    var m = String(attAdd.reason || '').match(/^\((\d교시~|~\d교시|\d교시)\)\s*/);
-    attAdd.reason = (m ? m[0] : '') + b.dataset.atrs; render();
+    var m = String(attNew.reason || '').match(/^\((\d교시~|~\d교시|\d교시)\)\s*/);
+    attNew.reason = (m ? m[0] : '') + b.dataset.atrs; render();
   });
-  [['atDate', 'date'], ['atEnd', 'end'], ['atTime', 'time'], ['atReason', 'reason'], ['atId', 'id'], ['atName', 'name']]
+  [['atNewDate', 'date'], ['atNewTime', 'time'], ['atNewReason', 'reason'], ['atNewId', 'id'], ['atNewName', 'name']]
     .forEach(function (p) {
       var el = app.querySelector('#' + p[0]);
-      if (el) el.addEventListener('input', function () { if (attAdd) attAdd[p[1]] = el.value; });
+      if (el) el.addEventListener('input', function () { attNew[p[1]] = el.value; });
     });
+  var ne = app.querySelector('#atNewEnd');
+  if (ne) ne.addEventListener('change', function () { attNew.end = ne.value; attPop = null; render(); });
+  var nr = app.querySelector('#atNewReason');
+  if (nr) nr.addEventListener('keydown', function (e) { if (e.key === 'Enter') { var s = app.querySelector('#atSave'); if (s) s.click(); } });
   on('#atSave', function () {
-    if (!attAdd || attAddBusy) return;
-    var A = attAdd;
+    if (attAddBusy) return;
+    var A = attNew;
     var why = !/^\d{4}$/.test(String(A.id || '')) ? '학생을 골라 주세요'
       : !A.type ? '유형을 골라 주세요'
       : !A.date ? '일자를 골라 주세요'
       : !String(A.reason || '').trim() ? '신청사유를 적어 주세요' : '';
     if (why) { attAddMsg = why; render(); return; }
-    attAddBusy = true; attAddMsg = ''; render();
+    attAddBusy = true; attAddMsg = ''; attPop = null; render();
     var 보냄 = { nonce: Date.now() + '-' + Math.random().toString(36).slice(2),
       id: A.id, name: A.name, date: A.date, time: A.time, end: A.end, type: A.type,
       reason: String(A.reason).trim() };
-    widgetAPI.attAdd(보냄).then(function (r) {
+    var done = function (r, local) {
       attAddBusy = false;
       if (r && r.ok) {
-        attLast = { row: r.row, id: 보냄.id, date: 보냄.date, type: 보냄.type, reason: 보냄.reason };
+        attLast = local ? { local: true, key: r.key, id: 보냄.id, date: 보냄.date, type: 보냄.type }
+          : { row: r.row, id: 보냄.id, date: 보냄.date, type: 보냄.type, reason: 보냄.reason };
         attAddAt = r.savedAt || 지금시각();
-        attAddMsg = (r.how || '넣었습니다') + ' — ' + 보냄.name + ' ' + attMd(보냄.date) + ' ' + 보냄.type;
+        attAddMsg = (local ? '앱에 남겼습니다' : (r.how || '넣었습니다')) + ' — ' + 보냄.name + ' ' + attMd(보냄.date) + ' ' + 보냄.type;
         attMon = 보냄.date.slice(0, 7);
-        attAdd.id = ''; attAdd.name = '';          // 같은 날 같은 사유로 여러 학생을 잇달아 넣을 수 있게 나머지는 둔다
+        if (!local && A.gubun) attPendGubun[[보냄.id, 보냄.name, 보냄.date, 보냄.type].join('|')] = A.gubun;
+        attNew.id = ''; attNew.name = '';          // 같은 날 같은 사유로 여러 학생을 잇달아 넣을 수 있게 나머지는 둔다
         attSeqTried = '';
-        attLoad();
+        if (local) ATTLOCAL = r.list || ATTLOCAL; else attLoad();
       } else {
         attAddMsg = (r && r.msg) || '넣지 못했습니다';
       }
       render();
-    }).catch(function (e) { attAddBusy = false; attAddMsg = attErrText(e); render(); });
+    };
+    if (attIsLocalType(A.type)) {
+      widgetAPI.attLocalAdd(보냄).then(function (r) { done(r, true); })
+        .catch(function (e) { attAddBusy = false; attAddMsg = attErrText(e); render(); });
+    } else {
+      widgetAPI.attAdd(보냄).then(function (r) { done(r, false); })
+        .catch(function (e) { attAddBusy = false; attAddMsg = attErrText(e); render(); });
+    }
   });
   on('#atUndo', function () {
     if (!attLast || attAddBusy) return;
     if (!confirm('방금 넣은 줄을 지울까요?\n\n' + attLast.id + ' ' + attMd(attLast.date) + ' ' + attLast.type)) return;
     attAddBusy = true; attAddMsg = '되돌리는 중…'; render();
-    widgetAPI.attUndo(attLast).then(function (r) {
+    var pr = attLast.local ? widgetAPI.attLocalDel(attLast.key) : widgetAPI.attUndo(attLast);
+    pr.then(function (r) {
       attAddBusy = false;
       attAddMsg = (r && r.ok) ? (r.how || '되돌렸습니다') : ((r && r.msg) || '되돌리지 못했습니다');
-      if (r && r.ok) { attLast = null; attAddAt = ''; attSeqTried = ''; attLoad(); }
+      if (r && r.ok) {
+        if (attLast.local) ATTLOCAL = r.list || [];
+        attLast = null; attAddAt = ''; attSeqTried = '';
+        if (!r.list) attLoad();
+      }
       render();
     }).catch(function (e) { attAddBusy = false; attAddMsg = attErrText(e); render(); });
   });
-  on('[data-atg]', function (b) {
-    var x = attFind(b.dataset.sig, b.dataset.r);
-    if (!x || x.gubun === b.dataset.atg) return;
-    attSetCell(x, 'gubun', b.dataset.atg);
+  on('[data-atldel]', function (b) {
+    if (!confirm('앱에만 있는 이 줄을 지울까요?')) return;
+    widgetAPI.attLocalDel(b.dataset.atldel).then(function (r) {
+      if (r && r.ok) { ATTLOCAL = r.list || []; attMsg = '앱에서 지웠습니다'; attMsgAt = 지금시각(); }
+      render();
+    });
   });
   app.querySelectorAll('[data-atfxi]').forEach(function (el) {
     el.addEventListener('input', function () { attFixDraft[el.dataset.atfxi] = el.value; });
@@ -2151,7 +2274,7 @@ function wireAtt(app) {
   });
   on('#atFold', function () {
     if (attFoldBusy) return;
-    var f = attFolded(attMon), n = attOf(attMon).length;
+    var f = attFolded(attMon), n = attOf(attMon).filter(function (x) { return !x.local; }).length;
     var m = Number(attMon.slice(5));
     if (!f && !confirm(m + '월 ' + n + '줄을 ' + attCls() + ' 탭에서 접어 둘까요? (행 숨김 — 검토 끝난 달)')) return;
     attFoldBusy = true; render();
@@ -2159,8 +2282,7 @@ function wireAtt(app) {
       attFoldBusy = false;
       if (r && r.ok) {
         attMsg = r.how; attMsgAt = r.savedAt || 지금시각();
-        /* 다시 읽기 전에 화면부터 맞춘다 — 곧 시트 값으로 덮인다 */
-        attOf(attMon).forEach(function (x) { x.hidden = !f; });
+        attOf(attMon).forEach(function (x) { if (!x.local) x.hidden = !f; });
         attLoad();
       } else attErr = (r && r.msg) || '못 했습니다';
       render();
@@ -5910,6 +6032,7 @@ widgetAPI.onData(function (p) {
     if (ATTCFG && ac && ATTCFG.cls !== ac.cls) { ATT = null; attMon = ''; attSeqTried = ''; }
     ATTCFG = ac;
   }
+  if (p.attLocal !== undefined) ATTLOCAL = p.attLocal || [];
   BOARD = p.board || null;
   ofFav = p.officeFav || ofFav;
   DASHORDER = p.dashOrder || [];

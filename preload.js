@@ -1,4 +1,4 @@
-// 파일명: preload.js | @version 1.121.0
+// 파일명: preload.js | @version 1.121.1
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
@@ -45,6 +45,8 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   attSeq: (items) => ipcRenderer.invoke('att-seq', items),
   attFold: (o) => ipcRenderer.invoke('att-fold', o),
   attUnblock: () => ipcRenderer.invoke('att-unblock'),
+  attLocalAdd: (o) => ipcRenderer.invoke('att-local-add', o),
+  attLocalDel: (key) => ipcRenderer.invoke('att-local-del', key),
   openSettings: () => ipcRenderer.send('open-settings'),
   getWeek: (off) => ipcRenderer.invoke('get-week', off),
   getWeeks: (from, to) => ipcRenderer.invoke('get-weeks', { from, to }),
