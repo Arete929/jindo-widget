@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.119.1
+/* 파일명: views.js | @version 1.120.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -5039,6 +5039,12 @@ function render() {
   var t2 = app.querySelector('.top2');
   if (topEl && t2) topEl.appendChild(t2);
   app.style.setProperty('--toph', (topEl ? topEl.offsetHeight : 46) + 'px');
+  /* 월 단추 줄도 붙박이라, 그 밑에 오는 «구분 줄» 이 얼마나 내려가야 하는지 알려 준다.
+     글자 크기·창 폭에 따라 한 줄이 두 줄이 되기도 해서 그때그때 재야 한다. */
+  var t2 = app.querySelector('.top2');
+  var t2h = 0;
+  if (t2 && getComputedStyle(t2).position === 'sticky') t2h = t2.offsetHeight;
+  app.style.setProperty('--top2h', t2h + 'px');
   /* 수업진도를 얹을 자리 — 다 그린 뒤에 재야 제 크기가 나온다 */
   setTimeout(dashPlace, 0);
 
