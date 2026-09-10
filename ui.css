@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.120.3
+/* 파일명: ui.css | @version 1.121.0
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -1370,6 +1370,80 @@
   .wkb.gpc { padding-left: 8px; padding-right: 8px; }
   .wkb.gpc.now { box-shadow: inset 0 0 0 1.5px var(--accent); }
   .shint.warnfg { color: var(--warnfg); }
+
+  /* ── 담임 출결 (지비스만) ──────────────────────────────────
+     달 칩 · 넣기 칸 · 줄 카드(구분 칩) · 수정요청 띠. 글자는 모두 --wf 를 따른다. */
+  .atbar { flex-wrap: wrap; }
+  .wkb.atmon { position: relative; }
+  .wkb.atmon.fold { opacity: .55; }
+  .wkb.atmon.now { box-shadow: inset 0 0 0 1.5px var(--accent); font-weight: 800; opacity: 1; }
+  .atbad {
+    font-style: normal; font-weight: 800; margin-left: 3px;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px;
+    background: #c0392b; color: #fff; font-size: calc(9px * var(--wf));
+  }
+  .atadd {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 12px 12px; margin: 4px 0 8px;
+    display: flex; flex-direction: column; gap: 6px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  }
+  .atadd input[type="date"], .atadd input[type="time"] {
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 7px; padding: 3px 7px; font-family: inherit;
+    font-size: calc(11px * var(--wf));
+  }
+  .atadd .wkb.gpac.on { box-shadow: inset 0 0 0 2px var(--accent); font-weight: 800; }
+  .wkb.gpac.atst { min-width: calc(62px * var(--wf)); }
+  .atto { color: var(--dim); font-size: calc(9.5px * var(--wf)); }
+  .atwarn, .atcaution {
+    border-radius: 8px; padding: 7px 10px; margin: 4px 0 6px; line-height: 1.55;
+    font-size: calc(10.5px * var(--wf)); color: var(--fg);
+  }
+  .atwarn { background: color-mix(in srgb, #c0392b 14%, var(--card));
+            border: 1px solid color-mix(in srgb, #c0392b 50%, var(--card)); }
+  .atcaution { background: color-mix(in srgb, #b8860b 14%, var(--card));
+               border: 1px solid color-mix(in srgb, #b8860b 50%, var(--card)); }
+  .atwarn .wkb, .atcaution .wkb { margin-top: 5px; }
+  .atsum { margin: 6px 2px 5px; color: var(--fg2); font-size: calc(11px * var(--wf)); }
+  .atpend { color: #c0392b; }
+  .atl { display: flex; flex-direction: column; gap: 5px; }
+  .atr {
+    background: var(--card); border-left: 3px solid var(--line); border-radius: 7px;
+    padding: 6px 9px 7px; display: flex; flex-direction: column; gap: 3px;
+  }
+  .atr.pend { border-left-color: #c0392b; }
+  .atr.hid { opacity: .72; }
+  .atr1 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .atseq {
+    flex: 0 0 auto; min-width: calc(18px * var(--wf)); height: calc(18px * var(--wf));
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 999px; background: var(--card2); color: var(--fg2);
+    font-size: calc(9.5px * var(--wf)); font-weight: 800; padding: 0 4px;
+  }
+  .atnm { font-size: calc(11.5px * var(--wf)); }
+  .atdt { color: var(--dim); font-size: calc(10px * var(--wf)); }
+  .atrs { color: var(--fg2); font-size: calc(10.5px * var(--wf)); line-height: 1.5;
+          word-break: break-word; padding-left: 2px; }
+  .atr2 { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .atgl { color: var(--dim); font-size: calc(9.5px * var(--wf)); font-weight: 700; margin-right: 2px; }
+  .wkb.gpac.atg.on { box-shadow: inset 0 0 0 2px var(--accent); font-weight: 800; }
+  .wkb.gpac:disabled { opacity: .5; cursor: default; }
+  .atok { color: var(--now); font-size: calc(9.5px * var(--wf)); font-weight: 700; margin-left: 3px; }
+  .atbusy { color: var(--dim); font-size: calc(9.5px * var(--wf)); }
+  .atreq {
+    margin-top: 3px; border-radius: 7px; padding: 6px 8px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .atreq.pend { background: color-mix(in srgb, #c0392b 12%, var(--card));
+                border: 1px solid color-mix(in srgb, #c0392b 45%, var(--card)); }
+  .atreq.done { background: color-mix(in srgb, var(--fg) 6%, var(--card));
+                border: 1px solid var(--line); }
+  .atq { font-size: calc(10.5px * var(--wf)); line-height: 1.55; word-break: break-word; }
+  .atq b { color: #c0392b; margin-right: 6px; }
+  .atreq.done .atq b { color: var(--dim); }
+  .atfx { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 
   /* 컴시간에서 교사표·학급표를 가르는 작은 머리글 */
   .cmh {

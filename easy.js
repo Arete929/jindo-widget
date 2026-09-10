@@ -1,4 +1,4 @@
-/* 파일명: easy.js | @version 1.120.4
+/* 파일명: easy.js | @version 1.121.0
    혜비스 — 넓은 창의 뼈대. 왼쪽 메뉴 · 대시보드 · 화면 갈아 끼우기.
 
    ★ 자료를 읽어 오고 화면 조각을 만드는 일은 views.js 가 그대로 한다.
@@ -18,6 +18,8 @@ var MENU = [
   { v: 'task', p: 'nav-work', t: '업무관리', d: '노션 할 일 — 오늘·이번주·프로젝트별', g: '오늘 볼 것', jinho: true },
   { v: 'work', p: 'nav-work', t: '주간업무', d: '표·들여쓰기까지 원문 그대로', g: '오늘 볼 것' },
   { v: 'cal', p: 'nav-cal', t: '학사일정', d: '3월부터 이듬해 2월까지', g: '오늘 볼 것' },
+  // ★ 담임 출결은 지비스에만 — 3학년 출결목록 시트에 다리(GAS)로 쓴다
+  { v: 'att', p: 'nav-rec', t: '출결', d: '담임 — 출결 넣기·구분·수정여부·월별 출력', g: '기록', jinho: true },
   { v: 'meal', p: 'nav-meal', t: '급식', d: '주 단위로 넘겨 보기', g: '오늘 볼 것' },
   { v: 'comci', p: 'nav-comci', t: '컴시간', d: '교사·학급 시간표', g: '오늘 볼 것' },
   { v: 'rec', p: 'nav-rec', t: '학생기록', d: '학급 → 학생 → 분류로 쓰고 모아 보기', g: '기록' },
@@ -522,6 +524,7 @@ render = function () {
       + (VIEW === 'task' ? viewTasks()
         : VIEW === 'work' ? viewWork()
         : VIEW === 'cal' ? viewAcademic()
+        : VIEW === 'att' ? viewAtt()
           : VIEW === 'meal' ? viewMeals()
             : VIEW === 'comci' ? viewComci()
               : VIEW === 'rec' ? viewRec()

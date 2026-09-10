@@ -1,4 +1,4 @@
-<!-- 파일명: settings.html | @version 1.23.0 -->
+<!-- 파일명: settings.html | @version 1.24.0 -->
 <!-- 위젯 설정 창 — 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기 등)을 여기서 한다. -->
 <!doctype html>
 <html lang="ko">
@@ -509,6 +509,23 @@
   </div>
 </section>
 
+<!-- 담임 출결 — 지비스만. 3학년 출결목록 시트에 «일지 쓰기 다리» 로 쓴다 -->
+<section data-only="jinho">
+  <h2>출결 (담임)</h2>
+  <div class="row">
+    <label class="lb">우리 반 탭</label>
+    <input type="text" id="attCls" placeholder="예: 3-2" style="max-width:90px">
+    <label class="lb" style="width:auto;margin-left:10px">교사확인 이름</label>
+    <input type="text" id="attTeacher" placeholder="예: 김진호" style="max-width:110px">
+    <button id="attSave">저장</button>
+  </div>
+  <div class="hint" id="attMsg">
+    <b>«출결» 탭</b>에서 넣은 줄은 3학년 출결목록 시트의 <b>«입력» 탭 맨 아래</b>에 들어가고,
+    교사확인 칸에는 위 이름이 적힙니다. 구분·연번·수정여부는 <b>우리 반 탭</b>(예: 3-2)에 적습니다.<br>
+    쓰기는 위의 <b>일지 쓰기 주소·열쇠말</b>(다리)을 그대로 씁니다. 한 PC 에서 저장하면 OneDrive 로 다른 PC 에도 따라갑니다.
+  </div>
+</section>
+
 <section id="secTask">
   <h2>업무관리 (노션)</h2>
   <div class="hint" style="margin-top:0">
@@ -999,6 +1016,10 @@ function __paint() {
   var gw = UI.gradeWrite || {};
   if (!$('gpwUrl').value) $('gpwUrl').value = gw.url || '';
   if (!$('gpwKey').value) $('gpwKey').value = gw.key || '';
+  /* 담임 출결 — 우리 반·교사확인 이름 */
+  var ac = UI.att || {};
+  if (!$('attCls').value) $('attCls').value = ac.cls || '';
+  if (!$('attTeacher').value) $('attTeacher').value = ac.teacher || '';
   document.querySelectorAll('[data-only="jinho"]').forEach(function (el) {
     el.style.display = (UI.flavor === 'jinho') ? '' : 'none';
   });
@@ -1389,6 +1410,7 @@ var TABALL = [
   { k: 'comci', t: '컴시간' },
   { k: 'grid', t: '진도표', hyewon: true },
   { k: 'cal', t: '학사일정' },
+  { k: 'att', t: '출결', jinho: true },
   { k: 'meal', t: '급식' },
   { k: 'rec', t: '학생기록' },
   { k: 'link', t: '바로가기' }
@@ -1831,6 +1853,18 @@ $('gpSave').onclick = function () {
     + d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate()) + ' '
     + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + '</b><br>');
   setTimeout(function () { $('gpSave').textContent = '저장'; }, 900);
+};
+$('attSave').onclick = function () {
+  var c = $('attCls').value.trim();
+  if (!/^\d-\d{1,2}$/.test(c)) {
+    $('attMsg').insertAdjacentHTML('afterbegin', '<b class="warn">반 탭 이름은 3-2 처럼 적어 주세요</b><br>');
+    return;
+  }
+  widgetAPI.setUi({ att: { cls: c, teacher: $('attTeacher').value.trim() } });
+  var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+  $('attMsg').insertAdjacentHTML('afterbegin', '<b class="ok">✅ 저장됨 · '
+    + d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate()) + ' '
+    + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + '</b><br>');
 };
 $('recOut').onclick = function () {
   if (!confirm('구글 연결을 끊을까요?\n\n시트와 기록은 구글 드라이브에 그대로 남습니다.\n다시 «구글 연결하기» 를 누르면 그 시트를 이어서 씁니다.')) return;

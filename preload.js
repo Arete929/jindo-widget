@@ -1,4 +1,4 @@
-// 파일명: preload.js | @version 1.119.0
+// 파일명: preload.js | @version 1.121.0
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
@@ -37,6 +37,14 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   gradeAdd: (o) => ipcRenderer.invoke('grade-add', o),
   gradeUndo: (o) => ipcRenderer.invoke('grade-undo', o),
   gradeCats: (g) => ipcRenderer.invoke('grade-cats', g),
+  /* 담임 출결 (지비스만 — 메인이 막는다) */
+  attList: () => ipcRenderer.invoke('att-list'),
+  attAdd: (o) => ipcRenderer.invoke('att-add', o),
+  attUndo: (o) => ipcRenderer.invoke('att-undo', o),
+  attSet: (o) => ipcRenderer.invoke('att-set', o),
+  attSeq: (items) => ipcRenderer.invoke('att-seq', items),
+  attFold: (o) => ipcRenderer.invoke('att-fold', o),
+  attUnblock: () => ipcRenderer.invoke('att-unblock'),
   openSettings: () => ipcRenderer.send('open-settings'),
   getWeek: (off) => ipcRenderer.invoke('get-week', off),
   getWeeks: (from, to) => ipcRenderer.invoke('get-weeks', { from, to }),

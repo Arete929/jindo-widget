@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 1.120.4
-   수정요약: v1.120.4 학년부 «구분 줄» 이 월 줄 밑에 딱 붙게 (월 줄 높이를 두 번 더해 붕 떴다)
+/* 파일명: views.js | @version 1.121.0
+   수정요약: v1.121.0 «출결» 탭(지비스만) — 담임 출결 넣기·구분·연번·수정여부·접기·월별 출력 / v1.120.4 학년부 «구분 줄» 이 월 줄 밑에 딱 붙게
    위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜비스는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -13,7 +13,7 @@ var TODAYEV = '';
 /* 업데이트 내역 — 새 버전으로 켜졌을 때 한 번 보여주고, 닫으면 다시 안 뜬다 */
 var NOTES = null;
 /* 탭마다 글자 크기 배율을 따로 둔다. 메인이 저장해 두므로 껐다 켜도 그대로다. */
-var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1, task: 1, usage: 1 };
+var FS = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1, task: 1, usage: 1, att: 1 };
 function fsKey() {
   /* ★ 시간표 탭(오늘·이번주·진도표)은 셋이 한 탭이라 크기도 하나로 묶는다 — 열쇠 tt.
      전에는 이 셋이 아예 빠져 있어서 «--wf» 가 늘 1 이었다. 그래서 이미
@@ -21,7 +21,7 @@ function fsKey() {
   return ({ today: 'tt', week: 'tt', progress: 'tt',
     work: 'work', comci: 'comci', cal: 'cal', meal: 'meal', rec: 'rec',
     home: 'home', note: 'note', link: 'link', grid: 'grid',
-    office: 'office', task: 'task' })[VIEW] || '';
+    office: 'office', task: 'task', att: 'att' })[VIEW] || '';
 }
 function fontBtns(key) {
   return '<span class="wfs">'
@@ -1644,6 +1644,544 @@ function goToday() {
   // 글꼴이 늦게 오거나 창 높이가 맞춰지면 자리가 밀린다 — 조금 뒤 한 번 더 맞춘다
   setTimeout(function () { var e2 = todayEl(); if (e2) scrollToEl(e2, 6); }, 280);
   return true;
+}
+
+/* ── 담임 출결 (지비스만) ───────────────────────────────────
+   3학년 출결목록 시트를 그대로 쓴다 — 선생님이 시트에서 하던 것 그대로:
+     ① «입력» 탭 맨 아래에 한 줄 (＋ 출결)
+     ② 우리 반 탭(3-2)에서 구분 고르기 · 수정요청 보고 수정여부 적기
+     ③ 연번 — 달마다 날짜순으로 1부터, 앱이 매겨 시트에도 적는다(접어 둔 달은 안 건드림)
+     ④ 검토 끝난 달 접기·펴기 (행 숨김) · 월별 출력
+   ★ 시트 주소는 다리(GAS)만 안다. 여기(공개 저장소)에는 없다.
+   ★ 쓰기 직전에 다리가 «그 줄이 이 학생인가» 를 다시 본다 — 정렬로 줄이 밀렸으면 안 쓴다. */
+var ATTCFG = null;                 // { cls:'3-2', teacher:'김진호' } — 메인이 준다
+var ATT = null, attBusy = false, attAgain = false, attErr = '';
+var attMon = '';                   // 보고 있는 달 'yyyy-mm'
+var attAdd = null, attAddBusy = false, attAddMsg = '', attAddAt = '', attLast = null;
+var attMsg = '', attMsgAt = '';    // 목록에서 한 일(구분·수정여부·연번·접기) 알림
+var attFixDraft = {}, attFixJust = {}, attRowBusy = {};
+var attSeqTried = '';
+var attFoldBusy = false;           // 접기·펴기는 시트에서 몇 초 걸린다 — 두 번 눌리지 않게
+var ATT_TYPES = [
+  ['질병', ['질병결석', '질병지각', '질병조퇴', '질병결과']],
+  ['인정', ['인정결석', '인정지각', '인정조퇴', '인정결과']],
+  ['기타', ['보건실', '상담실', '외출']]
+];
+var ATT_GUBUN = ['나이스', '종이서류', '서류없음'];
+var ATT_FIXES = ['수정완료', '보고서 상신완료', '재제출'];
+var ATT_REASONS = ['병원진료', '생리통', '체험학습', '진로 체험',
+  '극심한 생리통 증상으로 가정에서 휴식을 취함'];
+
+function attCls() { return (ATTCFG && ATTCFG.cls) || '3-2'; }
+function attErrText(e) {
+  return String((e && e.message) || e || '').replace(/^Error invoking remote method .[^.]*.:\s*/, '');
+}
+/* 유형 색 — 결석 빨강 · 지각 호박 · 조퇴 파랑 · 결과 보라 · 보건실 초록 */
+function attHue(t) {
+  t = String(t || '');
+  if (t.indexOf('결석') >= 0) return 2;
+  if (t.indexOf('지각') >= 0) return 4;
+  if (t.indexOf('조퇴') >= 0) return 3;
+  if (t.indexOf('결과') >= 0) return 5;
+  if (t === '보건실') return 1;
+  if (t === '상담실') return 7;
+  return 6;
+}
+function attLoad() {
+  if (!HAS_TT) return;
+  if (attBusy) { attAgain = true; return; }        // 읽는 중에 또 부르면 끝나고 한 번 더
+  attBusy = true; attErr = '';
+  widgetAPI.attList().then(function (r) {
+    attBusy = false;
+    if (r && r.ok) {
+      ATT = r;
+      if (!attMon) attMon = attThisMon();
+      attSeqSync();
+    } else {
+      attErr = (r && r.msg) || '출결 목록을 읽지 못했습니다';
+      if (!ATT) ATT = { rows: [], failed: true };
+    }
+    if (attAgain) { attAgain = false; attLoad(); }
+    render();
+  }).catch(function (e) {
+    attBusy = false; attErr = attErrText(e);
+    if (!ATT) ATT = { rows: [], failed: true };
+    render();
+  });
+}
+function attRows() { return (ATT && ATT.rows) || []; }
+function attSort(a, b) {
+  return String(a.start).localeCompare(String(b.start))
+    || String(a.id).localeCompare(String(b.id)) || (a.r - b.r);
+}
+function attOf(mon) {
+  return attRows().filter(function (x) { return String(x.start).slice(0, 7) === mon; }).sort(attSort);
+}
+function attThisMon() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1); }
+function attMonths() {
+  var s = {};
+  attRows().forEach(function (x) { if (/^\d{4}-\d{2}/.test(x.start)) s[x.start.slice(0, 7)] = 1; });
+  s[attThisMon()] = 1;
+  return Object.keys(s).sort();
+}
+function attFolded(mon) { var l = attOf(mon); return l.length > 0 && l.every(function (x) { return x.hidden; }); }
+function attAnyHidden(mon) { return attOf(mon).some(function (x) { return x.hidden; }); }
+function attPending(x) { return !!x.req && !x.fix; }
+/* '2026-09-03' → '9/3(목)' */
+function attMd(s) {
+  var m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return String(s || '');
+  var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return Number(m[2]) + '/' + Number(m[3]) + '(' + '일월화수목금토'.charAt(d.getDay()) + ')';
+}
+function attFind(sig, r) {
+  return attRows().filter(function (x) { return x.sig === sig && x.r === Number(r); })[0] || null;
+}
+/* 우리 반 명단 — 학생기록 명렬표에서. 없으면 출결에 나온 학생들로 */
+function attStudents() {
+  var all = (REC && REC.roster && REC.roster.classes) || [];
+  var c = all.filter(function (x) { return x.key === attCls(); })[0];
+  if (c && c.students && c.students.length) return c.students;
+  var seen = {}, out = [];
+  attRows().forEach(function (x) {
+    if (seen[x.id]) return;
+    seen[x.id] = 1; out.push({ id: x.id, name: x.name, no: Number(String(x.id).slice(2)) });
+  });
+  return out.sort(function (a, b) { return a.id.localeCompare(b.id); });
+}
+
+/* 연번 — 달마다 날짜·학번순으로 1부터. 시트와 다른 것만 적는다.
+   ★ 한 줄이라도 접힌(숨긴) 달, 그리고 마지막으로 접힌 달보다 앞선 달은 검토 끝난 달이라 건드리지 않는다. */
+function attSeqPlan() {
+  var items = [];
+  /* ★ 검토는 3월부터 차례로 끝나 접힌다. 지난 달 하나를 잠깐 «펴서» 볼 때
+       그 달 번호가 바뀌면 이미 낸 목록과 어긋나므로, 마지막으로 접힌 달 «뒤» 만 매긴다. */
+  var 마지막접힘 = '';
+  attMonths().forEach(function (mon) { if (attAnyHidden(mon)) 마지막접힘 = mon; });
+  attMonths().forEach(function (mon) {
+    if (attAnyHidden(mon) || mon <= 마지막접힘) return;
+    attOf(mon).forEach(function (x, i) {
+      if (String(x.seq) !== String(i + 1)) items.push({ r: x.r, sig: x.sig, seq: i + 1 });
+    });
+  });
+  return items;
+}
+function attSeqSync() {
+  if (!ATT || ATT.spillErr || !(ATT.has && ATT.has.seq)) return;
+  var items = attSeqPlan();
+  if (!items.length) return;
+  var key = JSON.stringify(items);
+  if (key === attSeqTried) return;               // 같은 것을 되풀이해 적지 않는다
+  attSeqTried = key;
+  widgetAPI.attSeq(items).then(function (r) {
+    if (r && r.ok) {
+      if (r.skipped) { attLoad(); return; }       // 그새 시트가 바뀌었다 — 새로 읽어 다시
+      items.forEach(function (it) {
+        var x = attRows().filter(function (y) { return y.r === it.r && y.sig === it.sig; })[0];
+        if (x) x.seq = String(it.seq);
+      });
+      if (r.fixed) { attMsg = '연번 ' + r.fixed + '곳을 날짜순으로 맞췄습니다'; attMsgAt = r.savedAt || 지금시각(); }
+    } else {
+      attErr = '연번을 맞추지 못했습니다 — ' + ((r && r.msg) || '');
+    }
+    render();
+  }).catch(function (e) { attErr = attErrText(e); render(); });
+}
+/* 시트가 아직 정렬 전인가 — 새로 넣은 줄이 맨 아래에 있으면 날짜가 거꾸로 선다 */
+function attUnsorted() {
+  var l = attRows().slice().sort(function (a, b) { return a.r - b.r; });
+  for (var i = 1; i < l.length; i++) {
+    if (/^\d{4}-/.test(l[i].start) && /^\d{4}-/.test(l[i - 1].start) && l[i].start < l[i - 1].start) return true;
+  }
+  return false;
+}
+
+function viewAtt() {
+  if (!HAS_TT) return '<div class="empty">출결은 지비스에서만 씁니다.</div>';
+  if (!ATT) { attLoad(); return attBar() + '<div class="empty">출결 목록을 읽는 중…</div>'; }
+  if (!attMon) attMon = attThisMon();
+  var list = attOf(attMon);
+  var folded = attFolded(attMon);
+  var nPend = list.filter(attPending).length;
+  var h = attBar() + attAddBox() + attNotes();
+  h += '<div class="atsum"><b>' + esc(attCls()) + '</b> · ' + Number(attMon.slice(5)) + '월 · '
+    + list.length + '건'
+    + (nPend ? ' · <b class="atpend">답할 것 ' + nPend + '</b>' : '')
+    + (folded ? ' · 접어 둔 달' : '')
+    + (attBusy ? ' · 읽는 중…' : '') + '</div>';
+  if (folded) h += '<div class="rhint">검토가 끝나 시트에서 접어 둔 달입니다. 고치려면 먼저 «펴기» 를 누르세요.</div>';
+  if (!list.length && !(ATT && ATT.spillErr)) h += '<div class="empty">이 달에는 아직 출결이 없습니다.</div>';
+  h += '<div class="atl">' + list.map(function (x) { return attRowHtml(x, folded); }).join('') + '</div>';
+  return h;
+}
+
+function attBar() {
+  var mons = ATT ? attMonths() : [attThisMon()];
+  var chips = mons.map(function (m) {
+    var l = ATT ? attOf(m) : [];
+    var p = l.filter(attPending).length, f = ATT && attFolded(m);
+    return '<button class="wkb atmon' + (m === attMon ? ' now' : '') + (f ? ' fold' : '')
+      + '" data-atm="' + m + '" title="' + (f ? '접어 둔 달 · ' : '') + l.length + '건'
+      + (p ? ' · 답할 것 ' + p : '') + '">' + Number(m.slice(5)) + '월'
+      + (p ? '<em class="atbad">' + p + '</em>' : '') + '</button>';
+  }).join('');
+  var has = ATT && attOf(attMon).length, f = ATT && attFolded(attMon);
+  return '<div class="top2"><div class="wknav atbar">' + chips
+    + '<span class="spacer"></span>'
+    + '<button class="wkb go" id="atNew" title="«입력» 탭 맨 아래에 한 줄 넣습니다">＋ 출결</button>'
+    + (has ? '<button class="wkb" id="atPrint" title="이 달 출결 목록 — 인쇄·PDF">🖨 출력</button>' : '')
+    + (has ? '<button class="wkb" id="atFold"' + (attFoldBusy ? ' disabled' : '') + ' title="'
+      + (f ? '이 달 줄을 시트에서 다시 보이게' : '검토 끝난 달 — 시트에서 이 달 줄을 숨깁니다') + '">'
+      + (attFoldBusy ? (f ? '펴는 중…' : '접는 중…') : (f ? '펴기' : '접기')) + '</button>' : '')
+    + '<button class="wkb" id="atGet" title="시트에서 다시 읽기">⟳</button>'
+    + fontBtns('att') + '</div></div>';
+}
+
+/* 막힘·알림·정렬 안내 */
+function attNotes() {
+  var h = '';
+  if (attErr) h += '<div class="atwarn">' + esc(attErr) + '</div>';
+  var bl = (ATT && ATT.blockers) || [];
+  var blank = bl.filter(function (b) { return b.blank; }).map(function (b) { return b.a1; });
+  var real = bl.filter(function (b) { return !b.blank; }).map(function (b) { return b.a1; });
+  var fixBtn = blank.length
+    ? ' <button class="wkb go" id="atUnblock">공백 칸 비우기 (' + esc(blank.join('·')) + ')</button>' : '';
+  var realTxt = real.length
+    ? '<br>글이 든 칸(' + esc(real.join('·')) + ')은 시트에서 직접 확인해 주세요 — 앱은 글이 든 칸을 지우지 않습니다.' : '';
+  if (ATT && ATT.spillErr) {
+    h += '<div class="atwarn"><b>' + esc(attCls()) + ' 탭 수식이 막혀 목록이 비었습니다 (' + esc(ATT.spillErr) + ')</b><br>'
+      + '새 줄이 넘어올 자리에 ' + esc(bl.map(function (b) { return b.a1; }).join('·') || '무언가') + ' 칸이 차 있어서입니다.'
+      + fixBtn + realTxt + '</div>';
+  } else if (bl.length) {
+    h += '<div class="atcaution"><b>우리 반 출결이 한 줄 더 들어오면 ' + esc(attCls()) + ' 탭이 막힙니다</b><br>'
+      + '다음 줄이 넘어올 자리(' + esc(bl.map(function (b) { return b.a1; }).join('·')) + ')가 비어 있지 않습니다'
+      + (blank.length && !real.length ? ' — 공백만 들어 있습니다.' : '.') + fixBtn + realTxt + '</div>';
+  }
+  if (attMsg) h += '<div class="rsaved">✅ ' + esc(attMsg) + (attMsgAt ? ' · ' + esc(attMsgAt) : '') + '</div>';
+  if (ATT && attUnsorted()) {
+    h += '<div class="rhint">↕ 시트가 아직 날짜순 정렬 전입니다 — 누가 시트를 열면(F5) 정렬됩니다.</div>';
+  }
+  return h;
+}
+
+function attRowHtml(x, folded) {
+  var busy = !!attRowBusy[x.sig];
+  var lock = folded || x.hidden;
+  var endIsDate = /^\d{4}-\d{2}-\d{2}$/.test(x.end);
+  var dt = attMd(x.start)
+    + (endIsDate && x.end !== x.start ? ' ~ ' + attMd(x.end) : '')
+    + (x.time ? ' · ' + x.time : '')
+    + (!endIsDate && x.endTxt ? ' · ' + x.endTxt : '');
+  var h = '<div class="atr' + (attPending(x) ? ' pend' : '') + (x.hidden ? ' hid' : '') + '">'
+    + '<div class="atr1"><span class="atseq" title="연번">' + esc(x.seq || '·') + '</span>'
+    + '<b class="atnm">' + esc(Number(String(x.id).slice(2))) + ' ' + esc(x.name) + '</b>'
+    + '<i class="gpk h' + attHue(x.type) + '">' + esc(x.type) + '</i>'
+    + '<span class="atdt">' + esc(dt) + '</span></div>'
+    + (x.reason ? '<div class="atrs">' + esc(x.reason) + '</div>' : '')
+    + '<div class="atr2"><span class="atgl">구분</span>'
+    + ATT_GUBUN.map(function (g) {
+        return '<button class="wkb gpac atg' + (x.gubun === g ? ' on' : '') + '" data-atg="' + esc(g)
+          + '" data-sig="' + esc(x.sig) + '" data-r="' + x.r + '"' + (lock || busy ? ' disabled' : '') + '>'
+          + esc(g) + '</button>';
+      }).join('')
+    + (x.gubun && ATT_GUBUN.indexOf(x.gubun) < 0 ? '<span class="atok">' + esc(x.gubun) + '</span>' : '')
+    + (x.doc ? '<span class="atok">서류 ✓</span>' : '')
+    + (x.neis ? '<span class="atok">NEIS ✓</span>' : '')
+    + (busy ? '<span class="atbusy">적는 중…</span>' : '')
+    + '</div>';
+  if (x.req || x.fix) h += attReqHtml(x, lock);
+  return h + '</div>';
+}
+/* 학년부장의 수정요청 → 내가 적는 수정여부 */
+function attReqHtml(x, lock) {
+  var draft = attFixDraft[x.sig];
+  var val = draft !== undefined ? draft : x.fix;
+  var busy = !!attRowBusy[x.sig];
+  return '<div class="atreq' + (attPending(x) ? ' pend' : ' done') + '">'
+    + (x.req ? '<div class="atq"><b>수정요청</b>' + esc(x.req) + '</div>' : '')
+    + '<div class="atfx"><span class="atgl">수정여부</span>'
+    + '<input class="gpai wide" data-atfxi="' + esc(x.sig) + '" value="' + esc(val)
+    + '" placeholder="어떻게 고쳤는지 적어 주세요"' + (lock ? ' disabled' : '') + '>'
+    + '<button class="wkb go" data-atfxs="' + esc(x.sig) + '" data-r="' + x.r + '"'
+    + (lock || busy ? ' disabled' : '') + '>' + (busy ? '저장 중…' : '저장') + '</button></div>'
+    + (lock ? '' : '<div class="atfx">' + ATT_FIXES.map(function (t) {
+        return '<button class="wkb gpac" data-atfxc="' + esc(t) + '" data-sig="' + esc(x.sig) + '">' + esc(t) + '</button>';
+      }).join('') + '</div>')
+    + (x.fixAt ? '<div class="rsaved">' + (attFixJust[x.sig] ? '✅ 저장됨 · ' : '마지막 저장 · ') + esc(x.fixAt) + '</div>' : '')
+    + '</div>';
+}
+
+/* ── 한 줄 넣기 칸 ── 드롭다운 없이 칩으로(전역 규칙) */
+function attAddBox() {
+  if (!attAdd) return '';
+  var A = attAdd, t = A.type || '';
+  var 결석 = t.indexOf('결석') >= 0, 조퇴 = /조퇴|외출/.test(t), 지각 = t.indexOf('지각') >= 0;
+  var 결과 = t.indexOf('결과') >= 0;
+  var ss = attStudents();
+  var h = '<div class="atadd">'
+    + '<div class="gparow"><b>' + esc(attCls()) + ' 출결 넣기</b><span class="spacer"></span>'
+    + '<span class="atto">«입력» 탭 맨 아래 · 교사확인 ' + esc((ATTCFG && ATTCFG.teacher) || '') + '</span>'
+    + '<button class="wkb" id="atX">닫기</button></div>';
+  /* 학생 */
+  h += '<div class="gparow wrap"><label class="gpal">학생</label>';
+  if (ss.length) {
+    h += ss.map(function (s) {
+      return '<button class="wkb gpac atst' + (A.id === s.id ? ' on' : '') + '" data-ats="' + esc(s.id + '|' + s.name) + '">'
+        + esc(s.no) + ' ' + esc(s.name) + '</button>';
+    }).join('');
+  } else {
+    h += '<input id="atId" class="gpai" placeholder="학번" value="' + esc(A.id) + '" style="width:5em">'
+      + '<input id="atName" class="gpai" placeholder="이름" value="' + esc(A.name) + '" style="width:6em">';
+  }
+  h += '</div>';
+  /* 유형 */
+  ATT_TYPES.forEach(function (g) {
+    h += '<div class="gparow wrap"><label class="gpal">' + (g[0] === '질병' ? '유형' : '') + '</label>'
+      + g[1].map(function (x) {
+          return '<button class="wkb gpac' + (t === x ? ' on' : '') + ' h' + attHue(x) + '" data-aty="' + esc(x) + '">' + esc(x) + '</button>';
+        }).join('') + '</div>';
+  });
+  /* 일자 · 종료일 · 시간 */
+  h += '<div class="gparow wrap"><label class="gpal">일자</label>'
+    + '<input type="date" id="atDate" value="' + esc(A.date || '') + '">';
+  if (결석) {
+    h += '<label class="gpal" style="width:auto">~ 종료일</label>'
+      + '<input type="date" id="atEnd" value="' + esc(/^\d{4}-/.test(A.end) ? A.end : '') + '">'
+      + '<span class="atto">여러 날일 때만</span>';
+  }
+  if (t && !결석) {
+    h += '<label class="gpal" style="width:auto">시간</label>'
+      + '<input type="time" id="atTime" value="' + esc(A.time || '') + '">';
+  }
+  if (조퇴 || 지각) {
+    h += ['정문확인', '정문통과'].map(function (x) {
+      return '<button class="wkb gpac' + (A.end === x ? ' on' : '') + '" data-atend="' + x + '">' + x + '</button>';
+    }).join('');
+  }
+  h += '</div>';
+  /* 신청사유 */
+  h += '<div class="gparow"><label class="gpal">신청사유</label>'
+    + '<input id="atReason" class="gpai wide" placeholder="생리통·질병은 문장으로 자세히 (매뉴얼)" value="' + esc(A.reason || '') + '"></div>';
+  if (조퇴 || 지각 || 결과) {
+    h += '<div class="gparow wrap"><label class="gpal">교시</label>'
+      + [1, 2, 3, 4, 5, 6, 7].map(function (n) {
+          var p = 조퇴 ? '(' + n + '교시~)' : 지각 ? '(~' + n + '교시)' : '(' + n + '교시)';
+          return '<button class="wkb gpac" data-atp="' + esc(p) + '">' + esc(p) + '</button>';
+        }).join('') + '</div>';
+  }
+  h += '<div class="gparow wrap"><label class="gpal"></label>'
+    + attReasonChips().map(function (x) {
+        return '<button class="wkb gpac" data-atrs="' + esc(x) + '">' + esc(x.length > 16 ? x.slice(0, 16) + '…' : x) + '</button>';
+      }).join('') + '</div>';
+  /* 저장 */
+  h += '<div class="gparow"><button class="wkb go" id="atSave"' + (attAddBusy ? ' disabled' : '') + '>'
+    + (attAddBusy ? '넣는 중…' : '저장') + '</button>'
+    + (attLast ? '<button class="wkb" id="atUndo"' + (attAddBusy ? ' disabled' : '') + '>되돌리기</button>' : '')
+    + '<span class="spacer"></span>'
+    + (attAddAt ? '<span class="rsaved">✅ 저장됨 · ' + esc(attAddAt) + '</span>' : '')
+    + '</div>'
+    + (attAddMsg ? '<div class="rhint">' + esc(attAddMsg) + '</div>' : '')
+    + '</div>';
+  return h;
+}
+/* 자주 쓰는 사유 — 우리 반 기록에서 많이 나온 것 먼저, 모자라면 기본 것 */
+function attReasonChips() {
+  var n = {};
+  attRows().forEach(function (x) {
+    var r = String(x.reason || '').replace(/^\((\d교시~|~\d교시|\d교시)\)\s*/, '').trim();
+    if (r && r.length <= 40) n[r] = (n[r] || 0) + 1;
+  });
+  var top = Object.keys(n).filter(function (k) { return n[k] >= 2; })
+    .sort(function (a, b) { return n[b] - n[a]; }).slice(0, 6);
+  ATT_REASONS.forEach(function (x) { if (top.indexOf(x) < 0 && top.length < 8) top.push(x); });
+  return top;
+}
+
+/* 월별 출력 — 연번·구분·학번·이름·시작일·종료일·유형·신청사유 (시간은 시트처럼 뺀다) */
+function attPrintHtml(mon) {
+  var list = attOf(mon);
+  if (!list.length) return null;
+  var css = '<style>'
+    + '.att{border-collapse:collapse;width:100%;font-size:9.5pt;line-height:1.45}'
+    + '.att th,.att td{border:.6pt solid #888;padding:3pt 4pt;vertical-align:top;color:#111}'
+    + '.att th{background:#eee;font-weight:700;text-align:center;white-space:nowrap}'
+    + '.att td.c{text-align:center;white-space:nowrap}'
+    + '.att td.r{word-break:break-word}'
+    + '.att tr{break-inside:avoid;page-break-inside:avoid}'
+    + '</style>';
+  var cols = '<colgroup><col style="width:6%"><col style="width:9%"><col style="width:7%">'
+    + '<col style="width:8%"><col style="width:11%"><col style="width:11%"><col style="width:9%"><col></colgroup>';
+  var head = '<thead><tr>' + ['연번', '구분', '학번', '이름', '시작일', '종료일', '유형', '신청사유(근거자료)']
+    .map(function (x) { return '<th>' + x + '</th>'; }).join('') + '</tr></thead>';
+  var body = '<tbody>' + list.map(function (x, i) {
+    return '<tr><td class="c">' + esc(x.seq || String(i + 1)) + '</td>'
+      + '<td class="c">' + esc(x.gubun) + '</td><td class="c">' + esc(x.id) + '</td>'
+      + '<td class="c">' + esc(x.name) + '</td><td class="c">' + esc(x.startTxt || x.start) + '</td>'
+      + '<td class="c">' + esc(x.endTxt || '') + '</td><td class="c">' + esc(x.type) + '</td>'
+      + '<td class="r">' + esc(x.reason) + '</td></tr>';
+  }).join('') + '</tbody>';
+  return {
+    title: attCls() + ' 출결 목록 ' + mon,
+    range: attCls() + ' 출결 목록 — ' + mon.slice(0, 4) + '년 ' + Number(mon.slice(5)) + '월',
+    doc: '3학년 출결목록 · ' + list.length + '건',
+    body: css + '<table class="att">' + cols + head + body + '</table>'
+  };
+}
+
+/* 반 탭의 한 칸 적기 (구분·수정여부) */
+function attSetCell(x, field, value) {
+  if (!x || attRowBusy[x.sig]) return;
+  attRowBusy[x.sig] = true; attErr = ''; render();
+  widgetAPI.attSet({ r: x.r, sig: x.sig, field: field, value: value }).then(function (r) {
+    delete attRowBusy[x.sig];
+    if (r && r.ok) {
+      if (field === 'gubun') x.gubun = value;
+      else { x.fix = value; x.fixAt = r.savedAt || 지금시각(); attFixJust[x.sig] = true; delete attFixDraft[x.sig]; }
+      attMsg = (field === 'gubun' ? '구분 «' + value + '»' : '수정여부') + ' 적음 — ' + x.name + ' ' + attMd(x.start);
+      attMsgAt = r.savedAt || 지금시각();
+    } else if (r && r.moved) {
+      attErr = r.msg || '시트의 줄이 바뀌었습니다 — 다시 읽습니다';
+      attLoad();
+    } else {
+      attErr = (r && r.msg) || '적지 못했습니다';
+    }
+    render();
+  }).catch(function (e) { delete attRowBusy[x.sig]; attErr = attErrText(e); render(); });
+}
+
+function wireAtt(app) {
+  if (!HAS_TT || VIEW !== 'att') return;
+  var on = function (sel, fn) {
+    app.querySelectorAll(sel).forEach(function (b) { b.addEventListener('click', function (ev) { fn(b, ev); }); });
+  };
+  on('[data-atm]', function (b) { attMon = b.dataset.atm; render(); });
+  on('#atGet', function () { attSeqTried = ''; attMsg = ''; attLoad(); render(); });
+  on('#atNew', function () {
+    attAdd = attAdd ? null : { id: '', name: '', type: '', date: gpToday(), time: '', end: '', reason: '' };
+    attAddMsg = '';
+    render();
+    var a = appEl(); if (attAdd && a) a.scrollTop = 0;
+  });
+  on('#atX', function () { attAdd = null; attAddMsg = ''; render(); });
+  on('[data-ats]', function (b) {
+    if (!attAdd) return;
+    var p = b.dataset.ats.split('|');
+    attAdd.id = p[0]; attAdd.name = p[1] || ''; render();
+  });
+  on('[data-aty]', function (b) {
+    if (!attAdd) return;
+    var t = b.dataset.aty;
+    attAdd.type = t;
+    if (t.indexOf('결석') >= 0) { attAdd.time = ''; if (!/^\d{4}-/.test(attAdd.end)) attAdd.end = ''; }
+    else if (/^\d{4}-/.test(attAdd.end)) attAdd.end = '';
+    render();
+  });
+  on('[data-atend]', function (b) {
+    if (!attAdd) return;
+    attAdd.end = attAdd.end === b.dataset.atend ? '' : b.dataset.atend; render();
+  });
+  on('[data-atp]', function (b) {
+    if (!attAdd) return;
+    var rest = String(attAdd.reason || '').replace(/^\((\d교시~|~\d교시|\d교시)\)\s*/, '');
+    attAdd.reason = b.dataset.atp + ' ' + rest; render();
+  });
+  on('[data-atrs]', function (b) {
+    if (!attAdd) return;
+    var m = String(attAdd.reason || '').match(/^\((\d교시~|~\d교시|\d교시)\)\s*/);
+    attAdd.reason = (m ? m[0] : '') + b.dataset.atrs; render();
+  });
+  [['atDate', 'date'], ['atEnd', 'end'], ['atTime', 'time'], ['atReason', 'reason'], ['atId', 'id'], ['atName', 'name']]
+    .forEach(function (p) {
+      var el = app.querySelector('#' + p[0]);
+      if (el) el.addEventListener('input', function () { if (attAdd) attAdd[p[1]] = el.value; });
+    });
+  on('#atSave', function () {
+    if (!attAdd || attAddBusy) return;
+    var A = attAdd;
+    var why = !/^\d{4}$/.test(String(A.id || '')) ? '학생을 골라 주세요'
+      : !A.type ? '유형을 골라 주세요'
+      : !A.date ? '일자를 골라 주세요'
+      : !String(A.reason || '').trim() ? '신청사유를 적어 주세요' : '';
+    if (why) { attAddMsg = why; render(); return; }
+    attAddBusy = true; attAddMsg = ''; render();
+    var 보냄 = { nonce: Date.now() + '-' + Math.random().toString(36).slice(2),
+      id: A.id, name: A.name, date: A.date, time: A.time, end: A.end, type: A.type,
+      reason: String(A.reason).trim() };
+    widgetAPI.attAdd(보냄).then(function (r) {
+      attAddBusy = false;
+      if (r && r.ok) {
+        attLast = { row: r.row, id: 보냄.id, date: 보냄.date, type: 보냄.type, reason: 보냄.reason };
+        attAddAt = r.savedAt || 지금시각();
+        attAddMsg = (r.how || '넣었습니다') + ' — ' + 보냄.name + ' ' + attMd(보냄.date) + ' ' + 보냄.type;
+        attMon = 보냄.date.slice(0, 7);
+        attAdd.id = ''; attAdd.name = '';          // 같은 날 같은 사유로 여러 학생을 잇달아 넣을 수 있게 나머지는 둔다
+        attSeqTried = '';
+        attLoad();
+      } else {
+        attAddMsg = (r && r.msg) || '넣지 못했습니다';
+      }
+      render();
+    }).catch(function (e) { attAddBusy = false; attAddMsg = attErrText(e); render(); });
+  });
+  on('#atUndo', function () {
+    if (!attLast || attAddBusy) return;
+    if (!confirm('방금 넣은 줄을 지울까요?\n\n' + attLast.id + ' ' + attMd(attLast.date) + ' ' + attLast.type)) return;
+    attAddBusy = true; attAddMsg = '되돌리는 중…'; render();
+    widgetAPI.attUndo(attLast).then(function (r) {
+      attAddBusy = false;
+      attAddMsg = (r && r.ok) ? (r.how || '되돌렸습니다') : ((r && r.msg) || '되돌리지 못했습니다');
+      if (r && r.ok) { attLast = null; attAddAt = ''; attSeqTried = ''; attLoad(); }
+      render();
+    }).catch(function (e) { attAddBusy = false; attAddMsg = attErrText(e); render(); });
+  });
+  on('[data-atg]', function (b) {
+    var x = attFind(b.dataset.sig, b.dataset.r);
+    if (!x || x.gubun === b.dataset.atg) return;
+    attSetCell(x, 'gubun', b.dataset.atg);
+  });
+  app.querySelectorAll('[data-atfxi]').forEach(function (el) {
+    el.addEventListener('input', function () { attFixDraft[el.dataset.atfxi] = el.value; });
+  });
+  on('[data-atfxc]', function (b) { attFixDraft[b.dataset.sig] = b.dataset.atfxc; render(); });
+  on('[data-atfxs]', function (b) {
+    var x = attFind(b.dataset.atfxs, b.dataset.r);
+    if (!x) return;
+    var v = attFixDraft[x.sig] !== undefined ? attFixDraft[x.sig] : x.fix;
+    attSetCell(x, 'fix', String(v || '').trim());
+  });
+  on('#atFold', function () {
+    if (attFoldBusy) return;
+    var f = attFolded(attMon), n = attOf(attMon).length;
+    var m = Number(attMon.slice(5));
+    if (!f && !confirm(m + '월 ' + n + '줄을 ' + attCls() + ' 탭에서 접어 둘까요? (행 숨김 — 검토 끝난 달)')) return;
+    attFoldBusy = true; render();
+    widgetAPI.attFold({ month: attMon, hide: !f }).then(function (r) {
+      attFoldBusy = false;
+      if (r && r.ok) {
+        attMsg = r.how; attMsgAt = r.savedAt || 지금시각();
+        /* 다시 읽기 전에 화면부터 맞춘다 — 곧 시트 값으로 덮인다 */
+        attOf(attMon).forEach(function (x) { x.hidden = !f; });
+        attLoad();
+      } else attErr = (r && r.msg) || '못 했습니다';
+      render();
+    }).catch(function (e) { attFoldBusy = false; attErr = attErrText(e); render(); });
+  });
+  on('#atPrint', function (b) {
+    var p = attPrintHtml(attMon);
+    if (!p) return;
+    b.disabled = true;
+    widgetAPI.printWork(p).then(function () { b.disabled = false; }).catch(function () { b.disabled = false; });
+  });
+  on('#atUnblock', function (b) {
+    var cells = ((ATT && ATT.blockers) || []).filter(function (x) { return x.blank; }).map(function (x) { return x.a1; });
+    if (!confirm(attCls() + ' 탭의 ' + cells.join('·') + ' 칸에 든 «공백» 을 지웁니다.\n글이 든 칸은 건드리지 않습니다. 진행할까요?')) return;
+    b.disabled = true;
+    widgetAPI.attUnblock().then(function (r) {
+      if (r && r.ok) { attMsg = r.how; attMsgAt = r.savedAt || 지금시각(); attSeqTried = ''; attLoad(); }
+      else attErr = (r && r.msg) || '못 했습니다';
+      render();
+    }).catch(function (e) { attErr = attErrText(e); render(); });
+  });
 }
 
 /* ── 급식 ── */
@@ -4965,7 +5503,7 @@ function render() {
   // 탭마다 그림 — 넓게 보기의 차림표와 «같은 그림» 을 쓴다
   // ★ «진호 시간표» 는 앱 로고를 쓴다 — 이 탭이 앱의 얼굴이다
   var NAVIMG = { tt: 'logo-jinho', task: 'nav-work', work: 'nav-work', comci: 'nav-comci', grid: 'nav-rec',
-                 cal: 'nav-cal', meal: 'nav-meal', rec: 'nav-rec',
+                 cal: 'nav-cal', meal: 'nav-meal', rec: 'nav-rec', att: 'nav-rec',
                  office: 'nav-office', link: 'nav-link' };
   function chipInner(v, label) {
     var img = NAVIMG[v]
@@ -4981,7 +5519,7 @@ function render() {
     + inOrder(
         // ★ 지비스의 «바로가기» 는 런처보드다 — 이름만 다르고 화면 값(link)은 같다
         // ★ «업무관리»(노션)는 지비스에만 있다 — 시간표와 주간업무 사이
-        HAS_TT ? ['tt,진호 시간표', 'task,업무관리', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,런처보드']
+        HAS_TT ? ['tt,진호 시간표', 'task,업무관리', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'att,출결', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,런처보드']
                : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,바로가기'],
         TABORDER, function (s) { return s.split(',')[0]; }).map(function (s, i) {
         var p = s.split(',');
@@ -5020,6 +5558,7 @@ function render() {
     : VIEW === 'task' ? viewTasks()
     : VIEW === 'comci' ? viewComci()
     : VIEW === 'cal' ? viewAcademic()
+    : VIEW === 'att' ? viewAtt()
     : VIEW === 'meal' ? viewMeals()
     : VIEW === 'rec' ? viewRec()
     : VIEW === 'link' ? viewLinks()
@@ -5365,6 +5904,12 @@ widgetAPI.onData(function (p) {
   TERMSTART = p.termStart || '';
   NAVSTYLE = p.navStyle || 'both';
   TABORDER = p.tabOrder || [];
+  /* 담임 출결 — 반을 바꾸면 받아 둔 목록을 버리고 새로 읽는다 */
+  if (p.att !== undefined) {
+    var ac = p.att || null;
+    if (ATTCFG && ac && ATTCFG.cls !== ac.cls) { ATT = null; attMon = ''; attSeqTried = ''; }
+    ATTCFG = ac;
+  }
   BOARD = p.board || null;
   ofFav = p.officeFav || ofFav;
   DASHORDER = p.dashOrder || [];
@@ -5584,6 +6129,7 @@ function wireViews(app) {
     fdb.textContent = '…'; widgetAPI.feedRefresh();
   });
   wireBoardApps(app);
+  wireAtt(app);        // 담임 출결 (지비스만)
   // ★ .rach 도 함께 훑는다 — 학생기록 아코디언의 «머리» 단추다.
   //   .wkb 만 훑던 때에는 눌러도 아무 일이 없어서 «펼쳐지지 않는다» 였다.
   /* ★ 여기 목록에 빠진 «단추 종류» 는 눌러도 아무 일이 없다. 새 단추를 만들면 꼭 넣을 것.
