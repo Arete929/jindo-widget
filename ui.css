@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.119.0
+/* 파일명: ui.css | @version 1.119.1
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -231,7 +231,10 @@
   .ttl .brandwrap .hw { line-height: 1.08; padding-top: 1px; letter-spacing: .4px; }
   .ttl .tagline {
     font-family: var(--ff); font-size: calc(8.5px * var(--wf)); font-weight: 500;
-    letter-spacing: .1px; color: var(--dim); white-space: nowrap;
+    letter-spacing: .1px; color: var(--dim);
+    /* ★ 한 줄로 두면 제목 덩이가 193px 까지 벌어져 사용량 타일을 밀어냈다(2026-09-10).
+       130px 에서 접으면 두 줄이 되고 덩이가 134px 로 줄어든다. */
+    white-space: normal; max-width: calc(130px * var(--wf)); line-height: 1.32;
     margin-top: 1px; padding-left: 2px;
   }
   .ttl .tagline b { color: var(--accent); font-weight: 800; font-size: calc(9.5px * var(--wf)); }
