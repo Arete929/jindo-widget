@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.117.0
+/* 파일명: ui.css | @version 1.118.0
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -1255,7 +1255,32 @@
      구분마다 색을 달리해서 눈으로 갈리게 한다(h0~h7). */
   .gpbar { flex-wrap: wrap; }
   .gpl { margin: 1px 0 3px 8px; display: flex; flex-direction: column; gap: 2px; }
-  .gpi { background: var(--card); border-radius: 6px; overflow: hidden; }
+  /* ★ 학년부 일지는 학사일정과 «다른 것» 인데 배경이 똑같아 섞여 보였다(2026-09-10).
+     .acr(학사일정 줄)도 var(--card) 라서 구분이 안 됐다.
+     ① 바탕을 한 겹 눕히고 ② 왼쪽에 구분 색 띠를 세운다 — 띠만 봐도 어느 구분인지 안다. */
+  .gpi {
+    background: color-mix(in srgb, var(--fg) 7%, var(--card));
+    border-left: 3px solid var(--line);
+    border-radius: 5px; overflow: hidden;
+  }
+  /* 바탕·띠 색 — 구분 칩(.h0~.h7)과 같은 여덟 빛깔.
+     바탕은 옅게 물들여 «학사일정 줄» 과 갈라 보이게 하고, 왼쪽 띠는 진하게 세운다. */
+  .gpi.k0 { background: color-mix(in srgb, #6c5ce7 13%, var(--card));
+             border-left-color: color-mix(in srgb, #6c5ce7 75%, var(--card)); }
+  .gpi.k1 { background: color-mix(in srgb, #0e7c58 13%, var(--card));
+             border-left-color: color-mix(in srgb, #0e7c58 75%, var(--card)); }
+  .gpi.k2 { background: color-mix(in srgb, #c0392b 13%, var(--card));
+             border-left-color: color-mix(in srgb, #c0392b 75%, var(--card)); }
+  .gpi.k3 { background: color-mix(in srgb, #1e6fbf 13%, var(--card));
+             border-left-color: color-mix(in srgb, #1e6fbf 75%, var(--card)); }
+  .gpi.k4 { background: color-mix(in srgb, #b8860b 13%, var(--card));
+             border-left-color: color-mix(in srgb, #b8860b 75%, var(--card)); }
+  .gpi.k5 { background: color-mix(in srgb, #8e44ad 13%, var(--card));
+             border-left-color: color-mix(in srgb, #8e44ad 75%, var(--card)); }
+  .gpi.k6 { background: color-mix(in srgb, #d35400 13%, var(--card));
+             border-left-color: color-mix(in srgb, #d35400 75%, var(--card)); }
+  .gpi.k7 { background: color-mix(in srgb, #16a085 13%, var(--card));
+             border-left-color: color-mix(in srgb, #16a085 75%, var(--card)); }
   .gpi.on { box-shadow: inset 0 0 0 1.5px var(--accent); }
   .gph {
     -webkit-app-region: no-drag;
