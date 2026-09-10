@@ -1,4 +1,4 @@
-/* 파일명: views.js | @version 1.118.0
+/* 파일명: views.js | @version 1.119.0
    수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
    위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
@@ -661,6 +661,12 @@ function fmtStamp(iso) {
       + ' ' + z(d.getHours()) + ':' + z(d.getMinutes());
   } catch (e) { return ''; }
 }
+/* 지금 «2026.09.10 12:34:56» (KST) — 저장시각 표시에 쓴다(전역 규칙: 초까지) */
+function 지금시각() {
+  var d = new Date(), z = function (n) { return (n < 10 ? '0' : '') + n; };
+  return d.getFullYear() + '.' + z(d.getMonth() + 1) + '.' + z(d.getDate())
+    + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()) + ':' + z(d.getSeconds());
+}
 function tkYmd(d) {
   var z = function (n) { return (n < 10 ? '0' : '') + n; };
   return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate());
@@ -1222,6 +1228,12 @@ var gpCat = [];              // 골라 놓은 구분 (비면 전체)
 var gpOpen = '';             // 세부사항을 펼쳐 놓은 항목
 var gpBusy = {}, gpErr = {}; // 학년마다 따로
 var gpTouched = false;       // 화면에서 스위치를 건드렸는가 (메인 값이 덮어쓰지 않게)
+/* ── 일정 넣기 (지비스만) ──────────────────────────────────
+   시트에 한 줄을 더하는 일이라 «되돌리기» 를 같이 둔다. */
+var gpAdd = null;            // 열어 놓은 입력칸 { g, date, cat, title, detail }
+var gpAddCats = {};          // 학년별 구분 목록 (시트에서 받아 온다)
+var gpAddBusy = false, gpAddMsg = '', gpAddAt = '';
+var gpLast = null;           // 방금 넣은 것 { g, row, title } — 되돌리기에 쓴다
 var acAllYears = false;   // «다른 해» 탭까지 펼쳐 볼 것인가
 
 /* 학년부 일지를 받아 온다. 받아 둔 것이 있으면 그것부터 쓰고, 없으면 시트에서 */
@@ -1427,7 +1439,11 @@ function viewAcademic() {
           }).join('');
     }
     h += '<span class="spacer"></span>'
+      + (HAS_TT && gpOn.length
+          ? '<button class="wkb go" id="gpNew" title="이 학년 일지에 일정을 넣습니다">＋ 일정</button>'
+          : '')
       + '<button class="wkb" id="gpGet" title="학년부 일지 다시 받기">⟳</button></div>';
+    h += gpAddBox();
   }
 
   h += ms.map(function (m) {
@@ -1491,6 +1507,67 @@ function gpLines(v) {
   return t.split('\n').map(function (line) { return esc(line.trim()); })
     .filter(function (line) { return line; }).join('<br>');
 }
+/* ── 일정 넣기 칸 ──────────────────────────────────────────
+   ★ 드롭다운은 쓰지 않는다(전역 규칙) — 구분은 칩 팔레트로 고르고,
+     없는 구분은 «직접» 을 눌러 글로 적는다.
+   ★ 날짜는 달력(input date). 시트에 그 날짜 줄이 있어야 들어간다. */
+function gpAddBox() {
+  if (!HAS_TT || !gpAdd) return '';
+  var 목록 = gpAddCats[gpAdd.g] || [];
+  var 직접 = gpAdd.cat && 목록.indexOf(gpAdd.cat) < 0;
+  return '<div class="gpadd">'
+    + '<div class="gparow">'
+    + '<b>' + gpAdd.g + '학년 일지에 넣기</b>'
+    + '<span class="spacer"></span>'
+    + '<button class="wkb" id="gpaX">닫기</button>'
+    + '</div>'
+    + '<div class="gparow">'
+    + '<label class="gpal">날짜</label>'
+    + '<input type="date" id="gpaDate" value="' + esc(gpAdd.date || '') + '">'
+    + '</div>'
+    + '<div class="gparow wrap">'
+    + '<label class="gpal">구분</label>'
+    + 목록.map(function (c, i) {
+        return '<button class="wkb gpac' + (gpAdd.cat === c ? ' on' : '')
+          + ' h' + gpHue(c) + '" data-gpac="' + esc(c) + '">' + esc(c) + '</button>';
+      }).join('')
+    + '<button class="wkb gpac' + (직접 ? ' on' : '') + '" data-gpac="*">직접</button>'
+    + (직접 || !목록.length
+        ? '<input id="gpaCat" class="gpai" placeholder="구분" value="' + esc(gpAdd.cat || '') + '">'
+        : '')
+    + '</div>'
+    + '<div class="gparow">'
+    + '<label class="gpal">내용</label>'
+    + '<input id="gpaTitle" class="gpai wide" placeholder="무엇을 하는지 한 줄로" value="' + esc(gpAdd.title || '') + '">'
+    + '</div>'
+    + '<div class="gparow">'
+    + '<label class="gpal">세부사항</label>'
+    + '<textarea id="gpaDetail" class="gpai wide" rows="2" placeholder="없으면 비워 두셔도 됩니다">' + esc(gpAdd.detail || '') + '</textarea>'
+    + '</div>'
+    + '<div class="gparow">'
+    + '<button class="wkb go" id="gpaSave"' + (gpAddBusy ? ' disabled' : '') + '>'
+    + (gpAddBusy ? '넣는 중…' : '저장') + '</button>'
+    + (gpLast ? '<button class="wkb" id="gpaUndo">되돌리기</button>' : '')
+    + '<span class="spacer"></span>'
+    + (gpAddAt ? '<span class="rsaved">✅ 저장됨 · ' + esc(gpAddAt) + '</span>' : '')
+    + '</div>'
+    + (gpAddMsg ? '<div class="rhint">' + esc(gpAddMsg) + '</div>' : '')
+    + '</div>';
+}
+/* 시트에 실제로 쓰이는 구분을 받아 둔다 — 한 번만 */
+function gpCatsLoad(g) {
+  if (gpAddCats[g]) return;
+  widgetAPI.gradeCats(g).then(function (r) {
+    gpAddCats[g] = (r && r.ok && r.cats) ? r.cats : [];
+    render();
+  }).catch(function () { gpAddCats[g] = []; });
+}
+/* 오늘 날짜를 yyyy-MM-dd 로 */
+function gpToday() {
+  var d = new Date(), 두 = function (n) { return (n < 10 ? "0" : "") + n; };
+  return d.getFullYear() + '-' + 두(d.getMonth() + 1) + '-' + 두(d.getDate());
+}
+
 function gpRows(month, day) {
   var list = gpOf(month, day);
   if (!list.length) return '';
@@ -6028,6 +6105,84 @@ function wireViews(app) {
   var gpb2 = app.querySelector('#gpGet2');
   if (gpb2) gpb2.addEventListener('click', function () {
     gpOn.forEach(function (g) { GPD[g] = null; gpErr[g] = ''; gpLoad(g, true); });
+  });
+  /* ── 일정 넣기 ── */
+  var gpn = app.querySelector('#gpNew');
+  if (gpn) gpn.addEventListener("click", function () {
+    var g = gpOn[0] || 3;
+    gpAdd = gpAdd && gpAdd.g === g
+      ? null
+      : { g: g, date: gpToday(), cat: '', title: '', detail: '' };
+    gpAddMsg = ''; gpLast = null;
+    if (gpAdd) gpCatsLoad(g);
+    render();
+  });
+  var gpx = app.querySelector('#gpaX');
+  if (gpx) gpx.addEventListener("click", function () {
+    gpAdd = null; gpAddMsg = ''; render();
+  });
+  /* 입력칸 값은 «칠 때마다» 담아 둔다 — 다시 그려도 안 날아가게 */
+  [['gpaDate', 'date'], ['gpaCat', 'cat'], ['gpaTitle', 'title'], ['gpaDetail', 'detail']]
+    .forEach(function (p) {
+      var el = app.querySelector("#" + p[0]);
+      if (!el) return;
+      el.addEventListener("input", function () { if (gpAdd) gpAdd[p[1]] = el.value; });
+    });
+  /* 구분 칩 */
+  app.querySelectorAll("[data-gpac]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      if (!gpAdd) return;
+      var c = b.dataset.gpac;
+      gpAdd.cat = (c === '*') ? '' : c;
+      gpAdd.직접 = (c === '*');
+      render();
+      if (c === "*") { var i = app.querySelector("#gpaCat"); if (i) i.focus(); }
+    });
+  });
+  /* 저장 */
+  var gps = app.querySelector('#gpaSave');
+  if (gps) gps.addEventListener("click", function () {
+    if (!gpAdd || gpAddBusy) return;
+    var t = String(gpAdd.title || "").trim();
+    if (!t) { gpAddMsg = '내용을 적어 주세요'; render(); return; }
+    if (!gpAdd.date) { gpAddMsg = '날짜를 골라 주세요'; render(); return; }
+    gpAddBusy = true; gpAddMsg = ''; render();
+    widgetAPI.gradeAdd({
+      grade: gpAdd.g, date: gpAdd.date, cat: gpAdd.cat, title: t, detail: gpAdd.detail
+    }).then(function (r) {
+      gpAddBusy = false;
+      if (r && r.ok) {
+        gpLast = { g: gpAdd.g, row: r.row, title: t };
+        gpAddAt = 지금시각();
+        gpAddMsg = r.how || '넣었습니다';
+        gpAdd.title = ''; gpAdd.detail = '';
+        GPD[gpAdd.g] = null; gpLoad(gpAdd.g, true);
+      } else {
+        gpAddMsg = (r && r.msg) || '넣지 못했습니다';
+      }
+      render();
+    }).catch(function (e) {
+      gpAddBusy = false;
+      gpAddMsg = String((e && e.message) || e)
+        .replace(/^Error invoking remote method .[^.]*.:\s*/, "");
+      render();
+    });
+  });
+  /* 되돌리기 */
+  var gpu = app.querySelector('#gpaUndo');
+  if (gpu) gpu.addEventListener("click", function () {
+    if (!gpLast) return;
+    var 것 = gpLast;
+    gpAddBusy = true; gpAddMsg = '되돌리는 중…'; render();
+    widgetAPI.gradeUndo({ grade: 것.g, row: 것.row, expect: 것.title })
+      .then(function (r) {
+        gpAddBusy = false;
+        gpAddMsg = (r && r.ok) ? (r.how || '되돌렸습니다') : ((r && r.msg) || '되돌리지 못했습니다');
+        if (r && r.ok) { gpLast = null; gpAddAt = ""; GPD[것.g] = null; gpLoad(것.g, true); }
+        render();
+      }).catch(function (e) {
+        gpAddBusy = false; gpAddMsg = String((e && e.message) || e); render();
+      });
   });
   var gge = app.querySelector('#gpGet');
   if (gge) gge.addEventListener('click', function () {

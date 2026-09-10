@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.118.0
+/* 파일명: ui.css | @version 1.119.0
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -1254,6 +1254,34 @@
      학사일정 날짜 줄 «밑에» 붙는 그 학년만의 할 일.
      구분마다 색을 달리해서 눈으로 갈리게 한다(h0~h7). */
   .gpbar { flex-wrap: wrap; }
+  /* 일정 넣기 칸 — 학사일정 도구줄 바로 밑 */
+  .gpadd {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 11px 11px; margin: 4px 0 8px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .gparow { display: flex; align-items: center; gap: 6px; }
+  .gparow.wrap { flex-wrap: wrap; }
+  .gparow b { font-size: calc(11.5px * var(--wf)); }
+  .gpal {
+    flex: 0 0 auto; width: calc(48px * var(--wf)); color: var(--dim);
+    font-size: calc(10.5px * var(--wf)); font-weight: 700;
+  }
+  .gpai {
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 7px; padding: 4px 8px; font-family: inherit;
+    font-size: calc(11px * var(--wf)); min-width: 0;
+  }
+  .gpai.wide { flex: 1 1 auto; }
+  .gpadd textarea.gpai { resize: vertical; line-height: 1.5; }
+  .gpadd input[type="date"] {
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 7px; padding: 3px 7px; font-family: inherit;
+    font-size: calc(11px * var(--wf));
+  }
+  /* 구분 칩 — 고른 것만 테두리로 도드라지게 */
+  .wkb.gpac { padding: 2px 8px; font-size: calc(10px * var(--wf)); }
+  .wkb.gpac.on { box-shadow: inset 0 0 0 2px var(--accent); font-weight: 800; }
   .gpl { margin: 1px 0 3px 8px; display: flex; flex-direction: column; gap: 2px; }
   /* ★ 학년부 일지는 학사일정과 «다른 것» 인데 배경이 똑같아 섞여 보였다(2026-09-10).
      .acr(학사일정 줄)도 var(--card) 라서 구분이 안 됐다.

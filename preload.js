@@ -1,4 +1,4 @@
-// 파일명: preload.js | @version 1.114.0
+// 파일명: preload.js | @version 1.119.0
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
@@ -34,6 +34,9 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   /* 학년부 일지 */
   gradeGet: (g) => ipcRenderer.invoke('grade-get', g),
   gradeFetch: (g) => ipcRenderer.invoke('grade-fetch', g),
+  gradeAdd: (o) => ipcRenderer.invoke('grade-add', o),
+  gradeUndo: (o) => ipcRenderer.invoke('grade-undo', o),
+  gradeCats: (g) => ipcRenderer.invoke('grade-cats', g),
   openSettings: () => ipcRenderer.send('open-settings'),
   getWeek: (off) => ipcRenderer.invoke('get-week', off),
   getWeeks: (from, to) => ipcRenderer.invoke('get-weeks', { from, to }),
