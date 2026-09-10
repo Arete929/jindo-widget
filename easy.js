@@ -1,4 +1,4 @@
-/* 파일명: easy.js | @version 1.113.0
+/* 파일명: easy.js | @version 1.120.4
    혜비스 — 넓은 창의 뼈대. 왼쪽 메뉴 · 대시보드 · 화면 갈아 끼우기.
 
    ★ 자료를 읽어 오고 화면 조각을 만드는 일은 views.js 가 그대로 한다.
@@ -539,6 +539,12 @@ render = function () {
   var eh = MAIN.querySelector('.ehead');
   var et = MAIN.querySelector('.top2');
   if (eh && et) eh.appendChild(et);
+  /* ★ 학년부 «구분 줄» 은 이 머리(.ehead) 바로 밑에 붙어야 한다.
+       --toph 가 0 이라 머리 높이를 --top2h 로 알려 준다 — 안 그러면 top:0 에 붙어 머리 뒤로 숨는다. */
+  var egp = MAIN.querySelector('.gpbar');
+  MAIN.style.setProperty('--top2h', (eh ? eh.offsetHeight : 0) + 'px');
+  MAIN.style.setProperty('--gpbh', (egp ? egp.offsetHeight : 0) + 'px');
+  if (typeof stickWatch === 'function') stickWatch(MAIN, eh, egp, '--top2h');
 
   // 대시보드 꾸미기
   var de = MAIN.querySelector('#dcEdit');

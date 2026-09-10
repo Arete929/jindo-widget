@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 1.120.3
-   수정요약: v1.83.0 전광판 글이 짧아도 항상 흐르게 (전광판이니까)
+/* 파일명: views.js | @version 1.120.4
+   수정요약: v1.120.4 학년부 «구분 줄» 이 월 줄 밑에 딱 붙게 (월 줄 높이를 두 번 더해 붕 떴다)
    위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜비스는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -1616,8 +1616,13 @@ function scrollToEl(el, gap) {
   var head = parseFloat(getComputedStyle(app).getPropertyValue('--toph')) || 46;
   // 머리에 «붙어 있는» 줄만 빼 준다. 혜비스는 이 줄이 같이 흘러가므로 뺄 것이 없다.
   var nav = app.querySelector('.top2');
-  var stuck = nav && getComputedStyle(nav).position !== 'static';
-  app.scrollTop = Math.max(0, top - head - (stuck ? nav.offsetHeight : 0) - (gap || 6));
+  // ★ 머리(.top) 안으로 옮겨진 월 줄은 이미 head 에 들어 있다 — 두 번 빼지 않는다
+  var inHead = nav && nav.parentElement && nav.parentElement.classList.contains('top');
+  var stuck = nav && !inHead && getComputedStyle(nav).position !== 'static';
+  // 학년부 일지를 켜면 «구분 줄» 도 붙박이다 — 그 밑으로 오게
+  var gpb = app.querySelector('.gpbar');
+  var gph = gpb && getComputedStyle(gpb).position === 'sticky' ? gpb.offsetHeight : 0;
+  app.scrollTop = Math.max(0, top - head - (stuck ? nav.offsetHeight : 0) - gph - (gap || 6));
   return true;
 }
 /* 8-1·8-2 처럼 같은 달이 둘로 나뉘면 «오늘»이 두 군데다.
@@ -5040,18 +5045,38 @@ function render() {
   if (topEl && t2) topEl.appendChild(t2);
   app.style.setProperty('--toph', (topEl ? topEl.offsetHeight : 46) + 'px');
   /* 월 단추 줄도 붙박이라, 그 밑에 오는 «구분 줄» 이 얼마나 내려가야 하는지 알려 준다.
-     글자 크기·창 폭에 따라 한 줄이 두 줄이 되기도 해서 그때그때 재야 한다. */
+     ★ 월 줄은 바로 위에서 머리(.top) 안으로 옮겨져 --toph 에 이미 들어 있다.
+       그 높이를 또 더하면 구분 줄이 월 줄 한 칸만큼 떨어져 붕 떴다(2026-09-10).
+       머리 «밖에» 따로 붙어 있을 때만 더한다. */
   var t2 = app.querySelector('.top2');
   var t2h = 0;
-  if (t2 && getComputedStyle(t2).position === 'sticky') t2h = t2.offsetHeight;
+  if (t2 && !(topEl && topEl.contains(t2)) && getComputedStyle(t2).position === 'sticky') t2h = t2.offsetHeight;
   app.style.setProperty('--top2h', t2h + 'px');
   var gpb = app.querySelector('.gpbar');
   app.style.setProperty('--gpbh', (gpb ? gpb.offsetHeight : 0) + 'px');
+  /* 글꼴이 늦게 오거나 창 폭이 바뀌어 머리 높이가 달라지면 그때 다시 잰다
+     — 한 픽셀만 어긋나도 구분 줄이 뜨거나 월 줄 밑으로 숨는다 */
+  stickWatch(app, topEl, gpb);
   /* 수업진도를 얹을 자리 — 다 그린 뒤에 재야 제 크기가 나온다 */
   setTimeout(dashPlace, 0);
 
   wireViews(app);
   report();
+}
+
+/* 붙박이 줄 높이 지키기 — 머리·구분 줄의 크기가 바뀌면 --toph·--gpbh 를 다시 적는다.
+   그릴 때마다 새로 걸고, 앞의 것은 뗀다. */
+var stickRO = null;
+function stickWatch(app, head, gpb, prop) {
+  if (stickRO) { stickRO.disconnect(); stickRO = null; }
+  if (typeof ResizeObserver === 'undefined' || !head) return;
+  stickRO = new ResizeObserver(function () {
+    // 위젯은 머리 높이를 --toph 로, 넓은 창(easy)은 --toph 가 0 이라 --top2h 로 적는다
+    app.style.setProperty(prop || '--toph', head.offsetHeight + 'px');
+    if (gpb) app.style.setProperty('--gpbh', gpb.offsetHeight + 'px');
+  });
+  stickRO.observe(head);
+  if (gpb) stickRO.observe(gpb);
 }
 
 /* 교무실 찾기 — 다시 그리지 않고 안 맞는 타일만 감춘다.
