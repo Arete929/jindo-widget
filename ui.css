@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.122.0
+/* 파일명: ui.css | @version 1.123.0
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -1441,13 +1441,13 @@
   .attt td.atcell.pick { cursor: pointer; -webkit-app-region: no-drag; }
   .attt td.atcell.pick:hover { box-shadow: inset 0 0 0 2px var(--accent); }
   .attt td.atcell.off { color: var(--dim); cursor: default; }
-  /* ★ 머리(제목·탭·달 줄) 바로 밑에 떠 있는 판 — 학년부 일지 넣기 칸(.gpadd)과 같은 방식.
-       표 안에 두면 가로 스크롤 통에 잘리고, 맨 아래 새 줄에서는 화면 밖으로 열렸다 */
+  /* ★ 누른 칸 «바로 밑» 에 뜨는 판(모자라면 위). 자리는 화면 쪽(attPlacePop)이 재서 준다.
+       fixed 라서 표의 가로 스크롤 통에 잘리지 않는다. 처음엔 숨겨 두고 자리를 잡은 뒤 보인다.
+       (예전엔 머리 밑 오른쪽 끝에 늘 떠서, 넓은 창에서는 누른 칸과 한참 떨어졌다 — 2026-09-11) */
   .atpop {
-    position: fixed; z-index: 40;
-    top: calc(var(--toph, 46px) + var(--top2h, 0px) + 6px);
-    left: 14px; right: 14px; max-width: 560px; margin-left: auto;
-    max-height: calc(100vh - var(--toph, 46px) - var(--top2h, 0px) - 24px); overflow-y: auto;
+    position: fixed; z-index: 40; left: 0; top: 0; visibility: hidden;
+    width: max-content; max-width: min(560px, calc(100vw - 16px));
+    max-height: calc(100vh - var(--toph, 46px) - 16px); overflow-y: auto;
     background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px 10px;
     display: flex; flex-wrap: wrap; gap: 4px; align-items: center; text-align: left; white-space: normal;
     font-size: calc(10.5px * var(--wf));
@@ -1475,6 +1475,14 @@
   .attt tr.atnew2 td { background: color-mix(in srgb, var(--accent) 4%, var(--card)); }
   .atnl { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
   .atsep { width: 8px; }
+  /* 신청사유 예시 문구 고치는 칸 */
+  .atphr { margin: 5px 0; padding: 7px 9px; border-radius: 8px; display: flex; flex-direction: column; gap: 5px;
+           background: var(--card); border: 1px solid var(--line); }
+  .atphrt { display: flex; align-items: center; gap: 6px; color: var(--fg2); font-size: calc(10.5px * var(--wf)); }
+  .atphrt b { color: var(--fg); }
+  .atphrc { display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px 2px 8px; border-radius: 999px;
+            border: 1px solid var(--line); background: var(--bg); font-size: calc(10px * var(--wf)); }
+  .wkb.gpac.atphre { border-style: dashed; }
   .atx { border: 0; background: none; color: var(--dim); cursor: pointer; font-size: calc(10px * var(--wf));
          margin-left: 4px; padding: 0 3px; -webkit-app-region: no-drag; }
   .atx:hover { color: #c0392b; }

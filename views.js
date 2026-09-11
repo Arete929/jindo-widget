@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 1.122.0
-   수정요약: v1.122.0 출결 ✎ 고치기(제자리 덮어쓰기)·✕ 지우기(두 번) — 시트 줄은 교사확인이 내 이름인 줄만, 미인정 줄은 앱에서 / v1.121.1 출결 표·시트와 같은 인쇄·미인정
+/* 파일명: views.js | @version 1.123.0
+   수정요약: v1.123.0 출결 — 칩 판이 누른 칸 바로 밑(위)에 뜸 · 신청사유 «내 예시 문구»(더하기·빼기, 누르면 바로 사유 칸에) / v1.122.0 출결 ✎ 고치기·✕ 지우기
    위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜비스는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -2005,13 +2005,14 @@ function attNewRow(folded) {
     }).join('') + '<span class="atsep"></span>';
   }
   chips += attReasonChips().map(function (x) {
-    return '<button class="wkb gpac" data-atrs="' + esc(x) + '">' + esc(x.length > 16 ? x.slice(0, 16) + '…' : x) + '</button>';
-  }).join('');
+    return '<button class="wkb gpac" data-atrs="' + esc(x) + '" title="' + esc(x) + '">' + esc(x.length > 20 ? x.slice(0, 20) + '…' : x) + '</button>';
+  }).join('')
+    + '<button class="wkb gpac atphre' + (attPhrEdit ? ' on' : '') + '" id="atPhrEdit" title="예시 문구 더하기·빼기">✎ 문구</button>';
   h += '<tr class="atnew2"><td colspan="8">'
     + (attEditing ? '<div class="atedit"><b>고치는 중</b> ' + esc(attEditing.label) + ' — 위 줄을 바꾸고 <b>저장</b>. '
       + (attEditing.local ? '앱에만 있는 줄입니다.' : '«입력» 탭의 그 줄을 제자리에서 덮어씁니다.')
       + ' <button class="wkb" id="atEditX">취소</button></div>' : '')
-    + '<div class="atnl">' + chips
+    + '<div class="atnl">' + chips + '</div>' + attPhrBox() + '<div class="atnl">'
     + (attLast ? '<button class="wkb" id="atUndo"' + (attAddBusy ? ' disabled' : '') + '>되돌리기</button>' : '')
     + '</div>'
     + (앱만 ? '<div class="rhint">미인정은 시트에 없는 유형이라 <b>앱에만</b> 남깁니다 — 시트에는 쓰지 않습니다.</div>' : '')
@@ -2021,8 +2022,31 @@ function attNewRow(folded) {
   return h;
 }
 function attIsLocalType(t) { return String(t || '').indexOf('미인정') === 0; }
-/* 자주 쓰는 사유 — 우리 반 기록에서 많이 나온 것 먼저, 모자라면 기본 것 */
+/* 신청사유 «내 예시 문구» — 선생님이 직접 적어 두는 칩. null 이면 아직 안 정한 것 */
+var ATTPHR = null, ATTPHRAT = '';
+var attPhrEdit = false, attPhrJust = false;
+function attPhrSave(list) {
+  ATTPHR = list.slice();
+  ATTPHRAT = 지금시각(); attPhrJust = true;
+  widgetAPI.setUi({ attPhrases: ATTPHR, attPhrasesAt: ATTPHRAT });
+}
+/* 문구 고치는 칸 — 칩마다 ✕, 맨 끝에 새 문구 칸 */
+function attPhrBox() {
+  if (!attPhrEdit) return '';
+  var list = ATTPHR || attReasonChips();
+  return '<div class="atphr"><div class="atphrt"><b>신청사유 예시 문구</b> — 누르면 사유 칸에 바로 들어갑니다'
+    + '<span class="spacer"></span><button class="wkb go" id="atPhrDone">다 했음</button></div>'
+    + '<div class="atnl">' + list.map(function (x, i) {
+        return '<span class="atphrc">' + esc(x) + '<button class="atx" data-atphrdel="' + i + '" title="이 문구 빼기">✕</button></span>';
+      }).join('') + (list.length ? '' : '<span class="atto">아직 문구가 없습니다</span>') + '</div>'
+    + '<div class="atnr"><input id="atPhrNew" class="gpai wide" maxlength="120" placeholder="예) 극심한 생리통으로 가정에서 휴식을 취함">'
+    + '<button class="wkb go" id="atPhrAdd">추가</button></div>'
+    + (ATTPHRAT ? '<div class="rsaved">' + (attPhrJust ? '✅ 저장됨 · ' : '마지막 저장 · ') + esc(ATTPHRAT) + '</div>' : '')
+    + '</div>';
+}
+/* 자주 쓰는 사유 — 내 예시 문구가 있으면 그것, 없으면 우리 반 기록에서 많이 나온 것 먼저, 모자라면 기본 것 */
 function attReasonChips() {
+  if (ATTPHR) return ATTPHR;
   var n = {};
   attRows().forEach(function (x) {
     var r = String(x.reason || '').replace(/^\((\d교시~|~\d교시|\d교시)\)\s*/, '').trim();
@@ -2178,8 +2202,38 @@ function attApplyPendGubun() {
   });
 }
 
+/* 칩 판을 누른 칸 바로 밑에 붙인다 — 아래가 모자라면 위로, 옆으로 넘치면 안으로 당긴다 */
+function attPlacePop() {
+  var app = appEl();
+  if (!app || !attPop) return;
+  var box = app.querySelector('.atpop');
+  var cell = app.querySelector('[data-atpop="' + attPop.kind + '§' + attPop.key + '"]');
+  if (!box || !cell) return;
+  var c = cell.getBoundingClientRect();
+  var w = box.offsetWidth, h = box.offsetHeight;
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var head = parseFloat(getComputedStyle(app).getPropertyValue('--toph')) || 0;
+  var top = c.bottom + 4;
+  if (top + h > vh - 8 && c.top - h - 4 >= head + 4) top = c.top - h - 4;      // 아래가 모자라면 위로
+  top = Math.max(head + 4, Math.min(top, vh - 8 - h));
+  var left = Math.max(8, Math.min(c.left, vw - 8 - w));
+  box.style.left = left + 'px';
+  box.style.top = top + 'px';
+  box.style.visibility = 'visible';
+}
+var attPopScrollHooked = null;
+
 function wireAtt(app) {
   if (!HAS_TT || VIEW !== 'att') return;
+  /* 판이 열려 있으면 자리를 잡고, 굴리거나 창 크기가 바뀌면 따라간다 */
+  if (attPop) attPlacePop();
+  if (attPopScrollHooked !== app) {
+    attPopScrollHooked = app;
+    app.addEventListener('scroll', function () { if (attPop) attPlacePop(); }, { passive: true });
+    window.addEventListener('resize', function () { if (attPop) attPlacePop(); });
+  }
+  var tw = app.querySelector('.attw');
+  if (tw) tw.addEventListener('scroll', function () { if (attPop) attPlacePop(); }, { passive: true });
   var on = function (sel, fn) {
     app.querySelectorAll(sel).forEach(function (b) { b.addEventListener('click', function (ev) { fn(b, ev); }); });
   };
@@ -2296,6 +2350,25 @@ function wireAtt(app) {
     var el = app.querySelector('tr.atnew'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
     var ri = app.querySelector('#atNewReason'); if (ri) ri.focus();
   });
+  /* 신청사유 예시 문구 고치기 */
+  on('#atPhrEdit', function () { attPhrEdit = !attPhrEdit; attPhrJust = false; render(); var i = app.querySelector('#atPhrNew'); if (i) i.focus(); });
+  on('#atPhrDone', function () { attPhrEdit = false; render(); });
+  on('[data-atphrdel]', function (b) {
+    var list = (ATTPHR || attReasonChips()).slice();
+    list.splice(Number(b.dataset.atphrdel), 1);
+    attPhrSave(list); render();
+  });
+  var pn = app.querySelector('#atPhrNew');
+  var addPhr = function () {
+    var t = String((pn && pn.value) || '').replace(/\s+/g, ' ').trim();
+    if (!t) return;
+    var list = (ATTPHR || attReasonChips()).slice();
+    if (list.indexOf(t) < 0) list.push(t);
+    attPhrSave(list); render();
+    var i2 = app.querySelector('#atPhrNew'); if (i2) i2.focus();
+  };
+  on('#atPhrAdd', addPhr);
+  if (pn) pn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addPhr(); } });
   on('#atEditX', function () { attEditing = null; attNew = { gubun: '', id: '', name: '', date: gpToday(), time: '', end: '', type: '', reason: '' }; render(); });
   /* ✕ — 두 번 눌러야 지운다 */
   on('[data-atdel]', function (b) {
@@ -6111,6 +6184,7 @@ widgetAPI.onData(function (p) {
     ATTCFG = ac;
   }
   if (p.attLocal !== undefined) ATTLOCAL = p.attLocal || [];
+  if (p.attPhrases !== undefined) { ATTPHR = p.attPhrases; ATTPHRAT = p.attPhrasesAt || ATTPHRAT; }
   BOARD = p.board || null;
   ofFav = p.officeFav || ofFav;
   DASHORDER = p.dashOrder || [];
