@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.121.1
+/* 파일명: ui.css | @version 1.122.0
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -1478,6 +1478,11 @@
   .atx { border: 0; background: none; color: var(--dim); cursor: pointer; font-size: calc(10px * var(--wf));
          margin-left: 4px; padding: 0 3px; -webkit-app-region: no-drag; }
   .atx:hover { color: #c0392b; }
+  .atrb { float: right; white-space: nowrap; margin-left: 6px; }
+  .atx.ask { color: #fff; background: #c0392b; border-radius: 6px; padding: 0 6px; font-weight: 800; }
+  .attt tr.atnew.editing td { background: color-mix(in srgb, #b8860b 16%, var(--card)); }
+  .atedit { margin: 0 0 5px; padding: 5px 8px; border-radius: 7px; font-size: calc(10.5px * var(--wf));
+            background: color-mix(in srgb, #b8860b 16%, var(--card)); border: 1px solid color-mix(in srgb, #b8860b 50%, var(--card)); }
   .attt tr.atreqr td { padding: 0 4px 4px; background: var(--card); }
   /* (옛 카드 모양 .atr/.atr1/.atr2 는 표(.attt)로 바뀌며 뺐다 — 2026-09-11) */
   .atgl { color: var(--dim); font-size: calc(9.5px * var(--wf)); font-weight: 700; margin-right: 2px; }
