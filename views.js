@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 1.123.0
-   수정요약: v1.123.0 출결 — 칩 판이 누른 칸 바로 밑(위)에 뜸 · 신청사유 «내 예시 문구»(더하기·빼기, 누르면 바로 사유 칸에) / v1.122.0 출결 ✎ 고치기·✕ 지우기
+/* 파일명: views.js | @version 1.124.0
+   수정요약: v1.124.0 테마 여섯(두 갈래)·출결 수정요청사항·수정여부를 신청사유 옆 칸으로·학생 타일 «3201 강재은»·인쇄 미리보기 맨 앞 / v1.123.0 칩 판 자리·예시 문구
    위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜비스는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -1661,7 +1661,8 @@ var attAdd = null, attAddBusy = false, attAddMsg = '', attAddAt = '', attLast = 
 var attMsg = '', attMsgAt = '';    // 목록에서 한 일(구분·수정여부·연번·접기) 알림
 var attFixDraft = {}, attFixJust = {}, attRowBusy = {};
 var attSeqTried = '';
-var attFoldBusy = false;           // 접기·펴기는 시트에서 몇 초 걸린다 — 두 번 눌리지 않게
+var attFoldBusy = false;
+var attPrintOpen = false;           // 인쇄 미리보기가 떠 있는 동안 — 단추 글자로 알린다           // 접기·펴기는 시트에서 몇 초 걸린다 — 두 번 눌리지 않게
 var ATT_TYPES = [
   ['질병', ['질병결석', '질병지각', '질병조퇴', '질병결과']],
   ['인정', ['인정결석', '인정지각', '인정조퇴', '인정결과']],
@@ -1835,7 +1836,9 @@ function attBar() {
   var has = ATT && attOf(attMon).some(function (x) { return !x.local; }), f = ATT && attFolded(attMon);
   return '<div class="top2"><div class="wknav atbar">' + chips
     + '<span class="spacer"></span>'
-    + (has ? '<button class="wkb" id="atPrint" title="시트의 «N월 인쇄하기» 와 같은 종이">🖨 ' + Number(attMon.slice(5)) + '월 인쇄</button>' : '')
+    + (has ? '<button class="wkb' + (attPrintOpen ? ' go' : '') + '" id="atPrint" title="'
+      + (attPrintOpen ? '미리보기 창이 열려 있습니다 — 누르면 앞으로 가져옵니다' : '시트의 «N월 인쇄하기» 와 같은 종이') + '">'
+      + (attPrintOpen ? '🖨 미리보기 열림 · 앞으로' : '🖨 ' + Number(attMon.slice(5)) + '월 인쇄') + '</button>' : '')
     + (has ? '<button class="wkb" id="atFold"' + (attFoldBusy ? ' disabled' : '') + ' title="'
       + (f ? '이 달 줄을 시트에서 다시 보이게' : '검토 끝난 달 — 시트에서 이 달 줄을 숨깁니다') + '">'
       + (attFoldBusy ? (f ? '펴는 중…' : '접는 중…') : (f ? '펴기' : '접기')) + '</button>' : '')
@@ -1873,10 +1876,16 @@ function attNotes() {
 /* ── 표 — 시트 3-2 탭과 같은 칸 차례. 맨 아래 줄이 «새로 적는 줄» ─────────
    ★ 셀을 누르면 그 자리에 칩(학생·유형·구분·정문)이 뜬다 — 시트의 드롭다운 자리. select 는 안 쓴다. */
 var ATT_COLS = ['연번', '구분', '학번', '이름', '시작일', '종료일', '유형', '신청사유(근거자료)'];
+/* 반 탭에 수정요청사항·수정여부 칸이 있으면 신청사유 옆에 시트처럼 붙인다 (인쇄에는 안 나온다) */
+function attHasReq() { return !!(ATT && ATT.has && ATT.has.req); }
+function attHasFix() { return !!(ATT && ATT.has && ATT.has.fix); }
+function attNCols() { return 8 + (attHasReq() ? 1 : 0) + (attHasFix() ? 1 : 0); }
 function attTable(list, folded) {
-  var h = '<div class="attw"><table class="attt"><colgroup>'
+  var extra = (attHasReq() ? ['수정요청사항'] : []).concat(attHasFix() ? ['수정여부'] : []);
+  var h = '<div class="attw"><table class="attt' + (extra.length ? ' wide' + extra.length : '') + '"><colgroup>'
     + '<col class="c0"><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"><col class="c7">'
-    + '</colgroup><thead><tr>' + ATT_COLS.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead><tbody>';
+    + (attHasReq() ? '<col class="c8">' : '') + (attHasFix() ? '<col class="c9">' : '')
+    + '</colgroup><thead><tr>' + ATT_COLS.concat(extra).map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead><tbody>';
   h += list.map(function (x) { return attRowHtml(x, folded); }).join('');
   h += attNewRow(folded);
   return h + '</tbody></table></div>';
@@ -1884,10 +1893,10 @@ function attTable(list, folded) {
 /* 팝업(칩 팔레트) — 어느 셀에 떠 있나. { kind:'st'|'type'|'gubun'|'end', key:'new'|sig } */
 var attPop = null;
 function attPopOpen(kind, key) { return attPop && attPop.kind === kind && attPop.key === key; }
-var ATT_POP_T = { gubun: '구분', st: '학생', type: '유형', end: '종료' };
+var ATT_POP_T = { gubun: '구분', st: '학생', type: '유형', end: '종료', fix: '수정여부' };
 function attChipPop(kind, key, inner) {
   if (!attPopOpen(kind, key)) return '';
-  return '<div class="atpop" data-atpopbox="1"><div class="atpopt"><b>' + ATT_POP_T[kind] + '</b>'
+  return '<div class="atpop k-' + kind + '" data-atpopbox="1"><div class="atpopt"><b>' + ATT_POP_T[kind] + '</b>'
     + (key === 'new' ? ' 고르기 — 새 줄' : ' 바꾸기') + '<span class="spacer"></span>'
     + '<button class="wkb" data-atpopx="1">닫기</button></div>' + inner + '</div>';
 }
@@ -1908,10 +1917,10 @@ function attTypePop(key, cur) {
 function attStPop(key, cur) {
   var ss = attStudents();
   return attChipPop('st', key,
-    (ss.length ? ss.map(function (s) {
-      return '<button class="wkb gpac atst' + (cur === s.id ? ' on' : '') + '" data-atpick="st§' + esc(key) + '§' + esc(s.id + '|' + s.name) + '">'
-        + esc(s.no) + ' ' + esc(s.name) + '</button>';
-    }).join('') : '<input id="atNewId" class="gpai" placeholder="학번" style="width:5em"> <input id="atNewName" class="gpai" placeholder="이름" style="width:6em">'));
+    (ss.length ? '<div class="atstg">' + ss.map(function (s) {
+      return '<button class="atst' + (cur === s.id ? ' on' : '') + '" data-atpick="st§' + esc(key) + '§' + esc(s.id + '|' + s.name) + '">'
+        + '<i>' + esc(s.id) + '</i>' + esc(s.name) + '</button>';
+    }).join('') + '</div>' : '<input id="atNewId" class="gpai" placeholder="학번" style="width:5em"> <input id="atNewName" class="gpai" placeholder="이름" style="width:6em">'));
 }
 function attRowHtml(x, folded) {
   var busy = !!attRowBusy[x.sig];
@@ -1933,28 +1942,31 @@ function attRowHtml(x, folded) {
     + '<td class="rs">' + esc(x.reason)
       + (x.doc ? ' <span class="atok">서류✓</span>' : '') + (x.neis ? ' <span class="atok">NEIS✓</span>' : '')
       + attRowBtns(x, lock)
-      + '</td></tr>';
-  if (x.req || x.fix) h += '<tr class="atreqr"><td colspan="8">' + attReqHtml(x, lock) + '</td></tr>';
+      + '</td>'
+      + (attHasReq() ? '<td class="rq' + (attPending(x) ? ' pend' : '') + '">' + esc(x.req || '') + '</td>' : '')
+      + (attHasFix() ? attFixCell(x, lock) : '')
+      + '</tr>';
   return h;
 }
-/* 학년부장의 수정요청 → 내가 적는 수정여부 */
-function attReqHtml(x, lock) {
+/* 수정여부 칸 — 누르면 그 자리에 입력칸·칩이 뜬다(칩 판과 같은 방식). 저장 시각은 칸 아래 작게 */
+function attFixCell(x, lock) {
+  var busy = !!attRowBusy[x.sig];
   var draft = attFixDraft[x.sig];
   var val = draft !== undefined ? draft : x.fix;
-  var busy = !!attRowBusy[x.sig];
-  return '<div class="atreq' + (attPending(x) ? ' pend' : ' done') + '">'
-    + (x.req ? '<div class="atq"><b>수정요청</b>' + esc(x.req) + '</div>' : '')
-    + '<div class="atfx"><span class="atgl">수정여부</span>'
-    + '<input class="gpai wide" data-atfxi="' + esc(x.sig) + '" value="' + esc(val)
-    + '" placeholder="어떻게 고쳤는지 적어 주세요"' + (lock ? ' disabled' : '') + '>'
-    + '<button class="wkb go" data-atfxs="' + esc(x.sig) + '" data-r="' + x.r + '"'
-    + (lock || busy ? ' disabled' : '') + '>' + (busy ? '저장 중…' : '저장') + '</button>'
-    + (lock ? '' : ATT_FIXES.map(function (t) {
+  var pop = lock || x.local ? '' : attChipPop('fix', x.sig,
+    '<div class="atnr"><input class="gpai wide" data-atfxi="' + esc(x.sig) + '" value="' + esc(val)
+    + '" placeholder="어떻게 고쳤는지 적어 주세요">'
+    + '<button class="wkb go" data-atfxs="' + esc(x.sig) + '" data-r="' + x.r + '"' + (busy ? ' disabled' : '') + '>'
+    + (busy ? '저장 중…' : '저장') + '</button></div>'
+    + '<div class="atnl">' + ATT_FIXES.map(function (t) {
         return '<button class="wkb gpac" data-atfxc="' + esc(t) + '" data-sig="' + esc(x.sig) + '">' + esc(t) + '</button>';
-      }).join(''))
-    + '</div>'
-    + (x.fixAt ? '<div class="rsaved">' + (attFixJust[x.sig] ? '✅ 저장됨 · ' : '마지막 저장 · ') + esc(x.fixAt) + '</div>' : '')
-    + '</div>';
+      }).join('') + '</div>'
+    + (x.req ? '<div class="atq"><b>수정요청</b>' + esc(x.req) + '</div>' : ''));
+  return '<td class="fx atcell' + (lock || x.local ? '' : ' pick') + (busy ? ' busy' : '') + '"'
+    + (lock || x.local ? '' : ' data-atpop="fix§' + esc(x.sig) + '"') + '>'
+    + (busy ? '…' : esc(x.fix || ''))
+    + (x.fixAt ? '<small>' + (attFixJust[x.sig] ? '✅ ' : '') + esc(String(x.fixAt).slice(5, 16)) + '</small>' : '')
+    + pop + '</td>';
 }
 
 /* ── 맨 아래 «새로 적는 줄» ── 시트에서 다음 빈 줄에 적듯이 */
@@ -1987,6 +1999,7 @@ function attNewRow(folded) {
     + '<td class="c atcell pick" data-atpop="type§new">' + (t ? '<span class="gpk h' + attHue(t) + '">' + esc(t) + '</span>' : '유형') + attTypePop('new', t) + '</td>'
     + '<td class="rs"><div class="atnr"><input id="atNewReason" class="gpai wide" placeholder="신청사유" value="' + esc(A.reason || '') + '">'
       + '<button class="wkb go" id="atSave"' + (attAddBusy || folded ? ' disabled' : '') + '>' + (attAddBusy ? '…' : '저장') + '</button></div></td>'
+    + (attNCols() > 8 ? '<td colspan="' + (attNCols() - 8) + '"></td>' : '')
     + '</tr>';
   /* 아래 한 줄 — 교시·자주 쓰는 사유 칩, 알림, 되돌리기 */
   var chips = '';
@@ -2008,7 +2021,7 @@ function attNewRow(folded) {
     return '<button class="wkb gpac" data-atrs="' + esc(x) + '" title="' + esc(x) + '">' + esc(x.length > 20 ? x.slice(0, 20) + '…' : x) + '</button>';
   }).join('')
     + '<button class="wkb gpac atphre' + (attPhrEdit ? ' on' : '') + '" id="atPhrEdit" title="예시 문구 더하기·빼기">✎ 문구</button>';
-  h += '<tr class="atnew2"><td colspan="8">'
+  h += '<tr class="atnew2"><td colspan="' + attNCols() + '">'
     + (attEditing ? '<div class="atedit"><b>고치는 중</b> ' + esc(attEditing.label) + ' — 위 줄을 바꾸고 <b>저장</b>. '
       + (attEditing.local ? '앱에만 있는 줄입니다.' : '«입력» 탭의 그 줄을 제자리에서 덮어씁니다.')
       + ' <button class="wkb" id="atEditX">취소</button></div>' : '')
@@ -2416,10 +2429,22 @@ function wireAtt(app) {
   app.querySelectorAll('[data-atfxi]').forEach(function (el) {
     el.addEventListener('input', function () { attFixDraft[el.dataset.atfxi] = el.value; });
   });
-  on('[data-atfxc]', function (b) { attFixDraft[b.dataset.sig] = b.dataset.atfxc; render(); });
-  on('[data-atfxs]', function (b) {
+  on('[data-atfxc]', function (b, ev) {
+    ev.stopPropagation();
+    attFixDraft[b.dataset.sig] = b.dataset.atfxc; render();
+    var i = app.querySelector('.atpop [data-atfxi]'); if (i) i.focus();
+  });
+  app.querySelectorAll('.atpop [data-atfxi]').forEach(function (el) {
+    el.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      var s2 = app.querySelector('.atpop [data-atfxs]'); if (s2) s2.click();
+    });
+  });
+  on('[data-atfxs]', function (b, ev) {
+    ev.stopPropagation();
     var x = attFind(b.dataset.atfxs, b.dataset.r);
     if (!x) return;
+    attPop = null;
     var v = attFixDraft[x.sig] !== undefined ? attFixDraft[x.sig] : x.fix;
     attSetCell(x, 'fix', String(v || '').trim());
   });
@@ -2439,11 +2464,15 @@ function wireAtt(app) {
       render();
     }).catch(function (e) { attFoldBusy = false; attErr = attErrText(e); render(); });
   });
-  on('#atPrint', function (b) {
+  /* 인쇄 — 꺼 두지 않는다. 미리보기가 열려 있으면 누를 때마다 그 창이 앞으로 온다 */
+  on('#atPrint', function () {
     var p = attPrintHtml(attMon);
     if (!p) return;
-    b.disabled = true;
-    widgetAPI.printWork(p).then(function () { b.disabled = false; }).catch(function () { b.disabled = false; });
+    var 처음 = !attPrintOpen;
+    attPrintOpen = true; render();
+    widgetAPI.printWork(p).then(function (r) {
+      if (처음 && r !== 'front') { attPrintOpen = false; render(); }
+    }).catch(function () { attPrintOpen = false; render(); });
   });
   on('#atUnblock', function (b) {
     var cells = ((ATT && ATT.blockers) || []).filter(function (x) { return x.blank; }).map(function (x) { return x.a1; });
@@ -6419,11 +6448,10 @@ function wireViews(app) {
       if (b.dataset.doc) { workDoc = b.dataset.doc; workOff = 0; render(); return; }
       if (b.dataset.woff !== undefined) { workOff = Number(b.dataset.woff); followHit = false; render(); return; }
       if (b.id === 'workPrint') {
+        /* ★ 꺼 두지 않는다 — 미리보기가 이미 열려 있으면 메인이 그 창을 앞으로 가져온다 */
         var p = workPrintHtml();
         if (!p) return;
-        b.disabled = true;
-        widgetAPI.printWork(p).then(function () { b.disabled = false; })
-          .catch(function () { b.disabled = false; });
+        widgetAPI.printWork(p);
         return;
       }
       if (b.id === 'workGet') { WORK = null; workBusy = true; render();

@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.123.0
+/* 파일명: ui.css | @version 1.124.0
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -1446,7 +1446,7 @@
        (예전엔 머리 밑 오른쪽 끝에 늘 떠서, 넓은 창에서는 누른 칸과 한참 떨어졌다 — 2026-09-11) */
   .atpop {
     position: fixed; z-index: 40; left: 0; top: 0; visibility: hidden;
-    width: max-content; max-width: min(560px, calc(100vw - 16px));
+    width: max-content; max-width: min(640px, calc(100vw - 16px));
     max-height: calc(100vh - var(--toph, 46px) - 16px); overflow-y: auto;
     background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px 10px;
     display: flex; flex-wrap: wrap; gap: 4px; align-items: center; text-align: left; white-space: normal;
@@ -1491,7 +1491,29 @@
   .attt tr.atnew.editing td { background: color-mix(in srgb, #b8860b 16%, var(--card)); }
   .atedit { margin: 0 0 5px; padding: 5px 8px; border-radius: 7px; font-size: calc(10.5px * var(--wf));
             background: color-mix(in srgb, #b8860b 16%, var(--card)); border: 1px solid color-mix(in srgb, #b8860b 50%, var(--card)); }
-  .attt tr.atreqr td { padding: 0 4px 4px; background: var(--card); }
+  /* 수정요청사항·수정여부 — 시트처럼 신청사유 옆 칸 */
+  .attt.wide1 { min-width: calc(640px * var(--wf)); }
+  .attt.wide2 { min-width: calc(760px * var(--wf)); }
+  .attt col.c8 { width: calc(150px * var(--wf)); }
+  .attt col.c9 { width: calc(120px * var(--wf)); }
+  .attt td.rq, .attt td.fx { word-break: break-word; font-size: calc(10px * var(--wf)); }
+  .attt td.rq.pend { background: color-mix(in srgb, #c0392b 18%, var(--card)) !important; color: var(--fg); font-weight: 700; }
+  .attt td.fx small { display: block; color: var(--dim); font-size: calc(8.5px * var(--wf)); }
+  .atpop .atq { width: 100%; margin-top: 2px; }
+  /* 학생 팔레트 — 큰 타일 바둑판. «3201 강재은» */
+  /* 판 폭을 정해 줘야 한 줄에 여러 칸이 선다 (max-content 로 두면 두 칸씩만 섰다) */
+  .atpop.k-st { width: min(700px, calc(100vw - 16px)); }
+  .atstg { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(104px * var(--wf)), 1fr)); gap: 5px; width: 100%; }
+  .atst {
+    -webkit-app-region: no-drag; cursor: pointer; font-family: inherit; white-space: nowrap;
+    display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 5px;
+    min-height: calc(38px * var(--wf)); padding: 4px 6px; border-radius: 9px;
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+    font-size: calc(12.5px * var(--wf)); font-weight: 700;
+  }
+  .atst i { font-style: normal; font-weight: 600; color: var(--fg2); font-size: calc(11.5px * var(--wf)); }
+  .atst:hover { box-shadow: inset 0 0 0 2px var(--accent); }
+  .atst.on { box-shadow: inset 0 0 0 2.5px var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
   /* (옛 카드 모양 .atr/.atr1/.atr2 는 표(.attt)로 바뀌며 뺐다 — 2026-09-11) */
   .atgl { color: var(--dim); font-size: calc(9.5px * var(--wf)); font-weight: 700; margin-right: 2px; }
   .wkb.gpac.atg.on { box-shadow: inset 0 0 0 2px var(--accent); font-weight: 800; }

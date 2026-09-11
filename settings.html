@@ -1,4 +1,4 @@
-<!-- 파일명: settings.html | @version 1.24.0 -->
+<!-- 파일명: settings.html | @version 1.25.0 -->
 <!-- 위젯 설정 창 — 트레이 메뉴로는 담을 수 없는 것들(학교 검색·교사 고르기 등)을 여기서 한다. -->
 <!doctype html>
 <html lang="ko">
@@ -742,19 +742,14 @@
   <div class="row">
     <label class="lb">테마</label>
     <div class="chips" id="thRow">
-      <!-- ★ 갈래마다 보이는 것이 다르다 — 아래 paintThemeBtns() 가 data-fl 로 가린다.
-           j=지비스만 · h=혜비스만 · (없음)=둘 다 -->
-      <button data-th="gold" data-fl="j">금박</button>
-      <button data-th="lavender" data-fl="j">라벤더</button>
-      <button data-th="" data-fl="h">고스트</button>
-      <button data-th="black" data-fl="h">블랙</button>
-      <button data-th="slate" data-fl="h">슬레이트</button>
+      <!-- ★ 2026-09-11 확정 — 두 갈래 모두 여섯, 기본은 슬레이트 라이트.
+           (data-fl 로 갈래마다 가르는 장치는 남겨 둔다: j=지비스만 · h=혜비스만 · 없음=둘 다) -->
+      <button data-th="ghost">고스트</button>
+      <button data-th="black">블랙</button>
       <button data-th="slatelight">슬레이트 라이트</button>
-      <button data-th="persian" data-fl="h">페르시안</button>
       <button data-th="chillwhite">칠화이트</button>
       <button data-th="night">나이트</button>
-      <button data-th="hanok">한옥</button>
-      <button data-th="darkui">다크UI</button>
+      <button data-th="gold">금박</button>
     </div>
   </div>
   <div class="row">
@@ -933,7 +928,7 @@ function __paint() {
     var fl = b.dataset.fl || '';
     var 내것 = !fl || (fl === 'j' ? UI.flavor === 'jinho' : UI.flavor !== 'jinho');
     b.style.display = 내것 ? '' : 'none';
-    b.className = (b.dataset.th === (UI.theme || '')) ? 'on' : '';
+    b.className = (b.dataset.th === (UI.theme || 'ghost')) ? 'on' : '';   // 화면엔 고스트가 '' 로 온다
   });
   // 바깥 주소를 열 브라우저
   var brs = (UI.browsers || []).concat([{ key: 'system', label: '기본 브라우저' }]);
