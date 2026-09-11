@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 1.124.0
-   수정요약: v1.124.0 테마 여섯(두 갈래)·출결 수정요청사항·수정여부를 신청사유 옆 칸으로·학생 타일 «3201 강재은»·인쇄 미리보기 맨 앞 / v1.123.0 칩 판 자리·예시 문구
+/* 파일명: views.js | @version 1.125.0
+   수정요약: v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
    위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜비스는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -1880,15 +1880,73 @@ var ATT_COLS = ['연번', '구분', '학번', '이름', '시작일', '종료일'
 function attHasReq() { return !!(ATT && ATT.has && ATT.has.req); }
 function attHasFix() { return !!(ATT && ATT.has && ATT.has.fix); }
 function attNCols() { return 8 + (attHasReq() ? 1 : 0) + (attHasFix() ? 1 : 0); }
+/* ── 칸 너비 — 시트처럼 머리글 오른쪽 끝을 끌어서 바꾼다. 두 번 누르면 처음대로 ──
+   ★ 글자 크기(A−A+)를 바꿔도 비율이 맞게 «배율 1 기준 px» 로 적어 둔다(ATTCOLW). 이 PC 에 남는다. */
+var ATTCOLW = {};
+var ATT_COLW0 = { c0: 24, c1: 56, c2: 38, c3: 46, c4: 70, c5: 54, c6: 60, c7: 0, c8: 150, c9: 120 };
+function attColKeys() { return ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7'].concat(attHasReq() ? ['c8'] : []).concat(attHasFix() ? ['c9'] : []); }
+function attColW(k) { return ATTCOLW[k] || ATT_COLW0[k] || 0; }
+/* 두 표(목록·새로 적는 줄)가 같은 너비를 쓴다 — 칸이 위아래로 맞게 */
+function attColgroup() {
+  return '<colgroup>' + attColKeys().map(function (k) {
+    var w = attColW(k);
+    return '<col class="' + k + '"' + (w ? ' style="width:calc(' + w + 'px * var(--wf))"' : '') + '>';
+  }).join('') + '</colgroup>';
+}
+function attTableMin() {
+  var sum = attColKeys().reduce(function (a, k) { return a + (attColW(k) || 220); }, 0);
+  return 'min-width:calc(' + sum + 'px * var(--wf))';
+}
 function attTable(list, folded) {
   var extra = (attHasReq() ? ['수정요청사항'] : []).concat(attHasFix() ? ['수정여부'] : []);
-  var h = '<div class="attw"><table class="attt' + (extra.length ? ' wide' + extra.length : '') + '"><colgroup>'
-    + '<col class="c0"><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"><col class="c7">'
-    + (attHasReq() ? '<col class="c8">' : '') + (attHasFix() ? '<col class="c9">' : '')
-    + '</colgroup><thead><tr>' + ATT_COLS.concat(extra).map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead><tbody>';
+  var keys = attColKeys();
+  var h = '<div class="attw"><table class="attt" style="' + attTableMin() + '">' + attColgroup()
+    + '<thead><tr>' + ATT_COLS.concat(extra).map(function (c, i) {
+        return '<th>' + c + '<span class="atrz" data-atrz="' + keys[i] + '" title="끌어서 칸 너비 바꾸기 · 두 번 누르면 처음대로"></span></th>';
+      }).join('') + '</tr></thead><tbody>';
   h += list.map(function (x) { return attRowHtml(x, folded); }).join('');
-  h += attNewRow(folded);
-  return h + '</tbody></table></div>';
+  h += '</tbody></table></div>';
+  /* ★ 새로 적는 줄은 표 밖 «입력칸» 타일에 — 목록과 헷갈리지 않게(2026-09-11). 칸 너비는 목록과 같다 */
+  h += '<div class="atnewbox' + (attEditing ? ' editing' : '') + '"><div class="atnewt">'
+    + (attEditing ? '✎ 고치는 중 — 바꾸고 저장' : '＋ 새 출결 적기') + '</div>'
+    + '<div class="attw"><table class="attt attnew" style="' + attTableMin() + '">' + attColgroup() + '<tbody>'
+    + attNewRow(folded) + '</tbody></table></div></div>';
+  return h;
+}
+/* 머리글 끝을 끌 때 — 다시 그리지 않고 두 표의 col 만 바꾼다. 놓으면 적어 둔다 */
+function attWireResize(app) {
+  app.querySelectorAll('[data-atrz]').forEach(function (hd) {
+    hd.addEventListener('dblclick', function (ev) {
+      ev.preventDefault(); ev.stopPropagation();
+      delete ATTCOLW[hd.dataset.atrz];
+      widgetAPI.setUi({ attColW: ATTCOLW });
+      render();
+    });
+    hd.addEventListener('mousedown', function (ev) {
+      ev.preventDefault(); ev.stopPropagation();
+      var k = hd.dataset.atrz;
+      var wf = parseFloat(getComputedStyle(app).getPropertyValue('--wf')) || 1;
+      var th = hd.parentElement;
+      var x0 = ev.clientX, w0 = th.getBoundingClientRect().width / wf;
+      var cols = app.querySelectorAll('.attt col.' + k);
+      var tables = app.querySelectorAll('.attt');
+      document.body.classList.add('atrzing');
+      var move = function (e2) {
+        var w = Math.max(20, Math.round(w0 + (e2.clientX - x0) / wf));
+        ATTCOLW[k] = w;
+        cols.forEach(function (c) { c.style.width = 'calc(' + w + 'px * var(--wf))'; });
+        tables.forEach(function (t) { t.style.minWidth = 'calc(' + attColKeys().reduce(function (a, kk) { return a + (attColW(kk) || 220); }, 0) + 'px * var(--wf))'; });
+      };
+      var up = function () {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+        document.body.classList.remove('atrzing');
+        widgetAPI.setUi({ attColW: ATTCOLW });
+      };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+  });
 }
 /* 팝업(칩 팔레트) — 어느 셀에 떠 있나. { kind:'st'|'type'|'gubun'|'end', key:'new'|sig } */
 var attPop = null;
@@ -2238,6 +2296,16 @@ var attPopScrollHooked = null;
 
 function wireAtt(app) {
   if (!HAS_TT || VIEW !== 'att') return;
+  attWireResize(app);
+  /* 좁은 창 — 목록 표와 새로 적는 줄 타일이 옆으로 함께 굴러가게 */
+  var ws = app.querySelectorAll('.attw');
+  if (ws.length === 2) {
+    var 잇기 = function (a, b) {
+      a.addEventListener('scroll', function () { if (b.scrollLeft !== a.scrollLeft) b.scrollLeft = a.scrollLeft; }, { passive: true });
+    };
+    잇기(ws[0], ws[1]); 잇기(ws[1], ws[0]);
+    ws[1].scrollLeft = ws[0].scrollLeft;
+  }
   /* 판이 열려 있으면 자리를 잡고, 굴리거나 창 크기가 바뀌면 따라간다 */
   if (attPop) attPlacePop();
   if (attPopScrollHooked !== app) {
@@ -6214,6 +6282,7 @@ widgetAPI.onData(function (p) {
   }
   if (p.attLocal !== undefined) ATTLOCAL = p.attLocal || [];
   if (p.attPhrases !== undefined) { ATTPHR = p.attPhrases; ATTPHRAT = p.attPhrasesAt || ATTPHRAT; }
+  if (p.attColW && typeof p.attColW === 'object') ATTCOLW = p.attColW;
   BOARD = p.board || null;
   ofFav = p.officeFav || ofFav;
   DASHORDER = p.dashOrder || [];

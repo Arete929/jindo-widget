@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.124.0
+/* 파일명: ui.css | @version 1.125.0
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -1492,10 +1492,25 @@
   .atedit { margin: 0 0 5px; padding: 5px 8px; border-radius: 7px; font-size: calc(10.5px * var(--wf));
             background: color-mix(in srgb, #b8860b 16%, var(--card)); border: 1px solid color-mix(in srgb, #b8860b 50%, var(--card)); }
   /* 수정요청사항·수정여부 — 시트처럼 신청사유 옆 칸 */
-  .attt.wide1 { min-width: calc(640px * var(--wf)); }
-  .attt.wide2 { min-width: calc(760px * var(--wf)); }
+  /* 칸 너비 손잡이 — 머리글 오른쪽 끝. 시트처럼 끌어서 바꾼다 */
+  .attt th { position: relative; }
+  .atrz { position: absolute; top: 0; right: 0; width: 6px; height: 100%; z-index: 2;
+          cursor: col-resize; -webkit-app-region: no-drag; }
+  .atrz:hover, body.atrzing .atrz { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+  body.atrzing, body.atrzing * { cursor: col-resize !important; user-select: none !important; }
   .attt col.c8 { width: calc(150px * var(--wf)); }
   .attt col.c9 { width: calc(120px * var(--wf)); }
+  /* ★ 새로 적는 줄 — 목록과 갈라 보이게 테두리 두른 둥근 타일(입력칸) */
+  .atnewbox { margin: 8px 0 4px; padding: 8px 8px 6px; border-radius: 14px;
+              border: 2px solid color-mix(in srgb, var(--accent) 70%, var(--line));
+              background: color-mix(in srgb, var(--accent) 6%, var(--card));
+              box-shadow: 0 3px 12px rgba(0,0,0,.08); }
+  .atnewbox.editing { border-color: #b8860b; background: color-mix(in srgb, #b8860b 10%, var(--card)); }
+  .atnewt { font-weight: 800; font-size: calc(11px * var(--wf)); color: var(--accent); margin: 0 2px 6px; }
+  .atnewbox.editing .atnewt { color: #b8860b; }
+  .attt.attnew { border-collapse: separate; border-spacing: 0; }
+  .attt.attnew td { border: 1px solid var(--line); background: var(--card) !important; }
+  .attt.attnew tr.atnew2 td { border: 0; background: transparent !important; padding-top: 6px; }
   .attt td.rq, .attt td.fx { word-break: break-word; font-size: calc(10px * var(--wf)); }
   .attt td.rq.pend { background: color-mix(in srgb, #c0392b 18%, var(--card)) !important; color: var(--fg); font-weight: 700; }
   .attt td.fx small { display: block; color: var(--dim); font-size: calc(8.5px * var(--wf)); }
