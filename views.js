@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 1.125.0
-   수정요약: v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
+/* 파일명: views.js | @version 1.125.1
+   수정요약: v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
    위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜비스는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -1694,10 +1694,13 @@ function attLoad() {
   if (!HAS_TT) return;
   if (attBusy) { attAgain = true; return; }        // 읽는 중에 또 부르면 끝나고 한 번 더
   attBusy = true; attErr = '';
+  var g = ++attLoadGen;
   widgetAPI.attList().then(function (r) {
     attBusy = false;
     if (r && r.ok) {
       ATT = r;
+      // 저장이 끝난 «뒤에» 시작한 읽기면 시트 값이 들어왔다 — 먼저 보여 준 줄을 걷는다
+      attOpt = attOpt.filter(function (p) { return !(p.after && g >= p.after); });
       if (!attMon) attMon = attThisMon();
       attApplyPendGubun();          // 새 줄에 골라 둔 구분을 반 탭에
       attSeqSync();
@@ -1713,7 +1716,35 @@ function attLoad() {
     render();
   });
 }
-function attRows() { return ((ATT && ATT.rows) || []).concat(attLocalRows()); }
+/* ★ 먼저 보여 주기(2026-09-12) — 저장을 누르면 다리 대답(몇 초)과 목록 다시 읽기(또 몇 초)를
+     기다리지 않고 표에 곧바로 새 값을 보인다. 그 줄엔 «저장 중…». 실패하면 걷고 상자를 되살린다.
+     { old: 고치기 전 sig('' = 새 줄), r, row: 보여 줄 줄, after: 이 번호 이후 «시작한» 읽기가 끝나면 걷는다 } */
+var attOpt = [], attLoadGen = 0;
+function attYmdTxt(s) {
+  var m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? m[1] + '. ' + Number(m[2]) + '. ' + Number(m[3]) : String(s || '');
+}
+function attOptRow(A, gubun, base) {
+  return Object.assign({}, base || { r: 0, seq: '', doc: null, neis: null, req: '', fix: '', fixAt: '', hidden: false }, {
+    gubun: gubun || '', id: A.id, name: A.name, start: A.date, startTxt: attYmdTxt(A.date),
+    time: A.time || '', end: A.end || '', endTxt: attYmdTxt(A.end),
+    type: A.type, reason: A.reason, sig: [A.id, A.name, A.date, A.type].join('|'), saving: true });
+}
+function attOptApply(rows) {
+  if (!attOpt.length) return rows;
+  var out = rows.map(function (x) {
+    for (var i = 0; i < attOpt.length; i++) {
+      if (attOpt[i].old && attOpt[i].old === x.sig && attOpt[i].r === x.r) return attOpt[i].row;
+    }
+    return x;
+  });
+  attOpt.forEach(function (p) {
+    // 새 줄 — 시트 목록에 벌써 들어왔으면 두 번 보이지 않게
+    if (!p.old && !rows.some(function (x) { return x.sig === p.row.sig; })) out.push(p.row);
+  });
+  return out;
+}
+function attRows() { return attOptApply((ATT && ATT.rows) || []).concat(attLocalRows()); }
 function attSheetRows() { return (ATT && ATT.rows) || []; }
 function attSort(a, b) {
   return String(a.start).localeCompare(String(b.start))
@@ -1982,9 +2013,10 @@ function attStPop(key, cur) {
 }
 function attRowHtml(x, folded) {
   var busy = !!attRowBusy[x.sig];
-  var lock = folded || x.hidden;
+  var lock = folded || x.hidden || x.saving;       // 저장 중인 줄은 손대지 않게
   var tone = attRowTone(x.type), ht = attTypeTone(x.type);
-  var cls = 'atr' + (tone ? ' ' + tone : '') + (attPending(x) ? ' pend' : '') + (x.hidden ? ' hid' : '') + (x.local ? ' local' : '');
+  var cls = 'atr' + (tone ? ' ' + tone : '') + (attPending(x) ? ' pend' : '') + (x.hidden ? ' hid' : '') + (x.local ? ' local' : '')
+    + (x.saving ? ' saving' : '');
   var dateCell = esc(x.startTxt || x.start) + (x.time ? '<small>' + esc(x.time) + '</small>' : '');
   var h = '<tr class="' + cls + '">'
     + '<td class="c">' + (x.local ? '<i class="atapp" title="앱에만 있음 — 시트엔 없음">앱</i>' : esc(x.seq || '')) + '</td>'
@@ -1998,6 +2030,7 @@ function attRowHtml(x, folded) {
     + '<td class="c">' + esc(x.endTxt || '') + '</td>'
     + '<td class="c' + (ht ? ' ' + ht : '') + '"><span class="gpk h' + attHue(x.type) + '">' + esc(x.type) + '</span></td>'
     + '<td class="rs">' + esc(x.reason)
+      + (x.saving ? ' <span class="atsv">저장 중…</span>' : '')
       + (x.doc ? ' <span class="atok">서류✓</span>' : '') + (x.neis ? ' <span class="atok">NEIS✓</span>' : '')
       + attRowBtns(x, lock)
       + '</td>'
@@ -2160,8 +2193,9 @@ var ATT_PRINT_CSS = ''
   + 'body{margin:0;background:#fff;font-family:Arial,"Malgun Gothic",sans-serif;font-size:10pt;line-height:1.25;color:#000}'
   + '.sheet-ttl{text-align:center;font-size:20pt;font-weight:700;margin:0 0 14pt;letter-spacing:.5pt}'
   + '.sheet{border-collapse:collapse;table-layout:fixed;margin:0 auto}'
-  + '.sheet th,.sheet td{border:.5pt solid #000;padding:0 3px;text-align:center;vertical-align:middle;'
-  + 'height:18pt;font-weight:400;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}'
+  /* ★ 줄 높이 — 시트 그대로(18pt)는 촘촘해 읽기 어렵다고 하셔서 넉넉히(2026-09-12). 글자·색·칸 너비는 그대로 */
+  + '.sheet th,.sheet td{border:.5pt solid #000;padding:3pt 4px;text-align:center;vertical-align:middle;'
+  + 'height:26pt;font-weight:400;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}'
   + '.sheet th{background:#FDDCE8;font-weight:700}'
   + '.sheet tr{break-inside:avoid;page-break-inside:avoid}'
   + '.sheet tr.r-in td{background:#FFDCDC}'
@@ -2217,21 +2251,33 @@ function attPrintHtml(mon) {
 /* 고친 것 저장 — 시트 줄은 제자리 덮어쓰기(다리), 앱에만 있는 줄은 그 자리 바꾸기 */
 function attEditSave(보냄) {
   var E = attEditing;
+  var 쓰던것 = Object.assign({}, attNew);
+  /* ★ 상자는 누르는 즉시 닫고 표에 새 값을 먼저 보인다 — 다리 대답을 기다리지 않는다(2026-09-12).
+       (예전엔 대답이 올 때까지 상자가 남아 «저장했는데 안 닫힌다» 로 보였다) */
+  var base = E.local ? null : attSheetRows().filter(function (y) { return y.sig === E.sig && y.r === E.r; })[0];
+  var p = base ? { old: E.sig, r: E.r, row: attOptRow(보냄, 쓰던것.gubun, base), after: 0 } : null;
+  if (p) attOpt.push(p);
+  attEditing = null; attLast = null;
+  attNew = { gubun: '', id: '', name: '', date: gpToday(), time: '', end: '', type: '', reason: '' };
+  attMon = 보냄.date.slice(0, 7);
+  render();
+  var 되살림 = function (msg) {          // 실패 — 먼저 보인 줄을 걷고 고치던 상자를 그대로 되살린다
+    if (p) attOpt = attOpt.filter(function (q) { return q !== p; });
+    attEditing = E; attNew = 쓰던것; attAddMsg = msg;
+  };
   var 끝 = function (r) {
     attAddBusy = false;
     if (r && r.ok) {
       attAddAt = r.savedAt || 지금시각();
       attAddMsg = (r.how || '고쳤습니다') + ' — ' + 보냄.name + ' ' + attMd(보냄.date) + ' ' + 보냄.type;
-      attMon = 보냄.date.slice(0, 7);
-      if (!E.local && attNew.gubun !== E.gubun) {
+      if (!E.local && 쓰던것.gubun !== E.gubun) {
         /* 구분이 바뀌었으면 — 줄이 새로 읽힌 뒤 반 탭에 적는다 (sig 는 바뀔 수 있으니 새 값으로) */
-        attPendGubun[[보냄.id, 보냄.name, 보냄.date, 보냄.type].join('|')] = attNew.gubun || '';
+        attPendGubun[[보냄.id, 보냄.name, 보냄.date, 보냄.type].join('|')] = 쓰던것.gubun || '';
       }
-      attEditing = null; attLast = null;
-      attNew = { gubun: '', id: '', name: '', date: gpToday(), time: '', end: '', type: '', reason: '' };
       attSeqTried = '';
+      if (p) { p.row.saving = false; p.after = attLoadGen + 1; }   // 이제부터 시작하는 읽기가 끝나면 걷는다
       if (E.local) ATTLOCAL = r.list || ATTLOCAL; else attLoad();
-    } else attAddMsg = (r && r.msg) || '고치지 못했습니다';
+    } else 되살림((r && r.msg) || '고치지 못했습니다');
     render();
   };
   var pr = E.local
@@ -2239,7 +2285,7 @@ function attEditSave(보냄) {
         : Promise.resolve({ ok: false, msg: '앱에만 있는 줄은 미인정으로만 둘 수 있습니다 — 시트에 넣으려면 지우고 새로 적어 주세요' }))
     : (attIsLocalType(보냄.type) ? Promise.resolve({ ok: false, msg: '시트 줄을 미인정으로 바꿀 수는 없습니다 — 지우고 미인정으로 새로 적어 주세요' })
         : widgetAPI.attEdit(Object.assign({ old: E.old }, 보냄)));
-  pr.then(끝).catch(function (e) { attAddBusy = false; attAddMsg = attErrText(e); render(); });
+  pr.then(끝).catch(function (e) { attAddBusy = false; 되살림(attErrText(e)); render(); });
 }
 /* 반 탭의 한 칸 적기 (구분·수정여부) */
 function attSetCell(x, field, value) {
@@ -2393,8 +2439,22 @@ function wireAtt(app) {
       id: A.id, name: A.name, date: A.date, time: A.time, end: A.end, type: A.type,
       reason: String(A.reason).trim() };
     if (attEditing) { attEditSave(보냄); return; }
+    /* ★ 시트에 넣는 새 줄도 표에 먼저 보인다(«저장 중…») — 다리 대답·다시 읽기를 기다리지 않는다 */
+    var p = null;
+    if (!attIsLocalType(A.type)) {
+      p = { old: '', r: 0, row: attOptRow(보냄, A.gubun, null), after: 0 };
+      attOpt.push(p);
+      attMon = 보냄.date.slice(0, 7);
+      attNew.id = ''; attNew.name = '';          // 다음 학생을 곧바로 고를 수 있게
+      render();
+    }
     var done = function (r, local) {
       attAddBusy = false;
+      if (!(r && r.ok) && p) {                   // 실패 — 먼저 보인 줄을 걷고 학생을 되돌려 놓는다
+        attOpt = attOpt.filter(function (q) { return q !== p; });
+        if (!attNew.id) { attNew.id = 보냄.id; attNew.name = 보냄.name; }
+      }
+      if (r && r.ok && p) { p.row.saving = false; p.after = attLoadGen + 1; }
       if (r && r.ok) {
         attLast = local ? { local: true, key: r.key, id: 보냄.id, date: 보냄.date, type: 보냄.type }
           : { row: r.row, id: 보냄.id, date: 보냄.date, type: 보냄.type, reason: 보냄.reason };
@@ -2402,7 +2462,9 @@ function wireAtt(app) {
         attAddMsg = (local ? '앱에 남겼습니다' : (r.how || '넣었습니다')) + ' — ' + 보냄.name + ' ' + attMd(보냄.date) + ' ' + 보냄.type;
         attMon = 보냄.date.slice(0, 7);
         if (!local && A.gubun) attPendGubun[[보냄.id, 보냄.name, 보냄.date, 보냄.type].join('|')] = A.gubun;
-        attNew.id = ''; attNew.name = '';          // 같은 날 같은 사유로 여러 학생을 잇달아 넣을 수 있게 나머지는 둔다
+        // 같은 날 같은 사유로 여러 학생을 잇달아 넣을 수 있게 나머지는 둔다
+        // (시트 줄은 누를 때 벌써 비웠다 — 그새 고른 다음 학생을 지우지 않게)
+        if (local) { attNew.id = ''; attNew.name = ''; }
         attSeqTried = '';
         if (local) ATTLOCAL = r.list || ATTLOCAL; else attLoad();
       } else {
@@ -2415,14 +2477,14 @@ function wireAtt(app) {
         .catch(function (e) { attAddBusy = false; attAddMsg = attErrText(e); render(); });
     } else {
       widgetAPI.attAdd(보냄).then(function (r) { done(r, false); })
-        .catch(function (e) { attAddBusy = false; attAddMsg = attErrText(e); render(); });
+        .catch(function (e) { done({ ok: false, msg: attErrText(e) }, false); });
     }
   });
   /* ✎ — 줄 내용을 아래 새 줄에 채운다 */
   on('[data-atedit]', function (b) {
     var x = attRows().filter(function (y) { return y.sig === b.dataset.atedit; })[0];
     if (!x) return;
-    attEditing = { sig: x.sig, local: !!x.local, key: x.key, gubun: x.gubun,
+    attEditing = { sig: x.sig, r: x.r, local: !!x.local, key: x.key, gubun: x.gubun,
       old: { id: x.id, date: x.start, type: x.type, reason: x.reason },
       label: Number(String(x.id).slice(2)) + ' ' + x.name + ' ' + attMd(x.start) + ' ' + x.type };
     attNew = { gubun: x.gubun, id: x.id, name: x.name, date: x.start, time: x.time,

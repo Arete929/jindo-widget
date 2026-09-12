@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.125.0
+/* 파일명: ui.css | @version 1.125.1 — 제목 줄 사용량 타일 자리도 끌기 자리로·출결 «저장 중» 줄
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -275,10 +275,14 @@
 
   /* ── 제목 줄로 옮긴 AI 사용량 타일(진호알리미) ── */
   /* 타일은 남는 자리만 차지한다 — 좁아지면 여기가 먼저 줄어들고, 넘치면 굴러간다 */
+  /* ★ 타일 묶음은 남는 폭을 다 먹는다(로고 글씨 ~ 톱니 사이 전체). 여기를 no-drag 로 두었더니
+       포인터는 제목 줄의 «이동» 모양인데 끌리지 않았다(2026-09-12). 묶음은 끌기 자리로 두고
+       단추만 뺀다. (끌기 자리에서는 링 위 풀이말이 안 뜬다 — 링 아래 글씨가 같은 내용이다) */
+  .utiles button { -webkit-app-region: no-drag; cursor: pointer; }
   .utiles {
     flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden;
     scrollbar-width: none;
-    -webkit-app-region: no-drag;
+    -webkit-app-region: drag;
     margin-left: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     min-width: 0;
   }
@@ -1432,6 +1436,9 @@
   .attt td.h-early { background: color-mix(in srgb, #FFF2CC 70%, var(--card)) !important; }
   .attt tr.atr.pend td:first-child { box-shadow: inset 3px 0 0 #c0392b; }
   .attt tr.atr.hid td { opacity: .6; }
+  /* 먼저 보여 준 줄 — 시트 대답을 기다리는 동안 (v1.125.1) */
+  .attt tr.atr.saving td { opacity: .7; }
+  .attt .atsv { font-size: .82em; font-weight: 700; color: var(--accent); white-space: nowrap; }
   .attt tr.atr.local td { background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
   .attt td .gpk { display: inline-block; }
   .atapp { font-style: normal; font-weight: 800; font-size: calc(9px * var(--wf)); color: var(--accent); }
