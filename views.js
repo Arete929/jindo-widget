@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 1.125.1
-   수정요약: v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
+/* 파일명: views.js | @version 1.126.0
+   수정요약: v1.126.0 출결 «점검하기» — 스위치로 켜면 신청사유 뒤 서류·출석부·NEIS 체크 칸, 셋 다면 줄 회색 취소선, 끄면 원래대로(앱에서만) / v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
    위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜비스는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -1867,6 +1867,11 @@ function attBar() {
   var has = ATT && attOf(attMon).some(function (x) { return !x.local; }), f = ATT && attFolded(attMon);
   return '<div class="top2"><div class="wknav atbar">' + chips
     + '<span class="spacer"></span>'
+    /* 점검하기 스위치 — 켜면 체크 칸·저장 시각이 보인다 */
+    + (ATT ? (attChkOn && ATTCHKAT ? '<span class="atchkat">' + (attChkJust ? '✅ 저장됨 · ' : '마지막 저장 · ') + esc(ATTCHKAT) + '</span>' : '')
+      + '<button class="wkb atsw' + (attChkOn ? ' on' : '') + '" id="atChk" title="'
+      + (attChkOn ? '점검 끝내기 — 원래 모습으로' : '서류·출석부·NEIS 를 줄마다 체크합니다 (앱에서만 · 시트엔 안 씀)') + '">'
+      + '<span class="sw"></span>' + (attChkOn ? '점검 중' : '점검하기') + '</button>' : '')
     + (has ? '<button class="wkb' + (attPrintOpen ? ' go' : '') + '" id="atPrint" title="'
       + (attPrintOpen ? '미리보기 창이 열려 있습니다 — 누르면 앞으로 가져옵니다' : '시트의 «N월 인쇄하기» 와 같은 종이') + '">'
       + (attPrintOpen ? '🖨 미리보기 열림 · 앞으로' : '🖨 ' + Number(attMon.slice(5)) + '월 인쇄') + '</button>' : '')
@@ -1910,12 +1915,43 @@ var ATT_COLS = ['연번', '구분', '학번', '이름', '시작일', '종료일'
 /* 반 탭에 수정요청사항·수정여부 칸이 있으면 신청사유 옆에 시트처럼 붙인다 (인쇄에는 안 나온다) */
 function attHasReq() { return !!(ATT && ATT.has && ATT.has.req); }
 function attHasFix() { return !!(ATT && ATT.has && ATT.has.fix); }
-function attNCols() { return 8 + (attHasReq() ? 1 : 0) + (attHasFix() ? 1 : 0); }
+function attNCols() { return 8 + (attChkOn ? ATT_CHK.length : 0) + (attHasReq() ? 1 : 0) + (attHasFix() ? 1 : 0); }
+
+/* ── 점검하기 (앱에서만 · 2026-09-12) ─────────────────────────────
+   스위치를 켜면 신청사유와 수정요청사항 사이에 서류·출석부·NEIS 체크 칸이 끼어든다.
+   셋 다 체크된 줄은 흐린 회색 + 취소선. 끄면 칸도 취소선도 사라져 원래 모습.
+   ★ 시트엔 절대 안 쓴다 — 체크는 줄 sig(학번|이름|일자|유형)로 앱 설정 + OneDrive 에만.
+   스위치 자체는 기억하지 않는다(켤 때마다 «점검하러 들어가는» 몸짓) */
+var ATT_CHK = [['doc', '서류'], ['att', '출석부'], ['neis', 'NEIS']];
+var ATTCHK = {}, ATTCHKAT = '', attChkOn = false, attChkJust = false;
+function attChkOf(x) { return ATTCHK[x.sig] || {}; }
+function attChkDone(x) { var c = attChkOf(x); return ATT_CHK.every(function (k) { return !!c[k[0]]; }); }
+function attChkSave() {
+  ATTCHKAT = 지금시각(); attChkJust = true;
+  widgetAPI.setUi({ attChk: ATTCHK, attChkAt: ATTCHKAT });
+}
+function attChkCells(x) {
+  var c = attChkOf(x), off = !!x.saving;
+  return ATT_CHK.map(function (k) {
+    return '<td class="atck' + (c[k[0]] ? ' on' : '') + (off ? ' off' : '') + '"'
+      + (off ? '' : ' data-atck="' + esc(x.sig) + '§' + k[0] + '"') + ' title="' + k[1] + ' 확인">'
+      + '<i>✓</i></td>';
+  }).join('');
+}
+/* 줄 sig 가 바뀌면(✎ 로 날짜·유형·학생을 고치면) 체크도 따라 옮긴다 */
+function attChkMove(oldSig, newSig) {
+  if (!oldSig || oldSig === newSig || !ATTCHK[oldSig]) return;
+  ATTCHK[newSig] = ATTCHK[oldSig]; delete ATTCHK[oldSig];
+  attChkSave(); attChkJust = false;
+}
 /* ── 칸 너비 — 시트처럼 머리글 오른쪽 끝을 끌어서 바꾼다. 두 번 누르면 처음대로 ──
    ★ 글자 크기(A−A+)를 바꿔도 비율이 맞게 «배율 1 기준 px» 로 적어 둔다(ATTCOLW). 이 PC 에 남는다. */
 var ATTCOLW = {};
-var ATT_COLW0 = { c0: 24, c1: 56, c2: 38, c3: 46, c4: 70, c5: 54, c6: 60, c7: 0, c8: 150, c9: 120 };
-function attColKeys() { return ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7'].concat(attHasReq() ? ['c8'] : []).concat(attHasFix() ? ['c9'] : []); }
+var ATT_COLW0 = { c0: 24, c1: 56, c2: 38, c3: 46, c4: 70, c5: 54, c6: 60, c7: 0, c8: 150, c9: 120, k1: 42, k2: 48, k3: 42 };
+function attColKeys() {
+  return ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7'].concat(attChkOn ? ['k1', 'k2', 'k3'] : [])
+    .concat(attHasReq() ? ['c8'] : []).concat(attHasFix() ? ['c9'] : []);
+}
 function attColW(k) { return ATTCOLW[k] || ATT_COLW0[k] || 0; }
 /* 두 표(목록·새로 적는 줄)가 같은 너비를 쓴다 — 칸이 위아래로 맞게 */
 function attColgroup() {
@@ -1929,7 +1965,8 @@ function attTableMin() {
   return 'min-width:calc(' + sum + 'px * var(--wf))';
 }
 function attTable(list, folded) {
-  var extra = (attHasReq() ? ['수정요청사항'] : []).concat(attHasFix() ? ['수정여부'] : []);
+  var extra = (attChkOn ? ATT_CHK.map(function (k) { return k[1]; }) : [])
+    .concat(attHasReq() ? ['수정요청사항'] : []).concat(attHasFix() ? ['수정여부'] : []);
   var keys = attColKeys();
   var h = '<div class="attw"><table class="attt" style="' + attTableMin() + '">' + attColgroup()
     + '<thead><tr>' + ATT_COLS.concat(extra).map(function (c, i) {
@@ -2016,7 +2053,7 @@ function attRowHtml(x, folded) {
   var lock = folded || x.hidden || x.saving;       // 저장 중인 줄은 손대지 않게
   var tone = attRowTone(x.type), ht = attTypeTone(x.type);
   var cls = 'atr' + (tone ? ' ' + tone : '') + (attPending(x) ? ' pend' : '') + (x.hidden ? ' hid' : '') + (x.local ? ' local' : '')
-    + (x.saving ? ' saving' : '');
+    + (x.saving ? ' saving' : '') + (attChkOn && attChkDone(x) ? ' chkdone' : '');
   var dateCell = esc(x.startTxt || x.start) + (x.time ? '<small>' + esc(x.time) + '</small>' : '');
   var h = '<tr class="' + cls + '">'
     + '<td class="c">' + (x.local ? '<i class="atapp" title="앱에만 있음 — 시트엔 없음">앱</i>' : esc(x.seq || '')) + '</td>'
@@ -2034,6 +2071,7 @@ function attRowHtml(x, folded) {
       + (x.doc ? ' <span class="atok">서류✓</span>' : '') + (x.neis ? ' <span class="atok">NEIS✓</span>' : '')
       + attRowBtns(x, lock)
       + '</td>'
+      + (attChkOn ? attChkCells(x) : '')
       + (attHasReq() ? '<td class="rq' + (attPending(x) ? ' pend' : '') + '">' + esc(x.req || '') + '</td>' : '')
       + (attHasFix() ? attFixCell(x, lock) : '')
       + '</tr>';
@@ -2270,6 +2308,7 @@ function attEditSave(보냄) {
     if (r && r.ok) {
       attAddAt = r.savedAt || 지금시각();
       attAddMsg = (r.how || '고쳤습니다') + ' — ' + 보냄.name + ' ' + attMd(보냄.date) + ' ' + 보냄.type;
+      attChkMove(E.sig, E.local ? E.sig : [보냄.id, 보냄.name, 보냄.date, 보냄.type].join('|'));   // 점검 체크도 새 sig 로
       if (!E.local && 쓰던것.gubun !== E.gubun) {
         /* 구분이 바뀌었으면 — 줄이 새로 읽힌 뒤 반 탭에 적는다 (sig 는 바뀔 수 있으니 새 값으로) */
         attPendGubun[[보냄.id, 보냄.name, 보냄.date, 보냄.type].join('|')] = 쓰던것.gubun || '';
@@ -2366,6 +2405,15 @@ function wireAtt(app) {
   };
   on('[data-atm]', function (b) { attMon = b.dataset.atm; attPop = null; render(); });
   on('#atGet', function () { attSeqTried = ''; attMsg = ''; attLoad(); render(); });
+  /* 점검하기 — 켜고 끄기, 칸 누르면 체크 켜고 끄기(누를 때마다 저장) */
+  on('#atChk', function () { attChkOn = !attChkOn; attChkJust = false; attPop = null; render(); });
+  on('[data-atck]', function (b) {
+    var p = b.dataset.atck.split('§');            // sig 에는 | 가 들어 있어 § 로 가른다
+    var c = Object.assign({}, ATTCHK[p[0]] || {});
+    c[p[1]] = !c[p[1]];
+    if (c.doc || c.att || c.neis) ATTCHK[p[0]] = c; else delete ATTCHK[p[0]];
+    attChkSave(); render();
+  });
   /* 셀을 누르면 칩 팝업 — 같은 셀을 다시 누르면 닫힘. 팝업 안을 누른 것은 셀 누름으로 안 친다 */
   on('[data-atpop]', function (b, ev) {
     if (ev.target.closest && ev.target.closest('[data-atpopbox]')) return;
@@ -6344,6 +6392,7 @@ widgetAPI.onData(function (p) {
   }
   if (p.attLocal !== undefined) ATTLOCAL = p.attLocal || [];
   if (p.attPhrases !== undefined) { ATTPHR = p.attPhrases; ATTPHRAT = p.attPhrasesAt || ATTPHRAT; }
+  if (p.attChk !== undefined && p.attChk) { ATTCHK = p.attChk; ATTCHKAT = p.attChkAt || ATTCHKAT; }
   if (p.attColW && typeof p.attColW === 'object') ATTCOLW = p.attColW;
   BOARD = p.board || null;
   ofFav = p.officeFav || ofFav;
