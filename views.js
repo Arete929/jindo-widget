@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 1.127.0
-   수정요약: v1.127.0 오늘 주간표 아래 경계(손잡이)를 잡고 끌면 표·글자가 함께 커짐(두 번 누르면 처음대로) / v1.126.0 출결 «점검하기» — 스위치로 켜면 신청사유 뒤 서류·출석부·NEIS 체크 칸, 셋 다면 줄 회색 취소선, 끄면 원래대로(앱에서만) / v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
+/* 파일명: views.js | @version 1.128.0
+   수정요약: v1.128.0 표 크기 손잡이를 진호 시간표 전체(주간진도·시간표계획·날짜별·진도표)와 컴시간에도 / v1.127.0 오늘 주간표 아래 경계(손잡이)를 잡고 끌면 표·글자가 함께 커짐(두 번 누르면 처음대로) / v1.126.0 출결 «점검하기» — 스위치로 켜면 신청사유 뒤 서류·출석부·NEIS 체크 칸, 셋 다면 줄 회색 취소선, 끄면 원래대로(앱에서만) / v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
    위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜비스는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -204,53 +204,69 @@ function viewWeek(d) {
     + '</div>';
   /* ★ 표 아래 손잡이를 잡고 아래로 끌면 표(칸 높이·글자)가 함께 커진다(2026-09-13).
        크기는 창마다(위젯·넓게 보기) 따로 이 PC 에 남는다. 두 번 누르면 처음대로 */
-  return nav + '<div class="grz" style="--grz:' + grZoom() + '">' + weekTable(WK) + '</div>'
-    + '<div class="grzh" title="끌어서 표 크기 바꾸기 · 두 번 누르면 처음대로"><i></i></div>';
+  return nav + grzWrap('today', weekTable(WK));
 }
-/* 주간표 크기 — { wid: 1.4, easy: 1.2 } (창마다) */
+/* ── 표 크기 손잡이 (v1.127.0 오늘 → v1.128.0 진호 시간표 전부·컴시간) ──
+   감싼 표(.grz[data-grz=kind]) 바로 아래 손잡이(.grzh)를 끌면 칸 높이·글자가 함께 커진다.
+   kind — today(오늘 주간표) · progress(주간진도 — 모든 주 표가 함께) · comci(컴시간 — 교사·학급 표 함께)
+        · dash(얹은 수업진도 웹앱 — 화면 배율로). 크기는 창(위젯·넓게 보기)×kind 마다 이 PC 에 남는다.
+   저장 열쇠: wid / easy (= today, 옛 판과 같음) · wid.progress · easy.comci · wid.dash … */
 var GRZOOM = {};
 var GRZ_MIN = 0.8, GRZ_MAX = 3;
-function grZoomKey() { return IS_EASY ? 'easy' : 'wid'; }
-function grZoom() {
-  var z = Number(GRZOOM[grZoomKey()]) || 1;
+var GRZ_TIP = '끌어서 크기 바꾸기 · 두 번 누르면 처음대로';
+function grZoomKey(kind) { return (IS_EASY ? 'easy' : 'wid') + (kind && kind !== 'today' ? '.' + kind : ''); }
+function grZoom(kind) {
+  var z = Number(GRZOOM[grZoomKey(kind)]) || 1;
   return Math.max(GRZ_MIN, Math.min(GRZ_MAX, z));
 }
-/* 제 창 몫만 보낸다 (0 = 처음대로) — 위젯·넓게 보기가 서로의 값을 덮지 않게 */
-function grZoomSave(z) { var o = {}; o[grZoomKey()] = z; widgetAPI.setUi({ grZoom: o }); }
+function grzHandle(kind) { return '<div class="grzh" data-grzh="' + kind + '" title="' + GRZ_TIP + '"><i></i></div>'; }
+function grzWrap(kind, inner) {
+  return '<div class="grz" data-grz="' + kind + '" style="--grz:' + grZoom(kind) + '">' + inner + '</div>' + grzHandle(kind);
+}
+/* 제 창·제 kind 몫만 보낸다 (0 = 처음대로) — 위젯·넓게 보기가 서로의 값을 덮지 않게 */
+function grZoomSave(kind, z) { var o = {}; o[grZoomKey(kind)] = z; widgetAPI.setUi({ grZoom: o }); }
+function grzApply(app, kind, z) {
+  if (kind === 'dash') { dashPlace(); return; }          // 웹앱은 메인이 화면 배율로 키운다
+  app.querySelectorAll('.grz[data-grz="' + kind + '"]').forEach(function (b) { b.style.setProperty('--grz', z); });
+}
 function wireGrZoom(app) {
-  var hd = app.querySelector('.grzh'), box = app.querySelector('.grz');
-  if (!hd || !box) return;
-  hd.addEventListener('dblclick', function (ev) {
-    ev.preventDefault();
-    delete GRZOOM[grZoomKey()];
-    grZoomSave(0);
-    render();
-  });
-  /* 손가락(전자칠판)으로도 끌리게 pointer 로 받는다. 끄는 동안은 다시 그리지 않고 변수만 바꾼다 */
-  hd.addEventListener('pointerdown', function (ev) {
-    if (ev.button !== 0) return;
-    ev.preventDefault();
-    hd.setPointerCapture(ev.pointerId);
-    var y0 = ev.clientY, h0 = box.getBoundingClientRect().height || 1, z0 = grZoom(), z = z0;
-    document.body.classList.add('grzing');
-    /* ★ 끄는 사이 1분 새로고침으로 다시 그려질 수 있다 — 표는 매번 새로 찾고, 손 뗌은 document 에서 받는다 */
-    var move = function (e2) {
-      z = Math.max(GRZ_MIN, Math.min(GRZ_MAX, z0 * (h0 + (e2.clientY - y0)) / h0));
-      z = Math.round(z * 100) / 100;
-      GRZOOM[grZoomKey()] = z;
-      var b = app.querySelector('.grz'); if (b) b.style.setProperty('--grz', z);
-    };
-    var up = function () {
-      document.removeEventListener('pointermove', move);
-      document.removeEventListener('pointerup', up);
-      document.removeEventListener('pointercancel', up);
-      document.body.classList.remove('grzing');
-      if (Math.abs(z - 1) < 0.02) { delete GRZOOM[grZoomKey()]; grZoomSave(0); }
-      else { GRZOOM[grZoomKey()] = z; grZoomSave(z); }
-    };
-    document.addEventListener('pointermove', move);
-    document.addEventListener('pointerup', up);
-    document.addEventListener('pointercancel', up);
+  app.querySelectorAll('.grzh').forEach(function (hd) {
+    var kind = hd.dataset.grzh || 'today';
+    hd.addEventListener('dblclick', function (ev) {
+      ev.preventDefault();
+      delete GRZOOM[grZoomKey(kind)];
+      grZoomSave(kind, 0);
+      if (kind === 'dash') dashPlace(); else render();
+    });
+    /* 손가락(전자칠판)으로도 끌리게 pointer 로 받는다. 끄는 동안은 다시 그리지 않고 변수만 바꾼다 */
+    hd.addEventListener('pointerdown', function (ev) {
+      if (ev.button !== 0) return;
+      ev.preventDefault();
+      try { hd.setPointerCapture(ev.pointerId); } catch (e) { /* 이미 떨어진 손 */ }
+      /* 기준 높이 — 표면 손잡이 바로 위 표, 웹앱이면 얹은 자리. 끈 만큼 그 높이가 늘어나는 배율 */
+      var box = kind === 'dash' ? document.getElementById('dashHost') : hd.previousElementSibling;
+      var y0 = ev.clientY, h0 = (box && box.getBoundingClientRect().height) || 300, z0 = grZoom(kind), z = z0;
+      document.body.classList.add('grzing');
+      /* ★ 끄는 사이 1분 새로고침으로 다시 그려질 수 있다 — 표는 매번 새로 찾고, 손 뗌은 document 에서 받는다 */
+      var move = function (e2) {
+        z = Math.max(GRZ_MIN, Math.min(GRZ_MAX, z0 * (h0 + (e2.clientY - y0)) / h0));
+        z = Math.round(z * 100) / 100;
+        GRZOOM[grZoomKey(kind)] = z;
+        grzApply(app, kind, z);
+      };
+      var up = function () {
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        document.removeEventListener('pointercancel', up);
+        document.body.classList.remove('grzing');
+        if (Math.abs(z - 1) < 0.02) { delete GRZOOM[grZoomKey(kind)]; grZoomSave(kind, 0); }
+        else { GRZOOM[grZoomKey(kind)] = z; grZoomSave(kind, z); }
+        grzApply(app, kind, grZoom(kind));
+      };
+      document.addEventListener('pointermove', move);
+      document.addEventListener('pointerup', up);
+      document.addEventListener('pointercancel', up);
+    });
   });
 }
 
@@ -652,12 +668,13 @@ function viewComci() {
       || d.byTeacher[0];
     h += '<div class="cmh">' + me.i + ' ' + esc(me.name) + ' 선생님'
       + (hasC ? '' : '<small>설정에서 내 이름을 바꿀 수 있어요</small>') + '</div>';
-    h += cmTable(me.days, function (x) {
+    // 표 아래 손잡이 — 교사·학급 표가 함께 커진다(kind comci)
+    h += grzWrap('comci', cmTable(me.days, function (x) {
       // ★ 바뀐 수업(보강·교체)은 컴시간 사이트처럼 눈에 띄게 표시한다
       return '<td class="c u1' + (x.changed ? ' chg' : '') + '" title="'
         + esc(x.grade + '-' + x.cls + ' ' + x.subject + (x.changed ? ' (바뀐 수업)' : '')) + '">'
         + '<b>' + x.grade + '-' + x.cls + '</b><u>' + esc(x.subject) + '</u></td>';
-    });
+    }));
     h += '</div>';
   }
 
@@ -678,11 +695,11 @@ function viewComci() {
         }).join('') + '</div>';
     var cl = gsel.classes.filter(function (c) { return c.cls === cmCls; })[0] || gsel.classes[0];
     cmCls = cl.cls;
-    h += cmTable(cl.days, function (x) {
+    h += grzWrap('comci', cmTable(cl.days, function (x) {
       return '<td class="c u0' + (x.changed ? ' chg' : '') + '" title="'
         + esc(x.subject + ' / ' + x.teacher + (x.changed ? ' (바뀐 수업)' : '')) + '">'
         + '<b>' + esc(x.subject) + '</b><u>' + esc(x.teacher) + '</u></td>';
-    });
+    }));
     h += '</div>';
   }
   return h + '</div>';
@@ -805,7 +822,8 @@ var DASHV = { plan: 'plan', daily: 'daily', dgrid: 'grid' };
 var TT_SUB = ['today', 'week', 'progress', 'plan', 'daily', 'dgrid'];
 function viewDash() {
   return '<div id="dashHost" class="dashhost">'
-    + '<div class="dashwait">수업진도 대시보드를 불러오는 중…</div></div>';
+    + '<div class="dashwait">수업진도 대시보드를 불러오는 중…</div></div>'
+    + grzHandle('dash');          // 얹은 화면 아래 손잡이 — 끌면 웹앱 화면 배율(표·글자)이 커진다
 }
 /* 자리를 재서 메인에 알려 준다 — 창 크기·굴림이 바뀌면 다시 잰다 */
 /* 창 크기가 바뀌거나 굴리면 자리도 따라가야 한다 */
@@ -823,7 +841,7 @@ function dashPlace() {
     fg: cs.getPropertyValue('--fg').trim(),
     line: cs.getPropertyValue('--line').trim()
   };
-  widgetAPI.dashShow(DASHV[VIEW], { x: r.left, y: r.top, w: r.width, h: r.height }, col);
+  widgetAPI.dashShow(DASHV[VIEW], { x: r.left, y: r.top, w: r.width, h: r.height }, col, grZoom('dash'));
 }
 
 /* 오른쪽 단 — 틱틱만 쓴다.
@@ -2904,7 +2922,7 @@ function viewProgress(d) {
     var thisWeek = (wk.days || []).some(function (x) { return String(x.md || '') === tMD; });
     return '<div class="pwh' + (thisWeek ? ' now' : '') + '">' + (i + 1) + '주차'
       + '<small>' + esc(wk.range || wk.label || '') + '</small>'
-      + (thisWeek ? '<em>이번 주</em>' : '') + '</div>' + weekTable(wk);
+      + (thisWeek ? '<em>이번 주</em>' : '') + '</div>' + grzWrap('progress', weekTable(wk));   // 한 주를 끌면 모든 주가 함께
   }).join('');
   return h;
 }

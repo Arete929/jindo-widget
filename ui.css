@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.127.0 — 오늘 주간표 아래 손잡이로 표·글자 크기(--grz) 
+/* 파일명: ui.css | @version 1.128.0 — 표 크기 손잡이를 진호 시간표 전부·컴시간으로(--grz) 
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -934,7 +934,7 @@
            padding: calc(8px * var(--wf)) calc(9px * var(--wf)); }
   /* 수업진도 대시보드를 얹을 자리 — 실제 화면은 메인이 이 위에 붙인다 */
   .dashhost { position: relative; width: 100%;
-              height: calc(100vh - var(--toph, 46px) - 8px); min-height: 260px; }
+              height: calc(100vh - var(--toph, 46px) - 8px - 20px); min-height: 260px; }
   .dashwait { padding: 18px 4px; font-size: calc(11px * var(--wf)); color: var(--dim); }
   /* 오른쪽 단 머리 — 틱틱 로고 (원래 색을 그대로 쓴다) */
   .tdhead { display: flex; align-items: center; margin-bottom: 8px; }

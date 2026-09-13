@@ -1,4 +1,4 @@
-// 파일명: preload.js | @version 1.122.0
+// 파일명: preload.js | @version 1.128.0 — dashShow 에 배율(zoom) 넘김
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
@@ -116,7 +116,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   tickTest: () => ipcRenderer.invoke('tick-test'),
   tickRedirect: () => ipcRenderer.invoke('tick-redirect'),
   // 수업진도 대시보드 얹기
-  dashShow: (screen, rect, colors) => ipcRenderer.send('dash-show', screen, rect, colors),
+  dashShow: (screen, rect, colors, zoom) => ipcRenderer.send('dash-show', screen, rect, colors, zoom),
   dashHide: () => ipcRenderer.send('dash-hide'),
   dashReload: () => ipcRenderer.invoke('dash-reload'),
   // 열쇠·설정 백업
