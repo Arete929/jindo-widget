@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 1.126.0 — 출결 «점검하기» 스위치·체크 칸·셋 다 체크된 줄 회색 취소선 
+/* 파일명: ui.css | @version 1.127.0 — 오늘 주간표 아래 손잡이로 표·글자 크기(--grz) 
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -873,19 +873,19 @@
   /* ── 주간 시간표 격자 ── */
   .gr { width: 100%; border-collapse: collapse; table-layout: fixed; }
   .gr th, .gr td { border: 1px solid var(--line); padding: 0; text-align: center; }
-  .gr thead th { padding: 3px 1px 4px; font-size: calc(11px * var(--wf)); font-weight: 800; background: var(--card2); }
-  .gr thead th small { display: block; font-size: calc(9px * var(--wf)); font-weight: 600; color: var(--dim); }
-  .gr thead th i { display: block; font-style: normal; font-size: 8.5px; color: var(--warnfg);
+  .gr thead th { padding: 3px 1px 4px; font-size: calc(11px * var(--wf) * var(--grz, 1)); font-weight: 800; background: var(--card2); }
+  .gr thead th small { display: block; font-size: calc(9px * var(--wf) * var(--grz, 1)); font-weight: 600; color: var(--dim); }
+  .gr thead th i { display: block; font-style: normal; font-size: calc(8.5px * var(--grz, 1)); color: var(--warnfg);
                    line-height: 1.3; margin-top: 1px; }
   .gr thead th i em { display: block; font-style: normal;
                       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .gr td.pc, .gr th.pc { width: 20px; background: var(--card2); font-size: calc(10px * var(--wf));
+  .gr td.pc, .gr th.pc { width: calc(20px * var(--grz, 1)); background: var(--card2); font-size: calc(10px * var(--wf) * var(--grz, 1));
                          font-weight: 800; color: var(--dim); }
-  .gr td { height: calc(34px * var(--wf)); font-size: calc(10px * var(--wf)); }
+  .gr td { height: calc(34px * var(--wf) * var(--grz, 1)); font-size: calc(10px * var(--wf) * var(--grz, 1)); }
   .gr td.c { position: relative; color: #fff; font-weight: 700; line-height: 1.15; padding: 2px 1px; }
-  .gr td.c b { font-size: calc(11px * var(--wf)); font-weight: 800; }
-  .gr td.c u { display: block; text-decoration: none; font-size: calc(8.5px * var(--wf)); opacity: .9;
-               line-height: 1.15; max-height: 20px; overflow: hidden; word-break: break-all; }
+  .gr td.c b { font-size: calc(11px * var(--wf) * var(--grz, 1)); font-weight: 800; }
+  .gr td.c u { display: block; text-decoration: none; font-size: calc(8.5px * var(--wf) * var(--grz, 1)); opacity: .9;
+               line-height: 1.15; max-height: calc(20px * var(--grz, 1)); overflow: hidden; word-break: break-all; }
   .gr td.c s { position: absolute; top: 2px; right: 2px; width: 4px; height: 4px;
                border-radius: 999px; background: #fff; opacity: .9; }
   /* ── 칸 색 = 차시 ─────────────────────────────────────────
@@ -1055,13 +1055,21 @@
   /* 학사일정(동아리 등)으로 수업이 없어진 칸 — 수업 색을 쓰지 않는다 */
   .gr td.blk { background: color-mix(in srgb, var(--warnfg) 22%, var(--bg)); color: var(--warnfg); }
   .gr td.blk b { opacity: .75; }
-  .gr td.cal { background: var(--card2); color: var(--dim); font-weight: 700; font-size: calc(9.5px * var(--wf)); }
+  .gr td.cal { background: var(--card2); color: var(--dim); font-weight: 700; font-size: calc(9.5px * var(--wf) * var(--grz, 1)); }
   .gr td.cal u { color: var(--dim); }
   .gr td.out { background: var(--card2); color: var(--dim); text-decoration: line-through; }
   .gr td.hol { background: repeating-linear-gradient(45deg,
       var(--holbg), var(--holbg) 4px, var(--bg) 4px, var(--bg) 8px); }
   .gr .tdy { box-shadow: inset 0 0 0 2px var(--now); }
   .gr thead th.tdy { background: color-mix(in srgb, var(--now) 22%, var(--card2)); }
+  /* 오늘 주간표 아래 손잡이 — 잡고 아래로 끌면 표(칸 높이·글자)가 커진다 (v1.127.0) */
+  .grzh { -webkit-app-region: no-drag; cursor: ns-resize; touch-action: none; user-select: none;
+          height: 12px; margin: 0 0 6px; display: flex; align-items: center; justify-content: center;
+          border-top: 2px solid var(--line); }
+  .grzh i { width: 44px; height: 4px; margin-top: 3px; border-radius: 999px; background: var(--line); }
+  .grzh:hover { border-top-color: var(--accent); }
+  .grzh:hover i, body.grzing .grzh i { background: var(--accent); }
+  body.grzing, body.grzing * { cursor: ns-resize !important; user-select: none !important; }
 
   /* ── 주간업무 ── */
   .wq {

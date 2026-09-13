@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 1.126.0
-   수정요약: v1.126.0 출결 «점검하기» — 스위치로 켜면 신청사유 뒤 서류·출석부·NEIS 체크 칸, 셋 다면 줄 회색 취소선, 끄면 원래대로(앱에서만) / v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
+/* 파일명: views.js | @version 1.127.0
+   수정요약: v1.127.0 오늘 주간표 아래 경계(손잡이)를 잡고 끌면 표·글자가 함께 커짐(두 번 누르면 처음대로) / v1.126.0 출결 «점검하기» — 스위치로 켜면 신청사유 뒤 서류·출석부·NEIS 체크 칸, 셋 다면 줄 회색 취소선, 끄면 원래대로(앱에서만) / v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
    위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜비스는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -202,7 +202,56 @@ function viewWeek(d) {
     + '<button class="wkb" data-off="' + (WEEKOFF + 1) + '" title="다음 주">▶</button>'
     + (WEEKOFF !== 0 ? '<button class="wkb now" data-off="0">이번주</button>' : '')
     + '</div>';
-  return nav + weekTable(WK);
+  /* ★ 표 아래 손잡이를 잡고 아래로 끌면 표(칸 높이·글자)가 함께 커진다(2026-09-13).
+       크기는 창마다(위젯·넓게 보기) 따로 이 PC 에 남는다. 두 번 누르면 처음대로 */
+  return nav + '<div class="grz" style="--grz:' + grZoom() + '">' + weekTable(WK) + '</div>'
+    + '<div class="grzh" title="끌어서 표 크기 바꾸기 · 두 번 누르면 처음대로"><i></i></div>';
+}
+/* 주간표 크기 — { wid: 1.4, easy: 1.2 } (창마다) */
+var GRZOOM = {};
+var GRZ_MIN = 0.8, GRZ_MAX = 3;
+function grZoomKey() { return IS_EASY ? 'easy' : 'wid'; }
+function grZoom() {
+  var z = Number(GRZOOM[grZoomKey()]) || 1;
+  return Math.max(GRZ_MIN, Math.min(GRZ_MAX, z));
+}
+/* 제 창 몫만 보낸다 (0 = 처음대로) — 위젯·넓게 보기가 서로의 값을 덮지 않게 */
+function grZoomSave(z) { var o = {}; o[grZoomKey()] = z; widgetAPI.setUi({ grZoom: o }); }
+function wireGrZoom(app) {
+  var hd = app.querySelector('.grzh'), box = app.querySelector('.grz');
+  if (!hd || !box) return;
+  hd.addEventListener('dblclick', function (ev) {
+    ev.preventDefault();
+    delete GRZOOM[grZoomKey()];
+    grZoomSave(0);
+    render();
+  });
+  /* 손가락(전자칠판)으로도 끌리게 pointer 로 받는다. 끄는 동안은 다시 그리지 않고 변수만 바꾼다 */
+  hd.addEventListener('pointerdown', function (ev) {
+    if (ev.button !== 0) return;
+    ev.preventDefault();
+    hd.setPointerCapture(ev.pointerId);
+    var y0 = ev.clientY, h0 = box.getBoundingClientRect().height || 1, z0 = grZoom(), z = z0;
+    document.body.classList.add('grzing');
+    /* ★ 끄는 사이 1분 새로고침으로 다시 그려질 수 있다 — 표는 매번 새로 찾고, 손 뗌은 document 에서 받는다 */
+    var move = function (e2) {
+      z = Math.max(GRZ_MIN, Math.min(GRZ_MAX, z0 * (h0 + (e2.clientY - y0)) / h0));
+      z = Math.round(z * 100) / 100;
+      GRZOOM[grZoomKey()] = z;
+      var b = app.querySelector('.grz'); if (b) b.style.setProperty('--grz', z);
+    };
+    var up = function () {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', up);
+      document.body.classList.remove('grzing');
+      if (Math.abs(z - 1) < 0.02) { delete GRZOOM[grZoomKey()]; grZoomSave(0); }
+      else { GRZOOM[grZoomKey()] = z; grZoomSave(z); }
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
+  });
 }
 
 /* 주간표 하나 — «이번 주» 와 «진도» 가 함께 쓴다.
@@ -6394,6 +6443,7 @@ widgetAPI.onData(function (p) {
   if (p.attPhrases !== undefined) { ATTPHR = p.attPhrases; ATTPHRAT = p.attPhrasesAt || ATTPHRAT; }
   if (p.attChk !== undefined && p.attChk) { ATTCHK = p.attChk; ATTCHKAT = p.attChkAt || ATTCHKAT; }
   if (p.attColW && typeof p.attColW === 'object') ATTCOLW = p.attColW;
+  if (p.grZoom && typeof p.grZoom === 'object') GRZOOM = p.grZoom;
   BOARD = p.board || null;
   ofFav = p.officeFav || ofFav;
   DASHORDER = p.dashOrder || [];
@@ -6614,6 +6664,7 @@ function wireViews(app) {
   });
   wireBoardApps(app);
   wireAtt(app);        // 담임 출결 (지비스만)
+  wireGrZoom(app);     // 오늘 주간표 — 아래 손잡이로 크기
   // ★ .rach 도 함께 훑는다 — 학생기록 아코디언의 «머리» 단추다.
   //   .wkb 만 훑던 때에는 눌러도 아무 일이 없어서 «펼쳐지지 않는다» 였다.
   /* ★ 여기 목록에 빠진 «단추 종류» 는 눌러도 아무 일이 없다. 새 단추를 만들면 꼭 넣을 것.
