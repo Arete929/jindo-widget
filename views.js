@@ -1960,7 +1960,10 @@ function attUnsorted() {
 function viewAtt() {
   if (!ATT_ME) { attMeLoad(); return '<div class="empty">출결을 준비하는 중…</div>'; }
   if (!attMe() || attSetup) return attSetupView();      // 혜원이지 — 연결 코드·나는 누구부터
-  if (!ATT) { attLoad(); return attBar() + '<div class="empty">출결 목록을 읽는 중…</div>'; }
+  if (!ATT) {
+    if (!attBusy) attLoad();                         // 읽는 중이면 또 부르지 않는다(다리를 두 번 부르면 몇 초 더 걸린다)
+    return attBar() + '<div class="empty">출결 목록을 읽는 중…</div>';
+  }
   if (!attMon) attMon = attThisMon();
   var list = attOf(attMon);
   var folded = attFolded(attMon);
@@ -2043,7 +2046,7 @@ function attSetupView() {
     + '<div class="atnr"><input id="atLink" class="gpai wide" placeholder="HWATT1:…" autocomplete="off">'
     + '<button class="wkb go" id="atLinkSave">저장</button></div>'
     + (A.hasLink ? '<div class="rsaved">' + (attLinkJust ? '✅ 저장됨 · ' : '마지막 저장 · ') + esc(A.linkAt || '') + '</div>' : '')
-    + (attLinkMsg ? '<div class="atwarn">' + esc(attLinkMsg) + '</div>' : '') + '</div>';
+    + (attLinkMsg ? '<div class="' + (attLinkJust ? 'rhint' : 'atwarn') + '">' + esc(attLinkMsg) + '</div>' : '') + '</div>';
   if (A.hasLink) {
     var sel = attSetupWho || A.who || null;
     var same = function (w) { return !!sel && JSON.stringify(sel) === JSON.stringify(w); };
@@ -2167,7 +2170,7 @@ function attTableMin() {
 }
 function attTable(list, folded) {
   var extra = (attChkOn ? ATT_CHK.map(function (k) { return k[1]; }) : [])
-    .concat(attHasReq() ? ['수정요청사항'] : []).concat(attHasFix() ? ['수정여부'] : []);
+    .concat(attHasReq() ? ['수정요청사항'] : []).concat(attHasFix() ? [ATT && ATT.has && ATT.has.fixApp ? '수정여부<small title="시트에 칸이 없어 앱에만 둡니다">앱</small>' : '수정여부'] : []);
   var keys = attColKeys();
   var h = '<div class="attw"><table class="attt" style="' + attTableMin() + '">' + attColgroup()
     + '<thead><tr>' + ATT_COLS.concat(extra).map(function (c, i) {
@@ -2577,9 +2580,18 @@ function attPlacePop() {
   var w = box.offsetWidth, h = box.offsetHeight;
   var vw = window.innerWidth, vh = window.innerHeight;
   var head = parseFloat(getComputedStyle(app).getPropertyValue('--toph')) || 0;
-  var top = c.bottom + 4;
-  if (top + h > vh - 8 && c.top - h - 4 >= head + 4) top = c.top - h - 4;      // 아래가 모자라면 위로
-  top = Math.max(head + 4, Math.min(top, vh - 8 - h));
+  var 아래 = vh - 8 - (c.bottom + 4), 위 = (c.top - 4) - (head + 4);
+  var top;
+  box.style.maxHeight = ''; box.style.overflowY = '';
+  if (h <= 아래) top = c.bottom + 4;                         // 아래에 들어가면 아래
+  else if (h <= 위) top = c.top - h - 4;                     // 아래가 모자라면 위로
+  else {
+    /* ★ 위아래 다 모자라면(창이 낮고 반 고르기 줄까지 있을 때) 칸을 덮지 말고
+         넓은 쪽에 붙여 판 안에서 굴린다 (v1.130.0) */
+    var 쪽 = Math.max(아래, 위, 120);
+    box.style.maxHeight = 쪽 + 'px'; box.style.overflowY = 'auto';
+    top = 아래 >= 위 ? c.bottom + 4 : c.top - 4 - 쪽;
+  }
   var left = Math.max(8, Math.min(c.left, vw - 8 - w));
   box.style.left = left + 'px';
   box.style.top = top + 'px';
@@ -2589,6 +2601,9 @@ var attPopScrollHooked = null;
 
 /* 반 고르기 · 나는 누구(연결 코드·확인번호) · 수정요청사항 칸 (v1.130.0) */
 function wireAttMe(app) {
+  var on = function (sel, fn) {
+    app.querySelectorAll(sel).forEach(function (b) { b.addEventListener('click', function (ev) { fn(b, ev); }); });
+  };
   on('[data-atcls]', function (b) { attPickCls(b.dataset.atcls); });
   on('#atWho', function () { attSetup = true; attSetupWho = null; attSetupMsg = ''; attSetupOk = false; attLinkMsg = ''; render(); });
   on('#atLinkSave', function () {
@@ -2597,7 +2612,7 @@ function wireAttMe(app) {
     if (!String(v).trim()) { attLinkMsg = '연결 코드를 붙여 넣어 주세요'; render(); return; }
     widgetAPI.attMeSet({ link: v }).then(function (r) {
       if (r && r.ok) { attLinkJust = true; attLinkMsg = r.how || ''; attMeLoad(); }
-      else { attLinkMsg = (r && r.msg) || '저장하지 못했습니다'; render(); }
+      else { attLinkJust = false; attLinkMsg = (r && r.msg) || '저장하지 못했습니다'; render(); }
     }).catch(function (e) { attLinkMsg = attErrText(e); render(); });
   });
   on('[data-atwho]', function (b) {
@@ -2608,6 +2623,7 @@ function wireAttMe(app) {
     var who = attSetupWho || (ATT_ME && ATT_ME.who);
     if (!who || attSetupBusy) return;
     var el = app.querySelector('#atCode');
+    attSetup = true;                               // 확인 뒤에도 이 화면에 남아 «✅ 확인됨 · 시각» 을 보여 준다
     attSetupBusy = true; attSetupMsg = ''; render();
     widgetAPI.attMeSet({ who: who, code: el ? el.value : '' }).then(function (r) {
       attSetupBusy = false;
