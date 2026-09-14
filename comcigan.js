@@ -1,4 +1,4 @@
-// 파일명: comcigan.js | @version 1.0.0
+// 파일명: comcigan.js | @version 1.1.0 — 학급 시간표를 자료147(이번 주 변경 반영본)로, 없으면 옛 옮겨 붙이기
 // 컴시간알리미(http://comci.net:4082) 에서 학교 시간표를 받아온다.
 //
 // ★ 왜 위젯(메인 프로세스)에서 하나:
@@ -154,8 +154,20 @@ function shape(j, want) {
     classes: null, byTeacher: null
   };
 
+  /* ★ 학급 시간표는 «자료147(이번 주 변경 반영본)» 을 먼저 쓴다 (v1.130.0, 2026-09-15).
+       다른 학교 선생님 인계서(scienceisjo/class-tools COMCIGAN_HOWTO.md)에서 알게 됐다 — 전에는 몰라서
+       교사 시간표(자료542)의 변경을 학급 칸에 «옮겨 붙이는» 우회를 썼다. 9/13 혜원여중 실측: 바뀐 칸 15 = 15.
+       그날치(요일) 줄이 비어 있으면 원래 시간표(자료481) 그 요일로. 자료147 이 아예 없으면 옛 우회 그대로 */
+  const X = j['자료147'];
+  const has147 = Array.isArray(X) && X.length > 1;
+  out.classSource = has147 ? '자료147' : '자료481+옮겨붙임';
   if (want.classes && j['자료481']) {
     const T = j['자료481'], counts = j['학급수'] || [];
+    const rowOf = (g, c, d) => {
+      const x = has147 && X[g] && X[g][c] && X[g][c][d];
+      if (x && Number(x[0]) > 0) return x;
+      return (T[g] && T[g][c] && T[g][c][d]) || [];
+    };
     const grades = [];
     for (let g = 1; g < T.length; g++) {
       const gcls = [];
@@ -163,7 +175,7 @@ function shape(j, want) {
       for (let c = 1; c <= n; c++) {
         const days = [];
         for (let d = 1; d <= 5; d++) {
-          const row = (T[g] && T[g][c] && T[g][c][d]) || [];
+          const row = rowOf(g, c, d);
           const periods = [];
           for (let p = 1; p < row.length; p++) {
             const c = cell(row[p]);
@@ -207,7 +219,7 @@ function shape(j, want) {
      컴시간은 변경분을 교사 시간표(자료542)에만 실어 주고, 학급 시간표(자료481)는
      옛 값 그대로 준다(2026-09-02 실측 — 학급 자료의 변경 표시 0개).
      그대로 두면 아무리 새로 받아도 «3-2 목 4교시 체육» 처럼 옛 시간표가 남는다. */
-  if (out.classes && j['자료542'] && j['자료481']) {
+  if (out.classes && !has147 && j['자료542'] && j['자료481']) {   // 자료147 이 있으면 옮겨 붙일 필요가 없다
     applyTeacherChanges(j, out, sep, teachers, subName);
   }
   return out;
