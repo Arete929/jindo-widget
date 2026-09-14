@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 1.128.0
-   수정요약: v1.128.0 표 크기 손잡이를 진호 시간표 전체(주간진도·시간표계획·날짜별·진도표)와 컴시간에도 / v1.127.0 오늘 주간표 아래 경계(손잡이)를 잡고 끌면 표·글자가 함께 커짐(두 번 누르면 처음대로) / v1.126.0 출결 «점검하기» — 스위치로 켜면 신청사유 뒤 서류·출석부·NEIS 체크 칸, 셋 다면 줄 회색 취소선, 끄면 원래대로(앱에서만) / v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
+/* 파일명: views.js | @version 2.0.0
+   수정요약: v2.0.0 출결 — 반 고르기·보기 전용·수정요청사항(학년부장)·처음 연결 화면·유형은 시트 목록·학생부터·고르기 판 넓게 · 모든 탭 본문 손잡이(zoom) · 틱틱 목록 기억 · 혜원이지 이름(한글 제목) / v1.128.0 표 크기 손잡이를 진호 시간표 전체(주간진도·시간표계획·날짜별·진도표)와 컴시간에도 / v1.127.0 오늘 주간표 아래 경계(손잡이)를 잡고 끌면 표·글자가 함께 커짐(두 번 누르면 처음대로) / v1.126.0 출결 «점검하기» — 스위치로 켜면 신청사유 뒤 서류·출석부·NEIS 체크 칸, 셋 다면 줄 회색 취소선, 끄면 원래대로(앱에서만) / v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
    위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜원이지는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -223,10 +223,31 @@ function grzHandle(kind) { return '<div class="grzh" data-grzh="' + kind + '" ti
 function grzWrap(kind, inner) {
   return '<div class="grz" data-grz="' + kind + '" style="--grz:' + grZoom(kind) + '">' + inner + '</div>' + grzHandle(kind);
 }
+/* ── 19번: 나머지 모든 탭 — 본문 통째로 (v1.130.0, 2026-09-15) ──
+   표(.gr)처럼 칸마다 --grz 를 곱할 수 없는 화면(주간업무·학사일정·급식·학생기록·출결·교무실·바로가기·업무관리…)은
+   본문을 CSS zoom 으로 통째로 키운다. kind = 'v-<화면>'. 붙박이·떠 있는 것(학사일정 구분 줄·틱틱·출결 판)은
+   zoom 속에서 자리가 배율만큼 밀리므로 --grzz 로 나눠 되돌린다(ui.css · attPlacePop).
+   ★ 제 손잡이가 있는 화면(오늘·주간진도·컴시간·얹은 웹앱)은 그대로 */
+var GRZ_OWN = { today: 1, week: 1, progress: 1, comci: 1, plan: 1, daily: 1, dgrid: 1 };
+function grzBody(view, body) {
+  if (!body || GRZ_OWN[view]) return body;
+  var k = 'v-' + view, z = grZoom(k);
+  return '<div class="grz grzz" data-grz="' + k + '" style="zoom:' + z + ';--grzz:' + z + '">' + body + '</div>' + grzHandle(k);
+}
+/* 이 요소가 들어 있는 본문의 배율 — fixed 로 띄우는 판의 자리를 나눠 되돌릴 때 */
+function grzOf(el) {
+  var w = el && el.closest ? el.closest('.grzz') : null;
+  return w ? (parseFloat(w.style.zoom) || 1) : 1;
+}
 /* 제 창·제 kind 몫만 보낸다 (0 = 처음대로) — 위젯·넓게 보기가 서로의 값을 덮지 않게 */
 function grZoomSave(kind, z) { var o = {}; o[grZoomKey(kind)] = z; widgetAPI.setUi({ grZoom: o }); }
 function grzApply(app, kind, z) {
   if (kind === 'dash') { dashPlace(); return; }          // 웹앱은 메인이 화면 배율로 키운다
+  if (kind.indexOf('v-') === 0) {
+    app.querySelectorAll('.grzz[data-grz="' + kind + '"]').forEach(function (b) { b.style.zoom = z; b.style.setProperty('--grzz', z); });
+    if (typeof attPop !== 'undefined' && attPop) attPlacePop();
+    return;
+  }
   app.querySelectorAll('.grz[data-grz="' + kind + '"]').forEach(function (b) { b.style.setProperty('--grz', z); });
 }
 function wireGrZoom(app) {
@@ -246,6 +267,7 @@ function wireGrZoom(app) {
       /* 기준 높이 — 표면 손잡이 바로 위 표, 웹앱이면 얹은 자리. 끈 만큼 그 높이가 늘어나는 배율 */
       var box = kind === 'dash' ? document.getElementById('dashHost') : hd.previousElementSibling;
       var y0 = ev.clientY, h0 = (box && box.getBoundingClientRect().height) || 300, z0 = grZoom(kind), z = z0;
+      if (kind.indexOf('v-') === 0) h0 = Math.max(240, Math.min(h0, 360));   // 본문 통째 — 길든 짧든 240~360px 끌면 두 배쯤(감도 고르게)
       document.body.classList.add('grzing');
       /* ★ 끄는 사이 1분 새로고침으로 다시 그려질 수 있다 — 표는 매번 새로 찾고, 손 뗌은 document 에서 받는다 */
       var move = function (e2) {
@@ -717,6 +739,19 @@ var TKSPLIT = 300;   // 오른쪽 단의 너비(px) — 칸막이를 끌어 정�
 var TICK = null, tickBusy = false, tickErr = '';
 /* 틱틱 거르기 — 기간(오늘·이번주·마감없음·전체)과 목록. 기본은 «이번주». */
 var tickWhen = 'week', tickList = '';
+var tickViewInit = false;          // 20번 — 마지막에 보던 목록을 켤 때 한 번 되살렸나
+/* '__inbox' = 아직 안 고른 첫 켜기 — 목록이 오면 «기본함» 의 진짜 아이디로 바꾼다.
+   기본함처럼 마감 없는 목록이 이번 기간에 0 이면 «전체» 기간으로(목록을 눌렀을 때와 같은 규칙) */
+function tickResolveView(d) {
+  var ps = (d && d.projects) || [];
+  if (tickList === '__inbox') {
+    if (!ps.length) return;
+    tickList = (ps.filter(function (p) { return p.name === '기본함'; })[0] || ps[0] || {}).id || '';
+    if (tickList && tickWhen !== 'all' && !tickCountOf(tickList, tickWhen) && tickCountOf(tickList, 'all')) tickWhen = 'all';
+  } else if (tickList && ps.length && !ps.some(function (p) { return p.id === tickList; })) {
+    tickList = '';                                  // 지워진 목록이면 «전체»
+  }
+}
 
 /* ISO 시각 → «2026.09.02 12:10» (KST) */
 function fmtStamp(iso) {
@@ -865,7 +900,7 @@ var tickClearAsk = false;         // «완료 전부 지우기» 확인 기다�
 /* 완료함 — 접어 두고, 펼치면 복원·지우기, 머리에서 전부 지우기 */
 function tickDoneHtml(d) {
   var list = (d && d.done) || [];
-  if (tickList) list = list.filter(function (x) { return x.pid === tickList; });
+  if (tickList && tickList !== '__inbox') list = list.filter(function (x) { return x.pid === tickList; });
   if (!list.length) return '';
   var h = '<div class="tddone"><div class="tddh">'
     + '<button class="tdb tddt" data-tkdoneopen="1">' + (tickDoneOpen ? '▾' : '▸') + ' 완료 ' + list.length + '</button>'
@@ -983,7 +1018,7 @@ function tickNewMerged() {
     p.pname = (ps.filter(function (x) { return x.id === tickNew.pid; })[0] || {}).name || '';
   }
   if (tickNew.due !== null) p.due = tickNew.due || null;
-  if (!p.pid && tickList) {                     // 아무것도 안 골랐으면 지금 보고 있는 보관함으로
+  if (!p.pid && tickList && tickList !== '__inbox') {   // 아무것도 안 골랐으면 지금 보고 있는 보관함으로
     p.pid = tickList;
     p.pname = (ps.filter(function (x) { return x.id === tickList; })[0] || {}).name || '';
   }
@@ -1120,8 +1155,9 @@ function viewTick() {
 
   /* ★ 다 보여주면 스물몇 개가 쏟아진다(2026-09-03 실측 26개).
      기간과 목록으로 걸러 «지금 볼 것» 만 남긴다. */
+  tickResolveView(d);                               // 20번 — 첫 켜기의 «기본함» 을 진짜 아이디로
   var all = ((d && d.tasks) || []).filter(function (t) { return t.status !== 2; });
-  var byList = tickList ? all.filter(function (t) { return t.projectId === tickList; }) : all;
+  var byList = tickList && tickList !== '__inbox' ? all.filter(function (t) { return t.projectId === tickList; }) : all;
   var list = byList.filter(function (t) {
     if (tickWhen === 'all') return true;
     var n = tkDays(t.due);
@@ -1737,12 +1773,58 @@ var ATT_TYPES = [
   /* ★ 시트 유형 목록에 없다 — 고르면 «앱에만» 남기고 시트엔 안 쓴다(2026-09-11 지시) */
   ['미인정', ['미인정결석', '미인정지각', '미인정조퇴', '미인정결과']]
 ];
+/* 유형 판 — 시트 «입력» 유형 칸의 드롭다운 목록(다리가 ATT.types 로 준다)에 맞춘다(v1.130.0).
+   1학년 시트처럼 목록에 더 있는 것(기타결석·외출(조회 전/점심시간)·생활상담부 …)은 «기타» 줄 끝에 붙인다. 미인정 줄은 늘 */
+function attTypeGroups() {
+  var sheet = ATT && ATT.types && ATT.types.length ? ATT.types : null;
+  if (!sheet) return ATT_TYPES;
+  var 아는것 = {};
+  ATT_TYPES.forEach(function (row) { row[1].forEach(function (t) { 아는것[t] = 1; }); });
+  var 더 = sheet.filter(function (t) { return !아는것[t]; });
+  return ATT_TYPES.map(function (row) {
+    if (row[0] === '미인정') return row;
+    var list = row[1].filter(function (t) { return sheet.indexOf(t) >= 0; });
+    return [row[0], row[0] === '기타' ? list.concat(더) : list];
+  }).filter(function (row) { return row[1].length; });
+}
 var ATT_GUBUN = ['나이스', '종이서류', '서류없음'];
 var ATT_FIXES = ['수정완료', '보고서 상신완료', '재제출'];
 var ATT_REASONS = ['병원진료', '생리통', '체험학습', '진로 체험',
   '극심한 생리통 증상으로 가정에서 휴식을 취함'];
 
-function attCls() { return (ATTCFG && ATTCFG.cls) || '3-2'; }
+/* ── 누가 무엇을 (v1.130.0) ──────────────────────────────────────
+   ATT_ME = 메인이 준 «나» — 지비스: 관리자(전 학년 보기·우리 반 적기) / 혜원이지: 연결 코드 + 나는 누구 → 다리의 역할표.
+     { jinho, hasLink, linkAt, who, whoAt, teachers:[{no,mask}], me:{ name,title,role,cls, view:[반], write:[반], req:[반] } }
+   attSel = 지금 보고 있는 반(여러 반을 볼 수 있는 분만 바꾼다) */
+var ATT_ME = null, attMeBusy = false, attSel = '', attSetup = false;
+var attSetupWho = null, attSetupCode = '', attSetupMsg = '', attSetupOk = false, attSetupBusy = false, attLinkMsg = '', attLinkJust = false;
+function attMe() { return ATT_ME && ATT_ME.me; }
+function attCls() {
+  var me = attMe();
+  if (attSel && me && me.view.indexOf(attSel) >= 0) return attSel;
+  if (me && me.cls) return me.cls;
+  if (me && me.view && me.view.length) return me.view[0];
+  return (ATTCFG && ATTCFG.cls) || '3-2';
+}
+function attCanWrite() { var me = attMe(); return !!(me && me.write.indexOf(attCls()) >= 0); }
+function attCanReq() { var me = attMe(); return !!(me && me.req && me.req.indexOf(attCls()) >= 0); }
+function attMeLoad(then) {
+  if (attMeBusy) return;
+  attMeBusy = true;
+  widgetAPI.attMeGet().then(function (r) {
+    attMeBusy = false;
+    ATT_ME = r || { ok: false };
+    if (then) then();
+    render();
+  }).catch(function () { attMeBusy = false; ATT_ME = { ok: false }; render(); });
+}
+/* 반 바꾸기 — 받아 둔 목록을 버리고 새로 읽는다 */
+function attPickCls(c) {
+  if (c === attCls()) return;
+  attSel = c; ATT = null; attMon = ''; attSeqTried = ''; attOpt = []; attEditing = null; attPop = null;
+  attAddMsg = ''; attMsg = ''; attErr = '';
+  attLoad(); render();
+}
 function attErrText(e) {
   return String((e && e.message) || e || '').replace(/^Error invoking remote method .[^.]*.:\s*/, '');
 }
@@ -1758,12 +1840,21 @@ function attHue(t) {
   return 6;
 }
 function attLoad() {
-  if (!HAS_TT) return;
+  if (!attMe()) return;                             // 누구인지 모르면 읽지 않는다
   if (attBusy) { attAgain = true; return; }        // 읽는 중에 또 부르면 끝나고 한 번 더
   attBusy = true; attErr = '';
   var g = ++attLoadGen;
-  widgetAPI.attList().then(function (r) {
+  var 반 = attCls();
+  widgetAPI.attList(반).then(function (r) {
     attBusy = false;
+    if (반 !== attCls()) { if (attAgain) { attAgain = false; } attLoad(); return; }   // 그새 반을 바꿨다
+    if (r && !r.ok && /^(nolink|nowho|badkey|badcode|notmine|locked)$/.test(r.code || '')) {
+      /* 연결·나는 누구가 틀어졌다 — 처음 화면으로 */
+      attSetup = true; attSetupMsg = r.msg || ''; ATT = null;
+      if (ATT_ME) ATT_ME.me = null;
+      render(); return;
+    }
+    if (r && r.ok && r.me && ATT_ME) ATT_ME.me = r.me;   // 다리가 알려 준 «할 수 있는 일» (역할표가 바뀌었을 수 있다)
     if (r && r.ok) {
       ATT = r;
       // 저장이 끝난 «뒤에» 시작한 읽기면 시트 값이 들어왔다 — 먼저 보여 준 줄을 걷는다
@@ -1872,13 +1963,14 @@ function attSeqPlan() {
   return items;
 }
 function attSeqSync() {
+  if (!attCanWrite()) return;                       // 담임 반에서만 연번을 매긴다
   if (!ATT || ATT.spillErr || !(ATT.has && ATT.has.seq)) return;
   var items = attSeqPlan();
   if (!items.length) return;
   var key = JSON.stringify(items);
   if (key === attSeqTried) return;               // 같은 것을 되풀이해 적지 않는다
   attSeqTried = key;
-  widgetAPI.attSeq(items).then(function (r) {
+  widgetAPI.attSeq(items, attCls()).then(function (r) {
     if (r && r.ok) {
       if (r.skipped) { attLoad(); return; }       // 그새 시트가 바뀌었다 — 새로 읽어 다시
       items.forEach(function (it) {
@@ -1902,8 +1994,12 @@ function attUnsorted() {
 }
 
 function viewAtt() {
-  if (!HAS_TT) return '<div class="empty">출결은 지비스에서만 씁니다.</div>';
-  if (!ATT) { attLoad(); return attBar() + '<div class="empty">출결 목록을 읽는 중…</div>'; }
+  if (!ATT_ME) { attMeLoad(); return '<div class="empty">출결을 준비하는 중…</div>'; }
+  if (!attMe() || attSetup) return attSetupView();      // 혜원이지 — 연결 코드·나는 누구부터
+  if (!ATT) {
+    if (!attBusy) attLoad();                         // 읽는 중이면 또 부르지 않는다(다리를 두 번 부르면 몇 초 더 걸린다)
+    return attBar() + '<div class="empty">출결 목록을 읽는 중…</div>';
+  }
   if (!attMon) attMon = attThisMon();
   var list = attOf(attMon);
   var folded = attFolded(attMon);
@@ -1916,6 +2012,12 @@ function viewAtt() {
     + (nPend ? ' · <b class="atpend">답할 것 ' + nPend + '</b>' : '')
     + (folded ? ' · 접어 둔 달' : '')
     + (attBusy ? ' · 읽는 중…' : '') + '</div>';
+  /* 남의 반 — 보기만(학년부장은 수정요청사항만 적는다) */
+  if (!attCanWrite()) {
+    h += '<div class="rhint atro">' + (attCanReq()
+      ? '👁 ' + esc(attCls()) + ' 반은 보기만 합니다 — <b>수정요청사항</b> 칸을 누르면 담임 선생님께 요청을 적을 수 있어요.'
+      : '👁 ' + esc(attCls()) + ' 반은 보기만 합니다.') + '</div>';
+  }
   if (folded) h += '<div class="rhint">검토가 끝나 시트에서 접어 둔 달입니다. 고치려면 먼저 «펴기» 를 누르세요.</div>';
   h += attTable(list, folded);
   return h;
@@ -1932,7 +2034,7 @@ function attBar() {
       + (p ? '<em class="atbad">' + p + '</em>' : '') + '</button>';
   }).join('');
   var has = ATT && attOf(attMon).some(function (x) { return !x.local; }), f = ATT && attFolded(attMon);
-  return '<div class="top2"><div class="wknav atbar">' + chips
+  return '<div class="top2">' + attClsBar() + '<div class="wknav atbar">' + chips
     + '<span class="spacer"></span>'
     /* 점검하기 스위치 — 켜면 체크 칸·저장 시각이 보인다 */
     + (ATT ? (attChkOn && ATTCHKAT ? '<span class="atchkat">' + (attChkJust ? '✅ 저장됨 · ' : '마지막 저장 · ') + esc(ATTCHKAT) + '</span>' : '')
@@ -1942,11 +2044,82 @@ function attBar() {
     + (has ? '<button class="wkb' + (attPrintOpen ? ' go' : '') + '" id="atPrint" title="'
       + (attPrintOpen ? '미리보기 창이 열려 있습니다 — 누르면 앞으로 가져옵니다' : '시트의 «N월 인쇄하기» 와 같은 종이') + '">'
       + (attPrintOpen ? '🖨 미리보기 열림 · 앞으로' : '🖨 ' + Number(attMon.slice(5)) + '월 인쇄') + '</button>' : '')
-    + (has ? '<button class="wkb" id="atFold"' + (attFoldBusy ? ' disabled' : '') + ' title="'
+    + (has && attCanWrite() ? '<button class="wkb" id="atFold"' + (attFoldBusy ? ' disabled' : '') + ' title="'
       + (f ? '이 달 줄을 시트에서 다시 보이게' : '검토 끝난 달 — 시트에서 이 달 줄을 숨깁니다') + '">'
       + (attFoldBusy ? (f ? '펴는 중…' : '접는 중…') : (f ? '펴기' : '접기')) + '</button>' : '')
     + '<button class="wkb" id="atGet" title="시트에서 다시 읽기">⟳</button>'
     + fontBtns('att') + '</div></div>';
+}
+
+/* 반 고르기 — 여러 반을 볼 수 있는 분(지비스·교장·교감·교무부장·학년부장)만. 혜원이지는 «나» 단추도 (v1.130.0) */
+function attMeLabel(me) {
+  if (!me) return '';
+  return esc(me.name) + ' 선생님 · ' + (me.title ? esc(me.title)
+    : me.role === 'head' ? me.cls.split('-')[0] + '학년부장 (' + esc(me.cls) + ' 담임)' : esc(me.cls) + ' 담임');
+}
+function attClsBar() {
+  var me = attMe();
+  if (!me) return '';
+  var who = HAS_TT ? '' : '<button class="wkb atwho" id="atWho" title="나는 누구 · 연결 코드 바꾸기">👤 ' + attMeLabel(me) + '</button>';
+  if ((me.view || []).length <= 1) return who ? '<div class="wknav atcls"><span class="spacer"></span>' + who + '</div>' : '';
+  var g = {};
+  me.view.forEach(function (c) { var k = c.split('-')[0]; (g[k] = g[k] || []).push(c); });
+  var h = Object.keys(g).sort().map(function (k) {
+    return '<span class="atclsg"><i>' + k + '학년</i>' + g[k].map(function (c) {
+      var mine = me.write.indexOf(c) >= 0;
+      return '<button class="wkb' + (c === attCls() ? ' now' : '') + '" data-atcls="' + c + '" title="' + c
+        + (mine ? ' · 우리 반' : ' · 보기만') + '">' + c.split('-')[1] + '반' + (mine ? '<em>★</em>' : '') + '</button>';
+    }).join('') + '</span>';
+  }).join('');
+  return '<div class="wknav atcls">' + h + '<span class="spacer"></span>' + who + '</div>';
+}
+/* 처음 한 번 — 연결 코드 · 나는 누구 · 확인번호 (혜원이지) */
+function attSetupView() {
+  var A = ATT_ME || {};
+  if (A.jinho) return '<div class="empty">출결을 불러오지 못했습니다.</div>';
+  var h = '<div class="atsetup"><div class="atsth">출결 — 처음 한 번만 연결합니다</div>';
+  h += '<div class="atstep"><b>① 연결 코드</b><small>김진호 선생님께 메신저로 받은 «HWATT1:…» 글을 통째로 붙여 넣으세요</small>'
+    + '<div class="atnr"><input id="atLink" class="gpai wide" placeholder="HWATT1:…" autocomplete="off">'
+    + '<button class="wkb go" id="atLinkSave">저장</button></div>'
+    + (A.hasLink ? '<div class="rsaved">' + (attLinkJust ? '✅ 저장됨 · ' : '마지막 저장 · ') + esc(A.linkAt || '') + '</div>' : '')
+    + (attLinkMsg ? '<div class="' + (attLinkJust ? 'rhint' : 'atwarn') + '">' + esc(attLinkMsg) + '</div>' : '') + '</div>';
+  if (A.hasLink) {
+    var sel = attSetupWho || A.who || null;
+    var same = function (w) { return !!sel && JSON.stringify(sel) === JSON.stringify(w); };
+    var btn = function (w, label) {
+      return '<button class="wkb gpac' + (same(w) ? ' on' : '') + '" data-atwho="' + esc(JSON.stringify(w)) + '">' + label + '</button>';
+    };
+    var ts = A.teachers || [];
+    h += '<div class="atstep"><b>② 나는 누구</b><small>컴시간 선생님 목록에서 고르세요 — 수업이 없는 분은 «교장»·«교감»</small><div class="atwhos">'
+      + btn({ special: 'principal' }, '교장') + btn({ special: 'vice' }, '교감') + '<span class="atsep"></span>'
+      + ts.map(function (t) { return btn({ no: t.no, mask: t.mask }, '<i>' + t.no + '</i>' + esc(t.mask)); }).join('')
+      + '</div>' + (ts.length ? '' : '<div class="rhint">컴시간 시간표를 먼저 받아 주세요 — «컴시간» 탭의 ⚙ 에서 학교를 고르면 선생님 목록이 생깁니다.</div>')
+      + '</div>';
+    h += '<div class="atstep"><b>③ 확인번호</b><small>학년부장·교무부장·교장·교감 선생님만 넣습니다 — 담임 선생님은 비워 두세요</small>'
+      + '<div class="atnr"><input id="atCode" class="gpai" type="password" inputmode="numeric" autocomplete="off" placeholder="확인번호" style="width:9em">'
+      + '<button class="wkb go" id="atWhoSave"' + (sel && !attSetupBusy ? '' : ' disabled') + '>' + (attSetupBusy ? '확인 중…' : '확인') + '</button></div></div>';
+    if (attMe() && A.whoAt) {
+      h += '<div class="rsaved">' + (attSetupOk ? '✅ 확인됨 · ' : '마지막 확인 · ') + esc(A.whoAt) + ' — ' + attMeLabel(attMe()) + '</div>'
+        + '<button class="wkb go" id="atSetupDone">출결 보기 →</button>';
+    }
+    if (attSetupMsg) h += '<div class="atwarn">' + esc(attSetupMsg) + '</div>';
+  }
+  return h + '</div>';
+}
+/* 수정요청사항 칸 — 학년부장이면 누르면 적는 판이 뜬다(수정여부 칸과 같은 방식) */
+var attReqDraft = {};
+function attReqCell(x, lock) {
+  var can = attCanReq() && !x.local && !x.saving && !x.hidden;
+  var busy = !!attRowBusy[x.sig];
+  var val = attReqDraft[x.sig] !== undefined ? attReqDraft[x.sig] : x.req;
+  var pop = can ? attChipPop('req', x.sig,
+    '<div class="atnr"><input class="gpai wide" data-atrqi="' + esc(x.sig) + '" value="' + esc(val || '')
+    + '" placeholder="담임 선생님께 요청할 것을 적어 주세요">'
+    + '<button class="wkb go" data-atrqs="' + esc(x.sig) + '" data-r="' + x.r + '"' + (busy ? ' disabled' : '') + '>'
+    + (busy ? '저장 중…' : '저장') + '</button></div>') : '';
+  return '<td class="rq' + (attPending(x) ? ' pend' : '') + (can ? ' atcell pick' : '') + (busy ? ' busy' : '') + '"'
+    + (can ? ' data-atpop="req§' + esc(x.sig) + '" title="수정요청사항 적기(학년부장)"' : '') + '>'
+    + (busy ? '…' : esc(x.req || '')) + pop + '</td>';
 }
 
 /* 막힘·알림·정렬 안내 */
@@ -2033,7 +2206,7 @@ function attTableMin() {
 }
 function attTable(list, folded) {
   var extra = (attChkOn ? ATT_CHK.map(function (k) { return k[1]; }) : [])
-    .concat(attHasReq() ? ['수정요청사항'] : []).concat(attHasFix() ? ['수정여부'] : []);
+    .concat(attHasReq() ? ['수정요청사항'] : []).concat(attHasFix() ? [ATT && ATT.has && ATT.has.fixApp ? '수정여부<small title="시트에 칸이 없어 앱에만 둡니다">앱</small>' : '수정여부'] : []);
   var keys = attColKeys();
   var h = '<div class="attw"><table class="attt" style="' + attTableMin() + '">' + attColgroup()
     + '<thead><tr>' + ATT_COLS.concat(extra).map(function (c, i) {
@@ -2042,6 +2215,7 @@ function attTable(list, folded) {
   h += list.map(function (x) { return attRowHtml(x, folded); }).join('');
   h += '</tbody></table></div>';
   /* ★ 새로 적는 줄은 표 밖 «입력칸» 타일에 — 목록과 헷갈리지 않게(2026-09-11). 칸 너비는 목록과 같다 */
+  if (!attCanWrite()) return h;                      // 남의 반 — 새로 적는 칸 없음
   h += '<div class="atnewbox' + (attEditing ? ' editing' : '') + '"><div class="atnewt">'
     + (attEditing ? '✎ 고치는 중 — 바꾸고 저장' : '＋ 새 출결 적기') + '</div>'
     + '<div class="attw"><table class="attt attnew" style="' + attTableMin() + '">' + attColgroup() + '<tbody>'
@@ -2086,7 +2260,7 @@ function attWireResize(app) {
 /* 팝업(칩 팔레트) — 어느 셀에 떠 있나. { kind:'st'|'type'|'gubun'|'end', key:'new'|sig } */
 var attPop = null;
 function attPopOpen(kind, key) { return attPop && attPop.kind === kind && attPop.key === key; }
-var ATT_POP_T = { gubun: '구분', st: '학생', type: '유형', end: '종료', fix: '수정여부' };
+var ATT_POP_T = { gubun: '구분', st: '학생', type: '유형', end: '종료', fix: '수정여부', req: '수정요청사항' };
 function attChipPop(kind, key, inner) {
   if (!attPopOpen(kind, key)) return '';
   return '<div class="atpop k-' + kind + '" data-atpopbox="1"><div class="atpopt"><b>' + ATT_POP_T[kind] + '</b>'
@@ -2101,7 +2275,7 @@ function attGubunPop(key, cur) {
 }
 function attTypePop(key, cur) {
   return attChipPop('type', key,
-    ATT_TYPES.map(function (g) {
+    attTypeGroups().map(function (g) {
       return '<div class="atpr' + (g[0] === '미인정' ? ' loc' : '') + '"><i>' + esc(g[0]) + (g[0] === '미인정' ? '<small>앱에만</small>' : '') + '</i>' + g[1].map(function (t) {
         return '<button class="wkb gpac' + (cur === t ? ' on' : '') + ' h' + attHue(t) + '" data-atpick="type§' + esc(key) + '§' + esc(t) + '">' + esc(t) + '</button>';
       }).join('') + '</div>';
@@ -2117,7 +2291,7 @@ function attStPop(key, cur) {
 }
 function attRowHtml(x, folded) {
   var busy = !!attRowBusy[x.sig];
-  var lock = folded || x.hidden || x.saving;       // 저장 중인 줄은 손대지 않게
+  var lock = folded || x.hidden || x.saving || !attCanWrite();   // 저장 중·남의 반(보기만)은 손대지 않게
   var tone = attRowTone(x.type), ht = attTypeTone(x.type);
   var cls = 'atr' + (tone ? ' ' + tone : '') + (attPending(x) ? ' pend' : '') + (x.hidden ? ' hid' : '') + (x.local ? ' local' : '')
     + (x.saving ? ' saving' : '') + (attChkOn && attChkDone(x) ? ' chkdone' : '');
@@ -2139,7 +2313,7 @@ function attRowHtml(x, folded) {
       + attRowBtns(x, lock)
       + '</td>'
       + (attChkOn ? attChkCells(x) : '')
-      + (attHasReq() ? '<td class="rq' + (attPending(x) ? ' pend' : '') + '">' + esc(x.req || '') + '</td>' : '')
+      + (attHasReq() ? attReqCell(x, lock) : '')
       + (attHasFix() ? attFixCell(x, lock) : '')
       + '</tr>';
   return h;
@@ -2188,7 +2362,8 @@ function attNewRow(folded) {
   var h = '<tr class="atnew' + (앱만 ? ' local' : '') + (attEditing ? ' editing' : '') + '">'
     + '<td class="c"><b>' + (attEditing ? '✎' : '＋') + '</b></td>'
     + '<td class="c atcell pick' + (앱만 ? ' off' : '') + '" data-atpop="gubun§new">' + (앱만 ? '—' : esc(A.gubun || '구분')) + attGubunPop('new', A.gubun) + '</td>'
-    + '<td class="c atcell pick" data-atpop="st§new" colspan="2">' + (A.id ? esc(A.id) + ' ' + esc(A.name) : '학생') + attStPop('new', A.id) + '</td>'
+    + '<td class="c atcell pick' + (!A.id && !attEditing ? ' need' : '') + '" data-atpop="st§new" colspan="2" title="학생부터 골라 주세요">'
+      + (A.id ? esc(A.id) + ' ' + esc(A.name) : '① 학생') + attStPop('new', A.id) + '</td>'
     + '<td class="c" colspan="2"><div class="atdt"><input type="date" id="atNewDate" value="' + esc(A.date) + '">'
       + (t && !결석 ? '<input type="time" id="atNewTime" value="' + esc(A.time || '') + '">' : '')
       + (A.end ? '<small>' + esc(/^\d{4}-/.test(A.end) ? '~ ' + attMd(A.end) : A.end) + '</small>' : '') + '</div></td>'
@@ -2270,7 +2445,12 @@ function attReasonChips() {
 /* ── 앱에만 두는 출결(미인정) — 시트엔 없는 유형. 메인이 OneDrive 로 두 PC 에 나눈다 ── */
 var ATTLOCAL = [];
 function attLocalRows() {
-  return (ATTLOCAL || []).map(function (o) {
+  /* 앱에만 둔 줄은 반 구분이 없다 — 학번 앞 두 자리(학년·반)로 지금 반 것만 */
+  var 반 = attCls();
+  return (ATTLOCAL || []).filter(function (o) {
+    var id = String(o.id || '');
+    return id.charAt(0) + '-' + Number(id.charAt(1)) === 반;
+  }).map(function (o) {
     var d = String(o.date || '');
     var m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     return { local: true, key: o.key, r: 0, sig: 'L' + o.key, seq: '', gubun: '',
@@ -2390,19 +2570,20 @@ function attEditSave(보냄) {
     ? (attIsLocalType(보냄.type) ? widgetAPI.attLocalEdit(Object.assign({ key: E.key }, 보냄))
         : Promise.resolve({ ok: false, msg: '앱에만 있는 줄은 미인정으로만 둘 수 있습니다 — 시트에 넣으려면 지우고 새로 적어 주세요' }))
     : (attIsLocalType(보냄.type) ? Promise.resolve({ ok: false, msg: '시트 줄을 미인정으로 바꿀 수는 없습니다 — 지우고 미인정으로 새로 적어 주세요' })
-        : widgetAPI.attEdit(Object.assign({ old: E.old }, 보냄)));
+        : widgetAPI.attEdit(Object.assign({ old: E.old, cls: attCls() }, 보냄)));
   pr.then(끝).catch(function (e) { attAddBusy = false; 되살림(attErrText(e)); render(); });
 }
 /* 반 탭의 한 칸 적기 (구분·수정여부) */
 function attSetCell(x, field, value) {
   if (!x || attRowBusy[x.sig]) return;
   attRowBusy[x.sig] = true; attErr = ''; render();
-  widgetAPI.attSet({ r: x.r, sig: x.sig, field: field, value: value }).then(function (r) {
+  widgetAPI.attSet({ cls: attCls(), r: x.r, sig: x.sig, field: field, value: value }).then(function (r) {
     delete attRowBusy[x.sig];
     if (r && r.ok) {
       if (field === 'gubun') x.gubun = value;
+      else if (field === 'req') { x.req = value; delete attReqDraft[x.sig]; }
       else { x.fix = value; x.fixAt = r.savedAt || 지금시각(); attFixJust[x.sig] = true; delete attFixDraft[x.sig]; }
-      attMsg = (field === 'gubun' ? '구분 «' + value + '»' : '수정여부') + ' 적음 — ' + x.name + ' ' + attMd(x.start);
+      attMsg = (field === 'gubun' ? '구분 «' + value + '»' : field === 'req' ? '수정요청사항' : '수정여부') + ' 적음 — ' + x.name + ' ' + attMd(x.start);
       attMsgAt = r.savedAt || 지금시각();
     } else if (r && r.moved) {
       attErr = r.msg || '시트의 줄이 바뀌었습니다 — 다시 읽습니다';
@@ -2432,22 +2613,88 @@ function attPlacePop() {
   var box = app.querySelector('.atpop');
   var cell = app.querySelector('[data-atpop="' + attPop.kind + '§' + attPop.key + '"]');
   if (!box || !cell) return;
-  var c = cell.getBoundingClientRect();
-  var w = box.offsetWidth, h = box.offsetHeight;
+  /* ★ 본문이 zoom 으로 커져 있으면(19번) fixed 판의 left·top 도 배율만큼 밀려 그려진다 —
+       화면 좌표로 계산한 뒤 배율로 나눠 넣는다. 크기는 화면에 보이는 크기(getBoundingClientRect)로 잰다 */
+  var zz = grzOf(box);
+  box.style.maxHeight = ''; box.style.overflowY = '';
+  var c = cell.getBoundingClientRect(), br = box.getBoundingClientRect();
+  var w = br.width, h = br.height;
   var vw = window.innerWidth, vh = window.innerHeight;
   var head = parseFloat(getComputedStyle(app).getPropertyValue('--toph')) || 0;
-  var top = c.bottom + 4;
-  if (top + h > vh - 8 && c.top - h - 4 >= head + 4) top = c.top - h - 4;      // 아래가 모자라면 위로
-  top = Math.max(head + 4, Math.min(top, vh - 8 - h));
+  var 아래 = vh - 8 - (c.bottom + 4), 위 = (c.top - 4) - (head + 4);
+  var top;
+  if (h <= 아래) top = c.bottom + 4;                         // 아래에 들어가면 아래
+  else if (h <= 위) top = c.top - h - 4;                     // 아래가 모자라면 위로
+  else {
+    /* ★ 위아래 다 모자라면(창이 낮고 반 고르기 줄까지 있을 때) 칸을 덮지 말고
+         넓은 쪽에 붙여 판 안에서 굴린다 (v1.130.0) */
+    var 쪽 = Math.max(아래, 위, 120);
+    box.style.maxHeight = (쪽 / zz) + 'px'; box.style.overflowY = 'auto';
+    top = 아래 >= 위 ? c.bottom + 4 : c.top - 4 - 쪽;
+  }
   var left = Math.max(8, Math.min(c.left, vw - 8 - w));
+  left = left / zz; top = top / zz;
   box.style.left = left + 'px';
   box.style.top = top + 'px';
   box.style.visibility = 'visible';
 }
 var attPopScrollHooked = null;
 
+/* 반 고르기 · 나는 누구(연결 코드·확인번호) · 수정요청사항 칸 (v1.130.0) */
+function wireAttMe(app) {
+  var on = function (sel, fn) {
+    app.querySelectorAll(sel).forEach(function (b) { b.addEventListener('click', function (ev) { fn(b, ev); }); });
+  };
+  on('[data-atcls]', function (b) { attPickCls(b.dataset.atcls); });
+  on('#atWho', function () { attSetup = true; attSetupWho = null; attSetupMsg = ''; attSetupOk = false; attLinkMsg = ''; render(); });
+  on('#atLinkSave', function () {
+    var el = app.querySelector('#atLink');
+    var v = el ? el.value : '';
+    if (!String(v).trim()) { attLinkMsg = '연결 코드를 붙여 넣어 주세요'; render(); return; }
+    widgetAPI.attMeSet({ link: v }).then(function (r) {
+      if (r && r.ok) { attLinkJust = true; attLinkMsg = r.how || ''; attMeLoad(); }
+      else { attLinkJust = false; attLinkMsg = (r && r.msg) || '저장하지 못했습니다'; render(); }
+    }).catch(function (e) { attLinkMsg = attErrText(e); render(); });
+  });
+  on('[data-atwho]', function (b) {
+    try { attSetupWho = JSON.parse(b.dataset.atwho); } catch (e) { attSetupWho = null; }
+    attSetupMsg = ''; attSetupOk = false; render();
+  });
+  on('#atWhoSave', function () {
+    var who = attSetupWho || (ATT_ME && ATT_ME.who);
+    if (!who || attSetupBusy) return;
+    var el = app.querySelector('#atCode');
+    attSetup = true;                               // 확인 뒤에도 이 화면에 남아 «✅ 확인됨 · 시각» 을 보여 준다
+    attSetupBusy = true; attSetupMsg = ''; render();
+    widgetAPI.attMeSet({ who: who, code: el ? el.value : '' }).then(function (r) {
+      attSetupBusy = false;
+      if (r && r.ok) {
+        attSetupOk = true; attSetupWho = null; attSel = ''; ATT = null; attMon = ''; attOpt = [];
+        attMeLoad();
+      } else { attSetupMsg = (r && r.msg) || '확인하지 못했습니다'; render(); }
+    }).catch(function (e) { attSetupBusy = false; attSetupMsg = attErrText(e); render(); });
+  });
+  on('#atSetupDone', function () { attSetup = false; attSetupMsg = ''; ATT = null; attLoad(); render(); });
+  /* 수정요청사항 — 학년부장 */
+  app.querySelectorAll('[data-atrqi]').forEach(function (el) {
+    el.addEventListener('input', function () { attReqDraft[el.dataset.atrqi] = el.value; });
+    el.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      var s2 = app.querySelector('.atpop [data-atrqs]'); if (s2) s2.click();
+    });
+  });
+  on('[data-atrqs]', function (b, ev) {
+    ev.stopPropagation();
+    var x = attFind(b.dataset.atrqs, b.dataset.r);
+    if (!x) return;
+    attPop = null;
+    var v = attReqDraft[x.sig] !== undefined ? attReqDraft[x.sig] : x.req;
+    attSetCell(x, 'req', String(v || '').trim());
+  });
+}
 function wireAtt(app) {
-  if (!HAS_TT || VIEW !== 'att') return;
+  if (VIEW !== 'att') return;
+  wireAttMe(app);                                   // 반 고르기 · 나는 누구 · 수정요청사항 (v1.130.0)
   attWireResize(app);
   /* 좁은 창 — 목록 표와 새로 적는 줄 타일이 옆으로 함께 굴러가게 */
   var ws = app.querySelectorAll('.attw');
@@ -2486,6 +2733,9 @@ function wireAtt(app) {
     if (ev.target.closest && ev.target.closest('[data-atpopbox]')) return;
     if (b.classList.contains('off')) return;
     var p = b.dataset.atpop.split('§');
+    /* ★ 새 줄은 «학생부터» (2026-09-15) — 학생을 아직 안 골랐으면 구분·유형 칸을 눌러도 학생 판이 먼저 뜬다.
+         학생을 고르면 유형 판, 유형을 고르면 신청사유 칸으로 이어진다 */
+    if (p[1] === 'new' && p[0] !== 'st' && !attNew.id && !attEditing) p = ['st', 'new'];
     attPop = attPopOpen(p[0], p[1]) ? null : { kind: p[0], key: p[1] };
     render();
     if (attPop && attPop.kind === 'st') { var i = app.querySelector('#atNewId'); if (i) i.focus(); }
@@ -2498,7 +2748,10 @@ function wireAtt(app) {
     if (kind !== 'end') attPop = null;
     if (key === 'new') {
       if (kind === 'gubun') attNew.gubun = val;
-      else if (kind === 'st') { var q = val.split('|'); attNew.id = q[0]; attNew.name = q[1] || ''; }
+      else if (kind === 'st') {
+        var q = val.split('|'); attNew.id = q[0]; attNew.name = q[1] || '';
+        if (!attNew.type && !attEditing) attPop = { kind: 'type', key: 'new' };   // 학생 다음은 유형
+      }
       else if (kind === 'end') attNew.end = (attNew.end === val ? '' : val);
       else if (kind === 'type') {
         attNew.type = val;
@@ -2550,7 +2803,7 @@ function wireAtt(app) {
       : !String(A.reason || '').trim() ? '신청사유를 적어 주세요' : '';
     if (why) { attAddMsg = why; render(); return; }
     attAddBusy = true; attAddMsg = ''; attPop = null; render();
-    var 보냄 = { nonce: Date.now() + '-' + Math.random().toString(36).slice(2),
+    var 보냄 = { cls: attCls(), nonce: Date.now() + '-' + Math.random().toString(36).slice(2),
       id: A.id, name: A.name, date: A.date, time: A.time, end: A.end, type: A.type,
       reason: String(A.reason).trim() };
     if (attEditing) { attEditSave(보냄); return; }
@@ -2637,7 +2890,7 @@ function wireAtt(app) {
     if (!x) return;
     attRowBusy[x.sig] = true; attErr = ''; render();
     var pr = x.local ? widgetAPI.attLocalDel(x.key)
-      : widgetAPI.attDel({ id: x.id, name: x.name, date: x.start, type: x.type, reason: x.reason });
+      : widgetAPI.attDel({ cls: attCls(), id: x.id, name: x.name, date: x.start, type: x.type, reason: x.reason });
     pr.then(function (r) {
       delete attRowBusy[x.sig];
       if (r && r.ok) {
@@ -2652,7 +2905,7 @@ function wireAtt(app) {
     if (!attLast || attAddBusy) return;
     if (!confirm('방금 넣은 줄을 지울까요?\n\n' + attLast.id + ' ' + attMd(attLast.date) + ' ' + attLast.type)) return;
     attAddBusy = true; attAddMsg = '되돌리는 중…'; render();
-    var pr = attLast.local ? widgetAPI.attLocalDel(attLast.key) : widgetAPI.attUndo(attLast);
+    var pr = attLast.local ? widgetAPI.attLocalDel(attLast.key) : widgetAPI.attUndo(Object.assign({ cls: attCls() }, attLast));
     pr.then(function (r) {
       attAddBusy = false;
       attAddMsg = (r && r.ok) ? (r.how || '되돌렸습니다') : ((r && r.msg) || '되돌리지 못했습니다');
@@ -2699,7 +2952,7 @@ function wireAtt(app) {
     var m = Number(attMon.slice(5));
     if (!f && !confirm(m + '월 ' + n + '줄을 ' + attCls() + ' 탭에서 접어 둘까요? (행 숨김 — 검토 끝난 달)')) return;
     attFoldBusy = true; render();
-    widgetAPI.attFold({ month: attMon, hide: !f }).then(function (r) {
+    widgetAPI.attFold({ cls: attCls(), month: attMon, hide: !f }).then(function (r) {
       attFoldBusy = false;
       if (r && r.ok) {
         attMsg = r.how; attMsgAt = r.savedAt || 지금시각();
@@ -2723,7 +2976,7 @@ function wireAtt(app) {
     var cells = ((ATT && ATT.blockers) || []).filter(function (x) { return x.blank; }).map(function (x) { return x.a1; });
     if (!confirm(attCls() + ' 탭의 ' + cells.join('·') + ' 칸에 든 «공백» 을 지웁니다.\n글이 든 칸은 건드리지 않습니다. 진행할까요?')) return;
     b.disabled = true;
-    widgetAPI.attUnblock().then(function (r) {
+    widgetAPI.attUnblock(attCls()).then(function (r) {
       if (r && r.ok) { attMsg = r.how; attMsgAt = r.savedAt || 지금시각(); attSeqTried = ''; attLoad(); }
       else attErr = (r && r.msg) || '못 했습니다';
       render();
@@ -6069,7 +6322,7 @@ function render() {
         // ★ 지비스의 «바로가기» 는 런처보드다 — 이름만 다르고 화면 값(link)은 같다
         // ★ «업무관리»(노션)는 지비스에만 있다 — 시간표와 주간업무 사이
         HAS_TT ? ['tt,진호 시간표', 'task,업무관리', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'att,출결', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,런처보드']
-               : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,바로가기'],
+               : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'att,출결', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,바로가기'],   // 출결 — 혜원이지도(v1.130.0)
         TABORDER, function (s) { return s.split(',')[0]; }).map(function (s, i) {
         var p = s.split(',');
         return '<button class="chip nav' + NAVSTYLE + (tab === p[0] ? ' on' : '')
@@ -6100,7 +6353,8 @@ function render() {
   }
 
   html += '</div>';   // 머리 끝 — 여기부터는 스크롤된다
-  html += DASHV[VIEW] ? viewDash()
+  /* 19번 — 제 손잡이가 없는 화면은 본문을 통째로 감싸 아래 손잡이로 키우고 줄인다(grzBody) */
+  html += grzBody(VIEW, DASHV[VIEW] ? viewDash()
     : VIEW === 'week' ? viewWeek(d)
     : VIEW === 'progress' ? viewProgress(d)
     : VIEW === 'work' ? viewWork()
@@ -6114,7 +6368,7 @@ function render() {
     : VIEW === 'note' ? viewNote()
     : VIEW === 'grid' ? viewGrid()
     : VIEW === 'office' ? viewOffice()
-    : viewToday(d);
+    : viewToday(d));
   /* 화면 맨 끝 — 여기까지 굴렸으면 더 볼 것이 없다는 표시.
      ★ 긴 화면은 창 아래 끝에서 글이 그냥 끊겨서 «잘렸다» 로 보인다.
        이 줄이 나오면 «다 봤다» 는 뜻이다. (버전은 제목 줄 오른쪽 끝에 있다) */
@@ -6477,6 +6731,11 @@ widgetAPI.onData(function (p) {
       TODOS = p.task.todos || []; TODOAT = p.task.todosAt || '';
       if (p.task.split) TKSPLIT = p.task.split;
       TICK = p.task.tick || null;
+      /* 20번 — 켤 때 한 번만: 마지막에 보던 목록(두 PC 공유). 한 번도 안 골랐으면 «기본함» */
+      if (!tickViewInit && TICK && TICK.view !== undefined) {
+        tickViewInit = true;
+        tickList = TICK.view === null ? '__inbox' : String(TICK.view);
+      }
     }
   }
   FEED = (p.feed && p.feed.show && p.feed.data) ? p.feed.data : null;
@@ -6738,6 +6997,7 @@ function wireViews(app) {
       if (b.dataset.tkw) { tickWhen = b.dataset.tkw; render(); return; }
       if (b.dataset.tkl2 !== undefined) {
         tickList = b.dataset.tkl2;
+        widgetAPI.setUi({ tickView: tickList });      // 20번 — 두 PC 가 같은 목록을 기억
         /* ★ 고른 목록이 지금 기간엔 비어 있으면 «전체» 로 넘어간다 —
            기본함처럼 마감 없는 것뿐인 목록이 «이번주 0» 으로만 보여 «안 된다» 로 읽혔다. */
         if (tickList && tickWhen !== 'all' && !tickCountOf(tickList, tickWhen) && tickCountOf(tickList, 'all')) tickWhen = 'all';
