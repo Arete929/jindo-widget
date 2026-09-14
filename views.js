@@ -739,6 +739,19 @@ var TKSPLIT = 300;   // 오른쪽 단의 너비(px) — 칸막이를 끌어 정�
 var TICK = null, tickBusy = false, tickErr = '';
 /* 틱틱 거르기 — 기간(오늘·이번주·마감없음·전체)과 목록. 기본은 «이번주». */
 var tickWhen = 'week', tickList = '';
+var tickViewInit = false;          // 20번 — 마지막에 보던 목록을 켤 때 한 번 되살렸나
+/* '__inbox' = 아직 안 고른 첫 켜기 — 목록이 오면 «기본함» 의 진짜 아이디로 바꾼다.
+   기본함처럼 마감 없는 목록이 이번 기간에 0 이면 «전체» 기간으로(목록을 눌렀을 때와 같은 규칙) */
+function tickResolveView(d) {
+  var ps = (d && d.projects) || [];
+  if (tickList === '__inbox') {
+    if (!ps.length) return;
+    tickList = (ps.filter(function (p) { return p.name === '기본함'; })[0] || ps[0] || {}).id || '';
+    if (tickList && tickWhen !== 'all' && !tickCountOf(tickList, tickWhen) && tickCountOf(tickList, 'all')) tickWhen = 'all';
+  } else if (tickList && ps.length && !ps.some(function (p) { return p.id === tickList; })) {
+    tickList = '';                                  // 지워진 목록이면 «전체»
+  }
+}
 
 /* ISO 시각 → «2026.09.02 12:10» (KST) */
 function fmtStamp(iso) {
@@ -887,7 +900,7 @@ var tickClearAsk = false;         // «완료 전부 지우기» 확인 기다�
 /* 완료함 — 접어 두고, 펼치면 복원·지우기, 머리에서 전부 지우기 */
 function tickDoneHtml(d) {
   var list = (d && d.done) || [];
-  if (tickList) list = list.filter(function (x) { return x.pid === tickList; });
+  if (tickList && tickList !== '__inbox') list = list.filter(function (x) { return x.pid === tickList; });
   if (!list.length) return '';
   var h = '<div class="tddone"><div class="tddh">'
     + '<button class="tdb tddt" data-tkdoneopen="1">' + (tickDoneOpen ? '▾' : '▸') + ' 완료 ' + list.length + '</button>'
@@ -1005,7 +1018,7 @@ function tickNewMerged() {
     p.pname = (ps.filter(function (x) { return x.id === tickNew.pid; })[0] || {}).name || '';
   }
   if (tickNew.due !== null) p.due = tickNew.due || null;
-  if (!p.pid && tickList) {                     // 아무것도 안 골랐으면 지금 보고 있는 보관함으로
+  if (!p.pid && tickList && tickList !== '__inbox') {   // 아무것도 안 골랐으면 지금 보고 있는 보관함으로
     p.pid = tickList;
     p.pname = (ps.filter(function (x) { return x.id === tickList; })[0] || {}).name || '';
   }
@@ -1142,8 +1155,9 @@ function viewTick() {
 
   /* ★ 다 보여주면 스물몇 개가 쏟아진다(2026-09-03 실측 26개).
      기간과 목록으로 걸러 «지금 볼 것» 만 남긴다. */
+  tickResolveView(d);                               // 20번 — 첫 켜기의 «기본함» 을 진짜 아이디로
   var all = ((d && d.tasks) || []).filter(function (t) { return t.status !== 2; });
-  var byList = tickList ? all.filter(function (t) { return t.projectId === tickList; }) : all;
+  var byList = tickList && tickList !== '__inbox' ? all.filter(function (t) { return t.projectId === tickList; }) : all;
   var list = byList.filter(function (t) {
     if (tickWhen === 'all') return true;
     var n = tkDays(t.due);
@@ -6717,6 +6731,11 @@ widgetAPI.onData(function (p) {
       TODOS = p.task.todos || []; TODOAT = p.task.todosAt || '';
       if (p.task.split) TKSPLIT = p.task.split;
       TICK = p.task.tick || null;
+      /* 20번 — 켤 때 한 번만: 마지막에 보던 목록(두 PC 공유). 한 번도 안 골랐으면 «기본함» */
+      if (!tickViewInit && TICK && TICK.view !== undefined) {
+        tickViewInit = true;
+        tickList = TICK.view === null ? '__inbox' : String(TICK.view);
+      }
     }
   }
   FEED = (p.feed && p.feed.show && p.feed.data) ? p.feed.data : null;
@@ -6978,6 +6997,7 @@ function wireViews(app) {
       if (b.dataset.tkw) { tickWhen = b.dataset.tkw; render(); return; }
       if (b.dataset.tkl2 !== undefined) {
         tickList = b.dataset.tkl2;
+        widgetAPI.setUi({ tickView: tickList });      // 20번 — 두 PC 가 같은 목록을 기억
         /* ★ 고른 목록이 지금 기간엔 비어 있으면 «전체» 로 넘어간다 —
            기본함처럼 마감 없는 것뿐인 목록이 «이번주 0» 으로만 보여 «안 된다» 로 읽혔다. */
         if (tickList && tickWhen !== 'all' && !tickCountOf(tickList, tickWhen) && tickCountOf(tickList, 'all')) tickWhen = 'all';

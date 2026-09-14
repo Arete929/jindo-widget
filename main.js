@@ -619,6 +619,13 @@ function getTickApp() {
   return { id: String(s.clientId || '').trim(), secret: String(s.clientSecret || '').trim() };
 }
 function getTickList() { return String((loadState().tick || {}).listId || ''); }
+/* 틱틱 화면에서 보는 목록 — 한 번도 안 골랐으면 null(화면이 «기본함» 으로). '' 는 «전체» (두 PC 같게 OneDrive 먼저) */
+function getTickView() {
+  const s = readShared(), v = loadState();
+  if (typeof s.tickView === 'string') return s.tickView;
+  if (typeof v.tickView === 'string') return v.tickView;
+  return null;
+}
 function saveTick(patch) {
   saveState({ tick: Object.assign({}, loadState().tick || {}, patch) });
 }
@@ -1134,7 +1141,7 @@ function sendToWidget() {
       todos: getTodos(), todosAt: String(loadState().todosAt || ''),
       split: getTaskSplit(),
       tick: { on: !!getTickKey(), hasApp: !!(getTickApp().id && getTickApp().secret),
-              listId: getTickList(), data: tickData } } : null,
+              listId: getTickList(), view: getTickView(), data: tickData } } : null,
     update: { state: updateState, version: updateVersion }
   };
   if (widgetWin && !widgetWin.isDestroyed()) widgetWin.webContents.send('jindo-data', payload);
@@ -2699,7 +2706,7 @@ ipcMain.handle('get-settings', () => ({
       todos: getTodos(), todosAt: String(loadState().todosAt || ''),
       split: getTaskSplit(),
       tick: { on: !!getTickKey(), hasApp: !!(getTickApp().id && getTickApp().secret),
-              listId: getTickList(), data: tickData } } : null,
+              listId: getTickList(), view: getTickView(), data: tickData } } : null,
     wx: { show: getWxShow(), spot: getWxSpot(), data: wxData },
     grade: { on: getGradeOn(), sheets: getGradeSheets() },
     /* ★ 설정 창에도 준다 — 안 주면 칸이 비어 보이고, 그대로 «저장» 을 누르면
@@ -2781,6 +2788,12 @@ ipcMain.on('set-ui', (_e, v) => {
       clientSecret: String(a.clientSecret || '').trim().slice(0, 120) });
     debugLog('틱틱 — 앱 정보 저장');
     sendToWidget();
+  }
+  /* 업무관리 틱틱 — 화면에서 «보는» 목록(20번, 2026-09-15). 두 PC 가 같게 OneDrive 에도. 다시 보내지 않는다 */
+  if (v.tickView !== undefined) {
+    const id = String(v.tickView == null ? '' : v.tickView).slice(0, 80);
+    saveState({ tickView: id });
+    writeShared({ tickView: id });
   }
   if (v.tickList !== undefined) {
     saveTick({ listId: String(v.tickList || '') });
