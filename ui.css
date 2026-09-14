@@ -1074,6 +1074,22 @@
   .grzh:hover { border-top-color: var(--accent); }
   .grzh:hover i, body.grzing .grzh i { background: var(--accent); }
   body.grzing, body.grzing * { cursor: ns-resize !important; user-select: none !important; }
+  /* ── 19번: 본문 통째로 zoom (.grzz, --grzz = 배율) ──
+     zoom 속에서는 sticky·fixed 의 top·right·vh 가 배율만큼 커져 머리 밑이 아니라 더 아래에 붙는다 → 배율로 나눠 되돌린다 */
+  .grzz { min-width: 0; }
+  .grzz .gpbar { top: calc((var(--toph, 46px) + var(--top2h, 0px)) / var(--grzz, 1)); }
+  .grzz .gpadd {
+    top: calc((var(--toph, 46px) + var(--top2h, 0px) + var(--gpbh, 36px) + 4px) / var(--grzz, 1));
+    right: calc(14px / var(--grzz, 1)); width: min(480px, calc((100vw - 28px) / var(--grzz, 1)));
+    max-height: calc((100vh - var(--toph, 46px) - var(--top2h, 0px) - var(--gpbh, 36px) - 20px) / var(--grzz, 1));
+  }
+  @media (min-width: 780px) {     /* 틱틱이 옆에 붙박이로 설 때만(원래 규칙과 같은 조건) */
+    .grzz .tkright { top: calc((var(--toph, 46px) + 6px) / var(--grzz, 1));
+                     max-height: calc((100vh - var(--toph, 46px) - 22px) / var(--grzz, 1)); }
+  }
+  .grzz .atpop { max-width: min(640px, calc((100vw - 16px) / var(--grzz, 1)));
+                 max-height: calc((100vh - var(--toph, 46px) - 16px) / var(--grzz, 1)); }
+  .grzz .atpop.k-st { width: min(700px, calc((100vw - 16px) / var(--grzz, 1))); }
 
   /* ── 주간업무 ── */
   .wq {

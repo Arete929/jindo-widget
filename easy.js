@@ -521,7 +521,7 @@ render = function () {
       + '<span class="sub">' + esc(m.d) + '</span></div></div>'
       /* 모든 화면이 창을 다 쓴다 — 상한 없음 */
       + '<div id="view">'
-      + (VIEW === 'task' ? viewTasks()
+      + grzBody(VIEW, VIEW === 'task' ? viewTasks()   // 19번 — 본문 통째로 손잡이
         : VIEW === 'work' ? viewWork()
         : VIEW === 'cal' ? viewAcademic()
         : VIEW === 'att' ? viewAtt()

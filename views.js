@@ -223,10 +223,31 @@ function grzHandle(kind) { return '<div class="grzh" data-grzh="' + kind + '" ti
 function grzWrap(kind, inner) {
   return '<div class="grz" data-grz="' + kind + '" style="--grz:' + grZoom(kind) + '">' + inner + '</div>' + grzHandle(kind);
 }
+/* ── 19번: 나머지 모든 탭 — 본문 통째로 (v1.130.0, 2026-09-15) ──
+   표(.gr)처럼 칸마다 --grz 를 곱할 수 없는 화면(주간업무·학사일정·급식·학생기록·출결·교무실·바로가기·업무관리…)은
+   본문을 CSS zoom 으로 통째로 키운다. kind = 'v-<화면>'. 붙박이·떠 있는 것(학사일정 구분 줄·틱틱·출결 판)은
+   zoom 속에서 자리가 배율만큼 밀리므로 --grzz 로 나눠 되돌린다(ui.css · attPlacePop).
+   ★ 제 손잡이가 있는 화면(오늘·주간진도·컴시간·얹은 웹앱)은 그대로 */
+var GRZ_OWN = { today: 1, week: 1, progress: 1, comci: 1, plan: 1, daily: 1, dgrid: 1 };
+function grzBody(view, body) {
+  if (!body || GRZ_OWN[view]) return body;
+  var k = 'v-' + view, z = grZoom(k);
+  return '<div class="grz grzz" data-grz="' + k + '" style="zoom:' + z + ';--grzz:' + z + '">' + body + '</div>' + grzHandle(k);
+}
+/* 이 요소가 들어 있는 본문의 배율 — fixed 로 띄우는 판의 자리를 나눠 되돌릴 때 */
+function grzOf(el) {
+  var w = el && el.closest ? el.closest('.grzz') : null;
+  return w ? (parseFloat(w.style.zoom) || 1) : 1;
+}
 /* 제 창·제 kind 몫만 보낸다 (0 = 처음대로) — 위젯·넓게 보기가 서로의 값을 덮지 않게 */
 function grZoomSave(kind, z) { var o = {}; o[grZoomKey(kind)] = z; widgetAPI.setUi({ grZoom: o }); }
 function grzApply(app, kind, z) {
   if (kind === 'dash') { dashPlace(); return; }          // 웹앱은 메인이 화면 배율로 키운다
+  if (kind.indexOf('v-') === 0) {
+    app.querySelectorAll('.grzz[data-grz="' + kind + '"]').forEach(function (b) { b.style.zoom = z; b.style.setProperty('--grzz', z); });
+    if (typeof attPop !== 'undefined' && attPop) attPlacePop();
+    return;
+  }
   app.querySelectorAll('.grz[data-grz="' + kind + '"]').forEach(function (b) { b.style.setProperty('--grz', z); });
 }
 function wireGrZoom(app) {
@@ -246,6 +267,7 @@ function wireGrZoom(app) {
       /* 기준 높이 — 표면 손잡이 바로 위 표, 웹앱이면 얹은 자리. 끈 만큼 그 높이가 늘어나는 배율 */
       var box = kind === 'dash' ? document.getElementById('dashHost') : hd.previousElementSibling;
       var y0 = ev.clientY, h0 = (box && box.getBoundingClientRect().height) || 300, z0 = grZoom(kind), z = z0;
+      if (kind.indexOf('v-') === 0) h0 = Math.max(240, Math.min(h0, 360));   // 본문 통째 — 길든 짧든 240~360px 끌면 두 배쯤(감도 고르게)
       document.body.classList.add('grzing');
       /* ★ 끄는 사이 1분 새로고침으로 다시 그려질 수 있다 — 표는 매번 새로 찾고, 손 뗌은 document 에서 받는다 */
       var move = function (e2) {
@@ -2577,23 +2599,27 @@ function attPlacePop() {
   var box = app.querySelector('.atpop');
   var cell = app.querySelector('[data-atpop="' + attPop.kind + '§' + attPop.key + '"]');
   if (!box || !cell) return;
-  var c = cell.getBoundingClientRect();
-  var w = box.offsetWidth, h = box.offsetHeight;
+  /* ★ 본문이 zoom 으로 커져 있으면(19번) fixed 판의 left·top 도 배율만큼 밀려 그려진다 —
+       화면 좌표로 계산한 뒤 배율로 나눠 넣는다. 크기는 화면에 보이는 크기(getBoundingClientRect)로 잰다 */
+  var zz = grzOf(box);
+  box.style.maxHeight = ''; box.style.overflowY = '';
+  var c = cell.getBoundingClientRect(), br = box.getBoundingClientRect();
+  var w = br.width, h = br.height;
   var vw = window.innerWidth, vh = window.innerHeight;
   var head = parseFloat(getComputedStyle(app).getPropertyValue('--toph')) || 0;
   var 아래 = vh - 8 - (c.bottom + 4), 위 = (c.top - 4) - (head + 4);
   var top;
-  box.style.maxHeight = ''; box.style.overflowY = '';
   if (h <= 아래) top = c.bottom + 4;                         // 아래에 들어가면 아래
   else if (h <= 위) top = c.top - h - 4;                     // 아래가 모자라면 위로
   else {
     /* ★ 위아래 다 모자라면(창이 낮고 반 고르기 줄까지 있을 때) 칸을 덮지 말고
          넓은 쪽에 붙여 판 안에서 굴린다 (v1.130.0) */
     var 쪽 = Math.max(아래, 위, 120);
-    box.style.maxHeight = 쪽 + 'px'; box.style.overflowY = 'auto';
+    box.style.maxHeight = (쪽 / zz) + 'px'; box.style.overflowY = 'auto';
     top = 아래 >= 위 ? c.bottom + 4 : c.top - 4 - 쪽;
   }
   var left = Math.max(8, Math.min(c.left, vw - 8 - w));
+  left = left / zz; top = top / zz;
   box.style.left = left + 'px';
   box.style.top = top + 'px';
   box.style.visibility = 'visible';
@@ -6313,7 +6339,8 @@ function render() {
   }
 
   html += '</div>';   // 머리 끝 — 여기부터는 스크롤된다
-  html += DASHV[VIEW] ? viewDash()
+  /* 19번 — 제 손잡이가 없는 화면은 본문을 통째로 감싸 아래 손잡이로 키우고 줄인다(grzBody) */
+  html += grzBody(VIEW, DASHV[VIEW] ? viewDash()
     : VIEW === 'week' ? viewWeek(d)
     : VIEW === 'progress' ? viewProgress(d)
     : VIEW === 'work' ? viewWork()
@@ -6327,7 +6354,7 @@ function render() {
     : VIEW === 'note' ? viewNote()
     : VIEW === 'grid' ? viewGrid()
     : VIEW === 'office' ? viewOffice()
-    : viewToday(d);
+    : viewToday(d));
   /* 화면 맨 끝 — 여기까지 굴렸으면 더 볼 것이 없다는 표시.
      ★ 긴 화면은 창 아래 끝에서 글이 그냥 끊겨서 «잘렸다» 로 보인다.
        이 줄이 나오면 «다 봤다» 는 뜻이다. (버전은 제목 줄 오른쪽 끝에 있다) */

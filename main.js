@@ -2856,7 +2856,7 @@ ipcMain.on('set-ui', (_e, v) => {
     const o = Object.assign({}, loadState().grZoom || {});
     const src = (v.grZoom && typeof v.grZoom === 'object') ? v.grZoom : {};
     Object.keys(src).forEach((k) => {
-      if (!/^(wid|easy)(\.(progress|comci|dash))?$/.test(k)) return;     // wid·easy = 오늘 주간표(옛 판과 같음)
+      if (!/^(wid|easy)(\.(progress|comci|dash|v-[a-z]+))?$/.test(k)) return;     // wid·easy = 오늘 주간표 · v-화면 = 19번 본문 통째로
       const n = Number(src[k]);
       if (n >= 0.8 && n <= 3) o[k] = Math.round(n * 100) / 100; else delete o[k];
     });
