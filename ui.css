@@ -1456,6 +1456,25 @@
   .atsw.on .sw { background: var(--accent); }
   .atsw.on .sw::after { left: 14px; }
   .atchkat { font-size: 10.5px; color: var(--dim); white-space: nowrap; margin-right: 4px; }
+  /* ── 반 고르기 · 나는 누구 · 처음 연결 (v1.130.0) ── */
+  .atcls { flex-wrap: wrap; row-gap: 4px; }
+  .atclsg { display: inline-flex; align-items: center; gap: 3px; margin-right: 8px; }
+  .atclsg i { font-style: normal; font-size: calc(10px * var(--wf)); font-weight: 800; color: var(--dim); margin-right: 2px; }
+  .atclsg .wkb em { font-style: normal; color: var(--accent); font-size: .8em; margin-left: 1px; }
+  .atclsg .wkb.now em { color: inherit; }
+  .atwho { white-space: nowrap; }
+  .rhint.atro { border-left: 3px solid var(--accent); padding-left: 8px; border-radius: 0; }
+  .atsetup { max-width: 760px; margin: 6px auto; padding: 14px 16px; border: 1px solid var(--line);
+             border-radius: 12px; background: var(--card); -webkit-app-region: no-drag; }
+  .atsth { font-weight: 800; font-size: calc(14px * var(--wf)); margin-bottom: 10px; }
+  .atstep { margin: 0 0 14px; }
+  .atstep > b { display: block; font-size: calc(12px * var(--wf)); margin-bottom: 2px; }
+  .atstep > small { display: block; color: var(--dim); font-size: calc(10.5px * var(--wf)); margin-bottom: 6px; }
+  .atwhos { display: flex; flex-wrap: wrap; gap: 5px; }
+  .atwhos .wkb { padding: 5px 9px; font-size: calc(11.5px * var(--wf)); }
+  .atwhos .wkb i { font-style: normal; color: var(--dim); font-size: .8em; margin-right: 3px; }
+  .atwhos .wkb.on i { color: inherit; }
+  .atwhos .atsep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
   .attt td.atck { text-align: center; padding: 0; cursor: pointer; user-select: none; -webkit-app-region: no-drag; }
   .attt td.atck i { display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
     width: calc(20px * var(--wf)); height: calc(20px * var(--wf)); border: 1.5px solid var(--line); border-radius: 5px;

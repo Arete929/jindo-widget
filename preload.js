@@ -38,13 +38,15 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   gradeUndo: (o) => ipcRenderer.invoke('grade-undo', o),
   gradeCats: (g) => ipcRenderer.invoke('grade-cats', g),
   /* 담임 출결 (지비스만 — 메인이 막는다) */
-  attList: () => ipcRenderer.invoke('att-list'),
+  attList: (cls) => ipcRenderer.invoke('att-list', cls),
+  attMeGet: () => ipcRenderer.invoke('att-me-get'),           // 나는 누구·연결 코드 (v1.130.0)
+  attMeSet: (o) => ipcRenderer.invoke('att-me-set', o),
   attAdd: (o) => ipcRenderer.invoke('att-add', o),
   attUndo: (o) => ipcRenderer.invoke('att-undo', o),
   attSet: (o) => ipcRenderer.invoke('att-set', o),
-  attSeq: (items) => ipcRenderer.invoke('att-seq', items),
+  attSeq: (items, cls) => ipcRenderer.invoke('att-seq', items, cls),
   attFold: (o) => ipcRenderer.invoke('att-fold', o),
-  attUnblock: () => ipcRenderer.invoke('att-unblock'),
+  attUnblock: (cls) => ipcRenderer.invoke('att-unblock', cls),
   attLocalAdd: (o) => ipcRenderer.invoke('att-local-add', o),
   attLocalDel: (key) => ipcRenderer.invoke('att-local-del', key),
   attLocalEdit: (o) => ipcRenderer.invoke('att-local-edit', o),

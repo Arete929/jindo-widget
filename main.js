@@ -311,6 +311,7 @@ const GRADE_WRITE_DEFAULT = { url: '', key: '' };
      혜원이지 쓰는 동료분들은 이 OneDrive 에 닿지 않는다.
    ★ LG 는 사용자 이름이 한글이지만 Node 는 환경변수를 넓은 글자로 읽어 괜찮다. */
 function sharedPath() {
+  if (!HAS_TT) return '';        // ★ 혜원이지(동료 PC)는 선생님 OneDrive 설정을 안 본다 — 동료 OneDrive 에 폴더를 만들지도 않는다
   const od = process.env.OneDriveCommercial || process.env.OneDrive || '';
   if (!od) return '';
   return path.join(od, '_claude_sync', 'jivis', 'shared.json');
@@ -870,7 +871,7 @@ function getViewMode() { return loadState().viewMode === 'easy' ? 'easy' : 'widg
 const VIEWS = HAS_TT
   ? ['today', 'week', 'progress', 'plan', 'daily', 'dgrid',
      'task', 'work', 'comci', 'cal', 'att', 'meal', 'rec', 'office', 'link']
-  : ['work', 'comci', 'note', 'grid', 'cal', 'meal', 'rec', 'office', 'link'];
+  : ['work', 'comci', 'note', 'grid', 'cal', 'att', 'meal', 'rec', 'office', 'link'];   // 출결 — 혜원이지도(v1.130.0)
 function getView() {
   const v = loadState().view;
   return VIEWS.includes(v) ? v : VIEWS[0];
@@ -1110,13 +1111,13 @@ function sendToWidget() {
     easyFav: loadState().easyFav || [],          // 혜원이지 대시보드 즐겨찾기
     gradeWrite: HAS_TT ? getGradeWrite() : null, // 일지 쓰기 다리 (지비스만 — 혜원이지엔 안 내려보냄)
     att: HAS_TT ? getAttCfg() : null,             // 담임 출결 — 우리 반·교사확인 이름 (지비스만)
-    attLocal: HAS_TT ? getAttLocal() : null,      // 앱에만 두는 미인정
-    attPhrases: HAS_TT ? getAttPhrases() : null,  // 신청사유 내 예시 문구
-    attColW: HAS_TT ? (loadState().attColW || {}) : null,   // 출결 표 칸 너비(이 PC)
+    attLocal: getAttLocal(),                      // 앱에만 두는 미인정 (혜원이지는 이 PC 에만)
+    attPhrases: getAttPhrases(),                  // 신청사유 내 예시 문구
+    attColW: loadState().attColW || {},           // 출결 표 칸 너비(이 PC)
     grZoom: loadState().grZoom || {},             // 오늘 주간표 크기(창마다 · 이 PC)
-    attPhrasesAt: HAS_TT ? getAttPhrasesAt() : '',
-    attChk: HAS_TT ? getAttChk() : null,          // 점검하기 체크(앱에서만)
-    attChkAt: HAS_TT ? getAttChkAt() : '',
+    attPhrasesAt: getAttPhrasesAt(),
+    attChk: getAttChk(),                          // 점검하기 체크(앱에서만)
+    attChkAt: getAttChkAt(),
     links: getLinks(), linksAt: String(loadState().linksAt || ''),                           // 바로가기 타일
     termStart: getTermStart(),                   // 진도표 1주차 기준
     navStyle: getNavStyle(),                     // 차림표 — 아이콘만/글자만/둘 다
@@ -2832,7 +2833,7 @@ ipcMain.on('set-ui', (_e, v) => {
     sendToWidget();
   }
   /* 출결 표 칸 너비 — 이 PC 화면에 맞춘 것이라 이 PC 에만 */
-  if (v.attColW !== undefined && HAS_TT) {
+  if (v.attColW !== undefined) {
     const o = {};
     Object.keys(v.attColW || {}).forEach((k) => {
       const n = Number(v.attColW[k]);
@@ -2841,7 +2842,7 @@ ipcMain.on('set-ui', (_e, v) => {
     saveState({ attColW: o });
   }
   /* 신청사유 내 예시 문구 — 두 PC 가 같이 쓰도록 OneDrive 에도 */
-  if (v.attPhrases !== undefined && HAS_TT) {
+  if (v.attPhrases !== undefined) {
     const list = (Array.isArray(v.attPhrases) ? v.attPhrases : [])
       .map((x) => String(x || '').replace(/\s+/g, ' ').trim().slice(0, 120)).filter(Boolean).slice(0, 40);
     const at = String(v.attPhrasesAt || '');
@@ -2862,7 +2863,7 @@ ipcMain.on('set-ui', (_e, v) => {
     saveState({ grZoom: o });
   }
   /* 점검하기 체크 — 누를 때마다 온다. 화면은 이미 바뀌어 있으니 다시 보내지 않는다 */
-  if (v.attChk !== undefined && HAS_TT) {
+  if (v.attChk !== undefined) {
     const o = {};
     const src = (v.attChk && typeof v.attChk === 'object') ? v.attChk : {};
     Object.keys(src).slice(0, 3000).forEach((k) => {
@@ -3379,74 +3380,155 @@ ipcMain.handle('grade-cats', async (_e, grade) => {
     return { ok: false, msg: (e && e.message) || String(e) };
   }
 });
-/* ── 담임 출결 — 모두 다리(GAS)를 거친다. 혜원이지는 메인에서 막는다 ──
-   ★ 화면에서 단추만 가리면 개발자 도구로 부를 수 있다. 그래서 여기서도 막는다. */
-const ATT_NO = { ok: false, msg: '출결 쓰기는 지비스에서만 됩니다' };
-async function attCall(몸) {
-  try { return await gradeBridge(Object.assign({ cls: getAttCfg().cls }, 몸)); }
-  catch (e) { return { ok: false, msg: (e && e.message) || String(e) }; }
+/* ── 담임 출결 — 모두 다리(GAS)를 거친다 ──────────────────────────────
+   지비스   : 지비스 열쇠(KEY)로 — 김진호 선생님(관리자). 전 학년 보기, 적기는 우리 반(3-2)
+   혜원이지 : «연결 코드»(다리 주소 + 동료 열쇠) + «나는 누구»(컴시간 번호·가린 이름 / 교장·교감) + 확인번호.
+              볼 수 있는 반·할 수 있는 일은 다리(비공개 저장소의 역할표)가 정한다(v1.130.0, 2026-09-14).
+   ★ 이 저장소는 공개라 다리 주소·열쇠·확인번호를 코드에 두지 않는다. 연결 코드는 선생님이 메신저로 나눠 준다. */
+const ATT_ALL_CLS = ['1-1', '1-2', '1-3', '1-4', '1-5', '2-1', '2-2', '2-3', '2-4', '2-5', '3-1', '3-2', '3-3', '3-4', '3-5'];
+const ATT_LINK_HEAD = 'HWATT1:';
+/* 연결 코드 풀기 — «HWATT1:» + base64(JSON {u: 다리 주소, k: 동료 열쇠}) */
+function parseAttLink(txt) {
+  const s = String(txt || '').replace(/\s+/g, '');
+  if (s.indexOf(ATT_LINK_HEAD) !== 0) return null;
+  try {
+    const o = JSON.parse(Buffer.from(s.slice(ATT_LINK_HEAD.length), 'base64').toString('utf8'));
+    const u = String(o.u || ''), k = String(o.k || '');
+    if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u) || !k) return null;
+    return { url: u, skey: k };
+  } catch (e) { return null; }
 }
-ipcMain.handle('att-list', async () => (HAS_TT ? attCall({ op: 'att-list' }) : ATT_NO));
+function getAttStaff() {
+  const v = loadState().attStaff || {};
+  return { url: String(v.url || ''), skey: String(v.skey || ''), who: v.who || null, code: String(v.code || ''),
+    me: v.me || null, linkAt: String(v.linkAt || ''), whoAt: String(v.whoAt || '') };
+}
+function setAttStaff(patch) { saveState({ attStaff: Object.assign(getAttStaff(), patch) }); }
+async function staffCall(몸) {
+  const s = getAttStaff();
+  if (!s.url || !s.skey) return { ok: false, code: 'nolink', msg: '연결 코드가 필요합니다 — 김진호 선생님께 받아 주세요' };
+  if (!s.who) return { ok: false, code: 'nowho', msg: '먼저 «나는 누구» 를 골라 주세요' };
+  const 보냄 = Object.assign({}, 몸, { op: 'staff-' + 몸.op, skey: s.skey, who: s.who, code: s.code });
+  let 마지막 = '';
+  for (let i = 0; i < 2; i++) {
+    const r = await request({ method: 'POST', url: s.url, contentType: 'application/json', body: JSON.stringify(보냄), timeout: 60000 });
+    let j = null;
+    try { j = JSON.parse(r.text); } catch (e) { /* 글자 그대로 */ }
+    if (j && j.ok !== undefined) {
+      if (j.ok && j.me) setAttStaff({ me: j.me });      // 다리가 알려 준 «할 수 있는 일» 을 기억
+      return j;
+    }
+    마지막 = (r.text || '').slice(0, 120);
+  }
+  throw new Error('출결 연결이 제대로 답하지 않았습니다 — ' + 마지막);
+}
+/* 지비스(관리자)가 할 수 있는 일 — 다리에 묻지 않고 여기서 정한다 */
+function attMeJinho() {
+  const c = getAttCfg();
+  return { name: c.teacher, title: '관리자', role: 'admin', cls: c.cls, view: ATT_ALL_CLS.slice(), write: [c.cls], req: [] };
+}
+async function attCall(몸) {
+  const m = Object.assign({}, 몸);
+  if (!m.cls) delete m.cls;                         // 반을 안 보냈으면 우리 반
+  try {
+    if (HAS_TT) return await gradeBridge(Object.assign({ cls: getAttCfg().cls, teacher: getAttCfg().teacher }, m));
+    delete m.teacher;                               // 혜원이지 — 교사확인은 다리가 역할표 실명으로 적는다
+    return await staffCall(m);
+  } catch (e) { return { ok: false, msg: (e && e.message) || String(e) }; }
+}
+const attCls = (o) => String((o && o.cls) || '');
+ipcMain.handle('att-list', async (_e, cls) => attCall({ op: 'att-list', cls: String(cls || '') }));
 ipcMain.handle('att-add', async (_e, p) => {
-  if (!HAS_TT) return ATT_NO;
   const o = p || {};
   const r = await attCall({
-    op: 'att-add',
+    op: 'att-add', cls: attCls(o),
     nonce: String(o.nonce || ''),         // 다리가 같은 요청을 두 번 받아도 한 줄만 넣게
     id: String(o.id || ''), name: String(o.name || ''),
     date: String(o.date || ''), time: String(o.time || ''), end: String(o.end || ''),
-    type: String(o.type || ''), reason: String(o.reason || ''),
-    teacher: getAttCfg().teacher
+    type: String(o.type || ''), reason: String(o.reason || '')
   });
-  if (r.ok) debugLog('출결 — ' + o.id + ' ' + o.date + ' ' + o.type + ' 넣음 (' + r.how + ')');
+  if (r.ok) debugLog('출결 — ' + (o.cls || '') + ' ' + o.id + ' ' + o.date + ' ' + o.type + ' 넣음 (' + r.how + ')');
   return r;
 });
 ipcMain.handle('att-undo', async (_e, p) => {
-  if (!HAS_TT) return ATT_NO;
   const o = p || {};
-  return attCall({ op: 'att-undo', row: Number(o.row) || 0, id: String(o.id || ''),
+  return attCall({ op: 'att-undo', cls: attCls(o), row: Number(o.row) || 0, id: String(o.id || ''),
     date: String(o.date || ''), type: String(o.type || ''), reason: String(o.reason || '') });
 });
 ipcMain.handle('att-set', async (_e, p) => {
-  if (!HAS_TT) return ATT_NO;
   const o = p || {};
-  if (o.field !== 'gubun' && o.field !== 'fix') return { ok: false, msg: '쓸 수 없는 칸입니다' };
-  return attCall({ op: 'att-set', r: Number(o.r) || 0, sig: String(o.sig || ''),
+  if (['gubun', 'fix', 'req'].indexOf(o.field) < 0) return { ok: false, msg: '쓸 수 없는 칸입니다' };
+  return attCall({ op: 'att-set', cls: attCls(o), r: Number(o.r) || 0, sig: String(o.sig || ''),
     field: o.field, value: String(o.value == null ? '' : o.value) });
 });
-ipcMain.handle('att-seq', async (_e, items) => {
-  if (!HAS_TT) return ATT_NO;
+ipcMain.handle('att-seq', async (_e, items, cls) => {
   const list = (Array.isArray(items) ? items : []).slice(0, 400).map((x) => ({
     r: Number(x.r) || 0, sig: String(x.sig || ''), seq: Number(x.seq) || 0 }));
-  return attCall({ op: 'att-seq', items: list });
+  return attCall({ op: 'att-seq', cls: String(cls || ''), items: list });
 });
 ipcMain.handle('att-fold', async (_e, p) => {
-  if (!HAS_TT) return ATT_NO;
   const o = p || {};
-  return attCall({ op: 'att-fold', month: String(o.month || ''), hide: !!o.hide });
+  return attCall({ op: 'att-fold', cls: attCls(o), month: String(o.month || ''), hide: !!o.hide });
 });
-ipcMain.handle('att-unblock', async () => (HAS_TT ? attCall({ op: 'att-unblock' }) : ATT_NO));
+ipcMain.handle('att-unblock', async (_e, cls) => attCall({ op: 'att-unblock', cls: String(cls || '') }));
 /* «입력» 줄을 제자리에서 고치기·비우기 — 다리가 «교사확인이 내 이름인 줄 하나» 일 때만 손댄다 */
 function attFields(o) {
   return { id: String(o.id || ''), name: String(o.name || ''), date: String(o.date || ''),
     time: String(o.time || ''), end: String(o.end || ''), type: String(o.type || ''), reason: String(o.reason || '') };
 }
 ipcMain.handle('att-edit', async (_e, p) => {
-  if (!HAS_TT) return ATT_NO;
   const o = p || {};
-  const r = await attCall(Object.assign({ op: 'att-edit', old: attFields(o.old || {}), teacher: getAttCfg().teacher }, attFields(o)));
-  if (r.ok) debugLog('출결 — 고침 ' + o.id + ' ' + o.date + ' (' + r.how + ')');
+  const r = await attCall(Object.assign({ op: 'att-edit', cls: attCls(o), old: attFields(o.old || {}) }, attFields(o)));
+  if (r.ok) debugLog('출결 — 고침 ' + (o.cls || '') + ' ' + o.id + ' ' + o.date + ' (' + r.how + ')');
   return r;
 });
 ipcMain.handle('att-del', async (_e, p) => {
-  if (!HAS_TT) return ATT_NO;
-  const r = await attCall(Object.assign({ op: 'att-del', teacher: getAttCfg().teacher }, attFields(p || {})));
+  const r = await attCall(Object.assign({ op: 'att-del', cls: attCls(p) }, attFields(p || {})));
   if (r.ok) debugLog('출결 — 지움 (' + r.how + ')');
   return r;
 });
-/* 앱에만 두는 미인정 — 시트엔 안 간다 */
+/* ── 나는 누구 · 연결 코드 (혜원이지) ── 지비스는 관리자 고정 */
+ipcMain.handle('att-me-get', () => {
+  if (HAS_TT) return { ok: true, jinho: true, me: attMeJinho() };
+  const s = getAttStaff();
+  let teachers = [];
+  try {
+    const c = JSON.parse(fs.readFileSync(comciFile, 'utf8')) || {};
+    teachers = (((c.data || c).byTeacher) || []).map((t) => ({ no: t.i, mask: t.name }));
+  } catch (e) { /* 컴시간을 아직 안 받았다 */ }
+  return { ok: true, jinho: false, hasLink: !!(s.url && s.skey), linkAt: s.linkAt,
+    who: s.who, hasCode: !!s.code, whoAt: s.whoAt, me: s.me, teachers };
+});
+ipcMain.handle('att-me-set', async (_e, p) => {
+  if (HAS_TT) return { ok: false, msg: '지비스는 관리자로 고정입니다' };
+  const o = p || {};
+  const 때 = stampNow() + ':' + String(new Date().getSeconds()).padStart(2, '0');
+  if (o.link !== undefined) {
+    const L = parseAttLink(o.link);
+    if (!L) return { ok: false, msg: '연결 코드가 아닙니다 — «HWATT1:» 로 시작하는 글을 통째로 붙여 넣어 주세요' };
+    setAttStaff({ url: L.url, skey: L.skey, linkAt: 때 });
+    if (!getAttStaff().who) return { ok: true, savedAt: 때, how: '연결 코드를 저장했습니다 — 이제 «나는 누구» 를 골라 주세요' };
+  }
+  if (o.who !== undefined) {
+    const w = o.who || null;
+    const who = !w ? null : w.special ? { special: String(w.special) } : { no: Number(w.no) || 0, mask: String(w.mask || '') };
+    setAttStaff({ who, code: String(o.code || '').trim(), me: null, whoAt: '' });
+    if (!who) return { ok: true, savedAt: 때, how: '«나는 누구» 를 비웠습니다' };
+  }
+  /* 다리에 물어 확인 — 맞으면 «할 수 있는 일» 이 온다 */
+  try {
+    const r = await staffCall({ op: 'me' });
+    if (!r.ok) {
+      if (r.code === 'badcode' || r.code === 'locked' || r.code === 'notmine') setAttStaff({ me: null, whoAt: '' });
+      return r;
+    }
+    setAttStaff({ me: r.me, whoAt: 때 });
+    debugLog('출결 — 나는 누구 확인: ' + (r.me.title || r.me.cls) + ' ' + r.me.role);
+    return { ok: true, me: r.me, savedAt: 때 };
+  } catch (e) { return { ok: false, msg: (e && e.message) || String(e) }; }
+});
+/* 앱에만 두는 미인정 — 시트엔 안 간다 (혜원이지는 이 PC 에만) */
 ipcMain.handle('att-local-edit', (_e, p) => {
-  if (!HAS_TT) return ATT_NO;
   const o = p || {};
   if (String(o.type || '').indexOf('미인정') !== 0) return { ok: false, msg: '앱에만 두는 것은 미인정뿐입니다' };
   const list = getAttLocal();
@@ -3457,7 +3539,6 @@ ipcMain.handle('att-local-edit', (_e, p) => {
   return { ok: true, key: it.key, list, savedAt: stampNow() + ':' + String(new Date().getSeconds()).padStart(2, '0'), how: '앱에서 고쳤습니다' };
 });
 ipcMain.handle('att-local-add', (_e, p) => {
-  if (!HAS_TT) return ATT_NO;
   const o = p || {};
   if (String(o.type || '').indexOf('미인정') !== 0) return { ok: false, msg: '앱에만 두는 것은 미인정뿐입니다' };
   if (!/^\d{4}$/.test(String(o.id || ''))) return { ok: false, msg: '학번이 이상합니다' };
@@ -3472,7 +3553,6 @@ ipcMain.handle('att-local-add', (_e, p) => {
   return { ok: true, key, list, savedAt: stampNow() + ':' + String(new Date().getSeconds()).padStart(2, '0') };
 });
 ipcMain.handle('att-local-del', (_e, key) => {
-  if (!HAS_TT) return ATT_NO;
   const list = getAttLocal().filter((o) => o.key !== String(key));
   setAttLocal(list);
   return { ok: true, list, how: '앱에서 지웠습니다' };
