@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.0.0
-   수정요약: v2.0.0 출결 — 반 고르기·보기 전용·수정요청사항(학년부장)·처음 연결 화면·유형은 시트 목록·학생부터·고르기 판 넓게 · 모든 탭 본문 손잡이(zoom) · 틱틱 목록 기억 · 혜원이지 이름(한글 제목) / v1.128.0 표 크기 손잡이를 진호 시간표 전체(주간진도·시간표계획·날짜별·진도표)와 컴시간에도 / v1.127.0 오늘 주간표 아래 경계(손잡이)를 잡고 끌면 표·글자가 함께 커짐(두 번 누르면 처음대로) / v1.126.0 출결 «점검하기» — 스위치로 켜면 신청사유 뒤 서류·출석부·NEIS 체크 칸, 셋 다면 줄 회색 취소선, 끄면 원래대로(앱에서만) / v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
+/* 파일명: views.js | @version 2.0.1
+   수정요약: v2.0.1 출결 인쇄 배경색 늘 찍기·여백 값 넘김(margin) / v2.0.0 출결 — 반 고르기·보기 전용·수정요청사항(학년부장)·처음 연결 화면·유형은 시트 목록·학생부터·고르기 판 넓게 · 모든 탭 본문 손잡이(zoom) · 틱틱 목록 기억 · 혜원이지 이름(한글 제목) / v1.128.0 표 크기 손잡이를 진호 시간표 전체(주간진도·시간표계획·날짜별·진도표)와 컴시간에도 / v1.127.0 오늘 주간표 아래 경계(손잡이)를 잡고 끌면 표·글자가 함께 커짐(두 번 누르면 처음대로) / v1.126.0 출결 «점검하기» — 스위치로 켜면 신청사유 뒤 서류·출석부·NEIS 체크 칸, 셋 다면 줄 회색 취소선, 끄면 원래대로(앱에서만) / v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
    위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜원이지는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -2475,6 +2475,8 @@ function attLocalRows() {
      첫 줄이 틀 고정이라 쪽마다 머리글을 되풀이한다 → thead 가 같은 일을 한다 */
 var ATT_PRINT_CSS = ''
   + '@page{size:A4 portrait;margin:30mm 6.35mm 19mm}'
+  /* ★ 배경색(분홍 머리글·줄 색)을 브라우저 «배경 그래픽» 설정과 상관없이 찍는다(2.0.1) */
+  + '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
   + 'body{margin:0;background:#fff;font-family:Arial,"Malgun Gothic",sans-serif;font-size:10pt;line-height:1.25;color:#000}'
   + '.sheet-ttl{text-align:center;font-size:20pt;font-weight:700;margin:0 0 14pt;letter-spacing:.5pt}'
   + '.sheet{border-collapse:collapse;table-layout:fixed;margin:0 auto}'
@@ -2527,6 +2529,7 @@ function attPrintHtml(mon) {
   }).join('') + '</tbody>';
   return {
     plain: true, css: ATT_PRINT_CSS,
+    margin: [30, 6.35, 19],          // 위·좌우·아래 mm — 브라우저 인쇄는 @page 여백을 0 으로 두고 이만큼을 종이 안에 만든다(2.0.1)
     title: attPrintTitle(mon),
     body: '<div class="sheet-ttl">' + esc(attPrintTitle(mon)) + '</div>'
       + '<table class="sheet" style="width:' + sum + 'px;zoom:' + zoom + '">' + cols + head + body + '</table>'
