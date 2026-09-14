@@ -3609,6 +3609,7 @@ const PRINT_CSS = `
     font-size: 9.5pt; line-height: 1.45; white-space: pre-wrap; word-break: break-word;
   }
   .wtb tr:first-child td { background: #eee; color: #000; font-weight: 700; text-align: center; }
+  .wtb td, .wtb td .wkp { text-align: center; vertical-align: middle; }   /* 화면과 같이 가운데 (2026-09-15) */
   .wtb .wkp { margin: 0; font-size: inherit; }
   .wtb .wkp.lv1 { margin-top: 3pt; }
   .wtb .wkp.lv2, .wtb .wkp.lv3, .wtb .wkp.lv4 { margin-top: 1pt; }

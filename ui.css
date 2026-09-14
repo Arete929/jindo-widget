@@ -1133,6 +1133,11 @@
     white-space: pre-wrap; word-break: break-word;
   }
   .wtb tr:first-child td { background: var(--card2); font-weight: 800; color: var(--fg); text-align: center; }
+  /* ★ 주간업무 속 표는 모든 칸 가운데 정렬(2026-09-15 선생님 결정 — 급식지도 안내 표 등).
+       칸 안 문단의 단계별 들여쓰기·원문 정렬(a-right 등)도 표 안에서는 가운데로 맞춘다 */
+  .wtb td, .wtb td .wkp { text-align: center; }
+  .wtb td { vertical-align: middle; }
+  .wtb td .wkp.lv2, .wtb td .wkp.lv3, .wtb td .wkp.lv4 { padding-left: 0; }
   .wlink {
     -webkit-app-region: no-drag;
     color: var(--accent); text-decoration: underline; text-underline-offset: 2px;
@@ -1522,6 +1527,20 @@
   .atpr.loc { border-top: 1px dashed var(--line); padding-top: 4px; margin-top: 2px; }
   .atpr i small { display: block; font-size: calc(8px * var(--wf)); color: var(--accent); }
   .atpop .wkb.gpac.on { box-shadow: inset 0 0 0 2px var(--accent); font-weight: 800; }
+  /* ★ 고르기 판 — 칩을 크게, 칩 사이·줄 사이를 넉넉히(2026-09-15 선생님 요청 · 전자칠판 손가락).
+       질병/인정/기타/미인정 줄이 한눈에 갈리게 줄마다 위아래 여백과 옅은 금 */
+  .atpop { gap: 8px; padding: 12px 14px 14px; }
+  .atpop .wkb.gpac { font-size: calc(12.5px * var(--wf)); padding: calc(7px * var(--wf)) calc(13px * var(--wf));
+                     border-radius: 9px; min-height: calc(34px * var(--wf)); }
+  .atpop .atpr { gap: 8px; padding: 8px 0; }
+  .atpop .atpr + .atpr { border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+  .atpop .atpr.loc { border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 10px; }
+  .atpop .atpr i { width: calc(46px * var(--wf)); font-size: calc(11px * var(--wf)); font-weight: 700; }
+  .atpop .atnl { gap: 8px; }
+  .atpop .atstg { gap: 8px; }
+  .atpop .atpopt { margin-bottom: 4px; }
+  /* 새 줄 — 학생부터: 아직 안 골랐으면 학생 칸을 짙게 둘러 먼저 누르게 */
+  .attt tr.atnew td.need { box-shadow: inset 0 0 0 2px var(--accent); }
   /* 맨 아래 새로 적는 줄 */
   .attt tr.atnew td { background: color-mix(in srgb, var(--accent) 7%, var(--card)); }
   .attt tr.atnew.local td { background: color-mix(in srgb, var(--accent) 14%, var(--card)); }

@@ -2326,7 +2326,8 @@ function attNewRow(folded) {
   var h = '<tr class="atnew' + (앱만 ? ' local' : '') + (attEditing ? ' editing' : '') + '">'
     + '<td class="c"><b>' + (attEditing ? '✎' : '＋') + '</b></td>'
     + '<td class="c atcell pick' + (앱만 ? ' off' : '') + '" data-atpop="gubun§new">' + (앱만 ? '—' : esc(A.gubun || '구분')) + attGubunPop('new', A.gubun) + '</td>'
-    + '<td class="c atcell pick" data-atpop="st§new" colspan="2">' + (A.id ? esc(A.id) + ' ' + esc(A.name) : '학생') + attStPop('new', A.id) + '</td>'
+    + '<td class="c atcell pick' + (!A.id && !attEditing ? ' need' : '') + '" data-atpop="st§new" colspan="2" title="학생부터 골라 주세요">'
+      + (A.id ? esc(A.id) + ' ' + esc(A.name) : '① 학생') + attStPop('new', A.id) + '</td>'
     + '<td class="c" colspan="2"><div class="atdt"><input type="date" id="atNewDate" value="' + esc(A.date) + '">'
       + (t && !결석 ? '<input type="time" id="atNewTime" value="' + esc(A.time || '') + '">' : '')
       + (A.end ? '<small>' + esc(/^\d{4}-/.test(A.end) ? '~ ' + attMd(A.end) : A.end) + '</small>' : '') + '</div></td>'
@@ -2692,6 +2693,9 @@ function wireAtt(app) {
     if (ev.target.closest && ev.target.closest('[data-atpopbox]')) return;
     if (b.classList.contains('off')) return;
     var p = b.dataset.atpop.split('§');
+    /* ★ 새 줄은 «학생부터» (2026-09-15) — 학생을 아직 안 골랐으면 구분·유형 칸을 눌러도 학생 판이 먼저 뜬다.
+         학생을 고르면 유형 판, 유형을 고르면 신청사유 칸으로 이어진다 */
+    if (p[1] === 'new' && p[0] !== 'st' && !attNew.id && !attEditing) p = ['st', 'new'];
     attPop = attPopOpen(p[0], p[1]) ? null : { kind: p[0], key: p[1] };
     render();
     if (attPop && attPop.kind === 'st') { var i = app.querySelector('#atNewId'); if (i) i.focus(); }
@@ -2704,7 +2708,10 @@ function wireAtt(app) {
     if (kind !== 'end') attPop = null;
     if (key === 'new') {
       if (kind === 'gubun') attNew.gubun = val;
-      else if (kind === 'st') { var q = val.split('|'); attNew.id = q[0]; attNew.name = q[1] || ''; }
+      else if (kind === 'st') {
+        var q = val.split('|'); attNew.id = q[0]; attNew.name = q[1] || '';
+        if (!attNew.type && !attEditing) attPop = { kind: 'type', key: 'new' };   // 학생 다음은 유형
+      }
       else if (kind === 'end') attNew.end = (attNew.end === val ? '' : val);
       else if (kind === 'type') {
         attNew.type = val;
