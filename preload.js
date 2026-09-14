@@ -1,4 +1,4 @@
-// 파일명: preload.js | @version 1.128.0 — dashShow 에 배율(zoom) 넘김
+// 파일명: preload.js | @version 2.0.0 — attList(cls)·attMeGet·attMeSet (혜원이지 출결)
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
