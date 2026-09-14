@@ -378,7 +378,7 @@
     <b>▲▼</b> 로 순서를 바꾸고 <b>✕</b> 로 뺍니다.
     주소 앞에 <b>https://</b> 를 안 적어도 알아서 붙습니다.<br><br>
     <b>관리자 열쇠</b> 를 넣으면 <b>지비스의 「런처보드」</b> 에서
-    앱을 담고·고치고·빼고, <b>공유 스위치</b> 로 <b>혜비스</b> 에 보일지 정할 수 있습니다.
+    앱을 담고·고치고·빼고, <b>공유 스위치</b> 로 <b>혜원이지</b> 에 보일지 정할 수 있습니다.
     열쇠가 없는 PC 는 공유로 켜 둔 앱만 보이고 고치는 단추가 아예 안 나옵니다.
   </div>
 </section>
@@ -486,7 +486,7 @@
     <input type="text" id="gp3" placeholder="구글 시트 주소">
     <button id="gpSave">저장</button>
   </div>
-  <!-- 일지에 «쓰기» — 지비스만. 혜비스는 남의 학년 시트에 편집 권한이 없다 -->
+  <!-- 일지에 «쓰기» — 지비스만. 혜원이지는 남의 학년 시트에 편집 권한이 없다 -->
   <div class="row" data-only="jinho">
     <label class="lb">일지 쓰기 주소</label>
     <input type="text" id="gpwUrl" placeholder="GAS 다리 배포 주소 (…/exec)">
@@ -743,7 +743,7 @@
     <label class="lb">테마</label>
     <div class="chips" id="thRow">
       <!-- ★ 2026-09-11 확정 — 두 갈래 모두 여섯, 기본은 슬레이트 라이트.
-           (data-fl 로 갈래마다 가르는 장치는 남겨 둔다: j=지비스만 · h=혜비스만 · 없음=둘 다) -->
+           (data-fl 로 갈래마다 가르는 장치는 남겨 둔다: j=지비스만 · h=혜원이지만 · 없음=둘 다) -->
       <button data-th="ghost">고스트</button>
       <button data-th="black">블랙</button>
       <button data-th="slatelight">슬레이트 라이트</button>
@@ -959,13 +959,13 @@ function __paint() {
     b.className = (b.dataset.usgstyle === (UI.usageStyle || 'ring')) ? 'on' : '';
     b.disabled = !usgOn;
   });
-  // 시간표가 없는 판(혜원 데스크·혜비스)에서는 구글 로그인 줄을 숨긴다
+  // 시간표가 없는 판(혜원 데스크·혜원이지)에서는 구글 로그인 줄을 숨긴다
   if (UI.flavor !== 'jinho') {
     var lr = $('loginState').closest('.row');
     if (lr) lr.style.display = 'none';
     document.title = (UI.appName || '위젯') + ' 설정';
   }
-  // 혜비스는 «떠 있는 위젯»이 아니다 — 위젯에만 뜻이 있는 항목을 감춘다
+  // 혜원이지는 «떠 있는 위젯»이 아니다 — 위젯에만 뜻이 있는 항목을 감춘다
   if (UI.flavor === 'easy') {
     ['sizeRow', 'opRow', 'usgRow'].forEach(function (k) {
       var r = $(k) && $(k).closest('.row');
@@ -1055,7 +1055,7 @@ function __paint() {
 function paintNt() {
   var sec = $('secTask');
   if (!sec) return;
-  // 혜비스에는 이 기능이 없다 — 아예 감춘다
+  // 혜원이지에는 이 기능이 없다 — 아예 감춘다
   var jinho = UI.flavor === 'jinho';
   sec.style.display = jinho ? '' : 'none';
   if (!jinho) return;
@@ -1136,7 +1136,7 @@ function paintTk() {
   var sec = $('secTick');
   if (!sec) return;
   var jinho = UI.flavor === 'jinho';
-  sec.style.display = jinho ? '' : 'none';   // 혜비스에는 없는 기능
+  sec.style.display = jinho ? '' : 'none';   // 혜원이지에는 없는 기능
   if (!jinho) return;
   var t = UI.tick || {};
   $('tkRedir').value = t.redirect || '';
@@ -1955,7 +1955,7 @@ function drawHelp() {
     return '<section class="hsec" id="h_' + p.id + '">'
       + '<h2>' + esc(p.t)
       + (p.only === "jinho" ? '<span class="only">지비스</span>' : "")
-      + (p.only === "hyewon" ? '<span class="only hy">혜비스</span>' : "")
+      + (p.only === "hyewon" ? '<span class="only hy">혜원이지</span>' : "")
       + '</h2>' + p.body + '</section>';
   }).join("");
 

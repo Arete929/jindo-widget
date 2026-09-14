@@ -35,7 +35,7 @@ const { request } = require('./httpx.js');   // 학년부 일지 쓰기 다리�
      jinho  지비스  — 지금까지 쓰던 것 그대로. 시간표(오늘·이번주·진도)가 있다.
      hyewon 혜원 데스크 — 시간표만 뺀 것. 시간표는 수업진도 앱에서 오는 «내» 자료라
                           나눠 줄 판에는 넣지 않는다. 덕분에 구글 로그인도 필요 없다.
-     easy   혜비스     — 같은 자료를 «넓은 창»으로 여는 것. 떠 있는 위젯이 아니라
+     easy   혜원이지     — 같은 자료를 «넓은 창»으로 여는 것. 떠 있는 위젯이 아니라
                           열어서 일하는 작업실이다. 시간표는 없다(혜원 데스크와 같다).
 
    ★ 앞으로 고칠 때: 시간표에 딸린 것만 jinho 에, 나머지는 둘 다에 넣는다. */
@@ -46,7 +46,7 @@ const FLAVOR = (() => {
 const HAS_TT = FLAVOR === 'jinho';              // 시간표를 쓰는가
 // ★ «넓은 창» 은 따로 설치하는 프로그램이 아니라 이 앱이 여는 두 번째 창이다.
 //   전에는 easy 라는 갈래로 따로 냈는데, 설정·구글 로그인이 갈려서 하나로 합쳤다.
-const APP_NAME = HAS_TT ? '지비스' : '혜비스';
+const APP_NAME = HAS_TT ? '지비스' : '혜원이지';
 const ICON = HAS_TT ? 'icon.png' : 'hyewon-icon.png';
 const TRAY_ICON = HAS_TT ? 'tray.png' : 'hyewon-tray.png';
 
@@ -143,7 +143,7 @@ function browserName() {
   return b ? b.label : '브라우저';
 }
 /* 로그인 넘겨받기 주소 — 앱 이름을 함께 실어 보낸다.
-   ★ 웹 대시보드 한 곳을 지비스·혜비스가 같이 쓴다. 이름을 보내야
+   ★ 웹 대시보드 한 곳을 지비스·혜원이지가 같이 쓴다. 이름을 보내야
      그 화면이 «지비스 계정 연결» 로 제대로 적는다. */
 function handoffUrl(port, nonce) {
   return `${APP_URL}?widget=${port}&nonce=${nonce}&app=${encodeURIComponent(APP_NAME)}`;
@@ -188,7 +188,7 @@ function getScale() { const s = loadState().size; return SIZES[s] ? s : 'medium'
 function getOpacity() { const o = loadState().opacity; return typeof o === 'number' ? o : 1; }
 function getAlwaysOnTop() { const v = loadState().alwaysOnTop; return v === undefined ? true : !!v; }
 /* ★ 테마 목록은 갈래마다 다르다 (2026-09-09 지시).
-     지비스 = 고른 일곱만. 혜비스 = 예전 그대로 두고, 바꿀 때 따로 지시받는다.
+     지비스 = 고른 일곱만. 혜원이지 = 예전 그대로 두고, 바꿀 때 따로 지시받는다.
    ★ 테마를 더할 때는 세 군데를 함께 고친다 — 여기(허용 목록)·settings.html 단추·ui.css 색.
      여기 빠지면 골라도 저장이 안 돼 늘 기본으로 돌아온다. */
 /* ★ 2026-09-11 확정 — 두 갈래 모두 여섯. 기본은 슬레이트 라이트.
@@ -298,9 +298,9 @@ const GRADE_SHEET_DEFAULT = {
      학년부가 만든 시트에는 못 쓴다. 권한을 spreadsheets 로 넓히면 구글이
      «확인되지 않은 앱» 경고를 씌우고, 같은 토큰을 쓰는 학생기록도 재동의해야 한다.
      그래서 선생님 권한으로 도는 작은 GAS 가 대신 써 준다.
-   ★ 지비스에만 있다 — 혜비스 쓰는 분들은 남의 학년 시트에 편집 권한이 없다. */
+   ★ 지비스에만 있다 — 혜원이지 쓰는 분들은 남의 학년 시트에 편집 권한이 없다. */
 /* ★ 주소·열쇠를 여기 박지 않는다(2026-09-10).
-     이 파일은 혜비스 설치본에도 들어가고 저장소도 «공개» 라, 박아 두면 누구나 읽어
+     이 파일은 혜원이지 설치본에도 들어가고 저장소도 «공개» 라, 박아 두면 누구나 읽어
      3학년부 일지 시트에 글을 넣을 수 있었다. 옛 열쇠는 그래서 바꿨다.
      값은 이 PC 설정(widget-state.json 의 gradeWrite)에만 둔다 — 설정 → 학년부 일지. */
 const GRADE_WRITE_DEFAULT = { url: '', key: '' };
@@ -308,7 +308,7 @@ const GRADE_WRITE_DEFAULT = { url: '', key: '' };
    ★ 학년부 일지 쓰기 열쇠처럼 «선생님 두 PC 에서 똑같아야 하는» 비밀을 둔다.
      PC 마다 설정에 넣게 하면 LG 에서 또 넣어야 했다.
    ★ 저장소(공개)나 설치본에는 절대 안 들어간다 — 선생님 OneDrive 에만 있다.
-     혜비스 쓰는 동료분들은 이 OneDrive 에 닿지 않는다.
+     혜원이지 쓰는 동료분들은 이 OneDrive 에 닿지 않는다.
    ★ LG 는 사용자 이름이 한글이지만 Node 는 환경변수를 넓은 글자로 읽어 괜찮다. */
 function sharedPath() {
   const od = process.env.OneDriveCommercial || process.env.OneDrive || '';
@@ -332,7 +332,7 @@ function writeShared(patch) {
 }
 /* 이 PC 설정 → 없으면 OneDrive 의 함께 쓰는 설정 → 없으면 빈 값 */
 function getGradeWrite() {
-  if (!HAS_TT) return { url: "", key: "" };        // 혜비스는 아예 모른다
+  if (!HAS_TT) return { url: "", key: "" };        // 혜원이지는 아예 모른다
   const v = loadState().gradeWrite || {};
   const s = readShared().gradeWrite || {};
   const url = String(v.url || s.url || GRADE_WRITE_DEFAULT.url || "");
@@ -488,7 +488,7 @@ async function refreshFeed() {
       }
     }
     if (!j) {
-      // 열쇠가 없는 사람(혜비스) — 공개 목록이 «제 목록» 이다
+      // 열쇠가 없는 사람(혜원이지) — 공개 목록이 «제 목록» 이다
       j = JSON.parse(await fetchText(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'view=json'));
     }
     const apps = ((j && j.apps) || []).map(feedApp).filter((a) => a.t);
@@ -549,7 +549,7 @@ function photoList() {
    ★ 담아 둔 목록에 없는 화면(새로 생긴 것)은 뒤에 붙는다. */
 /* ── 업무관리(노션) ─────────────────────────────────────────
    노션의 PROJECTS·TASKS 를 읽어 «오늘·이번주 할 일» 로 보여주고, 거기서 바로 고친다.
-   ★ 지비스에만 있다(HAS_TT). 혜비스에는 탭 자체가 안 보인다.
+   ★ 지비스에만 있다(HAS_TT). 혜원이지에는 탭 자체가 안 보인다.
    ★ 열쇠는 화면으로 안 내려간다 — 화면은 «넣었는가(hasKey)» 만 안다. */
 let taskData = null;   // { projects:[…], tasks:[…], at, error }
 /* 표 주소는 앱에 박아 둔다 — 선생님은 열쇠만 넣으면 된다. 설정에서 바꿀 수도 있다. */
@@ -571,7 +571,7 @@ function getTaskSplit() {
 }
 
 async function refreshTasks(why) {
-  if (!HAS_TT) return;                      // 혜비스는 이 기능이 없다
+  if (!HAS_TT) return;                      // 혜원이지는 이 기능이 없다
   const key = getNotionKey();
   if (!key) { taskData = null; sendToWidget(); return; }
   try {
@@ -996,7 +996,7 @@ function checkForUpdates(manual) {
   // ★ «준비됨» 이어도 확인은 계속한다.
   //   설치를 미루고 오래 켜 두면 그 사이 새 판이 여러 번 나오는데,
   //   예전에는 여기서 그냥 돌아가 버려서 낡은 것을 계속 «준비됨» 이라고 들고 있었다.
-  //   (혜비스가 v1.31.1 에 멈춘 채 1.37.1 까지 여섯 판을 못 본 일이 있다)
+  //   (혜원이지가 v1.31.1 에 멈춘 채 1.37.1 까지 여섯 판을 못 본 일이 있다)
   if (updateState === 'ready' && manual) {
     notify(`${APP_NAME} 업데이트 준비됨`,
       `v${updateVersion} 설치 준비가 끝났어요. 클릭하면 재시작하며 설치합니다.`, () => installUpdateNow());
@@ -1033,7 +1033,7 @@ function getWorkerWindow() {
 
 let lastPollDone = Date.now();   // 심장 도장 — pollOnce 가 «끝난» 마지막 때
 async function pollOnce() {
-  // ★ 시간표가 없는 판(혜원 데스크·혜비스)은 수업진도를 아예 안 쓴다.
+  // ★ 시간표가 없는 판(혜원 데스크·혜원이지)은 수업진도를 아예 안 쓴다.
   //   예전에는 화면의 ⟳ 단추가 이걸 불러서, 로그인이 없으니 needLogin 이 되고
   //   위젯 전체가 「수업진도에 로그인해 주세요」 한 장으로 덮여 탭이 사라졌다.
   if (!HAS_TT) return;
@@ -1107,8 +1107,8 @@ function sendToWidget() {
     wx: { show: getWxShow(), spot: getWxSpot(), data: wxData },
     sys: { show: getSysShow(), data: sysData },
     duty: dutyForWidget(),                       // 급식지도 순서표
-    easyFav: loadState().easyFav || [],          // 혜비스 대시보드 즐겨찾기
-    gradeWrite: HAS_TT ? getGradeWrite() : null, // 일지 쓰기 다리 (지비스만 — 혜비스엔 안 내려보냄)
+    easyFav: loadState().easyFav || [],          // 혜원이지 대시보드 즐겨찾기
+    gradeWrite: HAS_TT ? getGradeWrite() : null, // 일지 쓰기 다리 (지비스만 — 혜원이지엔 안 내려보냄)
     att: HAS_TT ? getAttCfg() : null,             // 담임 출결 — 우리 반·교사확인 이름 (지비스만)
     attLocal: HAS_TT ? getAttLocal() : null,      // 앱에만 두는 미인정
     attPhrases: HAS_TT ? getAttPhrases() : null,  // 신청사유 내 예시 문구
@@ -3379,7 +3379,7 @@ ipcMain.handle('grade-cats', async (_e, grade) => {
     return { ok: false, msg: (e && e.message) || String(e) };
   }
 });
-/* ── 담임 출결 — 모두 다리(GAS)를 거친다. 혜비스는 메인에서 막는다 ──
+/* ── 담임 출결 — 모두 다리(GAS)를 거친다. 혜원이지는 메인에서 막는다 ──
    ★ 화면에서 단추만 가리면 개발자 도구로 부를 수 있다. 그래서 여기서도 막는다. */
 const ATT_NO = { ok: false, msg: '출결 쓰기는 지비스에서만 됩니다' };
 async function attCall(몸) {
@@ -4030,7 +4030,7 @@ if (!gotLock) {
      포트는 커널이 쥐고 있어 그림자로 못 가린다 — 여기에 한 번 더 잠근다.
      ★ 늦게 뜬 쪽이 살아남는다. 화면이 이상해서 사람이 다시 켜면
        «새 것으로 바뀌는» 것이 맞기 때문이다. */
-  const GUARD_PORT = HAS_TT ? 47291 : 47292;   // 지비스 / 혜비스 — 둘이 같이 뜨는 건 된다
+  const GUARD_PORT = HAS_TT ? 47291 : 47292;   // 지비스 / 혜원이지 — 둘이 같이 뜨는 건 된다
   function startInstanceGuard(tries) {
     const left = (tries === undefined) ? 5 : tries;
     const srv = http.createServer((req, res) => {

@@ -258,6 +258,8 @@
     letter-spacing: -.03em; margin-right: .04em;
   }
   .brest { font-weight: 600; color: var(--dim); letter-spacing: -.03em; }
+  /* 혜원이지 제목(한글) — 영문 로고체 JI-VIS 와 눈높이를 맞춘다 (v1.130.0) */
+  .hname { font-size: 24px; line-height: 1.1; white-space: nowrap; letter-spacing: -.5px; }
   /* 설정 톱니 — 제목 옆에 둔다. 테마 바탕색에 따라 그림을 갈아 끼운다.
      밝은 바탕에는 검정, 어두운 바탕에는 하늘색, 강렬한 빨강 바탕에는 테두리가 있는 것. */
   .gear {

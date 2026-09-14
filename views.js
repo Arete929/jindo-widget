@@ -1,8 +1,8 @@
 /* 파일명: views.js | @version 1.128.0
    수정요약: v1.128.0 표 크기 손잡이를 진호 시간표 전체(주간진도·시간표계획·날짜별·진도표)와 컴시간에도 / v1.127.0 오늘 주간표 아래 경계(손잡이)를 잡고 끌면 표·글자가 함께 커짐(두 번 누르면 처음대로) / v1.126.0 출결 «점검하기» — 스위치로 켜면 신청사유 뒤 서류·출석부·NEIS 체크 칸, 셋 다면 줄 회색 취소선, 끄면 원래대로(앱에서만) / v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
-   위젯(지비스·혜원 데스크)과 혜비스가 «함께 쓰는» 화면 코드.
+   위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
-   ★ 창의 뼈대는 각자 다르다 — 혜비스는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
+   ★ 창의 뼈대는 각자 다르다 — 혜원이지는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
 
 var STATE = null, VIEW = 'today', SCALE = 1, VER = '', UPD = null, LASTTT = 'today', THEME = '';
 var DASHVER = null;   // 얹은 수업진도 웹앱의 판 { ver, at }
@@ -44,9 +44,9 @@ var BROWSER = '크롬';
 // 지금 그리고 있는 창이 «넓은 창»(easy.html)인가. 왼쪽 메뉴가 있으면 넓은 창이다.
 // ★ 갈래로 가르지 않는다 — 한 프로그램이 위젯 창과 넓은 창을 함께 띄우기 때문이다.
 var IS_EASY = !!document.getElementById('side');
-var EASYFAV = [];         // 혜비스 대시보드 즐겨찾기
+var EASYFAV = [];         // 혜원이지 대시보드 즐겨찾기
 
-/* 화면이 담기는 통. 위젯은 #app, 혜비스는 #main 이다.
+/* 화면이 담기는 통. 위젯은 #app, 혜원이지는 #main 이다.
    스크롤·자리 재기를 하는 곳이 서로 다르므로 여기서 한 번에 가른다. */
 function appEl() {
   return document.getElementById('app') || document.getElementById('main');
@@ -1681,7 +1681,7 @@ function scrollToEl(el, gap) {
   if (!el || !app) return false;
   var top = el.getBoundingClientRect().top - app.getBoundingClientRect().top + app.scrollTop;
   var head = parseFloat(getComputedStyle(app).getPropertyValue('--toph')) || 46;
-  // 머리에 «붙어 있는» 줄만 빼 준다. 혜비스는 이 줄이 같이 흘러가므로 뺄 것이 없다.
+  // 머리에 «붙어 있는» 줄만 빼 준다. 혜원이지는 이 줄이 같이 흘러가므로 뺄 것이 없다.
   var nav = app.querySelector('.top2');
   // ★ 머리(.top) 안으로 옮겨진 월 줄은 이미 head 에 들어 있다 — 두 번 빼지 않는다
   var inHead = nav && nav.parentElement && nav.parentElement.classList.contains('top');
@@ -3194,7 +3194,7 @@ function usgToggleBtn() {
     + (USGPANEL ? '감추기' : '보이기') + '">◍</button>';
 }
 function usageBar() {
-  /* ★ 지비스는 타일이 제목 줄로 갔다 — 여기 띠는 그리지 않는다(혜비스는 그대로) */
+  /* ★ 지비스는 타일이 제목 줄로 갔다 — 여기 띠는 그리지 않는다(혜원이지는 그대로) */
   if (FLAVOR === 'jinho') return '';
   var keys = (USG ? Object.keys(USG) : []).filter(function (k) { return USGON.indexOf(k) >= 0; });
   var sys = sysBox();
@@ -3922,7 +3922,7 @@ function notesCard() {
     + '지난 내역은 <b>설정 → 정보 → «업데이트 내역 보기»</b> 에서 언제든 볼 수 있어요.</div>'
     + '</div>';
 }
-/* 이름 — 혜비스는 뒤 두 글자를 색 상자로 준다. 지비스는 그대로.
+/* 이름 — 혜원이지는 뒤 두 글자를 색 상자로 준다. 지비스는 그대로.
    ★ 위젯 제목 줄과 넓은 창이 같이 쓴다(한 곳에서만 고치도록). */
 /* 담아 둔 순서대로 늘어놓는다. 목록에 없는 것(새로 생긴 화면)은 뒤에 붙는다.
    ★ 순서를 담아 두는 곳이 하나뿐이라, 위젯과 넓게 보기가 늘 같은 순서가 된다. */
@@ -4295,15 +4295,17 @@ function bdSend(app) {
 }
 
 function brandHtml() {
-  /* ★ 두 갈래 모두 제목 줄은 영문 로고체(Lilita One)로 쓴다 —
-     한글은 이 글씨체에 글자가 없어서, 한글 이름은 트레이·알림·설정 같은 딴 자리에만 쓴다.
-     아래 풀이 줄은 앞글자만 강조해 약자임이 보이게 한다(창이 좁으면 CSS 가 감춘다). */
-  var 이름 = HAS_TT ? 'JI-VIS' : 'HYE-VIS';
-  var 풀이 = HAS_TT
-    ? '<b>J</b>inho\u2019s <b>I</b>ntelligent <b>V</b>ersatile <b>I</b>nformation <b>S</b>ystem'
-    : '<b>H</b>yewon\u2019s <b>E</b>veryday <b>V</b>ersatile <b>I</b>nformation <b>S</b>ystem';
-  return '<span class="brandwrap" title="' + esc(APPNAME) + ' · ' + 이름 + '">'
-    + '<span class="hw">' + 이름 + '</span>'
+  /* ★ 지비스는 영문 로고체(Lilita One) «JI-VIS» + 풀이 줄(앞글자 강조, 창이 좁으면 CSS 가 감춘다).
+     ★ 동료 판은 v1.117.0 에 «혜비스(HYE-VIS)» 로 바꿨다가 v1.130.0 에 다시 «혜원이지» 로(2026-09-14 선생님 결정).
+       Lilita One 에는 한글 글자가 없어서 한글 이름은 기본 글씨체로 — «혜원» 은 진하게, «이지» 는 옅게(한 낱말로 읽히게).
+       영문 풀이 줄은 뺐다. */
+  if (!HAS_TT) {
+    return '<span class="brandwrap" title="혜원이지"><span class="hname">'
+      + '<em class="bchip">혜원</em><span class="brest">이지</span></span></span>';
+  }
+  var 풀이 = '<b>J</b>inho’s <b>I</b>ntelligent <b>V</b>ersatile <b>I</b>nformation <b>S</b>ystem';
+  return '<span class="brandwrap" title="' + esc(APPNAME) + ' · JI-VIS">'
+    + '<span class="hw">JI-VIS</span>'
     + '<span class="tagline">' + 풀이 + '</span></span>';
 }
 /* ── 바로가기 ──────────────────────────────────────────────
@@ -4337,13 +4339,13 @@ try { dutyHidDay = localStorage.getItem('dutyHid') || ''; } catch (e) { /* 못 �
 var FEED = null, FEEDFAV = [];
 /* ── 런처보드 ──────────────────────────────────────────────
    런처 GAS(내 앱 대시보드) 시트를 이 화면에서 바로 고친다.
-   ★ «공유» 를 켠 것만 혜비스에 나타난다. 꺼 두면 나만 본다.
+   ★ «공유» 를 켠 것만 혜원이지에 나타난다. 꺼 두면 나만 본다.
    ★ ⟳ 는 구글 드라이브를 훑어 새로 만든 앱을 담아 온다 — 누를 때만 한다.
      (저절로 하면 앱 켤 때마다 드라이브를 뒤져 느려진다) */
 var lbEdit = false, lbQ = '', lbBusy = '', lbErr = '', lbOkAt = '', lbForm = null;
 function lbOn() { return FLAVOR === 'jinho' && !!FEED; }
 /* 런처에서 온 앱 묶음의 이름 — 갈래마다 «누구 것인가» 가 다르다.
-   지비스는 내가 담은 «내 앱», 혜비스는 내가 나눠 준 것을 «선생님들이» 본다. */
+   지비스는 내가 담은 «내 앱», 혜원이지는 내가 나눠 준 것을 «선생님들이» 본다. */
 function feedName() { return FLAVOR === 'jinho' ? '내 앱' : '함께 쓰는 앱'; }
 /* 런처보드는 두 가지를 담는다 — 내가 만든 앱, 그리고 그냥 담아 둔 주소.
    ★ 갈라 보여 주되 나만/공유는 똑같이 쓴다. */
@@ -4849,7 +4851,7 @@ function lbListHtml() {
   var cats = lbCats();
 
   /* ★ 공유 중인 것을 맨 위로 — «남이 지금 뭘 보나» 가 가장 궁금한 것이다 */
-  [{ k: 'y', t: '함께 쓰는 중', d: '혜비스에 보입니다' },
+  [{ k: 'y', t: '함께 쓰는 중', d: '혜원이지에 보입니다' },
    { k: 'n', t: '나만 보기', d: '나에게만 보입니다' }].forEach(function (band) {
     var mine = rest.filter(function (x) { return (band.k === 'y') === !!x.shared; });
     if (!mine.length) return;
@@ -4927,7 +4929,7 @@ function lbTools() {
     + '<button class="wkb" id="lbCatNew">＋ 묶음</button>'
     + '<button class="wkb" id="lbFoldAll">모두 접기</button>'
     + '<button class="wkb" id="lbOpenAll">모두 펼치기</button>'
-    + '<span class="lbhint"><b>함께</b> 로 둔 것만 <b>혜비스</b> 에 보입니다. 줄을 끌어 다른 묶음으로 옮길 수 있습니다.</span>'
+    + '<span class="lbhint"><b>함께</b> 로 둔 것만 <b>혜원이지</b> 에 보입니다. 줄을 끌어 다른 묶음으로 옮길 수 있습니다.</span>'
     + '</div>'
     + (lbNewCat
       ? '<div class="lbform"><div class="lbfr"><i>새 묶음</i>'
@@ -5058,7 +5060,7 @@ function lbSeg(x, i) {
     + '<button class="' + (x.shared ? '' : 'on') + '" data-lbset="' + i + ',n"'
     + ' title="나만 보기" aria-label="나만 보기">' + ofSvg('lock') + '</button>'
     + '<button class="' + (x.shared ? 'on' : '') + '" data-lbset="' + i + ',y"'
-    + ' title="함께 쓰기 — 혜비스에 보입니다" aria-label="함께 쓰기">'
+    + ' title="함께 쓰기 — 혜원이지에 보입니다" aria-label="함께 쓰기">'
     + ofSvg('users') + '</button>'
     + '</span>';
 }
@@ -5525,7 +5527,7 @@ function lbPaint(root) {
    컴시간이 «몇 교시 · 어느 반 · 무슨 과목» 을 이미 알려 준다.
    사람이 넣을 것은 «이번 시간에 뭘 했나» 한 줄뿐이다.
    차시는 그 학급에 적은 메모의 순번이라 저절로 붙는다.
-   ★ 혜비스에만 있다 — 지비스에는 수업진도 대시보드가 따로 있다. */
+   ★ 혜원이지에만 있다 — 지비스에는 수업진도 대시보드가 따로 있다. */
 var NT = null, ntBusy = false, ntErr = '', ntCls = '', ntSaved = {};
 var NTDOW = ['일', '월', '화', '수', '목', '금', '토'];
 function ntLoad(force) {
@@ -6032,7 +6034,7 @@ function render() {
     + '<button class="ico img" title="넓게 보기 — 사이드바가 있는 큰 창" onclick="widgetAPI.openEasy()">'
     + '<img src="assets/wide.png" alt="넓게 보기"></button>'
     + (HAS_TT ? '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>' : '')
-    // ★ 혜원 데스크·혜비스는 수업진도를 안 쓴다. 예전에는 여기서도 refreshNow() 를
+    // ★ 혜원 데스크·혜원이지는 수업진도를 안 쓴다. 예전에는 여기서도 refreshNow() 를
     //   불러서 위젯이 통째로 「수업진도에 로그인해 주세요」로 덮였다.
     + (HAS_TT
         ? '<button class="ico" title="지금 새로고침" onclick="widgetAPI.refreshNow()">⟳</button>'
@@ -6439,7 +6441,7 @@ widgetAPI.onData(function (p) {
   if (p.flavor) FLAVOR = p.flavor;
   if (p.browserLabel) BROWSER = p.browserLabel;
   STATE = p.data;
-  // 혜비스는 대시보드라는 «위젯에 없는» 화면이 있어서, 보던 화면을 스스로 챙긴다
+  // 혜원이지는 대시보드라는 «위젯에 없는» 화면이 있어서, 보던 화면을 스스로 챙긴다
   if (!IS_EASY) VIEW = p.view || VIEW;
   // ★ «이번주» 는 «오늘» 안으로 들어갔다. 옛 판에서 그걸 보던 사람은 빈 화면이 된다.
   if (VIEW === 'week') { VIEW = 'today'; widgetAPI.setView('today'); }
@@ -6503,7 +6505,7 @@ widgetAPI.onData(function (p) {
   }
   if (p.flavor) {
     HAS_TT = FLAVOR === 'jinho';
-    APPNAME = p.appName || (HAS_TT ? '지비스' : '혜비스');
+    APPNAME = p.appName || (HAS_TT ? '지비스' : '혜원이지');
     if (!HAS_TT && ['today', 'week', 'progress'].indexOf(VIEW) >= 0) VIEW = IS_EASY ? 'home' : 'work';
   }
   if (p.easyFav) EASYFAV = p.easyFav;
@@ -6580,7 +6582,7 @@ setInterval(function () {
 
 
 /* ── 화면 안의 단추·입력칸 연결 ──
-   위젯(#app)과 혜비스(#main)가 «같은 연결»을 쓴다. 화면 조각이 같으니
+   위젯(#app)과 혜원이지(#main)가 «같은 연결»을 쓴다. 화면 조각이 같으니
    단추도 같아야 한다 — 한 군데만 고치면 두 프로그램이 같이 고쳐진다. */
 function wireViews(app) {
   // 진도표 격자 — 이번 주 / 전체 · 주 넘기기 · 이번주로
@@ -7509,7 +7511,7 @@ function wireViews(app) {
   });
   var nx = app.querySelector('#notesX');
   if (nx) nx.addEventListener('click', function () { NOTES = null; widgetAPI.notesSeen(); render(); });
-  // ⟳ — 보고 있는 탭의 자료를 다시 받는다 (혜원 데스크·혜비스)
+  // ⟳ — 보고 있는 탭의 자료를 다시 받는다 (혜원 데스크·혜원이지)
   var reB = app.querySelector('#reGet');
   if (reB) reB.addEventListener('click', function () {
     reB.textContent = '…';
