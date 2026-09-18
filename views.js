@@ -1,5 +1,6 @@
-/* 파일명: views.js | @version 2.0.1
-   수정요약: v2.0.1 출결 인쇄 배경색 늘 찍기·여백 값 넘김(margin) / v2.0.0 출결 — 반 고르기·보기 전용·수정요청사항(학년부장)·처음 연결 화면·유형은 시트 목록·학생부터·고르기 판 넓게 · 모든 탭 본문 손잡이(zoom) · 틱틱 목록 기억 · 혜원이지 이름(한글 제목) / v1.128.0 표 크기 손잡이를 진호 시간표 전체(주간진도·시간표계획·날짜별·진도표)와 컴시간에도 / v1.127.0 오늘 주간표 아래 경계(손잡이)를 잡고 끌면 표·글자가 함께 커짐(두 번 누르면 처음대로) / v1.126.0 출결 «점검하기» — 스위치로 켜면 신청사유 뒤 서류·출석부·NEIS 체크 칸, 셋 다면 줄 회색 취소선, 끄면 원래대로(앱에서만) / v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
+/* 파일명: views.js | @version 2.1.0
+   수정요약: v2.1.0 출결 새 줄 적기 순서 — 구분→학생→날짜→유형(아무 칸이나 눌러도 앞선 빈 칸이 대신 뜸,
+     이미 채운 칸은 그 칸만 고침) · «서류✓» 를 «확인✓» 으로(점검하기의 «서류» 와 헷갈리지 않게) / v2.0.1 출결 인쇄 배경색 늘 찍기·여백 값 넘김(margin) / v2.0.0 출결 — 반 고르기·보기 전용·수정요청사항(학년부장)·처음 연결 화면·유형은 시트 목록·학생부터·고르기 판 넓게 · 모든 탭 본문 손잡이(zoom) · 틱틱 목록 기억 · 혜원이지 이름(한글 제목) / v1.128.0 표 크기 손잡이를 진호 시간표 전체(주간진도·시간표계획·날짜별·진도표)와 컴시간에도 / v1.127.0 오늘 주간표 아래 경계(손잡이)를 잡고 끌면 표·글자가 함께 커짐(두 번 누르면 처음대로) / v1.126.0 출결 «점검하기» — 스위치로 켜면 신청사유 뒤 서류·출석부·NEIS 체크 칸, 셋 다면 줄 회색 취소선, 끄면 원래대로(앱에서만) / v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
    위젯(지비스·혜원 데스크)과 혜원이지가 «함께 쓰는» 화면 코드.
    자료를 읽어 오고(loadWork·loadAcademic…) 화면 조각을 만드는(viewWork·viewAcademic…) 일을 한다.
    ★ 창의 뼈대는 각자 다르다 — 혜원이지는 easy.js 에서 render() 를 자기 것으로 바꿔 쓴다. */
@@ -2309,7 +2310,7 @@ function attRowHtml(x, folded) {
     + '<td class="c' + (ht ? ' ' + ht : '') + '"><span class="gpk h' + attHue(x.type) + '">' + esc(x.type) + '</span></td>'
     + '<td class="rs">' + esc(x.reason)
       + (x.saving ? ' <span class="atsv">저장 중…</span>' : '')
-      + (x.doc ? ' <span class="atok">서류✓</span>' : '') + (x.neis ? ' <span class="atok">NEIS✓</span>' : '')
+      + (x.doc ? ' <span class="atok" title="시트 «서류확인» 칸에 체크됨 — 점검하기와는 다른 칸">확인✓</span>' : '') + (x.neis ? ' <span class="atok">NEIS✓</span>' : '')
       + attRowBtns(x, lock)
       + '</td>'
       + (attChkOn ? attChkCells(x) : '')
@@ -2344,6 +2345,40 @@ var attNew = { gubun: '', id: '', name: '', date: '', time: '', end: '', type: '
 /* 고치는 중 — 줄의 ✎ 를 누르면 그 내용이 아래 새 줄에 채워진다. { sig, local, key, old:{id,date,type,reason}, gubun } */
 var attEditing = null;
 var attDelAsk = '';          // ✕ 는 두 번 — 처음 누른 줄의 sig
+/* ── 새 줄 순서 — 구분→학생→날짜→유형(2026-09-18) ──────────────
+   ★ «아무 칸이나 눌러도» 아직 안 채운 것 중 가장 앞선 칸이 대신 뜬다.
+   ★ 이미 채운 칸을 다시 누르면 순서를 따지지 않고 그 칸만 고친다(attNewFilled 로 걸러짐).
+   날짜는 늘 오늘로 채워져 있어(gpToday) «비었다» 로 볼 수 없다 — 한 번 포커스를 받으면(attNewDateOk)
+   지나간 것으로 친다. attEditing 중에는(이미 다 채워진 줄) 순서를 따지지 않는다. */
+var attNewDateOk = false;
+function attNewFilled(step) {
+  if (step === 'gubun') return !!attNew.gubun;
+  if (step === 'st') return !!attNew.id;
+  if (step === 'date') return attNewDateOk;
+  if (step === 'type') return !!attNew.type;
+  return true;
+}
+function attNewNeed() {
+  var order = ['gubun', 'st', 'date', 'type'];
+  for (var i = 0; i < order.length; i++) { if (!attNewFilled(order[i])) return order[i]; }
+  return null;
+}
+/* true 를 돌려주면(리다이렉트했으면) 누른 칸 본래의 팝업은 열지 않는다 */
+function attNewGate(app, p) {
+  if (attEditing || p[1] !== 'new' || ['gubun', 'st', 'type'].indexOf(p[0]) < 0) return false;
+  if (attNewFilled(p[0])) return false;                 // 이미 채운 칸 — 그 칸만 고치게 그대로 둔다
+  var need = attNewNeed();
+  if (!need || need === p[0]) return false;             // 이 칸이 바로 다음 차례 — 그대로 진행
+  if (need === 'date') {
+    attPop = null; render();
+    var d = app.querySelector('#atNewDate'); if (d) { d.focus(); attNewDateOk = true; }
+    return true;
+  }
+  attPop = { kind: need, key: 'new' };
+  render();
+  if (need === 'st') { var i = app.querySelector('#atNewId'); if (i) i.focus(); }
+  return true;
+}
 function attRowBtns(x, lock) {
   if (lock) return '';
   var busy = !!attRowBusy[x.sig];
@@ -2545,7 +2580,7 @@ function attEditSave(보냄) {
   var base = E.local ? null : attSheetRows().filter(function (y) { return y.sig === E.sig && y.r === E.r; })[0];
   var p = base ? { old: E.sig, r: E.r, row: attOptRow(보냄, 쓰던것.gubun, base), after: 0 } : null;
   if (p) attOpt.push(p);
-  attEditing = null; attLast = null;
+  attEditing = null; attLast = null; attNewDateOk = false;
   attNew = { gubun: '', id: '', name: '', date: gpToday(), time: '', end: '', type: '', reason: '' };
   attMon = 보냄.date.slice(0, 7);
   render();
@@ -2736,9 +2771,9 @@ function wireAtt(app) {
     if (ev.target.closest && ev.target.closest('[data-atpopbox]')) return;
     if (b.classList.contains('off')) return;
     var p = b.dataset.atpop.split('§');
-    /* ★ 새 줄은 «학생부터» (2026-09-15) — 학생을 아직 안 골랐으면 구분·유형 칸을 눌러도 학생 판이 먼저 뜬다.
-         학생을 고르면 유형 판, 유형을 고르면 신청사유 칸으로 이어진다 */
-    if (p[1] === 'new' && p[0] !== 'st' && !attNew.id && !attEditing) p = ['st', 'new'];
+    /* ★ 새 줄은 구분→학생→날짜→유형 순서(2026-09-18) — 아직 안 채운 칸을 눌러도
+         그보다 앞선 빈 칸이 있으면 그 칸이 대신 뜬다. 이미 채운 칸은 그대로 그 칸만 고친다 */
+    if (attNewGate(app, p)) return;
     attPop = attPopOpen(p[0], p[1]) ? null : { kind: p[0], key: p[1] };
     render();
     if (attPop && attPop.kind === 'st') { var i = app.querySelector('#atNewId'); if (i) i.focus(); }
@@ -2750,10 +2785,12 @@ function wireAtt(app) {
     var kind = p[0], key = p[1], val = p.slice(2).join('§');
     if (kind !== 'end') attPop = null;
     if (key === 'new') {
-      if (kind === 'gubun') attNew.gubun = val;
+      if (kind === 'gubun') {
+        attNew.gubun = val;
+        if (!attNew.id && !attEditing) attPop = { kind: 'st', key: 'new' };   // 구분 다음은 학생
+      }
       else if (kind === 'st') {
         var q = val.split('|'); attNew.id = q[0]; attNew.name = q[1] || '';
-        if (!attNew.type && !attEditing) attPop = { kind: 'type', key: 'new' };   // 학생 다음은 유형
       }
       else if (kind === 'end') attNew.end = (attNew.end === val ? '' : val);
       else if (kind === 'type') {
@@ -2763,6 +2800,9 @@ function wireAtt(app) {
         if (attIsLocalType(val)) attNew.gubun = '';
       }
       render();
+      if (kind === 'st' && !attEditing && !attNewDateOk) {         // 학생 다음은 날짜(팝업 없이 포커스만)
+        var d = app.querySelector('#atNewDate'); if (d) { d.focus(); attNewDateOk = true; }
+      }
       var ri = app.querySelector('#atNewReason'); if (ri && kind === 'type') ri.focus();
       return;
     }
@@ -2860,6 +2900,7 @@ function wireAtt(app) {
       label: Number(String(x.id).slice(2)) + ' ' + x.name + ' ' + attMd(x.start) + ' ' + x.type };
     attNew = { gubun: x.gubun, id: x.id, name: x.name, date: x.start, time: x.time,
       end: /^\d{4}-\d{2}-\d{2}$/.test(x.end) ? x.end : (x.endTxt || ''), type: x.type, reason: x.reason };
+    attNewDateOk = true;                            // 이미 다 채워진 줄 — 순서를 다시 따지지 않는다
     attDelAsk = ''; attAddMsg = ''; attPop = null; render();
     var el = app.querySelector('tr.atnew'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
     var ri = app.querySelector('#atNewReason'); if (ri) ri.focus();
@@ -2883,7 +2924,7 @@ function wireAtt(app) {
   };
   on('#atPhrAdd', addPhr);
   if (pn) pn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addPhr(); } });
-  on('#atEditX', function () { attEditing = null; attNew = { gubun: '', id: '', name: '', date: gpToday(), time: '', end: '', type: '', reason: '' }; render(); });
+  on('#atEditX', function () { attEditing = null; attNewDateOk = false; attNew = { gubun: '', id: '', name: '', date: gpToday(), time: '', end: '', type: '', reason: '' }; render(); });
   /* ✕ — 두 번 눌러야 지운다 */
   on('[data-atdel]', function (b) {
     var sig = b.dataset.atdel;
