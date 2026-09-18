@@ -37,6 +37,7 @@ files:
   - weather.js    # 날씨·미세먼지 (Open-Meteo)
   - sysinfo.js    # 이 PC 의 CPU·램
   - aiusage.js
+  - usagetray.js
   - httpx.js
   - googleauth.js
   - records.js
