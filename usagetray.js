@@ -1,17 +1,18 @@
-// 파일명: usagetray.js | @version 1.1.0
-// AI 사용량을 작업표시줄 알림 영역에 「서비스마다 작은 원형 게이지 아이콘」으로 나란히 띄운다.
+// 파일명: usagetray.js | @version 1.2.0
+// AI 사용량(과 내 PC)을 작업표시줄 알림 영역에 「자리마다 작은 원형 게이지 아이콘」으로 나란히 띄운다.
 // ★ 지비스 전용(main.js 가 HAS_TT 일 때만 부른다). 앱 대표 트레이 아이콘(로고)은 그대로 두고,
 //   옆에 사용량 아이콘을 Tray 를 여러 개 만들어 따로 붙인다(SPECTRA 참고 + 사용량 화면의 ringSvg 모양).
+// ★ v1.2.0 — «서비스 하나에 아이콘 하나» 가 아니라 «사용량 큰 화면에 보이는 자리마다 하나» 로.
+//   무엇을 몇 개 보여줄지는 main.js 의 usageTrayItems() 가 정한다(5시간·주간·Fable·내 PC CPU·RAM…) —
+//   이 파일은 받은 목록대로 그리고 트레이를 맞출 뿐, 어떤 서비스인지는 모른다(item.key 만 안다).
 //
 // 그림을 어떻게 만드나
 //   숨은 창 하나를 계속 재사용해 작은 HTML(SVG 링+숫자)을 그린 뒤 capturePage 로 사진을 찍는다.
 //   64px 로 크게 그려서 24px 로 줄여 넣는다 — 그대로 그리는 것보다 훨씬 또렷하다(수퍼샘플링,
 //   특히 가는 링 테두리는 작게 그리면 계단이 진다).
-// v1.1.0: 납작한 사각 배지 → 링(도넛) 모양으로. 사용량 큰 화면의 ringSvg() 와 같은 생김새(선생님이 «이 모양이 좋다»).
 
 const { BrowserWindow, Tray } = require('electron');
 
-const ORDER = ['claude', 'gemini', 'gpt'];   // 나오는 차례(앱 아이콘 옆)
 const RENDER = 64, ICON = 24;
 
 /* 40% 부터 노랑, 오를수록 붉어짐 — views.js 의 usgTone() 과 같은 기준을 여기(메인 프로세스)에도 둔다 */
@@ -67,56 +68,38 @@ async function renderBadge(text, pct) {
   return img.resize({ width: ICON, height: ICON, quality: 'best' });
 }
 
-/* 한 서비스의 상태 → { text, pct(null 이면 민무늬), tip } */
-function badgeOf(label, u) {
-  if (!u) return { text: '·', pct: null, tip: label };
-  if (u.needsLogin) return { text: '!', pct: null, tip: label + ' — 로그인 필요(눌러서 열기)' };
-  const m = (u.session && u.session.pct != null) ? u.session : (u.weekly && u.weekly.pct != null ? u.weekly : null);
-  if (!m) return { text: '…', pct: null, tip: label + ' — 불러오는 중…' };
-  let left = '';
-  if (m.resetAt) {
-    const ms = m.resetAt - Date.now();
-    if (ms > 0) {
-      const mi = Math.floor(ms / 60000), hh = Math.floor(mi / 60);
-      left = ' · ' + (hh >= 1 ? hh + '시간 ' + (mi % 60) + '분 남음' : mi + '분 남음');
-    }
-  }
-  return { text: String(Math.round(m.pct)), pct: m.pct, tip: label + ' ' + Math.round(m.pct) + '%' + left };
-}
-
 const trays = {};        // key → Tray
-let onOpen = () => {};   // 눌렀을 때 할 일(main.js 가 넣어 준다 — 위젯 열기)
+let onOpen = () => {};   // 눌렀을 때 할 일(main.js 가 넣어 준다 — 위젯 열기·로그인)
 function setOpener(fn) { onOpen = fn || (() => {}); }
 
 let busy = false, pending = null;
-/* onKeys=켜 놓은 것(claude/gemini/gpt), snap=aiusage.snapshot() 그대로.
+/* items = [{ key, text, pct(숫자 또는 null), tip, ...아무거나(눌렀을 때 onOpen 에 그대로 넘어감) }, …]
+   순서대로 트레이를 만들고, 목록에 없어진 key 는 지운다.
    ★ 그림 만들기(capturePage)는 비동기라 겹쳐 부르면 꼬인다 — 한 번에 하나씩만, 밀린 건 마지막 것만 다시 */
-async function reconcile(onKeys, snap) {
-  if (busy) { pending = [onKeys, snap]; return; }
+async function reconcile(items) {
+  if (busy) { pending = items; return; }
   busy = true;
   try {
-    const keys = ORDER.filter((k) => onKeys.indexOf(k) >= 0);
-    for (const k of keys) {
-      const u = snap && snap[k];
-      const label = (u && u.label) || k;
-      const b = badgeOf(label, u);
-      const img = await renderBadge(b.text, b.pct);
-      let t = trays[k];
+    const list = items || [];
+    for (const it of list) {
+      const img = await renderBadge(it.text, it.pct);
+      let t = trays[it.key];
       if (!t || t.isDestroyed()) {
         t = new Tray(img);
-        t.on('click', () => onOpen(k, u));
-        trays[k] = t;
+        t.on('click', () => onOpen(it));
+        trays[it.key] = t;
       } else {
         t.setImage(img);
       }
-      t.setToolTip(b.tip);
+      t.setToolTip(it.tip || '');
     }
+    const keep = list.map((it) => it.key);
     Object.keys(trays).forEach((k) => {
-      if (keys.indexOf(k) < 0) { try { trays[k].destroy(); } catch (e) { /* 이미 없어짐 */ } delete trays[k]; }
+      if (keep.indexOf(k) < 0) { try { trays[k].destroy(); } catch (e) { /* 이미 없어짐 */ } delete trays[k]; }
     });
   } finally {
     busy = false;
-    if (pending) { const p = pending; pending = null; reconcile(p[0], p[1]); }
+    if (pending) { const p = pending; pending = null; reconcile(p); }
   }
 }
 function destroyAll() {
@@ -125,4 +108,4 @@ function destroyAll() {
   renderWin = null;
 }
 
-module.exports = { reconcile, setOpener, destroyAll, renderBadge, badgeOf };   // renderBadge·badgeOf 는 시험용
+module.exports = { reconcile, setOpener, destroyAll, renderBadge };   // renderBadge 는 시험용
