@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 2.3.0
-// 수정요약: v2.3.0 작업표시줄 사용량 아이콘 — «서비스 하나에 아이콘 하나» 가 아니라 큰 사용량 화면과 같은 자리마다
+// 파일명: main.js | @version 2.3.1
+// 수정요약: v2.3.1 작업표시줄 사용량 아이콘 숫자가 안 보이던 것 — 흰 글씨+투명 가운데라 밝은 작업표시줄에 묻혔다. 흰 원판+진한 큰 숫자로, 링 색은 테마 강조색(usageAccent), 첫 그림이 비던 것 고침(usagetray 1.3.0) / v2.3.0 작업표시줄 사용량 아이콘 — «서비스 하나에 아이콘 하나» 가 아니라 큰 사용량 화면과 같은 자리마다
 //   하나로(usageTrayItems). Claude 5시간·주간·Fable, Gemini·ChatGPT 5시간·주간, 켜 두었으면 내 PC CPU·RAM 까지
 //   각각 따로 뜸(선생님이 실제 사용량 화면과 똑같은 모양을 원함) / v2.2.0 AI 사용량을 작업표시줄 알림 영역에 서비스마다 작은 숫자 아이콘으로(usagetray.js, 지비스 전용) —
 //   Claude·Gemini·ChatGPT 를 켜 놓으면 트레이 대표 아이콘 옆에 %(로그인 필요는 !) 아이콘이 나란히 뜸, 눌러서 로그인·위젯 열기.
@@ -1194,6 +1194,9 @@ function usageTipLine() {
 }
 /* B안(v1.2.0) — «서비스 하나에 아이콘 하나» 가 아니라 큰 사용량 화면에 보이는 자리마다 하나.
    Claude 5시간·주간·Fable, Gemini·ChatGPT 5시간·주간, 켜 두었으면 내 PC CPU·RAM 까지 — 실제 화면과 같은 개수. */
+/* 링 색(0~40%)은 앱 테마 강조색을 따른다 — ui.css 의 --accent 와 같은 값. 고스트(테마 없음)는 기본 남색 */
+const THEME_ACCENT = { '': '#27187E', black: '#ff8b3d', slatelight: '#8b5cf6', chillwhite: '#FD1843', night: '#89E900', gold: '#D4AF37' };
+function usageAccent() { return THEME_ACCENT[getTheme()] || '#8b5cf6'; }
 const USAGE_WIN = [['session', '5시간'], ['weekly', '주간'], ['fable', 'Fable']];
 function usageTrayItems() {
   const items = [];
@@ -1255,7 +1258,7 @@ function updateTrayTooltip() {
   const usage = usageTipLine();
   tray.setToolTip(usage ? base + '\n\n' + usage : base);
   /* B안 — 사용량 자리마다 작은 아이콘을 알림 영역에 나란히(지비스만) */
-  if (HAS_TT) usagetray.reconcile(usageTrayItems());
+  if (HAS_TT) usagetray.reconcile(usageTrayItems(), usageAccent());
 }
 
 /* ===================== 로그인 (크롬으로) =====================
