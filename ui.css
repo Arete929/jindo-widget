@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 2.0.0 — 출결 반 고르기·처음 연결·보기 전용·고르기 판 넓게·탭 줄도 --wf·본문 zoom 손잡이·주간업무 표 가운데 
+/* 파일명: ui.css | @version 2.0.1 — 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -1505,6 +1505,7 @@
   .attt td.atck:hover i { border-color: var(--accent); }
   .attt td.atck.on i { background: var(--accent); border-color: var(--accent); color: var(--on); }
   .attt td.atck.off { cursor: default; opacity: .5; }
+  .attt td.atck.na { cursor: default; }
   /* 셋 다 체크 — 흐린 회색 + 취소선 (체크 칸은 그대로 읽히게 줄만 긋지 않는다) */
   .attt tr.atr.chkdone td { background: color-mix(in srgb, #9ca3af 16%, var(--card)) !important;
     color: #9ca3af !important; text-decoration: line-through; text-decoration-color: #b4b9c0; }

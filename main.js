@@ -1,5 +1,9 @@
-// 파일명: main.js | @version 2.5.2
-// 수정요약: v2.5.2 ★작업표시줄 «지비스» 고정 아이콘이 빈 흰 종이로, 실행 중인 창은 패키지 설명 글로 따로
+// 파일명: main.js | @version 2.7.0
+// 수정요약: v2.7.0 전체화면(`) 이 작업표시줄을 가리던 것(선생님 지적) — setFullScreen() 대신
+//   maximize()/unmaximize() 로. 최대화는 작업표시줄을 그대로 두고 화면(작업 영역)만 채운다.
+//   fitWindowNow()·'too-tall' 처리기의 «전체화면 중이면 손대지 않기» 가드에 isMaximized() 도 추가
+//   (최대화 중에 setBounds() 로 강제로 접으면 최대화가 풀려 보이는 것 방지).
+// v2.5.2 ★작업표시줄 «지비스» 고정 아이콘이 빈 흰 종이로, 실행 중인 창은 패키지 설명 글로 따로
 //   뜨던 것(2026-09-23 실측) — app.setAppUserModelId() 를 한 번도 안 불렀던 게 원인. 설치 때 만든 고정
 //   바로가기(appId 로 신원표 있음)와 실행 중인 창이 같은 신원표를 안 써서 Windows 가 서로 다른 앱으로 봤다.
 //   FLAVOR 정해지자마자(창 만들기 전) appId 로 등록. ★이미 고정해 둔 지비스 아이콘은 한 번 떼었다 다시
@@ -1687,7 +1691,7 @@ function clampAll(why) {
 
 /* 지금 창이 화면 밖으로 나가 있으면 끌어들인다 */
 function fitWindowNow(win, why) {
-  if (!win || win.isDestroyed() || win.isFullScreen()) return;
+  if (!win || win.isDestroyed() || win.isFullScreen() || win.isMaximized()) return;
   const b = win.getBounds();
   const n = fitToScreen(b);
   if (n.x === b.x && n.y === b.y && n.width === b.width && n.height === b.height) return;
@@ -4103,13 +4107,17 @@ ipcMain.handle('get-weeks', async (_e, o) => {
 });
 app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch (e) {} });
 /* 전체화면 ↔ 원래 크기 — 백틱(`) 으로 오간다.
-   ★ 어느 창에서 눌렀는지 보고 그 창만 바꾼다. 위젯과 넓게 보기가 따로 논다. */
+   ★ 어느 창에서 눌렀는지 보고 그 창만 바꾼다. 위젯과 넓게 보기가 따로 논다.
+   ★ Windows 의 «진짜 전체화면»(setFullScreen) 은 작업표시줄까지 덮어 버린다(선생님 지적,
+     2026-09-23) — 그래서 대신 창 «최대화» 를 쓴다. 최대화는 화면을 꽉 채우되 작업표시줄
+     자리는 그대로 남긴다. 혹시 예전에 진짜 전체화면으로 켜져 있었으면 그것부터 끈다. */
 ipcMain.on('toggle-full', (e) => {
   const win = BrowserWindow.fromWebContents(e.sender);
   if (!win || win.isDestroyed()) return;
-  const want = !win.isFullScreen();
-  win.setFullScreen(want);
-  debugLog('전체화면 ' + (want ? '켬' : '끔'));
+  if (win.isFullScreen()) win.setFullScreen(false);
+  const want = !win.isMaximized();
+  if (want) win.maximize(); else win.unmaximize();
+  debugLog('전체화면(작업표시줄 보임) ' + (want ? '켬' : '끔'));
 });
 /* 창 아래가 모니터 밖으로 나갔다고 «그리는 쪽» 이 알려 왔다.
    ★ 값은 모두 CSS 픽셀이다. 여기서는 창 높이와 안쪽 높이를 견주어
@@ -4118,7 +4126,7 @@ ipcMain.on('toggle-full', (e) => {
      올릴 자리가 모자란 만큼만 높이를 깎는다. */
 ipcMain.on('too-tall', (e, o) => {
   const win = BrowserWindow.fromWebContents(e.sender);
-  if (!win || win.isDestroyed() || win.isFullScreen()) return;
+  if (!win || win.isDestroyed() || win.isFullScreen() || win.isMaximized()) return;
   const inner = Number(o && o.inner) || 0;
   const over = Number(o && o.over) || 0;
   const room = Math.max(0, Number(o && o.room) || 0);

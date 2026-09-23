@@ -1,5 +1,7 @@
-/* 파일명: views.js | @version 2.3.0
-   수정요약: v2.3.0 학사일정에 주간업무와 같은 검색 넣음(acQ·acMk·acMoveHit) — 검색칸에 글자를 넣으면
+/* 파일명: views.js | @version 2.4.0
+   수정요약: v2.4.0 점검하기 — 구분이 «서류없음» 인 줄은 확인할 서류가 없으니 서류 칸 체크박스를 없앰
+     (attChkKeys 로 걸러 attChkDone 판정에서도 제외, attChkCells 는 그 칸을 빈 칸(.atck.na)으로만 그림
+     — 칸 줄맞춤은 그대로 유지) / v2.3.0 학사일정에 주간업무와 같은 검색 넣음(acQ·acMk·acMoveHit) — 검색칸에 글자를 넣으면
      보이는 달들의 일정 글에서 찾아 노랗게 표시하고 1/3 식 카운터·▲▼(Enter·Shift+Enter) 로 넘나든다.
      페이지가 안 갈리고 한 화면에 죽 이어져 있어(3월~이듬해 2월), 입력하는 즉시 찾은 자리로 스크롤함
      (주간업무처럼 «어느 주로 옮길지» 셈이 필요 없음). 지비스·혜원이지 둘 다(학사일정은 공용 화면) —
@@ -2213,14 +2215,17 @@ function attNCols() { return 8 + (attChkOn ? ATT_CHK.length : 0) + (attHasReq() 
 var ATT_CHK = [['doc', '서류'], ['att', '출석부'], ['neis', 'NEIS']];
 var ATTCHK = {}, ATTCHKAT = '', attChkOn = false, attChkJust = false;
 function attChkOf(x) { return ATTCHK[x.sig] || {}; }
-function attChkDone(x) { var c = attChkOf(x); return ATT_CHK.every(function (k) { return !!c[k[0]]; }); }
+/* 서류없음 줄엔 서류 칸이 아예 없다 — 확인할 서류가 없으니 */
+function attChkKeys(x) { return x.gubun === '서류없음' ? ATT_CHK.filter(function (k) { return k[0] !== 'doc'; }) : ATT_CHK; }
+function attChkDone(x) { var c = attChkOf(x); return attChkKeys(x).every(function (k) { return !!c[k[0]]; }); }
 function attChkSave() {
   ATTCHKAT = 지금시각(); attChkJust = true;
   widgetAPI.setUi({ attChk: ATTCHK, attChkAt: ATTCHKAT });
 }
 function attChkCells(x) {
-  var c = attChkOf(x), off = !!x.saving;
+  var c = attChkOf(x), off = !!x.saving, noDoc = x.gubun === '서류없음';
   return ATT_CHK.map(function (k) {
+    if (k[0] === 'doc' && noDoc) return '<td class="atck na" title="서류없음 — 확인 필요 없음"></td>';
     return '<td class="atck' + (c[k[0]] ? ' on' : '') + (off ? ' off' : '') + '"'
       + (off ? '' : ' data-atck="' + esc(x.sig) + '§' + k[0] + '"') + ' title="' + k[1] + ' 확인">'
       + '<i>✓</i></td>';
