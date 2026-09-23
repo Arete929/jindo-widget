@@ -1,5 +1,10 @@
-// 파일명: main.js | @version 2.3.1
-// 수정요약: v2.3.1 작업표시줄 사용량 아이콘 숫자가 안 보이던 것 — 흰 글씨+투명 가운데라 밝은 작업표시줄에 묻혔다. 흰 원판+진한 큰 숫자로, 링 색은 테마 강조색(usageAccent), 첫 그림이 비던 것 고침(usagetray 1.3.0) / v2.3.0 작업표시줄 사용량 아이콘 — «서비스 하나에 아이콘 하나» 가 아니라 큰 사용량 화면과 같은 자리마다
+// 파일명: main.js | @version 2.5.0
+// 수정요약: v2.5.0 작업표시줄 사용량 아이콘 — 링(도넛) 그림을 완전히 없애고 **글자 그대로**(«5시간 Claude 20» 꼴,
+//   다른 사용량 위젯 모양을 그대로 가져옴)로. 회색=창 이름(5시간·주·Fable)·서비스 고유색(Claude 주황·Gemini 파랑·
+//   ChatGPT 초록)=서비스 이름·상태색(usgTone)=숫자. usagetray.js 2.0.0(renderBadge 가 이제 parts 배열을 받음).
+//   ★듀얼 모니터 알림 영역 — Windows 시스템 트레이는 원래 한 번만(주 모니터 작업표시줄에만) 뜨고 보조 모니터
+//   작업표시줄에는 못 넣는다(OS 제약, Electron Tray API 로 못 돌아감) — 아직 안 함, 필요하면 보조 모니터에
+//   따로 떠 있는 작은 창(가짜 막대)을 만드는 방법을 별도로 논의 / v2.3.1 작업표시줄 사용량 아이콘 숫자가 안 보이던 것 — 흰 글씨+투명 가운데라 밝은 작업표시줄에 묻혔다. 흰 원판+진한 큰 숫자로, 링 색은 테마 강조색(usageAccent), 첫 그림이 비던 것 고침(usagetray 1.3.0) / v2.3.0 작업표시줄 사용량 아이콘 — «서비스 하나에 아이콘 하나» 가 아니라 큰 사용량 화면과 같은 자리마다
 //   하나로(usageTrayItems). Claude 5시간·주간·Fable, Gemini·ChatGPT 5시간·주간, 켜 두었으면 내 PC CPU·RAM 까지
 //   각각 따로 뜸(선생님이 실제 사용량 화면과 똑같은 모양을 원함) / v2.2.0 AI 사용량을 작업표시줄 알림 영역에 서비스마다 작은 숫자 아이콘으로(usagetray.js, 지비스 전용) —
 //   Claude·Gemini·ChatGPT 를 켜 놓으면 트레이 대표 아이콘 옆에 %(로그인 필요는 !) 아이콘이 나란히 뜸, 눌러서 로그인·위젯 열기.
@@ -1194,10 +1199,11 @@ function usageTipLine() {
 }
 /* B안(v1.2.0) — «서비스 하나에 아이콘 하나» 가 아니라 큰 사용량 화면에 보이는 자리마다 하나.
    Claude 5시간·주간·Fable, Gemini·ChatGPT 5시간·주간, 켜 두었으면 내 PC CPU·RAM 까지 — 실제 화면과 같은 개수. */
-/* 링 색(0~40%)은 앱 테마 강조색을 따른다 — ui.css 의 --accent 와 같은 값. 고스트(테마 없음)는 기본 남색 */
-const THEME_ACCENT = { '': '#27187E', black: '#ff8b3d', slatelight: '#8b5cf6', chillwhite: '#FD1843', night: '#89E900', gold: '#D4AF37' };
-function usageAccent() { return THEME_ACCENT[getTheme()] || '#8b5cf6'; }
-const USAGE_WIN = [['session', '5시간'], ['weekly', '주간'], ['fable', 'Fable']];
+/* v2.5.0 — 링(도넛) 대신 «글자 그대로»(«5시간 Claude 20» 꼴, 다른 사용량 위젯 모양을 그대로 가져옴).
+   회색=창(5시간·주·Fable 등)·서비스 색=그 서비스 이름·나머지 색(toneColor)=숫자, 세 조각을 이어 붙인다. */
+const MUTED = usagetray.MUTED;
+const PROVIDER_COLOR = { claude: '#d97757', gemini: '#4285F4', gpt: '#10a37f' };
+const USAGE_WIN = [['session', '5시간'], ['weekly', '주'], ['fable', 'Fable']];
 function usageTrayItems() {
   const items = [];
   const on = getUsageOn();
@@ -1207,9 +1213,11 @@ function usageTrayItems() {
       if (on.indexOf(k) < 0) return;
       const u = snap[k];
       const label = (u && u.label) || k;
-      if (!u) { items.push({ key: k, text: '·', pct: null, tip: label, provider: k }); return; }
+      const pc = PROVIDER_COLOR[k] || MUTED;
+      if (!u) { items.push({ key: k, parts: [{ t: label, c: pc }], tip: label, provider: k }); return; }
       if (u.needsLogin) {
-        items.push({ key: k, text: '!', pct: null, tip: label + ' — 로그인 필요(눌러서 열기)', provider: k, needsLogin: true });
+        items.push({ key: k, parts: [{ t: label, c: pc }, { t: '로그인 필요', c: MUTED }],
+          tip: label + ' — 로그인 필요(눌러서 열기)', provider: k, needsLogin: true });
         return;
       }
       let any = false;
@@ -1225,19 +1233,20 @@ function usageTrayItems() {
             left = ' · ' + (hh >= 1 ? `${hh}시간 ${mi % 60}분 남음` : `${mi}분 남음`);
           }
         }
-        items.push({ key: `${k}-${field}`, text: String(Math.round(m.pct)), pct: m.pct,
+        items.push({ key: `${k}-${field}`,
+          parts: [{ t: wlabel, c: MUTED }, { t: label, c: pc }, { t: String(Math.round(m.pct)), c: usagetray.toneColor(m.pct) }],
           tip: `${label} · ${wlabel} ${Math.round(m.pct)}%${left}`, provider: k });
       });
-      if (!any) items.push({ key: k, text: '…', pct: null, tip: label + ' — 불러오는 중…', provider: k });
+      if (!any) items.push({ key: k, parts: [{ t: label, c: pc }, { t: '불러오는 중…', c: MUTED }], tip: label + ' — 불러오는 중…', provider: k });
     });
   }
   if (getSysShow() && sysData) {
     if (sysData.cpu !== null && sysData.cpu !== undefined) {
-      items.push({ key: 'sys-cpu', text: String(Math.round(sysData.cpu)), pct: sysData.cpu,
+      items.push({ key: 'sys-cpu', parts: [{ t: 'CPU', c: MUTED }, { t: String(Math.round(sysData.cpu)), c: usagetray.toneColor(sysData.cpu) }],
         tip: `내 PC · CPU ${Math.round(sysData.cpu)}% (${sysData.cores}코어)` });
     }
     if (sysData.ram) {
-      items.push({ key: 'sys-ram', text: String(Math.round(sysData.ram.pct)), pct: sysData.ram.pct,
+      items.push({ key: 'sys-ram', parts: [{ t: 'RAM', c: MUTED }, { t: String(Math.round(sysData.ram.pct)), c: usagetray.toneColor(sysData.ram.pct) }],
         tip: `내 PC · RAM ${Math.round(sysData.ram.pct)}% (${sysData.ram.usedGb}/${sysData.ram.totalGb}GB)` });
     }
   }
@@ -1258,7 +1267,7 @@ function updateTrayTooltip() {
   const usage = usageTipLine();
   tray.setToolTip(usage ? base + '\n\n' + usage : base);
   /* B안 — 사용량 자리마다 작은 아이콘을 알림 영역에 나란히(지비스만) */
-  if (HAS_TT) usagetray.reconcile(usageTrayItems(), usageAccent());
+  if (HAS_TT) usagetray.reconcile(usageTrayItems());
 }
 
 /* ===================== 로그인 (크롬으로) =====================
