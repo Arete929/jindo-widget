@@ -1091,14 +1091,14 @@
                  max-height: calc((100vh - var(--toph, 46px) - 16px) / var(--grzz, 1)); }
   .grzz .atpop.k-st { width: min(700px, calc((100vw - 16px) / var(--grzz, 1))); }
 
-  /* ── 주간업무 ── */
-  .wq {
+  /* ── 주간업무·학사일정 검색칸 (같은 생김새) ── */
+  .wq, .acq {
     -webkit-app-region: no-drag;
     flex: 1; min-width: 60px; background: var(--card2); border: 1px solid var(--line);
     color: var(--fg); border-radius: 6px; padding: 3px 8px;
     font-size: 11px; font-family: inherit; outline: none;
   }
-  .wq:focus { border-color: var(--accent); }
+  .wq:focus, .acq:focus { border-color: var(--accent); }
   .wfs { display: flex; gap: 3px; }
   /* 출력 단추 — 아이콘(assets/print.png)을 글씨 앞에 붙인다 */
   .wkb.prt { display: inline-flex; align-items: center; gap: 3px; padding-left: 5px; }

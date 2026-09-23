@@ -1,5 +1,9 @@
-/* 파일명: views.js | @version 2.2.0
-   수정요약: v2.2.0 학생기록 행발 «↻ 변환» — 이미 저장된 줄을 고칠 때, 혜원이지에서도 노션 왕복을 시도하다
+/* 파일명: views.js | @version 2.3.0
+   수정요약: v2.3.0 학사일정에 주간업무와 같은 검색 넣음(acQ·acMk·acMoveHit) — 검색칸에 글자를 넣으면
+     보이는 달들의 일정 글에서 찾아 노랗게 표시하고 1/3 식 카운터·▲▼(Enter·Shift+Enter) 로 넘나든다.
+     페이지가 안 갈리고 한 화면에 죽 이어져 있어(3월~이듬해 2월), 입력하는 즉시 찾은 자리로 스크롤함
+     (주간업무처럼 «어느 주로 옮길지» 셈이 필요 없음). 지비스·혜원이지 둘 다(학사일정은 공용 화면) —
+     이번엔 지비스만 냄, 혜원이지는 다음에 허락받고 / v2.2.0 학생기록 행발 «↻ 변환» — 이미 저장된 줄을 고칠 때, 혜원이지에서도 노션 왕복을 시도하다
      (열쇠가 없어) 곧바로 실패 메시지가 뜨던 것 — 그 시도 자체를 지비스에만(HAS_TT) 걸음. 혜원이지는 로컬 규칙
      변환만 조용히 됨(인터넷·열쇠 없이) / v2.1.0 출결 새 줄 적기 순서 — 구분→학생→날짜→유형(아무 칸이나 눌러도 앞선 빈 칸이 대신 뜸,
      이미 채운 칸은 그 칸만 고침) · «서류✓» 를 «확인✓» 으로(점검하기의 «서류» 와 헷갈리지 않게) / v2.0.1 출결 인쇄 배경색 늘 찍기·여백 값 넘김(margin) / v2.0.0 출결 — 반 고르기·보기 전용·수정요청사항(학년부장)·처음 연결 화면·유형은 시트 목록·학생부터·고르기 판 넓게 · 모든 탭 본문 손잡이(zoom) · 틱틱 목록 기억 · 혜원이지 이름(한글 제목) / v1.128.0 표 크기 손잡이를 진호 시간표 전체(주간진도·시간표계획·날짜별·진도표)와 컴시간에도 / v1.127.0 오늘 주간표 아래 경계(손잡이)를 잡고 끌면 표·글자가 함께 커짐(두 번 누르면 처음대로) / v1.126.0 출결 «점검하기» — 스위치로 켜면 신청사유 뒤 서류·출석부·NEIS 체크 칸, 셋 다면 줄 회색 취소선, 끄면 원래대로(앱에서만) / v1.125.1 출결 저장·고치기를 표에 먼저 보임(«저장 중…», 실패 시 되살림)·인쇄 줄 높이 26pt / v1.125.0 출결 칸 너비 끌어서 조절·새로 적는 줄은 둥근 입력 타일 / v1.124.0 테마 여섯·수정요청·수정여부 칸·학생 타일·인쇄 미리보기
@@ -1326,6 +1330,34 @@ function viewTasks() {
    월 단추는 «그 자리로 데려가는» 역할이고, 스크롤을 하면 단추도 따라 움직인다.
    «오늘» 단추를 누르면 오늘 날짜로 간다 — 탭을 처음 열 때도 저절로 오늘로 간다. */
 var AC = null, acBusy = false, acScrolled = false, acSpy = '';
+/* 학사일정 검색 — 주간업무(mk/moveHit)와 같은 요령. 여기는 달마다 페이지가 나뉘지 않고
+   3월~이듬해 2월이 한 화면에 죽 이어져 있어 «어느 주로 옮길지» 셈은 필요 없다 — 찾은 자리로
+   그냥 스크롤만 하면 된다. */
+var acQ = '', acHits = 0, acHitIdx = 0, wantScrollAcHit = false, ACHITN = 0;
+function acMk(t) {
+  var s = esc(t);
+  if (!acQ) return s;
+  var q = esc(acQ).toLowerCase();
+  if (!q) return s;
+  var low = s.toLowerCase(), out = '', i = 0;
+  for (;;) {
+    var j = low.indexOf(q, i);
+    if (j < 0) { out += s.slice(i); break; }
+    var no = ACHITN;
+    out += s.slice(i, j)
+      + '<mark id="achit-' + no + '"' + (no === acHitIdx ? ' class="cur"' : '') + '>'
+      + s.slice(j, j + q.length) + '</mark>';
+    ACHITN++;
+    i = j + q.length;
+  }
+  return out;
+}
+function acMoveHit(step) {
+  if (!acHits) return;
+  acHitIdx = (acHitIdx + step + acHits) % acHits;
+  wantScrollAcHit = true;
+  render();
+}
 /* ── 학년부 일지 ── 학사일정 위에 얹어 보는 «그 학년만의 할 일» ── */
 var GPD = {};                // 학년별로 받아 둔 일지 { 1:{items,cats}, … }
 var gpOn = [];               // 켜 놓은 학년 (여러 학년을 함께 볼 수 있다)
@@ -1496,6 +1528,14 @@ function viewAcademic() {
     acSpy = (mine.length ? mine[mine.length - 1] : ms[0]).tab;
   }
 
+  // 검색 — 지금 보이는 달들의 일정 글자에서만 센다(다른 해 탭을 접어 뒀으면 그 안은 안 셈)
+  var acq = esc(acQ).toLowerCase();
+  acHits = ms.reduce(function (n, m) {
+    return n + m.days.reduce(function (a, d) { return a + countQ(d.event || '', acq); }, 0);
+  }, 0);
+  if (acHitIdx >= acHits) acHitIdx = 0;
+  ACHITN = 0;
+
   var h = '<div class="top2"><div class="wknav">'
     + ms.map(function (x) {
         var tag = (x.ok === false && x.year) ? String(x.year) + '년'
@@ -1508,6 +1548,11 @@ function viewAcademic() {
         ? '<button class="wkb" id="acYrs" title="시트에 다른 해 탭이 섞여 있습니다">'
           + (acAllYears ? '− 올해만' : '+ 다른 해 ' + other.length + '개') + '</button>'
         : '')
+    + '<input class="acq" type="text" placeholder="검색" value="' + esc(acQ) + '">'
+    + (acQ ? '<span class="wkfind">'
+        + (acHits ? '<em>' + (acHitIdx + 1) + '</em>/' + acHits : '0') + '</span>'
+        + '<button class="wkb" id="acPrev" title="이전 (Shift+Enter)">▲</button>'
+        + '<button class="wkb" id="acNext" title="다음 (Enter)">▼</button>' : '')
     + '<span class="spacer"></span>'
     + gpGrades().map(function (g) {
         return '<button class="wkb sw' + (gpOn.indexOf(g) >= 0 ? ' now' : '') + '" '
@@ -1577,7 +1622,7 @@ function viewAcademic() {
         html: '<div class="acr' + (isToday ? ' tdy' : '') + (weekend ? ' wknd' : '') + '"'
           + (isToday ? ' data-today="1" id="actoday-' + esc(m.tab) + '"' : '') + '>'
           + '<span class="acd">' + d.day + '<small>' + esc(d.dow) + '</small></span>'
-          + '<span class="ace">' + esc(d.event || '') + '</span>'
+          + '<span class="ace">' + acMk(d.event || '') + '</span>'
           + (lit ? '<span class="acc">' + lit + '</span>' : '') + '</div>'
           + gpRows(m.month, d.day)
       };
@@ -7444,6 +7489,26 @@ function wireViews(app) {
     });
     if (workQ) { wq.focus(); wq.setSelectionRange(wq.value.length, wq.value.length); }
   }
+  /* 학사일정 검색 — 여긴 페이지가 안 갈리니(한 화면에 죽 이어짐) 입력하는 즉시 찾은 자리로 스크롤 */
+  var acq2 = app.querySelector('.acq');
+  if (acq2) {
+    acq2.addEventListener('compositionstart', function () { composing = true; });
+    acq2.addEventListener('compositionend', function () {
+      composing = false; acQ = acq2.value.trim(); acHitIdx = 0; wantScrollAcHit = !!acQ; laterRender();
+    });
+    acq2.addEventListener('input', function () {
+      if (composing) return;
+      acQ = acq2.value.trim(); acHitIdx = 0; wantScrollAcHit = !!acQ; laterRender();
+    });
+    acq2.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      acMoveHit(e.shiftKey ? -1 : 1);
+    });
+    if (acQ) { acq2.focus(); acq2.setSelectionRange(acq2.value.length, acq2.value.length); }
+  }
+  var acPrev = app.querySelector('#acPrev'); if (acPrev) acPrev.addEventListener('click', function () { acMoveHit(-1); });
+  var acNext = app.querySelector('#acNext'); if (acNext) acNext.addEventListener('click', function () { acMoveHit(1); });
 
   app.querySelectorAll('.chip').forEach(function (b) {
     b.addEventListener('click', function () {
@@ -7867,6 +7932,11 @@ function wireViews(app) {
     wantScrollHit = false;
     var hit = document.getElementById('hit-' + workHitIdx);
     if (hit && hit.scrollIntoView) hit.scrollIntoView({ block: 'center' });
+  }
+  if (wantScrollAcHit) {
+    wantScrollAcHit = false;
+    var achit = document.getElementById('achit-' + acHitIdx);
+    if (achit && achit.scrollIntoView) achit.scrollIntoView({ block: 'center' });
   }
   // 학사일정을 처음 열면 오늘 자리에서 시작한다
   if (VIEW === 'cal' && !acScrolled) {
