@@ -1,5 +1,10 @@
-// 파일명: main.js | @version 2.7.0
-// 수정요약: v2.7.0 전체화면(`) 이 작업표시줄을 가리던 것(선생님 지적) — setFullScreen() 대신
+// 파일명: main.js | @version 2.9.0
+// 수정요약: v2.9.0 작업표시줄 AI/내PC 사용량 배지 아이콘(usagetray.js, v2.2.0~2.8.0에 걸쳐 링→글자→
+//   2줄→DPI별 그림으로 계속 다듬었던 것)을 선생님 결정으로 **통째로 없앰** — usageTrayItems()·
+//   usagetray.reconcile/setOpener/destroyAll 호출 다 지우고 usagetray.js 파일 자체도 삭제(두 build
+//   yml files: 목록에서도 뺌). 대표 트레이 아이콘(로고 하나)과 그 풍선 도움말(usageTipLine, 호버 시
+//   %·남은시간 텍스트)은 그대로 — 화면 안 «설정→사용량» 큰 패널도 안 건드림. 지비스만.
+// v2.7.0 전체화면(`) 이 작업표시줄을 가리던 것(선생님 지적) — setFullScreen() 대신
 //   maximize()/unmaximize() 로. 최대화는 작업표시줄을 그대로 두고 화면(작업 영역)만 채운다.
 //   fitWindowNow()·'too-tall' 처리기의 «전체화면 중이면 손대지 않기» 가드에 isMaximized() 도 추가
 //   (최대화 중에 setBounds() 로 강제로 접으면 최대화가 풀려 보이는 것 방지).
@@ -37,7 +42,6 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const aiusage = require('./aiusage.js');
-const usagetray = require('./usagetray.js');   // 사용량 알림 영역 아이콘(지비스 전용, B안)
 const recordsmain = require('./recordsmain.js');
 const notion = require('./notion.js');
 const ticktick = require('./ticktick.js');
@@ -1214,62 +1218,6 @@ function usageTipLine() {
     return `${u.label || k} ${m.pct}%${left}`;
   }).filter(Boolean).join('\n');
 }
-/* B안(v1.2.0) — «서비스 하나에 아이콘 하나» 가 아니라 큰 사용량 화면에 보이는 자리마다 하나.
-   Claude 5시간·주간·Fable, Gemini·ChatGPT 5시간·주간, 켜 두었으면 내 PC CPU·RAM 까지 — 실제 화면과 같은 개수. */
-/* v2.5.0 — 링(도넛) 대신 «글자 그대로»(«5시간 Claude 20» 꼴, 다른 사용량 위젯 모양을 그대로 가져옴).
-   위 줄(작게) = 창 이름(5시간·주·Fable 등, 회색) + 서비스 이름(그 서비스 색), 아래 줄(크게) = 숫자(toneColor).
-   ★ 한 줄로 이어 붙이면 가로를 너무 먹어서(선생님 지적) 위·아래 두 줄로 나눔 — usagetray.js 2.1.0. */
-const MUTED = usagetray.MUTED;
-const PROVIDER_COLOR = { claude: '#d97757', gemini: '#4285F4', gpt: '#10a37f' };
-const USAGE_WIN = [['session', '5시간'], ['weekly', '주'], ['fable', 'Fable']];
-function usageTrayItems() {
-  const items = [];
-  const on = getUsageOn();
-  if (on.length) {
-    const snap = aiusage.snapshot();
-    USAGE_KEYS.forEach((k) => {
-      if (on.indexOf(k) < 0) return;
-      const u = snap[k];
-      const label = (u && u.label) || k;
-      const pc = PROVIDER_COLOR[k] || MUTED;
-      if (!u) { items.push({ key: k, lines: [[{ t: label, c: pc }]], tip: label, provider: k }); return; }
-      if (u.needsLogin) {
-        items.push({ key: k, lines: [[{ t: label, c: pc }], [{ t: '필요', c: MUTED }]],
-          tip: label + ' — 로그인 필요(눌러서 열기)', provider: k, needsLogin: true });
-        return;
-      }
-      let any = false;
-      USAGE_WIN.forEach(([field, wlabel]) => {
-        const m = u[field];
-        if (!m || m.pct == null) return;
-        any = true;
-        let left = '';
-        if (m.resetAt) {
-          const ms = m.resetAt - Date.now();
-          if (ms > 0) {
-            const mi = Math.floor(ms / 60000), hh = Math.floor(mi / 60);
-            left = ' · ' + (hh >= 1 ? `${hh}시간 ${mi % 60}분 남음` : `${mi}분 남음`);
-          }
-        }
-        items.push({ key: `${k}-${field}`,
-          lines: [[{ t: wlabel, c: MUTED }, { t: label, c: pc }], [{ t: String(Math.round(m.pct)), c: usagetray.toneColor(m.pct) }]],
-          tip: `${label} · ${wlabel} ${Math.round(m.pct)}%${left}`, provider: k });
-      });
-      if (!any) items.push({ key: k, lines: [[{ t: label, c: pc }], [{ t: '…', c: MUTED }]], tip: label + ' — 불러오는 중…', provider: k });
-    });
-  }
-  if (getSysShow() && sysData) {
-    if (sysData.cpu !== null && sysData.cpu !== undefined) {
-      items.push({ key: 'sys-cpu', lines: [[{ t: 'CPU', c: MUTED }], [{ t: String(Math.round(sysData.cpu)), c: usagetray.toneColor(sysData.cpu) }]],
-        tip: `내 PC · CPU ${Math.round(sysData.cpu)}% (${sysData.cores}코어)` });
-    }
-    if (sysData.ram) {
-      items.push({ key: 'sys-ram', lines: [[{ t: 'RAM', c: MUTED }], [{ t: String(Math.round(sysData.ram.pct)), c: usagetray.toneColor(sysData.ram.pct) }]],
-        tip: `내 PC · RAM ${Math.round(sysData.ram.pct)}% (${sysData.ram.usedGb}/${sysData.ram.totalGb}GB)` });
-    }
-  }
-  return items;
-}
 function updateTrayTooltip() {
   if (!tray) return;
   let base;
@@ -1284,8 +1232,6 @@ function updateTrayTooltip() {
   }
   const usage = usageTipLine();
   tray.setToolTip(usage ? base + '\n\n' + usage : base);
-  /* B안 — 사용량 자리마다 작은 아이콘을 알림 영역에 나란히(지비스만) */
-  if (HAS_TT) usagetray.reconcile(usageTrayItems());
 }
 
 /* ===================== 로그인 (크롬으로) =====================
@@ -3208,16 +3154,6 @@ ipcMain.on('notes-show', () => {              // 설정의 «업데이트 내역
 /* ===================== 트레이 ===================== */
 function createTray() {
   tray = new Tray(path.join(__dirname, 'assets', TRAY_ICON));
-  if (HAS_TT) {
-    /* 사용량 아이콘을 눌렀을 때 — 로그인 안 된 것이면 그 서비스 로그인창, 아니면 위젯 열기/닫기(대표 아이콘과 같음) */
-    usagetray.setOpener((it) => {
-      if (it && it.needsLogin && it.provider) { aiusage.openLogin(it.provider); return; }
-      checkForUpdates();
-      if (easyWin && !easyWin.isDestroyed()) { easyWin.show(); easyWin.focus(); return; }
-      if (!widgetWin || widgetWin.isDestroyed()) { createWidgetWindow(); return; }
-      widgetWin.isVisible() ? widgetWin.hide() : widgetWin.show();
-    });
-  }
   const buildMenu = () => {
     let updateItems = [];
     if (updateState === 'ready') {
@@ -4486,7 +4422,6 @@ app.on('window-all-closed', (e) => { e.preventDefault && e.preventDefault(); });
 app.on('before-quit', (e) => {
   if (pollTimer) clearInterval(pollTimer);
   aiusage.stop();
-  if (HAS_TT) usagetray.destroyAll();
   // 받아둔 업데이트가 있으면 여기서 설치한다. 이때 반드시 다시 띄워야 한다 —
   // electron-updater 의 autoInstallOnAppQuit 은 설치만 하고 앱을 안 살려서,
   // 위젯이 조용히 사라진 채로 남는다(그러면 업데이트 확인도 영영 못 한다).
