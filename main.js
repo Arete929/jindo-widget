@@ -1,5 +1,7 @@
-// 파일명: main.js | @version 2.5.0
-// 수정요약: v2.5.0 작업표시줄 사용량 아이콘 — 링(도넛) 그림을 완전히 없애고 **글자 그대로**(«5시간 Claude 20» 꼴,
+// 파일명: main.js | @version 2.5.1
+// 수정요약: v2.5.1 작업표시줄 사용량 글자 배지가 한 줄이라 가로를 너무 먹던 것(선생님 지적) — 위(창 이름+서비스,
+//   작게)·아래(숫자, 크게) **두 줄**로(usagetray.js 2.1.0, lines 배열). 폭이 줄어듦(예: «5시간 Claude 20» 102px
+//   → 위아래 두 줄 66px) / v2.5.0 작업표시줄 사용량 아이콘 — 링(도넛) 그림을 완전히 없애고 **글자 그대로**(«5시간 Claude 20» 꼴,
 //   다른 사용량 위젯 모양을 그대로 가져옴)로. 회색=창 이름(5시간·주·Fable)·서비스 고유색(Claude 주황·Gemini 파랑·
 //   ChatGPT 초록)=서비스 이름·상태색(usgTone)=숫자. usagetray.js 2.0.0(renderBadge 가 이제 parts 배열을 받음).
 //   ★듀얼 모니터 알림 영역 — Windows 시스템 트레이는 원래 한 번만(주 모니터 작업표시줄에만) 뜨고 보조 모니터
@@ -1200,7 +1202,8 @@ function usageTipLine() {
 /* B안(v1.2.0) — «서비스 하나에 아이콘 하나» 가 아니라 큰 사용량 화면에 보이는 자리마다 하나.
    Claude 5시간·주간·Fable, Gemini·ChatGPT 5시간·주간, 켜 두었으면 내 PC CPU·RAM 까지 — 실제 화면과 같은 개수. */
 /* v2.5.0 — 링(도넛) 대신 «글자 그대로»(«5시간 Claude 20» 꼴, 다른 사용량 위젯 모양을 그대로 가져옴).
-   회색=창(5시간·주·Fable 등)·서비스 색=그 서비스 이름·나머지 색(toneColor)=숫자, 세 조각을 이어 붙인다. */
+   위 줄(작게) = 창 이름(5시간·주·Fable 등, 회색) + 서비스 이름(그 서비스 색), 아래 줄(크게) = 숫자(toneColor).
+   ★ 한 줄로 이어 붙이면 가로를 너무 먹어서(선생님 지적) 위·아래 두 줄로 나눔 — usagetray.js 2.1.0. */
 const MUTED = usagetray.MUTED;
 const PROVIDER_COLOR = { claude: '#d97757', gemini: '#4285F4', gpt: '#10a37f' };
 const USAGE_WIN = [['session', '5시간'], ['weekly', '주'], ['fable', 'Fable']];
@@ -1214,9 +1217,9 @@ function usageTrayItems() {
       const u = snap[k];
       const label = (u && u.label) || k;
       const pc = PROVIDER_COLOR[k] || MUTED;
-      if (!u) { items.push({ key: k, parts: [{ t: label, c: pc }], tip: label, provider: k }); return; }
+      if (!u) { items.push({ key: k, lines: [[{ t: label, c: pc }]], tip: label, provider: k }); return; }
       if (u.needsLogin) {
-        items.push({ key: k, parts: [{ t: label, c: pc }, { t: '로그인 필요', c: MUTED }],
+        items.push({ key: k, lines: [[{ t: label, c: pc }], [{ t: '필요', c: MUTED }]],
           tip: label + ' — 로그인 필요(눌러서 열기)', provider: k, needsLogin: true });
         return;
       }
@@ -1234,19 +1237,19 @@ function usageTrayItems() {
           }
         }
         items.push({ key: `${k}-${field}`,
-          parts: [{ t: wlabel, c: MUTED }, { t: label, c: pc }, { t: String(Math.round(m.pct)), c: usagetray.toneColor(m.pct) }],
+          lines: [[{ t: wlabel, c: MUTED }, { t: label, c: pc }], [{ t: String(Math.round(m.pct)), c: usagetray.toneColor(m.pct) }]],
           tip: `${label} · ${wlabel} ${Math.round(m.pct)}%${left}`, provider: k });
       });
-      if (!any) items.push({ key: k, parts: [{ t: label, c: pc }, { t: '불러오는 중…', c: MUTED }], tip: label + ' — 불러오는 중…', provider: k });
+      if (!any) items.push({ key: k, lines: [[{ t: label, c: pc }], [{ t: '…', c: MUTED }]], tip: label + ' — 불러오는 중…', provider: k });
     });
   }
   if (getSysShow() && sysData) {
     if (sysData.cpu !== null && sysData.cpu !== undefined) {
-      items.push({ key: 'sys-cpu', parts: [{ t: 'CPU', c: MUTED }, { t: String(Math.round(sysData.cpu)), c: usagetray.toneColor(sysData.cpu) }],
+      items.push({ key: 'sys-cpu', lines: [[{ t: 'CPU', c: MUTED }], [{ t: String(Math.round(sysData.cpu)), c: usagetray.toneColor(sysData.cpu) }]],
         tip: `내 PC · CPU ${Math.round(sysData.cpu)}% (${sysData.cores}코어)` });
     }
     if (sysData.ram) {
-      items.push({ key: 'sys-ram', parts: [{ t: 'RAM', c: MUTED }, { t: String(Math.round(sysData.ram.pct)), c: usagetray.toneColor(sysData.ram.pct) }],
+      items.push({ key: 'sys-ram', lines: [[{ t: 'RAM', c: MUTED }], [{ t: String(Math.round(sysData.ram.pct)), c: usagetray.toneColor(sysData.ram.pct) }]],
         tip: `내 PC · RAM ${Math.round(sysData.ram.pct)}% (${sysData.ram.usedGb}/${sysData.ram.totalGb}GB)` });
     }
   }
