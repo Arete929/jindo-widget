@@ -1,5 +1,9 @@
-// 파일명: main.js | @version 2.5.1
-// 수정요약: v2.5.1 작업표시줄 사용량 글자 배지가 한 줄이라 가로를 너무 먹던 것(선생님 지적) — 위(창 이름+서비스,
+// 파일명: main.js | @version 2.5.2
+// 수정요약: v2.5.2 ★작업표시줄 «지비스» 고정 아이콘이 빈 흰 종이로, 실행 중인 창은 패키지 설명 글로 따로
+//   뜨던 것(2026-09-23 실측) — app.setAppUserModelId() 를 한 번도 안 불렀던 게 원인. 설치 때 만든 고정
+//   바로가기(appId 로 신원표 있음)와 실행 중인 창이 같은 신원표를 안 써서 Windows 가 서로 다른 앱으로 봤다.
+//   FLAVOR 정해지자마자(창 만들기 전) appId 로 등록. ★이미 고정해 둔 지비스 아이콘은 한 번 떼었다 다시
+//   고정해야 완전히 깨끗해짐(옛 바로가기 자체가 신원표 없이 만들어졌을 수 있어서) / v2.5.1 작업표시줄 사용량 글자 배지가 한 줄이라 가로를 너무 먹던 것(선생님 지적) — 위(창 이름+서비스,
 //   작게)·아래(숫자, 크게) **두 줄**로(usagetray.js 2.1.0, lines 배열). 폭이 줄어듦(예: «5시간 Claude 20» 102px
 //   → 위아래 두 줄 66px) / v2.5.0 작업표시줄 사용량 아이콘 — 링(도넛) 그림을 완전히 없애고 **글자 그대로**(«5시간 Claude 20» 꼴,
 //   다른 사용량 위젯 모양을 그대로 가져옴)로. 회색=창 이름(5시간·주·Fable)·서비스 고유색(Claude 주황·Gemini 파랑·
@@ -61,6 +65,13 @@ const HAS_TT = FLAVOR === 'jinho';              // 시간표를 쓰는가
 const APP_NAME = HAS_TT ? '지비스' : '혜원이지';
 const ICON = HAS_TT ? 'icon.png' : 'hyewon-icon.png';
 const TRAY_ICON = HAS_TT ? 'tray.png' : 'hyewon-tray.png';
+/* ★ Windows «내 프로그램 신원표»(AppUserModelID) — build-jinho.yml/build-hyewon.yml 의 appId 와 반드시 같아야 한다.
+   이걸 안 하면 설치할 때 만든 «작업 표시줄에 고정» 바로가기가 실행 중인 창을 못 알아보고 따로 논다 —
+   고정한 자리는 빈 흰 종이 아이콘으로 남고, 실행 중인 창은 그 옆에 «이름 모를 창»(패키지 설명 글)으로 따로 뜬다.
+   지비스에서 실제로 이렇게 됐다(2026-09-23). 되도록 일찍(창 만들기 전) 불러야 한다. */
+if (process.platform === 'win32') {
+  app.setAppUserModelId(HAS_TT ? 'kr.hyewon.jindowidget' : 'kr.hyewon.hyewondesk');
+}
 
 const APP_URL = 'https://jindo-dashboard.web.app/';
 const APP_ORIGIN = 'https://jindo-dashboard.web.app';
