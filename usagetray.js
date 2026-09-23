@@ -1,7 +1,12 @@
-// 파일명: usagetray.js | @version 2.1.0
+// 파일명: usagetray.js | @version 2.2.0
 // AI 사용량(과 내 PC)을 작업표시줄 알림 영역에 「자리마다 작은 글자 배지」로 나란히 띄운다.
 // ★ 지비스 전용(main.js 가 HAS_TT 일 때만 부른다). 앱 대표 트레이 아이콘(로고)은 그대로 두고,
 //   옆에 사용량 아이콘을 Tray 를 여러 개 만들어 따로 붙인다.
+// ★ v2.2.0 — 「숨겨진 아이콘」 칸에서 위 줄 이름표(Claude/RAM/CPU)가 흐린 얼룩으로 뭉개져
+//   안 읽힌다는 선생님 지적(실측: 우리가 34px 로 그려 넘긴 그림을 Windows 가 실제 화면 배율에
+//   맞춰 «한 번 더» 줄여 그림 — 두 번 줄어드니 작은 글자가 뭉개짐). scaleFactor 마다(100%·125%·
+//   150%…) 꼭 맞는 크기로 여러 장 만들어 nativeImage.addRepresentation 로 붙여 둠 — Windows 가
+//   지금 화면 배율에 맞는 걸 그대로 골라 써서 더 안 줄인다(트레이 아이콘 고배율 지원 정석).
 // ★ v2.0.0 — 링(도넛) 그림 대신 **글자 그대로**(«5시간 Claude 20» 꼴, 다른 사용량 위젯 참고 —
 //   선생님이 그쪽 모양을 지비스에 가져와 달라 함). 링은 완전히 없앰.
 // ★ v2.1.0 — 한 줄로 쓰면 가로를 너무 많이 먹는다(선생님 지적) → **위·아래 두 줄**로.
@@ -15,12 +20,19 @@
 //   재서 그만큼만 오려 낸다(폭·높이가 줄 내용마다 다르므로). 4배 크게 그려 축소해 넣는다(수퍼샘플링).
 //   글자는 밝은·어두운 작업표시줄 어디서나 보이게 옅은 테두리(그림자)를 살짝 깐다.
 
-const { BrowserWindow, Tray } = require('electron');
+const { BrowserWindow, Tray, nativeImage } = require('electron');
 
 const SCALE = 4;          // 이 배로 크게 그려서 줄인다
 const FONT_LB = 11;       // 위 줄(이름) 글자 크기 — «최종 높이» 기준
 const FONT_NUM = 17;      // 아래 줄(숫자) 글자 크기
-const OUT_H = 34;          // 최종 아이콘 높이(px) — 두 줄이라 예전(20px)보다 키움
+const OUT_H = 34;          // (v2.1.0 단일 그림 시절 기준값 — v2.2.0부턴 REP_SCALES 로 대신 그림)
+/* ★ v2.2.0 — 예전엔 OUT_H 하나로만 찍어 넘겼더니, Windows 가 실제 화면 배율(DPI)에 맞춰
+   그 그림을 «한 번 더» 줄여 그렸다(우리 축소 + Windows 축소 = 두 번 뭉개짐 → 위 줄 이름표가
+   흐릿한 얼룩으로). 대신 scaleFactor 별로 «꼭 맞는 크기» 그림을 여러 장 만들어 붙여 두면
+   Windows 가 지금 화면 배율에 맞는 것을 그대로 골라 쓴다(자기가 또 줄이지 않음) — 트레이
+   아이콘의 정석(높은 배율 지원) 방식. */
+const LOGICAL_H = 20;      // scaleFactor 1(=100%) 기준 높이 — Windows 작은 트레이 아이콘 크기대
+const REP_SCALES = [1, 1.25, 1.5, 1.75, 2, 2.5, 3];
 
 /* 40% 부터 노랑, 오를수록 붉어짐 — views.js 의 usgTone() 과 같은 기준 */
 const TONE = [
@@ -79,8 +91,17 @@ async function renderBadge(linesOrParts) {
     await new Promise((r) => setTimeout(r, 80));
     img = await w.webContents.capturePage();
   }
-  const ratio = OUT_H / box.h;
-  return img.resize({ width: Math.max(1, Math.round(box.w * ratio)), height: OUT_H, quality: 'best' });
+  if (img.isEmpty()) return null;
+  /* box 는 SCALE 배로 부풀려 그린 DOM 크기라, 폭÷높이 비율만 꺼내 쓴다(실제 배율 크기는 아래서 따로 잼) */
+  const aspect = box.w / box.h;
+  const base = nativeImage.createEmpty();
+  REP_SCALES.forEach((sf) => {
+    const h = Math.max(1, Math.round(LOGICAL_H * sf));
+    const wpx = Math.max(1, Math.round(h * aspect));
+    const rep = img.resize({ width: wpx, height: h, quality: 'best' });
+    base.addRepresentation({ scaleFactor: sf, width: wpx, height: h, buffer: rep.toPNG() });
+  });
+  return base;
 }
 
 const trays = {};        // key → Tray
