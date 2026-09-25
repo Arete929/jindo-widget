@@ -1,5 +1,7 @@
-/* 파일명: views.js | @version 2.4.0
-   수정요약: v2.4.0 점검하기 — 구분이 «서류없음» 인 줄은 확인할 서류가 없으니 서류 칸 체크박스를 없앰
+/* 파일명: views.js | @version 2.4.1
+   수정요약: v2.4.1 주간업무 표 — 구글 문서가 잘못 달아 내보내는 rowspan 때문에 급식지도 안내표가 여러 주치일 때
+     둘째 주가 첫째 주 줄 오른쪽으로 밀려 한 줄에 열 칸이 되던 것(wRowspans: 표 폭을 넘기는 rowspan 만 거기까지로 줄임) /
+     v2.4.0 점검하기 — 구분이 «서류없음» 인 줄은 확인할 서류가 없으니 서류 칸 체크박스를 없앰
      (attChkKeys 로 걸러 attChkDone 판정에서도 제외, attChkCells 는 그 칸을 빈 칸(.atck.na)으로만 그림
      — 칸 줄맞춤은 그대로 유지) / v2.3.0 학사일정에 주간업무와 같은 검색 넣음(acQ·acMk·acMoveHit) — 검색칸에 글자를 넣으면
      보이는 달들의 일정 글에서 찾아 노랗게 표시하고 1/3 식 카운터·▲▼(Enter·Shift+Enter) 로 넘나든다.
@@ -483,15 +485,41 @@ function wblock(b) {
     return '<div class="wkp' + (b.al ? ' a-' + b.al : '') + (lv ? ' lv' + lv : '')
       + '">' + withLinks(mk(t), b.links) + '</div>';
   }
+  var eff = wRowspans(b.rows || []);
   return '<div class="wtbw"><table class="wtb">'
-    + (b.rows || []).map(function (r) {
-        return '<tr>' + r.map(function (c) {
+    + (b.rows || []).map(function (r, ri) {
+        return '<tr>' + r.map(function (c, ci) {
+          var rs = eff[ri][ci];
           return '<td' + (c.cs > 1 ? ' colspan="' + c.cs + '"' : '')
-            + (c.rs > 1 ? ' rowspan="' + c.rs + '"' : '') + '>'
+            + (rs > 1 ? ' rowspan="' + rs + '"' : '') + '>'
             + wblocks(c.blocks) + '</td>';
         }).join('') + '</tr>';
       }).join('')
     + '</table></div>';
+}
+/* 구글 문서 html 은 «여러 주를 이어 붙인 표» 같은 데서 칸마다 rowspan=2 를 잘못 달아 내보낸다.
+   그대로 그리면 둘째 주 줄이 첫째 주 줄 오른쪽 옆으로 밀려 한 줄에 열 칸이 된다(급식지도 안내표가
+   여러 주치일 때 — 2026-09-25). 표 폭(W = 한 줄 칸 수의 최댓값)을 넘게 만드는 rowspan 만 «거기까지만»
+   유효한 것으로 줄인다. 정상적인 병합(아래 줄이 그만큼 칸이 모자란 경우)은 그대로 둔다. */
+function wRowspans(rows) {
+  var W = 0;
+  rows.forEach(function (r) { W = Math.max(W, r.reduce(function (n, c) { return n + (c.cs || 1); }, 0)); });
+  var eff = rows.map(function (r) { return r.map(function (c) { return c.rs || 1; }); });
+  var active = [];                                   // {cs, left, start, row, col}
+  rows.forEach(function (r, ri) {
+    var own = r.reduce(function (n, c) { return n + (c.cs || 1); }, 0);
+    var carried = active.reduce(function (n, a) { return n + a.cs; }, 0);
+    if (own + carried > W) {
+      active.forEach(function (a) { eff[a.row][a.col] = ri - a.start; });
+      active = [];
+    }
+    r.forEach(function (c, ci) {
+      if ((c.rs || 1) > 1) active.push({ cs: c.cs || 1, left: c.rs, start: ri, row: ri, col: ci });
+    });
+    active.forEach(function (a) { a.left--; });
+    active = active.filter(function (a) { return a.left > 0; });
+  });
+  return eff;
 }
 
 function viewWork() {
