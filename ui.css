@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 2.0.1 — 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
+/* 파일명: ui.css | @version 2.0.2 — 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -1150,7 +1150,7 @@
     font-size: calc(10px * var(--wf)); color: var(--fg2); line-height: 1.6;
     white-space: pre-wrap; word-break: break-word;
   }
-  .wtb tr:first-child td { background: var(--card2); font-weight: 800; color: var(--fg); text-align: center; }
+  .wtb tr:first-child td, .wtb tr.wth td { background: var(--card2); font-weight: 800; color: var(--fg); text-align: center; }
   /* ★ 주간업무 속 표는 모든 칸 가운데 정렬(2026-09-15 선생님 결정 — 급식지도 안내 표 등).
        칸 안 문단의 단계별 들여쓰기·원문 정렬(a-right 등)도 표 안에서는 가운데로 맞춘다 */
   .wtb td, .wtb td .wkp { text-align: center; }

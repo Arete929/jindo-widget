@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.4.1
-   수정요약: v2.4.1 주간업무 표 — 구글 문서가 잘못 달아 내보내는 rowspan 때문에 급식지도 안내표가 여러 주치일 때
+/* 파일명: views.js | @version 2.4.2
+   수정요약: v2.4.2 주간업무 표 — 칸이 전부 날짜인 줄(«9월28일(월)» …)은 첫 줄과 같은 머리 모양(굵게·배경색, .wth)으로(급식지도 안내표 둘째 주 이후 날짜 줄) / v2.4.1 주간업무 표 — 구글 문서가 잘못 달아 내보내는 rowspan 때문에 급식지도 안내표가 여러 주치일 때
      둘째 주가 첫째 주 줄 오른쪽으로 밀려 한 줄에 열 칸이 되던 것(wRowspans: 표 폭을 넘기는 rowspan 만 거기까지로 줄임) /
      v2.4.0 점검하기 — 구분이 «서류없음» 인 줄은 확인할 서류가 없으니 서류 칸 체크박스를 없앰
      (attChkKeys 로 걸러 attChkDone 판정에서도 제외, attChkCells 는 그 칸을 빈 칸(.atck.na)으로만 그림
@@ -488,7 +488,7 @@ function wblock(b) {
   var eff = wRowspans(b.rows || []);
   return '<div class="wtbw"><table class="wtb">'
     + (b.rows || []).map(function (r, ri) {
-        return '<tr>' + r.map(function (c, ci) {
+        return '<tr' + (wDateHead(r) ? ' class="wth"' : '') + '>' + r.map(function (c, ci) {
           var rs = eff[ri][ci];
           return '<td' + (c.cs > 1 ? ' colspan="' + c.cs + '"' : '')
             + (rs > 1 ? ' rowspan="' + rs + '"' : '') + '>'
@@ -496,6 +496,15 @@ function wblock(b) {
         }).join('') + '</tr>';
       }).join('')
     + '</table></div>';
+}
+/* «9월28일(월) · 9월29일(화) …» 처럼 칸이 전부 날짜인 줄 = 날짜 머리 줄. 첫 줄만 머리로 꾸미던 것을
+   둘째 주 이후 날짜 줄에도 똑같이 적용한다(급식지도 안내표가 여러 주치일 때 — 2026-09-26). */
+var W_DATE_RE = /^\s*(?:\d{1,2}\s*월\s*\d{1,2}\s*일|\d{1,2}\s*[./]\s*\d{1,2}\s*\.?)\s*\(\s*[월화수목금토일]\s*\)\s*$/;
+function wDateHead(r) {
+  return !!r.length && r.every(function (c) {
+    var t = (c.blocks || []).map(function (b) { return b.k === 'p' ? b.t : ''; }).join('');
+    return W_DATE_RE.test(t);
+  });
 }
 /* 구글 문서 html 은 «여러 주를 이어 붙인 표» 같은 데서 칸마다 rowspan=2 를 잘못 달아 내보낸다.
    그대로 그리면 둘째 주 줄이 첫째 주 줄 오른쪽 옆으로 밀려 한 줄에 열 칸이 된다(급식지도 안내표가

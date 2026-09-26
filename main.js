@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 2.9.0
-// 수정요약: v2.9.0 작업표시줄 AI/내PC 사용량 배지 아이콘(usagetray.js, v2.2.0~2.8.0에 걸쳐 링→글자→
+// 파일명: main.js | @version 2.9.1
+// 수정요약: v2.9.1 주간업무 인쇄 표에도 날짜 머리 줄(.wth) 꾸밈 추가(화면 views.js 2.4.2 와 짝) / v2.9.0 작업표시줄 AI/내PC 사용량 배지 아이콘(usagetray.js, v2.2.0~2.8.0에 걸쳐 링→글자→
 //   2줄→DPI별 그림으로 계속 다듬었던 것)을 선생님 결정으로 **통째로 없앰** — usageTrayItems()·
 //   usagetray.reconcile/setOpener/destroyAll 호출 다 지우고 usagetray.js 파일 자체도 삭제(두 build
 //   yml files: 목록에서도 뺌). 대표 트레이 아이콘(로고 하나)과 그 풍선 도움말(usageTipLine, 호버 시
@@ -3687,7 +3687,7 @@ const PRINT_CSS = `
     border: .6pt solid #999; padding: 2.5pt 4pt; vertical-align: top; color: #111;
     font-size: 9.5pt; line-height: 1.45; white-space: pre-wrap; word-break: break-word;
   }
-  .wtb tr:first-child td { background: #eee; color: #000; font-weight: 700; text-align: center; }
+  .wtb tr:first-child td, .wtb tr.wth td { background: #eee; color: #000; font-weight: 700; text-align: center; }
   .wtb td, .wtb td .wkp { text-align: center; vertical-align: middle; }   /* 화면과 같이 가운데 (2026-09-15) */
   .wtb .wkp { margin: 0; font-size: inherit; }
   .wtb .wkp.lv1 { margin-top: 3pt; }
