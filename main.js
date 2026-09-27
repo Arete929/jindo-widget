@@ -1,5 +1,7 @@
-// 파일명: main.js | @version 2.9.1
-// 수정요약: v2.9.1 주간업무 인쇄 표에도 날짜 머리 줄(.wth) 꾸밈 추가(화면 views.js 2.4.2 와 짝) / v2.9.0 작업표시줄 AI/내PC 사용량 배지 아이콘(usagetray.js, v2.2.0~2.8.0에 걸쳐 링→글자→
+// 파일명: main.js | @version 2.10.0
+// 수정요약: v2.10.0 ★폰 사용량 앱 연동(phonesync.js, 지비스 전용) — 이 PC 의 CPU·램(10초마다 재고 바뀌거나 45초마다)과 Claude·Gemini 사용량(값을 새로 읽을 때마다)을
+//   중계(구글 스크립트)에 올려 폰 PWA(arete929.github.io/jivis-usage)가 읽게 한다. 주소·열쇠는 OneDrive 두 PC 공용 설정(shared.json 의 usageRelay·usageNames)에만 있고 코드·저장소에는 없다.
+//   설정이 없으면 아무것도 안 함. 끌 때 «꺼짐» 을 알림. 혜원이지는 이 기능이 없다(HAS_TT 밖에서는 안 부름) / v2.9.1 주간업무 인쇄 표에도 날짜 머리 줄(.wth) 꾸밈 추가(화면 views.js 2.4.2 와 짝) / v2.9.0 작업표시줄 AI/내PC 사용량 배지 아이콘(usagetray.js, v2.2.0~2.8.0에 걸쳐 링→글자→
 //   2줄→DPI별 그림으로 계속 다듬었던 것)을 선생님 결정으로 **통째로 없앰** — usageTrayItems()·
 //   usagetray.reconcile/setOpener/destroyAll 호출 다 지우고 usagetray.js 파일 자체도 삭제(두 build
 //   yml files: 목록에서도 뺌). 대표 트레이 아이콘(로고 하나)과 그 풍선 도움말(usageTipLine, 호버 시
@@ -42,6 +44,7 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const aiusage = require('./aiusage.js');
+const phonesync = require('./phonesync.js');   // 폰 사용량 앱으로 올리기(지비스 전용)
 const recordsmain = require('./recordsmain.js');
 const notion = require('./notion.js');
 const ticktick = require('./ticktick.js');
@@ -274,6 +277,13 @@ function pollUsageEnabled() {
   if (on.length) aiusage.pollAll(on);
 }
 function getUsageStyle() { return loadState().usageStyle === 'bar' ? 'bar' : 'ring'; }
+/* 폰 사용량 앱 중계 — 주소·열쇠는 OneDrive 두 PC 공용 설정(shared.json 의 usageRelay·usageNames)에서만 읽는다(공개 저장소에는 없음) */
+function getPhoneCfg() {
+  if (!HAS_TT) return null;
+  const sh = readShared(), u = sh.usageRelay || {};
+  if (!u.url || !u.key) return null;
+  return { url: String(u.url), key: String(u.key), names: sh.usageNames || {} };
+}
 
 /* ── 내 PC (CPU·램) ───────────────────────────────────────────
    인터넷도 열쇠도 필요 없다. 나눠 주는 판에서 굳이 보일 것은 아니라 기본은 꺼짐. */
@@ -4356,7 +4366,8 @@ if (!gotLock) {
     // AI 사용량 — 값이 들어오면 그때그때 위젯에 밀어 준다.
     // 숨은 창으로 claude.ai · gemini.google.com 을 열어 읽는 것이라 시작 직후는 피한다.
 aiusage.setLogger(debugLog);
-    aiusage.onUpdate(() => sendToWidget());
+    aiusage.onUpdate(() => { sendToWidget(); if (HAS_TT) phonesync.publishAi(); });
+    if (HAS_TT) phonesync.start({ getCfg: getPhoneCfg, getAi: () => aiusage.snapshot(), log: debugLog });
     /* ★ «켜 둔 것만» 읽는다. 전에는 설정과 무관하게 셋 다 읽어서,
        로그인도 안 한 GPT 를 1분마다(하루 1,440번) 헛걸음했다 —
        숨은 창 세 개가 램 수십~백 MB 씩 물고 있었다.
@@ -4422,6 +4433,7 @@ app.on('window-all-closed', (e) => { e.preventDefault && e.preventDefault(); });
 app.on('before-quit', (e) => {
   if (pollTimer) clearInterval(pollTimer);
   aiusage.stop();
+  if (HAS_TT) { phonesync.stop(); phonesync.bye(); }
   // 받아둔 업데이트가 있으면 여기서 설치한다. 이때 반드시 다시 띄워야 한다 —
   // electron-updater 의 autoInstallOnAppQuit 은 설치만 하고 앱을 안 살려서,
   // 위젯이 조용히 사라진 채로 남는다(그러면 업데이트 확인도 영영 못 한다).
