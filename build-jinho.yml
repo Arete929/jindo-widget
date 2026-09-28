@@ -51,7 +51,10 @@ win:
   target:
     - target: nsis
       arch: [x64]
-  icon: assets/icon.png
+  # ★ electron-builder 가 PNG→ICO 를 스스로 만들면 작은 크기(16~48)에서 진짜 투명 배경을
+  #   흰 판으로 덮어써 버린다(2026-09-28 실측 — 작업표시줄에 캐릭터가 옅은 흰 상자 안에 들어간
+  #   것처럼 작게 보였음). png-to-ico 로 직접 만든 assets/icon.ico(사이즈별 진짜 알파 유지)를 쓴다.
+  icon: assets/icon.ico
   artifactName: JindoWidget-Setup-${version}.${ext}
 nsis:
   oneClick: true

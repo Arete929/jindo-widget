@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 2.10.0
-// 수정요약: v2.10.0 ★폰 사용량 앱 연동(phonesync.js, 지비스 전용) — 이 PC 의 CPU·램(10초마다 재고 바뀌거나 45초마다)과 Claude·Gemini 사용량(값을 새로 읽을 때마다)을
+// 파일명: main.js | @version 2.10.1
+// 수정요약: v2.10.1 exe 아이콘(assets/icon.ico) 을 electron-builder 자동변환 대신 직접 만든 것으로 — 작은 크기(16~48)에서 진짜 투명 배경이 흰 판으로 덮이던 것(작업표시줄에서 캐릭터가 옅은 상자 안에 작게 보임) 고침. 내용도 96% 로 꽉 채움(전 89%). / v2.10.0 ★폰 사용량 앱 연동(phonesync.js, 지비스 전용) — 이 PC 의 CPU·램(10초마다 재고 바뀌거나 45초마다)과 Claude·Gemini 사용량(값을 새로 읽을 때마다)을
 //   중계(구글 스크립트)에 올려 폰 PWA(arete929.github.io/jivis-usage)가 읽게 한다. 주소·열쇠는 OneDrive 두 PC 공용 설정(shared.json 의 usageRelay·usageNames)에만 있고 코드·저장소에는 없다.
 //   설정이 없으면 아무것도 안 함. 끌 때 «꺼짐» 을 알림. 혜원이지는 이 기능이 없다(HAS_TT 밖에서는 안 부름) / v2.9.1 주간업무 인쇄 표에도 날짜 머리 줄(.wth) 꾸밈 추가(화면 views.js 2.4.2 와 짝) / v2.9.0 작업표시줄 AI/내PC 사용량 배지 아이콘(usagetray.js, v2.2.0~2.8.0에 걸쳐 링→글자→
 //   2줄→DPI별 그림으로 계속 다듬었던 것)을 선생님 결정으로 **통째로 없앰** — usageTrayItems()·
