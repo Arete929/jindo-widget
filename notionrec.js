@@ -1,4 +1,7 @@
-// 파일명: notionrec.js | @version 1.114.3
+// 파일명: notionrec.js | @version 1.114.4
+// v1.114.4 CALLOUT_TITLE 을 실물과 맞춤(«생활기록부 누가기록»→«누가기록») + nrPropText
+//   의 «모르는 종류» 대비 글자 긁기가 첫 조각만 집던 것을 전부 이어 붙이게 고침
+//   (노션 화면엔 다 보이는데 가져오면 짧게 잘려 오던 문제, 2026-09-30).
 // 학생기록 ↔ 노션 [DB] 2026 학생기록 오가기 (지비스 전용).
 //
 // ★ [DB] 2026 학생기록 의 «누가기록» 속성이 «AI 자동 채우기 · 페이지 생성 시» 로
@@ -14,7 +17,9 @@ const { request } = require('./httpx.js');
    ★ 속성은 실제 DB 그대로: 구분(select) · 내용(title) · 작성일(date) ·
      학번이름(relation → [DB] '26 혜원학생 INFO) · 학기(select) · NEIS(checkbox) */
 const REC_DB = '322ff403-d746-80d8-96ac-fd34dbb23158';
-const CALLOUT_TITLE = '생활기록부 누가기록';
+/* ★ 실제 템플릿 콜아웃 제목은 그냥 «누가기록»(연필 이모지 아이콘 옆) — 예전엔
+   «생활기록부 누가기록» 으로 잘못 알고 있어서 못 찾았다(2026-09-30 실물 확인). */
+const CALLOUT_TITLE = '누가기록';
 
 function nrHead(token) {
   return { Authorization: 'Bearer ' + String(token || '').trim(),
@@ -185,10 +190,14 @@ function nrPropText(prop) {
   if (p.type === 'formula') return String((p.formula && (p.formula.string || p.formula.number)) || '').trim();
   if (p.type === 'rollup') return String((p.rollup && p.rollup.string) || '').trim();
   if (typeof p.string === 'string') return p.string.trim();
-  /* 모르는 종류 — 안에 글자가 있으면 긁어 온다 */
+  /* 모르는 종류 — 안에 글자가 있으면 긁어 온다.
+     ★ 토막(span)이 여럿이면 첫 조각만 집으면 뒷부분이 통째로 잘려 나간다(2026-09-30 —
+     노션 화면엔 다 보이는데 지비스로 가져오면 짧게 잘려 오던 문제). 다 이어 붙인다. */
   const j = JSON.stringify(p);
-  const m = j.match(/"plain_text":"([^"]{5,})"/);
-  return m ? m[1] : '';
+  const ms = j.match(/"plain_text":"((?:[^"\\]|\\.)*)"/g) || [];
+  const un = (s) => s.replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+  return ms.map((s) => un(s.slice('"plain_text":"'.length, -1))).join('').trim();
 }
 async function nrReadProp(token, pageId, name) {
   const page = await nrCall(token, 'GET', '/pages/' + pageId);
