@@ -1,5 +1,9 @@
-// 파일명: main.js | @version 2.10.2
-// 수정요약: v2.10.2 로고를 선생님이 새로 주신 3D 스타일 그림(진호아이콘jinho-peace-3d-animated-style.png, ⟨JH.peace⟩ 별 배지 포함)으로 교체 — icon.png·icon.ico·tray.png·logo-jinho.png 전부. 알파 그대로 유지, 내용 채움 96%. / v2.10.1 exe 아이콘(assets/icon.ico) 을 electron-builder 자동변환 대신 직접 만든 것으로 — 작은 크기(16~48)에서 진짜 투명 배경이 흰 판으로 덮이던 것(작업표시줄에서 캐릭터가 옅은 상자 안에 작게 보임) 고침. 내용도 96% 로 꽉 채움(전 89%). / v2.10.0 ★폰 사용량 앱 연동(phonesync.js, 지비스 전용) — 이 PC 의 CPU·램(10초마다 재고 바뀌거나 45초마다)과 Claude·Gemini 사용량(값을 새로 읽을 때마다)을
+// 파일명: main.js | @version 2.10.3
+// 수정요약: v2.10.3 인쇄 후 미리보기·브라우저 창 자동으로 닫기 — 제 인쇄창(Electron)으로 실제 보냈을 때,
+//   또는 브라우저로 넘겨 열었을 때 모두 «보냈습니다» 알림을 잠깐 보여준 뒤 미리보기 창을 닫음(paperCloseSoon).
+//   브라우저 쪽 인쇄 탭도 window.onafterprint 로 스스로 닫기를 시도 — 다만 브라우저 보안 정책상
+//   OS가 연 탭은 스크립트로 못 닫을 수 있어(그때는 탭이 남는다), 100% 보장은 아님. /
+// v2.10.2 로고를 선생님이 새로 주신 3D 스타일 그림(진호아이콘jinho-peace-3d-animated-style.png, ⟨JH.peace⟩ 별 배지 포함)으로 교체 — icon.png·icon.ico·tray.png·logo-jinho.png 전부. 알파 그대로 유지, 내용 채움 96%. / v2.10.1 exe 아이콘(assets/icon.ico) 을 electron-builder 자동변환 대신 직접 만든 것으로 — 작은 크기(16~48)에서 진짜 투명 배경이 흰 판으로 덮이던 것(작업표시줄에서 캐릭터가 옅은 상자 안에 작게 보임) 고침. 내용도 96% 로 꽉 채움(전 89%). / v2.10.0 ★폰 사용량 앱 연동(phonesync.js, 지비스 전용) — 이 PC 의 CPU·램(10초마다 재고 바뀌거나 45초마다)과 Claude·Gemini 사용량(값을 새로 읽을 때마다)을
 //   중계(구글 스크립트)에 올려 폰 PWA(arete929.github.io/jivis-usage)가 읽게 한다. 주소·열쇠는 OneDrive 두 PC 공용 설정(shared.json 의 usageRelay·usageNames)에만 있고 코드·저장소에는 없다.
 //   설정이 없으면 아무것도 안 함. 끌 때 «꺼짐» 을 알림. 혜원이지는 이 기능이 없다(HAS_TT 밖에서는 안 부름) / v2.9.1 주간업무 인쇄 표에도 날짜 머리 줄(.wth) 꾸밈 추가(화면 views.js 2.4.2 와 짝) / v2.9.0 작업표시줄 AI/내PC 사용량 배지 아이콘(usagetray.js, v2.2.0~2.8.0에 걸쳐 링→글자→
 //   2줄→DPI별 그림으로 계속 다듬었던 것)을 선생님 결정으로 **통째로 없앰** — usageTrayItems()·
@@ -3781,7 +3785,10 @@ function printPaper(p, owner) {
       html: head.replace('</head>', 여백css + '</head>')
         + '<table class="pgw"><thead><tr><td></td></tr></thead><tfoot><tr><td></td></tr></tfoot><tbody><tr><td>'
         + paper + '</td></tr></tbody></table>'
-        + '<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},400);});</script></body></html>' };
+        /* 인쇄(또는 취소)로 인쇄 대화상자가 닫히면 이 탭도 따라 닫는다 — 브라우저가 «스스로 연 창»으로
+           안 쳐서 막을 수 있다(그때는 그냥 탭이 남는다). 됐을 때는 조용히 사라지는 편이 낫다. */
+        + '<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},400);});'
+        + 'window.onafterprint=function(){try{window.close();}catch(e){}};</script></body></html>' };
 
     const done = (ok) => {
       paperWin = null;
@@ -3860,6 +3867,11 @@ function paperCleanTemp(maxAgeMs) {
     });
   } catch (e) { /* 폴더 없음 */ }
 }
+/* 알림 글줄을 보여 준 뒤 미리보기 창을 닫는다 — 실제로 프린터로 보내거나
+   (브라우저로 넘긴 경우) 넘기기 자체가 됐을 때만 부른다. 취소·실패 때는 안 닫는다. */
+function paperCloseSoon() {
+  setTimeout(() => { if (paperWin && !paperWin.isDestroyed()) paperWin.close(); }, 900);
+}
 async function paperToBrowser(why) {
   if (!paperDoc) { paperSay('★ 인쇄할 종이가 없습니다 — 미리보기를 다시 열어 주세요'); return; }
   try {
@@ -3874,6 +3886,7 @@ async function paperToBrowser(why) {
     setTimeout(() => { try { fs.unlinkSync(fp); } catch (e) { /* 이미 지움 */ } }, 3 * 60 * 1000);
     paperSay('✅ 브라우저에서 인쇄 창을 열었습니다 · ' + stampNow() + ' — 거기서 프린터를 골라 인쇄하세요');
     debugLog('인쇄 — 브라우저로 넘김' + (why ? ' (' + why + ')' : ''));
+    paperCloseSoon();   // 실제 인쇄는 이제 브라우저 쪽 — 미리보기는 볼 일이 끝났다
   } catch (e) {
     paperSay('★ 브라우저를 열지 못했습니다 — «PDF 저장» 으로 저장해 인쇄해 주세요');
     debugLog('인쇄 — 브라우저 열기 실패: ' + ((e && e.message) || e));
@@ -3894,7 +3907,7 @@ ipcMain.on('paper-print', () => {
   paperWin.webContents.print({ silent: false, printBackground: true }, (ok, why) => {
     if (settled) return;                          // 이미 브라우저로 넘겼다
     settled = true; clearTimeout(giveUp);
-    if (ok) { paperSay('✅ 프린터로 보냈습니다 · ' + stampNow()); debugLog('인쇄 — 보냄'); return; }
+    if (ok) { paperSay('✅ 프린터로 보냈습니다 · ' + stampNow()); debugLog('인쇄 — 보냄'); paperCloseSoon(); return; }
     if (!why || /cancel/i.test(why)) { paperSay('인쇄를 취소했습니다'); debugLog('인쇄 — 취소'); return; }
     saveState({ printVia: 'browser' });
     paperToBrowser('인쇄 실패: ' + why);

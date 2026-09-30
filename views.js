@@ -1,5 +1,8 @@
-/* 파일명: views.js | @version 2.4.2
-   수정요약: v2.4.2 주간업무 표 — 칸이 전부 날짜인 줄(«9월28일(월)» …)은 첫 줄과 같은 머리 모양(굵게·배경색, .wth)으로(급식지도 안내표 둘째 주 이후 날짜 줄) / v2.4.1 주간업무 표 — 구글 문서가 잘못 달아 내보내는 rowspan 때문에 급식지도 안내표가 여러 주치일 때
+/* 파일명: views.js | @version 2.4.3
+   수정요약: v2.4.3 출결 인쇄 — 미인정(앱에만 있는 줄)은 출결색인 연번 체계를 안 따르니 표 안에 안 넣고,
+     «미인정 포함» 스위치를 켰을 때만 표 아래에 날짜·학번순 메모로 따로 붙임(attPrintHtml·attInclLocal,
+     인쇄 상단 스위치 #atInclLocal). 기본은 꺼짐(2026-09-11 결정 그대로 유지). /
+   v2.4.2 주간업무 표 — 칸이 전부 날짜인 줄(«9월28일(월)» …)은 첫 줄과 같은 머리 모양(굵게·배경색, .wth)으로(급식지도 안내표 둘째 주 이후 날짜 줄) / v2.4.1 주간업무 표 — 구글 문서가 잘못 달아 내보내는 rowspan 때문에 급식지도 안내표가 여러 주치일 때
      둘째 주가 첫째 주 줄 오른쪽으로 밀려 한 줄에 열 칸이 되던 것(wRowspans: 표 폭을 넘기는 rowspan 만 거기까지로 줄임) /
      v2.4.0 점검하기 — 구분이 «서류없음» 인 줄은 확인할 서류가 없으니 서류 칸 체크박스를 없앰
      (attChkKeys 로 걸러 attChkDone 판정에서도 제외, attChkCells 는 그 칸을 빈 칸(.atck.na)으로만 그림
@@ -1853,6 +1856,7 @@ var attFixDraft = {}, attFixJust = {}, attRowBusy = {};
 var attSeqTried = '';
 var attFoldBusy = false;
 var attPrintOpen = false;           // 인쇄 미리보기가 떠 있는 동안 — 단추 글자로 알린다           // 접기·펴기는 시트에서 몇 초 걸린다 — 두 번 눌리지 않게
+var attInclLocal = false;           // 인쇄에 미인정(앱에만 있는 줄)을 표 아래 메모로 끼워 넣을지
 var ATT_TYPES = [
   ['질병', ['질병결석', '질병지각', '질병조퇴', '질병결과']],
   ['인정', ['인정결석', '인정지각', '인정조퇴', '인정결과']],
@@ -2121,6 +2125,7 @@ function attBar() {
       + (p ? '<em class="atbad">' + p + '</em>' : '') + '</button>';
   }).join('');
   var has = ATT && attOf(attMon).some(function (x) { return !x.local; }), f = ATT && attFolded(attMon);
+  var hasLocal = ATT && attOf(attMon).some(function (x) { return x.local; });
   return '<div class="top2">' + attClsBar() + '<div class="wknav atbar">' + chips
     + '<span class="spacer"></span>'
     /* 점검하기 스위치 — 켜면 체크 칸·저장 시각이 보인다 */
@@ -2128,6 +2133,10 @@ function attBar() {
       + '<button class="wkb atsw' + (attChkOn ? ' on' : '') + '" id="atChk" title="'
       + (attChkOn ? '점검 끝내기 — 원래 모습으로' : '서류·출석부·NEIS 를 줄마다 체크합니다 (앱에서만 · 시트엔 안 씀)') + '">'
       + '<span class="sw"></span>' + (attChkOn ? '점검 중' : '점검하기') + '</button>' : '')
+    /* 미인정 포함 스위치 — 켜면 인쇄할 때 표 아래에 미인정 줄을 메모로 붙인다(출결색인 번호 체계 밖이라 표 안엔 안 넣는다) */
+    + (has && hasLocal ? '<button class="wkb atsw' + (attInclLocal ? ' on' : '') + '" id="atInclLocal" title="'
+      + (attInclLocal ? '인쇄에서 뺍니다 — 미인정은 표 밖 메모로만' : '인쇄할 때 표 아래에 미인정을 메모로 함께 넣습니다') + '">'
+      + '<span class="sw"></span>미인정 포함</button>' : '')
     + (has ? '<button class="wkb' + (attPrintOpen ? ' go' : '') + '" id="atPrint" title="'
       + (attPrintOpen ? '미리보기 창이 열려 있습니다 — 누르면 앞으로 가져옵니다' : '시트의 «N월 인쇄하기» 와 같은 종이') + '">'
       + (attPrintOpen ? '🖨 미리보기 열림 · 앞으로' : '🖨 ' + Number(attMon.slice(5)) + '월 인쇄') + '</button>' : '')
@@ -2612,7 +2621,12 @@ var ATT_PRINT_CSS = ''
   + '.sheet tr.r-in td{background:#FFDCDC}'
   + '.sheet tr.r-ill td{background:#F3EEFF}'
   + '.sheet td.h-late{background:#D9EAD3}'
-  + '.sheet td.h-early{background:#FFF2CC}';
+  + '.sheet td.h-early{background:#FFF2CC}'
+  /* 미인정 메모 — 출결색인 번호(연번) 체계를 안 따르는 줄이라 표 안에 안 넣고 표 아래에 따로 적는다 */
+  + '.att-memo{margin-top:14pt;padding-top:8pt;border-top:.5pt solid #000;font-size:9.5pt}'
+  + '.att-memo b{display:block;margin-bottom:5pt;font-size:10pt}'
+  + '.att-memo ul{margin:0;padding-left:16pt}'
+  + '.att-memo li{margin:2pt 0}';
 /* 줄 색 — 시트 조건부 서식과 같은 순서. 목록 화면에서도 같은 색을 쓴다 */
 function attRowTone(t) {
   t = String(t || '');
@@ -2634,29 +2648,41 @@ function attPrintTitle(mon) {
   return 학년도 + '학년도 ' + c[0] + '학년 ' + c[1] + '반 ' + m + '월 출결색인';
 }
 function attPrintHtml(mon) {
-  var list = attOf(mon).filter(function (x) { return !x.local; });   // 앱에만 있는 미인정은 종이에 없다
-  if (!list.length) return null;
-  var W = [6.63, 12, 6.63, 6.63, 10.25, 10.25, 9.38, 47.88]
-    .map(function (w) { return Math.round(w * 7 + 5); });          // 시트가 쓰는 픽셀 너비
-  var sum = W.reduce(function (a, b) { return a + b; }, 0);
-  var zoom = (745 / sum).toFixed(4);
-  var cols = '<colgroup>' + W.map(function (w) { return '<col style="width:' + w + 'px">'; }).join('') + '</colgroup>';
-  var head = '<thead><tr>' + ATT_COLS.map(function (x) { return '<th>' + x + '</th>'; }).join('') + '</tr></thead>';
-  var body = '<tbody>' + list.map(function (x) {
-    var rt = attRowTone(x.type), ht = attTypeTone(x.type);
-    return '<tr' + (rt ? ' class="' + rt + '"' : '') + '>'
-      + '<td>' + esc(x.seq) + '</td><td>' + esc(x.gubun) + '</td><td>' + esc(x.id) + '</td>'
-      + '<td>' + esc(x.name) + '</td><td>' + esc(x.startTxt || x.start) + '</td>'
-      + '<td>' + esc(x.endTxt || '') + '</td>'
-      + '<td' + (ht ? ' class="' + ht + '"' : '') + '>' + esc(x.type) + '</td>'
-      + '<td>' + esc(x.reason) + '</td></tr>';
-  }).join('') + '</tbody>';
+  var all = attOf(mon);                                              // 이미 날짜·학번순(attSort)
+  var list = all.filter(function (x) { return !x.local; });          // 시트 줄만 — 출결색인 표 안
+  /* 미인정(앱에만 있는 줄)은 출결색인 번호(연번) 체계를 안 따른다 — «미인정 포함» 스위치를 켰을 때만,
+     표 안이 아니라 표 아래에 날짜·학번순 메모로 따로 붙인다. */
+  var locals = attInclLocal ? all.filter(function (x) { return x.local; }) : [];
+  if (!list.length && !locals.length) return null;
+  var table = '';
+  if (list.length) {
+    var W = [6.63, 12, 6.63, 6.63, 10.25, 10.25, 9.38, 47.88]
+      .map(function (w) { return Math.round(w * 7 + 5); });          // 시트가 쓰는 픽셀 너비
+    var sum = W.reduce(function (a, b) { return a + b; }, 0);
+    var zoom = (745 / sum).toFixed(4);
+    var cols = '<colgroup>' + W.map(function (w) { return '<col style="width:' + w + 'px">'; }).join('') + '</colgroup>';
+    var head = '<thead><tr>' + ATT_COLS.map(function (x) { return '<th>' + x + '</th>'; }).join('') + '</tr></thead>';
+    var body = '<tbody>' + list.map(function (x) {
+      var rt = attRowTone(x.type), ht = attTypeTone(x.type);
+      return '<tr' + (rt ? ' class="' + rt + '"' : '') + '>'
+        + '<td>' + esc(x.seq) + '</td><td>' + esc(x.gubun) + '</td><td>' + esc(x.id) + '</td>'
+        + '<td>' + esc(x.name) + '</td><td>' + esc(x.startTxt || x.start) + '</td>'
+        + '<td>' + esc(x.endTxt || '') + '</td>'
+        + '<td' + (ht ? ' class="' + ht + '"' : '') + '>' + esc(x.type) + '</td>'
+        + '<td>' + esc(x.reason) + '</td></tr>';
+    }).join('') + '</tbody>';
+    table = '<table class="sheet" style="width:' + sum + 'px;zoom:' + zoom + '">' + cols + head + body + '</table>';
+  }
+  var memo = locals.length ? '<div class="att-memo"><b>미인정(표에 없음 · 날짜·학번순)</b><ul>'
+    + locals.map(function (x) {
+        return '<li>' + esc(attMd(x.start)) + ' · ' + esc(x.id) + ' ' + esc(x.name) + ' · ' + esc(x.type)
+          + (x.reason ? ' · ' + esc(x.reason) : '') + '</li>';
+      }).join('') + '</ul></div>' : '';
   return {
     plain: true, css: ATT_PRINT_CSS,
     margin: [30, 6.35, 19],          // 위·좌우·아래 mm — 브라우저 인쇄는 @page 여백을 0 으로 두고 이만큼을 종이 안에 만든다(2.0.1)
     title: attPrintTitle(mon),
-    body: '<div class="sheet-ttl">' + esc(attPrintTitle(mon)) + '</div>'
-      + '<table class="sheet" style="width:' + sum + 'px;zoom:' + zoom + '">' + cols + head + body + '</table>'
+    body: '<div class="sheet-ttl">' + esc(attPrintTitle(mon)) + '</div>' + table + memo
   };
 }
 
@@ -2848,6 +2874,7 @@ function wireAtt(app) {
   on('#atGet', function () { attSeqTried = ''; attMsg = ''; attLoad(); render(); });
   /* 점검하기 — 켜고 끄기, 칸 누르면 체크 켜고 끄기(누를 때마다 저장) */
   on('#atChk', function () { attChkOn = !attChkOn; attChkJust = false; attPop = null; render(); });
+  on('#atInclLocal', function () { attInclLocal = !attInclLocal; render(); });
   on('[data-atck]', function (b) {
     var p = b.dataset.atck.split('§');            // sig 에는 | 가 들어 있어 § 로 가른다
     var c = Object.assign({}, ATTCHK[p[0]] || {});
