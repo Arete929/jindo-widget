@@ -1,5 +1,10 @@
-/* 파일명: views.js | @version 2.4.3
-   수정요약: v2.4.3 출결 인쇄 — 미인정(앱에만 있는 줄)은 출결색인 연번 체계를 안 따르니 표 안에 안 넣고,
+/* 파일명: views.js | @version 2.4.4
+   수정요약: v2.4.4 학생기록 — «↙ 가져오기» 단추가 빠져 있어서(main.js·notionrec.js 다리는 이미
+     있었는데 화면에 단추만 없었다) 노션에서 직접 고친 누가기록을 지비스로 되받을 길이 없던 것 고침.
+     기존 줄을 펼치면 «#행특» 옆에 새로 생김 — 그 학생·구분·날짜로 노션 페이지를 다시 찾아 지금
+     적힌 글을 받아온다(받아온 뒤엔 «고쳐 저장» 을 눌러야 진짜 저장됨). data-nget 다리 자체는
+     이미 있던 것을 그대로 씀. /
+   v2.4.3 출결 인쇄 — 미인정(앱에만 있는 줄)은 출결색인 연번 체계를 안 따르니 표 안에 안 넣고,
      «미인정 포함» 스위치를 켰을 때만 표 아래에 날짜·학번순 메모로 따로 붙임(attPrintHtml·attInclLocal,
      인쇄 상단 스위치 #atInclLocal). 기본은 꺼짐(2026-09-11 결정 그대로 유지). /
    v2.4.2 주간업무 표 — 칸이 전부 날짜인 줄(«9월28일(월)» …)은 첫 줄과 같은 머리 모양(굵게·배경색, .wth)으로(급식지도 안내표 둘째 주 이후 날짜 줄) / v2.4.1 주간업무 표 — 구글 문서가 잘못 달아 내보내는 rowspan 때문에 급식지도 안내표가 여러 주치일 때
@@ -4145,6 +4150,8 @@ function recWrite() {
             + '<span class="spacer"></span>'
             + '<button class="wkb" data-rcp="' + r.row + '" title="복사">⧉</button>'
             + (HAS_TT ? '<button class="wkb" data-rnt="' + r.row + '" title="노셔나이 #행특 꼴로 복사 — 노션에 붙여넣으면 누가기록을 지어 줍니다">#행특</button>' : '')
+            + (HAS_TT ? '<button class="wkb" data-nget="' + r.row + '"' + (recNotionBusy === String(r.row) ? ' disabled' : '')
+              + ' title="노션에서 그 학생·구분·날짜의 페이지를 찾아, 지금 거기 적힌 누가기록 글을 받아옵니다(직접 고친 내용 포함) — 받아온 뒤엔 «고쳐 저장» 을 눌러야 지비스에 저장됩니다">↙ 가져오기</button>' : '')
             + (HAS_TT && recNotionPage[r.row] ? '<button class="wkb" data-nopen="' + r.row + '" title="노션에서 열기">노션 ↗</button>' : '')
             + '<button class="wkb" data-rdel="' + r.row + '">지우기</button>'
             + '</div>'
