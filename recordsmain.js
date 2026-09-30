@@ -1,4 +1,7 @@
-// 파일명: recordsmain.js | @version 1.114.3
+// 파일명: recordsmain.js | @version 1.114.4
+// v1.114.4 rec-notion-get 이 «생활기록부 누가기록» 콜아웃만 찾다가, 실제 템플릿의
+//   «누가기록» 속성(AI 자동 채우기)을 못 읽어 늘 «비어 있다» 로 잘못 알리던 것 고침 —
+//   readProp('누가기록') 을 먼저 읽고, 그래도 없으면 콜아웃을 본다.
 // 학생기록의 «뒤쪽 일» — 구글 연결, 시트 만들기·지우기, 기록 읽고 쓰기, 명렬표 받기.
 //
 // main.js 가 너무 길어져서 학생기록만 따로 뺐다. main.js 는 register() 한 번만 부른다.
@@ -358,8 +361,14 @@ function register(helpers) {
     let id = (p && p.pageId) || '';
     if (!id) id = await nrec.findPage(key, p || {});
     if (!id) return { ok: false, error: '노션에서 그 기록을 못 찾았습니다 — 먼저 «노션으로 보내기» 를 하세요' };
-    const note = await nrec.fetchNote(key, id);
-    if (!note) return { ok: false, error: '노션 쪽 누가기록이 아직 비어 있습니다 — 그 페이지에서 «#행특» 을 한 번 시켜 주세요', pageId: id };
+    /* ★ «누가기록» 은 속성(AI 자동 채우기)이 진짜다 — «↻ 변환»(waitProp)도 이걸 읽는다.
+       본문의 콜아웃(fetchNote)은 이름이 «생활기록부 누가기록» 일 때만 잡는 옛 길이라,
+       실제 템플릿처럼 그냥 «누가기록» 이면 못 찾고 «비어 있다» 고 잘못 알렸다(2026-09-30). */
+    let note = '';
+    try { note = await nrec.readProp(key, id, (p && p.prop) || '누가기록'); }
+    catch (e) { S.log('노션 속성 읽기 실패 — ' + ((e && e.message) || e)); }
+    if (!note) { try { note = await nrec.fetchNote(key, id); } catch (e) { /* 콜아웃도 없으면 그냥 빈 것 */ } }
+    if (!note) return { ok: false, error: '노션 쪽 «누가기록» 이 아직 비어 있습니다 — 속성을 채우거나, 그 페이지에서 «#행특» 을 한 번 시켜 주세요', pageId: id };
     return { ok: true, note: note, pageId: id };
   });
 
