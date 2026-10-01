@@ -1,4 +1,7 @@
-// 파일명: recordsmain.js | @version 1.114.4
+// 파일명: recordsmain.js | @version 1.114.5
+// v1.114.5 rec-notion-get 이 «누가기록» 속성(AI 자동 채우기)을 먼저 읽던 것을 그만두고
+//   본문 콜아웃만 보게 바꿈 — 속성 값이 화면(콜아웃)과 다르게(더 짧고 표현도 다르게)
+//   나오는 사례를 실측(2026-10-02). 선생님 확인: "누가기록 상관없이 콜아웃을 보도록".
 // v1.114.4 rec-notion-get 이 «생활기록부 누가기록» 콜아웃만 찾다가, 실제 템플릿의
 //   «누가기록» 속성(AI 자동 채우기)을 못 읽어 늘 «비어 있다» 로 잘못 알리던 것 고침 —
 //   readProp('누가기록') 을 먼저 읽고, 그래도 없으면 콜아웃을 본다.
@@ -361,14 +364,12 @@ function register(helpers) {
     let id = (p && p.pageId) || '';
     if (!id) id = await nrec.findPage(key, p || {});
     if (!id) return { ok: false, error: '노션에서 그 기록을 못 찾았습니다 — 먼저 «노션으로 보내기» 를 하세요' };
-    /* ★ «누가기록» 은 속성(AI 자동 채우기)이 진짜다 — «↻ 변환»(waitProp)도 이걸 읽는다.
-       본문의 콜아웃(fetchNote)은 이름이 «생활기록부 누가기록» 일 때만 잡는 옛 길이라,
-       실제 템플릿처럼 그냥 «누가기록» 이면 못 찾고 «비어 있다» 고 잘못 알렸다(2026-09-30). */
+    /* ★ 본문 콜아웃만 본다 — «누가기록» 속성(AI 자동 채우기, ✨)은 화면에 보이는 것과
+       다른(더 짧고 표현도 다른) 값을 들고 있을 때가 있었다(2026-10-02 실측). 콜아웃은
+       고정된 블록 글자라 화면 그대로 받아온다. 속성은 더 이상 보지 않는다. */
     let note = '';
-    try { note = await nrec.readProp(key, id, (p && p.prop) || '누가기록'); }
-    catch (e) { S.log('노션 속성 읽기 실패 — ' + ((e && e.message) || e)); }
-    if (!note) { try { note = await nrec.fetchNote(key, id); } catch (e) { /* 콜아웃도 없으면 그냥 빈 것 */ } }
-    if (!note) return { ok: false, error: '노션 쪽 «누가기록» 이 아직 비어 있습니다 — 속성을 채우거나, 그 페이지에서 «#행특» 을 한 번 시켜 주세요', pageId: id };
+    try { note = await nrec.fetchNote(key, id); } catch (e) { S.log('노션 콜아웃 읽기 실패 — ' + ((e && e.message) || e)); }
+    if (!note) return { ok: false, error: '노션 쪽 «누가기록» 콜아웃이 아직 비어 있습니다 — 그 페이지에서 «#행특» 을 한 번 시켜 주세요', pageId: id };
     return { ok: true, note: note, pageId: id };
   });
 
