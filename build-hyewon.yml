@@ -59,7 +59,10 @@ win:
   target:
     - target: nsis
       arch: [x64]
-  icon: assets/hyewon-icon.png
+  # ★ electron-builder 가 PNG→ICO 를 스스로 하면 작은 크기(16~48)에서 투명 배경이 흰 판으로
+  #   덮인다(지비스 2026-09-28 실측). 알파를 지킨 직접 만든 ico 를 쓴다 —
+  #   다시 만들기: _tools/jivis-tests/iconfix/make_hyewon_icon.py → make_ico_hyewon.js
+  icon: assets/hyewon-icon.ico
   artifactName: HyewonDesk-Setup-${version}.${ext}
 nsis:
   oneClick: true
