@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.4.11
-   수정요약: v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+/* 파일명: views.js | @version 2.4.12
+   수정요약: v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
      목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
      그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
    v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
@@ -3306,11 +3306,13 @@ function mlFindHtml() {
         + (multi ? ' <i>' + esc(DUTY.days[k].name) + '</i>' : '') + (k === today ? ' <u>오늘</u>' : '') + '</button>';
     }).join('') + '</div></div>';
 }
+/* ★ 눈에 띄게 — 테두리 친 «타일» 로 감싼다(출결 «새 출결 적기» 타일과 같은 결, 2026-10-02) */
 function mlSearchBar() {
-  return '<div class="wknav mlsrch"><input id="mlQ" class="gpai wide" autocomplete="off" '
-    + 'placeholder="급식 찾기 — 날짜(10/2 · 2026-10-02) 또는 교사 이름" value="' + esc(mlQ) + '">'
+  return '<div class="mlsbox"><div class="mlsbt">🔍 급식 찾기<small>날짜(10/2 · 2026-10-02) 또는 교사 이름</small></div>'
+    + '<div class="wknav mlsrch"><input id="mlQ" class="gpai wide" autocomplete="off" '
+    + 'placeholder="예) 10/2   또는   김진호" value="' + esc(mlQ) + '">'
     + '<button class="wkb go" id="mlFind">🔍 검색</button>'
-    + (mlQ ? '<button class="wkb" id="mlFindX" title="검색 지우기">✕</button>' : '') + '</div>' + mlFindHtml();
+    + (mlQ ? '<button class="wkb" id="mlFindX" title="검색 지우기">✕</button>' : '') + '</div>' + mlFindHtml() + '</div>';
 }
 function viewMeals() {
   if (!ML) { loadMeals(); return '<div class="empty">급식을 불러오는 중…</div>'; }
