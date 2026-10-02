@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 2.0.2 — 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
+/* 파일명: ui.css | @version 2.0.3 — 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -1504,6 +1504,13 @@
     font-style: normal; font-weight: 900; font-size: calc(13px * var(--wf)); color: transparent; background: var(--card); }
   .attt td.atck:hover i { border-color: var(--accent); }
   .attt td.atck.on i { background: var(--accent); border-color: var(--accent); color: var(--on); }
+  /* ★ 항목마다 다른 색 — 서류 파랑 · 출석부 초록 · NEIS 보라. 어느 것이 끝났는지 한눈에(2026-10-02) */
+  .attt td.atck.k-doc.on i  { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .attt td.atck.k-att.on i  { background: #16a34a; border-color: #16a34a; color: #fff; }
+  .attt td.atck.k-neis.on i { background: #9333ea; border-color: #9333ea; color: #fff; }
+  .attt td.atck.k-doc:hover i  { border-color: #3b82f6; }
+  .attt td.atck.k-att:hover i  { border-color: #16a34a; }
+  .attt td.atck.k-neis:hover i { border-color: #9333ea; }
   .attt td.atck.off { cursor: default; opacity: .5; }
   .attt td.atck.na { cursor: default; }
   /* 셋 다 체크 — 흐린 회색 + 취소선 (체크 칸은 그대로 읽히게 줄만 긋지 않는다) */

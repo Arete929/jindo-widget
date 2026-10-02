@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.4.9
-   수정요약: v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+/* 파일명: views.js | @version 2.4.10
+   수정요약: v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
      목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
      그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
    v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
@@ -2332,7 +2332,7 @@ function attChkCells(x) {
   var c = attChkOf(x), off = !!x.saving, noDoc = x.gubun === '서류없음';
   return ATT_CHK.map(function (k) {
     if (k[0] === 'doc' && noDoc) return '<td class="atck na" title="서류없음 — 확인 필요 없음"></td>';
-    return '<td class="atck' + (c[k[0]] ? ' on' : '') + (off ? ' off' : '') + '"'
+    return '<td class="atck k-' + k[0] + (c[k[0]] ? ' on' : '') + (off ? ' off' : '') + '"'
       + (off ? '' : ' data-atck="' + esc(x.sig) + '§' + k[0] + '"') + ' title="' + k[1] + ' 확인">'
       + '<i>✓</i></td>';
   }).join('');
@@ -6539,8 +6539,8 @@ function render() {
 
   // 탭마다 그림 — 넓게 보기의 차림표와 «같은 그림» 을 쓴다
   // ★ «진호 시간표» 는 앱 로고를 쓴다 — 이 탭이 앱의 얼굴이다
-  var NAVIMG = { tt: 'logo-jinho', task: 'nav-work', work: 'nav-work', comci: 'nav-comci', grid: 'nav-rec',
-                 cal: 'nav-cal', meal: 'nav-meal', rec: 'nav-rec', att: 'nav-rec',
+  var NAVIMG = { tt: 'logo-jinho', task: 'nav-work', work: 'nav-week', comci: 'nav-comci', grid: 'nav-rec',
+                 cal: 'nav-cal', meal: 'nav-meal', rec: 'nav-rec', att: 'nav-att',
                  office: 'nav-office', link: 'nav-link' };
   function chipInner(v, label) {
     var img = NAVIMG[v]
