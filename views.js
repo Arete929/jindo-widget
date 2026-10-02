@@ -1,5 +1,9 @@
-/* 파일명: views.js | @version 2.4.7
-   수정요약: v2.4.7 출결 — 내용이 완전히 같은 줄(학번·이름·날짜·유형·사유 다 같은, 실수로
+/* 파일명: views.js | @version 2.4.8
+   수정요약: v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
+     보일 때, 시작월(9월)의 시트 연번(23)을 그대로 보여주던 것 고침 — 선생님 지적대로 "10월
+     거니까 10월 연번" 이어야 한다. 시트에 적는 값(연번 매기기·attSeqPlan)은 그대로 두고,
+     화면·인쇄에서만 보이는 순서로 1부터 다시 매김(앱에만 있는 미인정 줄은 안 셈).
+   v2.4.7 출결 — 내용이 완전히 같은 줄(학번·이름·날짜·유형·사유 다 같은, 실수로
      겹쳐 적힌 경우)이 두 개 있으면 지우기(✕)가 sig(내용)만 보고 가려서 "한 번 더 ✕"가
      둘 다에 뜨고 어느 쪽을 지워도 안 지워지는 것처럼 보이던 것 고침 — 고치기(✎)도 같이.
      r(그 시트 줄 번호)까지 같이 키로 써서 정확히 그 줄만 가리킴(attFind(sig,r), 다른 곳에서
@@ -2363,7 +2367,12 @@ function attTable(list, folded) {
     + '<thead><tr>' + ATT_COLS.concat(extra).map(function (c, i) {
         return '<th>' + c + '<span class="atrz" data-atrz="' + keys[i] + '" title="끌어서 칸 너비 바꾸기 · 두 번 누르면 처음대로"></span></th>';
       }).join('') + '</tr></thead><tbody>';
-  h += list.map(function (x) { return attRowHtml(x, folded); }).join('');
+  /* ★ 연번은 화면에 보이는 순서로 다시 매긴다(시트에 적힌 x.seq 그대로가 아니라) — 달 경계를
+     넘어온 줄(attVisibleOf)이 이 달 맨 앞에 끼면, 시트 쪽(그 줄의 «원래 달» 연번 매기기는
+     그대로 둔 채) 화면·인쇄에서만 이 달 기준으로 1부터 다시 센다(안효주 9/29~10/2 사례,
+     2026-10-02 — "10월 거니까 10월 연번으로"). 앱에만 있는 줄(미인정)은 세지 않는다. */
+  var 연번n = 0;
+  h += list.map(function (x) { var 보일연번 = x.local ? '' : ++연번n; return attRowHtml(x, folded, 보일연번); }).join('');
   h += '</tbody></table></div>';
   /* ★ 새로 적는 줄은 표 밖 «입력칸» 타일에 — 목록과 헷갈리지 않게(2026-09-11). 칸 너비는 목록과 같다 */
   if (!attCanWrite()) return h;                      // 남의 반 — 새로 적는 칸 없음
@@ -2440,7 +2449,7 @@ function attStPop(key, cur) {
         + '<i>' + esc(s.id) + '</i>' + esc(s.name) + '</button>';
     }).join('') + '</div>' : '<input id="atNewId" class="gpai" placeholder="학번" style="width:5em"> <input id="atNewName" class="gpai" placeholder="이름" style="width:6em">'));
 }
-function attRowHtml(x, folded) {
+function attRowHtml(x, folded, 보일연번) {
   var busy = !!attRowBusy[x.sig];
   var lock = folded || x.hidden || x.saving || !attCanWrite();   // 저장 중·남의 반(보기만)은 손대지 않게
   var tone = attRowTone(x.type), ht = attTypeTone(x.type);
@@ -2448,7 +2457,7 @@ function attRowHtml(x, folded) {
     + (x.saving ? ' saving' : '') + (attChkOn && attChkDone(x) ? ' chkdone' : '');
   var dateCell = esc(x.startTxt || x.start) + (x.time ? '<small>' + esc(x.time) + '</small>' : '');
   var h = '<tr class="' + cls + '">'
-    + '<td class="c">' + (x.local ? '<i class="atapp" title="앱에만 있음 — 시트엔 없음">앱</i>' : esc(x.seq || '')) + '</td>'
+    + '<td class="c">' + (x.local ? '<i class="atapp" title="앱에만 있음 — 시트엔 없음">앱</i>' : esc(보일연번 || '')) + '</td>'
     + '<td class="c atcell' + (x.local || lock ? '' : ' pick') + (busy ? ' busy' : '') + '"'
       + (x.local || lock ? '' : ' data-atpop="gubun§' + esc(x.sig) + '"') + '>'
       + (busy ? '…' : esc(x.gubun || (x.local || lock ? '' : '·')))
@@ -2718,10 +2727,11 @@ function attPrintHtml(mon) {
     var zoom = (745 / sum).toFixed(4);
     var cols = '<colgroup>' + W.map(function (w) { return '<col style="width:' + w + 'px">'; }).join('') + '</colgroup>';
     var head = '<thead><tr>' + ATT_COLS.map(function (x) { return '<th>' + x + '</th>'; }).join('') + '</tr></thead>';
-    var body = '<tbody>' + list.map(function (x) {
+    var body = '<tbody>' + list.map(function (x, i) {
       var rt = attRowTone(x.type), ht = attTypeTone(x.type);
+      /* 화면과 같은 규칙 — 달 경계를 넘어온 줄이 끼면 이 달 보이는 순서로 연번을 다시 매김 */
       return '<tr' + (rt ? ' class="' + rt + '"' : '') + '>'
-        + '<td>' + esc(x.seq) + '</td><td>' + esc(x.gubun) + '</td><td>' + esc(x.id) + '</td>'
+        + '<td>' + esc(i + 1) + '</td><td>' + esc(x.gubun) + '</td><td>' + esc(x.id) + '</td>'
         + '<td>' + esc(x.name) + '</td><td>' + esc(x.startTxt || x.start) + '</td>'
         + '<td>' + esc(x.endTxt || '') + '</td>'
         + '<td' + (ht ? ' class="' + ht + '"' : '') + '>' + esc(x.type) + '</td>'
