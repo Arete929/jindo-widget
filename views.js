@@ -1,5 +1,9 @@
-/* 파일명: views.js | @version 2.4.4
-   수정요약: v2.4.4 학생기록 — «↙ 가져오기» 단추가 빠져 있어서(main.js·notionrec.js 다리는 이미
+/* 파일명: views.js | @version 2.4.5
+   수정요약: v2.4.5 출결 — 시작일은 지난달인데 종료일이 이번 달까지 걸치는 줄(«3211안효주»
+     9/29~10/2 사례)이 이번 달엔 아예 안 보이던 것 고침(attVisibleOf 추가, 화면·달 칩·인쇄에
+     적용). 연번 매기기(attSeqPlan)·접기 상태는 시트에 실제로 쓰는 부분이라 그대로
+     attOf(시작월 기준)를 써서 건드리지 않음. /
+   v2.4.4 학생기록 — «↙ 가져오기» 단추가 빠져 있어서(main.js·notionrec.js 다리는 이미
      있었는데 화면에 단추만 없었다) 노션에서 직접 고친 누가기록을 지비스로 되받을 길이 없던 것 고침.
      기존 줄을 펼치면 «#행특» 옆에 새로 생김 — 그 학생·구분·날짜로 노션 페이지를 다시 찾아 지금
      적힌 글을 받아온다(받아온 뒤엔 «고쳐 저장» 을 눌러야 진짜 저장됨). data-nget 다리 자체는
@@ -2007,10 +2011,39 @@ function attSort(a, b) {
 function attOf(mon) {
   return attRows().filter(function (x) { return String(x.start).slice(0, 7) === mon; }).sort(attSort);
 }
+/* ★ 시작일은 지난달인데 종료일이 이번 달까지 걸치는 줄(«9/29~10/2» 같은)도 이번 달
+   화면·인쇄에 그대로 보이게 — «3211안효주» 사례, 10월엔 아무것도 안 보이던 것(2026-10-02).
+   연번 매기기(attSeqPlan)·접기 상태(attFolded·attAnyHidden)는 시트에 실제로 써 보내는
+   부분이라 그대로 attOf(시작월 기준)를 쓴다 — 여기서 겹침까지 넣으면 같은 줄이 두 달 모두에서
+   서로 다른 연번을 매기려 들어 시트에 번갈아 써질 수 있다. */
+function attMonOverlap(x, mon) {
+  var s = String(x.start || '').slice(0, 7);
+  var e = String(x.end || '').slice(0, 7);
+  if (!e || e < s) e = s;
+  return mon >= s && mon <= e;
+}
+function attVisibleOf(mon) {
+  var out = attOf(mon).slice();
+  var seen = {};
+  out.forEach(function (x) { seen[x.sig + '|' + x.r] = 1; });
+  attRows().forEach(function (x) {
+    if (String(x.start || '').slice(0, 7) === mon) return;   // 이미 attOf(mon) 에 있다
+    if (!attMonOverlap(x, mon)) return;
+    var k = x.sig + '|' + x.r;
+    if (seen[k]) return;
+    seen[k] = 1;
+    out.push(x);
+  });
+  return out.sort(attSort);
+}
 function attThisMon() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1); }
 function attMonths() {
   var s = {};
-  attRows().forEach(function (x) { if (/^\d{4}-\d{2}/.test(x.start)) s[x.start.slice(0, 7)] = 1; });
+  attRows().forEach(function (x) {
+    if (/^\d{4}-\d{2}/.test(x.start)) s[x.start.slice(0, 7)] = 1;
+    var e = String(x.end || '').slice(0, 7);
+    if (/^\d{4}-\d{2}$/.test(e)) s[e] = 1;   // 종료월까지 걸치면 그 달 칩도 보이게
+  });
   s[attThisMon()] = 1;
   return Object.keys(s).sort();
 }
@@ -2097,7 +2130,7 @@ function viewAtt() {
     return attBar() + '<div class="empty">출결 목록을 읽는 중…</div>';
   }
   if (!attMon) attMon = attThisMon();
-  var list = attOf(attMon);
+  var list = attVisibleOf(attMon);
   var folded = attFolded(attMon);
   var nPend = list.filter(attPending).length;
   var nLocal = list.filter(function (x) { return x.local; }).length;
@@ -2122,15 +2155,15 @@ function viewAtt() {
 function attBar() {
   var mons = ATT ? attMonths() : [attThisMon()];
   var chips = mons.map(function (m) {
-    var l = ATT ? attOf(m) : [];
+    var l = ATT ? attVisibleOf(m) : [];
     var p = l.filter(attPending).length, f = ATT && attFolded(m);
     return '<button class="wkb atmon' + (m === attMon ? ' now' : '') + (f ? ' fold' : '')
       + '" data-atm="' + m + '" title="' + (f ? '접어 둔 달 · ' : '') + l.length + '건'
       + (p ? ' · 답할 것 ' + p : '') + '">' + Number(m.slice(5)) + '월'
       + (p ? '<em class="atbad">' + p + '</em>' : '') + '</button>';
   }).join('');
-  var has = ATT && attOf(attMon).some(function (x) { return !x.local; }), f = ATT && attFolded(attMon);
-  var hasLocal = ATT && attOf(attMon).some(function (x) { return x.local; });
+  var has = ATT && attVisibleOf(attMon).some(function (x) { return !x.local; }), f = ATT && attFolded(attMon);
+  var hasLocal = ATT && attVisibleOf(attMon).some(function (x) { return x.local; });
   return '<div class="top2">' + attClsBar() + '<div class="wknav atbar">' + chips
     + '<span class="spacer"></span>'
     /* 점검하기 스위치 — 켜면 체크 칸·저장 시각이 보인다 */
@@ -2653,7 +2686,7 @@ function attPrintTitle(mon) {
   return 학년도 + '학년도 ' + c[0] + '학년 ' + c[1] + '반 ' + m + '월 출결색인';
 }
 function attPrintHtml(mon) {
-  var all = attOf(mon);                                              // 이미 날짜·학번순(attSort)
+  var all = attVisibleOf(mon);   // 달 경계를 넘는 줄(종료일이 이 달까지)도 함께 — 이미 날짜·학번순(attSort)
   var list = all.filter(function (x) { return !x.local; });          // 시트 줄만 — 출결색인 표 안
   /* 미인정(앱에만 있는 줄)은 출결색인 번호(연번) 체계를 안 따른다 — «미인정 포함» 스위치를 켰을 때만,
      표 안이 아니라 표 아래에 날짜·학번순 메모로 따로 붙인다. */
