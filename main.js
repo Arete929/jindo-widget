@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 2.10.4
-// 수정요약: v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
+// 파일명: main.js | @version 2.10.5
+// 수정요약: v2.10.5 컴시간 설정 기본값 — 혜원이지는 처음부터 학급 시간표도 보이게(wantClasses 미설정이면 혜원이지만 켬, 이미 고른 값은 그대로). / v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
 //   둘 이상이면 id·날짜·유형·사유만으론 못 가르던 것, 다리가 받으면 그걸로 가를 수 있게(views.js
 //   2.4.7 과 짝). /
 // v2.10.3 인쇄 후 미리보기·브라우저 창 자동으로 닫기 — 제 인쇄창(Electron)으로 실제 보냈을 때,
@@ -1966,7 +1966,9 @@ function getComciConfig() {
   return {
     school: s.school || null,
     wantTeacher: s.wantTeacher === undefined ? true : !!s.wantTeacher,
-    wantClasses: !!s.wantClasses,
+    /* ★ 혜원이지는 처음부터 학급 시간표도 보인다(담임 선생님이 우리 반 시간표를 바로 보게).
+         지비스는 예전대로 꺼진 채 시작 — 이미 고른 값(켬·끔)은 그대로 존중한다 */
+    wantClasses: s.wantClasses === undefined ? !HAS_TT : !!s.wantClasses,
     teacher: s.teacher || '',
     teacherIdx: Number(s.teacherIdx) || 0
   };

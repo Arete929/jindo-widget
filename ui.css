@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 2.0.3 — 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
+/* 파일명: ui.css | @version 2.0.4 — 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -1793,6 +1793,19 @@
   }
   .mlduty.mine b { color: var(--accent); }
   .ml.myduty { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+  /* 급식 검색 — 입력줄 · 결과(그날 급식지도 / 이름이 든 날짜들) · 찾아간 날 칸 강조 */
+  .mlsrch { gap: 6px; }
+  .mlsrch input { flex: 1; min-width: 0; }
+  .mlfind { margin: 4px 0 8px; padding: 7px 10px; border-radius: 9px; font-size: calc(12px * var(--wf));
+    background: color-mix(in srgb, var(--accent) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); }
+  .mlfind.bad { background: color-mix(in srgb, #e5484d 10%, var(--card)); border-color: color-mix(in srgb, #e5484d 35%, var(--line)); }
+  .mlfind b.nm { color: var(--accent); }
+  .mlfind small { color: var(--dim); }
+  .mlgos { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .mlgos .mlgo.past { opacity: .5; }
+  .mlgos .mlgo i { font-style: normal; font-weight: 700; color: var(--dim); }
+  .mlgos .mlgo u { text-decoration: none; font-weight: 800; color: var(--accent); }
+  .ml.find { box-shadow: 0 0 0 3px var(--accent), 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent); }
 
   /* 급식 탭 맨 위 — 내 급식지도가 언제인가 */
   .dutybar {

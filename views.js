@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.4.10
-   수정요약: v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+/* 파일명: views.js | @version 2.4.11
+   수정요약: v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
      목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
      그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
    v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
@@ -3227,6 +3227,91 @@ function loadMeals() {
     mlBusy = false; ML = d || { empty: true }; render();
   }).catch(function () { mlBusy = false; ML = { empty: true }; render(); });
 }
+/* ── 급식 검색 — 날짜(10/2 · 2026-10-02 · 20261002) 또는 교사 이름 (2026-10-03) ──
+   ★ 한 글자 칠 때마다 찾지 않는다(버벅임) — Enter 나 «검색» 을 눌러야 찾는다.
+   날짜는 그 주 급식으로 데려가 그날 칸을 강조하고, 이름은 급식지도 날짜를 줄줄이 보여 준다. */
+var mlQ = '', mlFocus = '';
+function mlIso(y, mo, d) {
+  var dt = new Date(y, mo - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return '';
+  return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+function mlParseDate(q) {
+  var s = String(q || '').trim(), m;
+  if ((m = s.match(/^(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})\s*일?$/))) return mlIso(+m[1], +m[2], +m[3]);
+  if ((m = s.match(/^(\d{4})(\d{2})(\d{2})$/))) return mlIso(+m[1], +m[2], +m[3]);
+  if ((m = s.match(/^(\d{1,2})\s*[-./월]\s*(\d{1,2})\s*일?$/))) {
+    /* 해를 안 적으면 «지금 학년도(3월~이듬해 2월)» 안의 그 날로 */
+    var n = new Date(), sy = n.getMonth() + 1 >= 3 ? n.getFullYear() : n.getFullYear() - 1;
+    return mlIso(+m[1] >= 3 ? sy : sy + 1, +m[1], +m[2]);
+  }
+  return '';
+}
+function mlMonday(d) {
+  var x = new Date(d); x.setHours(0, 0, 0, 0);
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
+}
+/* 오늘이 든 주에서 몇 주 떨어졌나 — 급식 주 넘기기(mealsFetch)와 같은 셈 */
+function mlOffOf(iso) {
+  var p = iso.split('-');
+  return Math.round((mlMonday(new Date(+p[0], +p[1] - 1, +p[2])) - mlMonday(new Date())) / (7 * 86400000));
+}
+function mlScrollFocus() {
+  setTimeout(function () {
+    var el = document.querySelector('.ml.find');
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+  }, 80);
+}
+function mlGo(iso) {
+  mlFocus = iso;
+  var off = mlOffOf(iso);
+  if (ML && off === (Number(ML.weekOff) || 0)) { render(); mlScrollFocus(); return; }
+  mlBusy = true; render();
+  widgetAPI.mealsFetch(off).then(function (d) {
+    mlBusy = false; ML = d || { empty: true }; render(); mlScrollFocus();
+  });
+}
+function mlSearch() {
+  mlFocus = '';
+  var d = mlParseDate(mlQ);
+  if (d) { mlGo(d); return; }
+  render();
+}
+function mlFindHtml() {
+  var q = String(mlQ || '').trim();
+  if (!q) return '';
+  var iso = mlParseDate(q);
+  if (iso) {
+    var g = dutyOf(iso);
+    return '<div class="mlfind"><b>' + esc(mdDow(iso)) + '</b> 급식지도 '
+      + (g && g.name ? '<b class="nm">' + esc(g.name) + '</b>' + (g.note ? ' <small>' + esc(g.note) + '</small>' : '')
+        : '<span>정보 없음</span>') + '</div>';
+  }
+  if (!DUTY || DUTY.error || !DUTY.days) {
+    return '<div class="mlfind bad">급식지도 순서표를 아직 못 불러와서 이름으로는 찾을 수 없습니다'
+      + (DUTY && DUTY.error ? ' — ' + esc(DUTY.error) : '') + '</div>';
+  }
+  var keys = Object.keys(DUTY.days).filter(function (k) { return String(DUTY.days[k].name || '').indexOf(q) >= 0; }).sort();
+  if (!keys.length) return '<div class="mlfind bad">순서표에 «' + esc(q) + '» 이(가) 든 이름이 없습니다</div>';
+  var today = todayYmd(), who = {};
+  keys.forEach(function (k) { who[DUTY.days[k].name] = 1; });
+  var names = Object.keys(who), multi = names.length > 1;
+  var left = keys.filter(function (k) { return k >= today; }).length;
+  return '<div class="mlfind"><b class="nm">' + esc(multi ? '«' + q + '» ' + names.length + '명' : names[0]) + '</b> 급식지도 '
+    + keys.length + '번 <small>(남은 ' + left + '번 · 누르면 그 주 급식)</small>'
+    + '<div class="mlgos">' + keys.slice(0, 80).map(function (k) {
+      return '<button class="wkb mlgo' + (k < today ? ' past' : '') + (k === mlFocus ? ' now' : '') + '" data-mlgo="' + k + '">'
+        + esc(mdOf(k)) + ' <small>(' + esc(DUTY.days[k].dow || '') + ')</small>'
+        + (multi ? ' <i>' + esc(DUTY.days[k].name) + '</i>' : '') + (k === today ? ' <u>오늘</u>' : '') + '</button>';
+    }).join('') + '</div></div>';
+}
+function mlSearchBar() {
+  return '<div class="wknav mlsrch"><input id="mlQ" class="gpai wide" autocomplete="off" '
+    + 'placeholder="급식 찾기 — 날짜(10/2 · 2026-10-02) 또는 교사 이름" value="' + esc(mlQ) + '">'
+    + '<button class="wkb go" id="mlFind">🔍 검색</button>'
+    + (mlQ ? '<button class="wkb" id="mlFindX" title="검색 지우기">✕</button>' : '') + '</div>' + mlFindHtml();
+}
 function viewMeals() {
   if (!ML) { loadMeals(); return '<div class="empty">급식을 불러오는 중…</div>'; }
   var schools = ML.schools || null;
@@ -3240,7 +3325,7 @@ function viewMeals() {
     + '<button class="wkb" data-ml="' + (off + 1) + '" title="다음 주">▶</button>'
     + (off !== 0 ? '<button class="wkb go" data-ml="0">이번주</button>' : '')
     + fontBtns('meal')
-    + '<button class="wkb" id="mlGet" title="다시 가져오기">⟳</button></div></div>';
+    + '<button class="wkb" id="mlGet" title="다시 가져오기">⟳</button></div>' + mlSearchBar() + '</div>';
   if (!multi && !list.length) {
     return head + '<div class="empty">' + (ML.error ? esc(ML.error) : '이 주에는 급식이 없습니다.')
       + '<br><button class="btn" id="mlGetBig">지금 가져오기</button></div>';
@@ -3259,7 +3344,7 @@ function viewMeals() {
           + (g.note ? '<small>' + esc(g.note) + '</small>' : '')
           + (mine ? '<em>내 차례</em>' : '') + '</div>'
         : '';
-      return '<div class="ml' + (on ? ' tdy' : '') + (mine ? ' myduty' : '') + '">'
+      return '<div class="ml' + (on ? ' tdy' : '') + (mine ? ' myduty' : '') + (mlFocus && x.date === mlFocus ? ' find' : '') + '">'
         + '<div class="mlh">' + esc(mdDow(x.date)) + (on ? ' <em>오늘</em>' : '')
         + '<span>' + esc(x.kcal || '') + '</span></div>'
         + '<div class="mld">' + (x.dishes || []).map(function (t) {
@@ -7678,6 +7763,19 @@ function wireViews(app) {
     dutyHidDay = todayYmd();
     try { localStorage.setItem('dutyHid', dutyHidDay); } catch (e) { /* 못 적어도 그만 */ }
     render();
+  });
+  /* 급식 검색 — Enter·검색 단추로만 찾는다(칠 때마다 다시 그리면 버벅인다) */
+  var mlI = app.querySelector('#mlQ');
+  if (mlI) {
+    mlI.addEventListener('input', function () { mlQ = mlI.value; });
+    mlI.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); mlQ = mlI.value; mlSearch(); } });
+  }
+  var mlF = app.querySelector('#mlFind');
+  if (mlF) mlF.addEventListener('click', function () { mlQ = (app.querySelector('#mlQ') || {}).value || mlQ; mlSearch(); });
+  var mlX = app.querySelector('#mlFindX');
+  if (mlX) mlX.addEventListener('click', function () { mlQ = ''; mlFocus = ''; render(); });
+  app.querySelectorAll('[data-mlgo]').forEach(function (b) {
+    b.addEventListener('click', function () { mlGo(b.dataset.mlgo); });
   });
   var mlB = app.querySelector('#mlGet') || app.querySelector('#mlGetBig');
   if (mlB) mlB.addEventListener('click', function () {
