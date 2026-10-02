@@ -1,5 +1,8 @@
-/* 파일명: views.js | @version 2.4.8
-   수정요약: v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
+/* 파일명: views.js | @version 2.4.9
+   수정요약: v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+     목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
+     그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
+   v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
      보일 때, 시작월(9월)의 시트 연번(23)을 그대로 보여주던 것 고침 — 선생님 지적대로 "10월
      거니까 10월 연번" 이어야 한다. 시트에 적는 값(연번 매기기·attSeqPlan)은 그대로 두고,
      화면·인쇄에서만 보이는 순서로 1부터 다시 매김(앱에만 있는 미인정 줄은 안 셈).
@@ -2245,7 +2248,8 @@ function attSetupView() {
     h += '<div class="atstep"><b>② 나는 누구</b><small>컴시간 선생님 목록에서 고르세요 — 수업이 없는 분은 «교장»·«교감»</small><div class="atwhos">'
       + btn({ special: 'principal' }, '교장') + btn({ special: 'vice' }, '교감') + '<span class="atsep"></span>'
       + ts.map(function (t) { return btn({ no: t.no, mask: t.mask }, '<i>' + t.no + '</i>' + esc(t.mask)); }).join('')
-      + '</div>' + (ts.length ? '' : '<div class="rhint">컴시간 시간표를 먼저 받아 주세요 — «컴시간» 탭의 ⚙ 에서 학교를 고르면 선생님 목록이 생깁니다.</div>')
+      + '</div>' + (ts.length ? '' : '<div class="rhint">컴시간 시간표를 먼저 받아 주세요 — «컴시간» 탭의 ⚙ 에서 학교를 고르면 선생님 목록이 생깁니다.'
+        + ' 받고 오셨으면 <button class="wkb" id="atMeRetry"' + (attMeBusy ? ' disabled' : '') + '>' + (attMeBusy ? '불러오는 중…' : '🔄 다시 불러오기') + '</button></div>')
       + '</div>';
     h += '<div class="atstep"><b>③ 확인번호</b><small>학년부장·교무부장·교장·교감 선생님만 넣습니다 — 담임 선생님은 비워 두세요</small>'
       + '<div class="atnr"><input id="atCode" class="gpai" type="password" inputmode="numeric" autocomplete="off" placeholder="확인번호" style="width:9em">'
@@ -2866,6 +2870,9 @@ function wireAttMe(app) {
   };
   on('[data-atcls]', function (b) { attPickCls(b.dataset.atcls); });
   on('#atWho', function () { attSetup = true; attSetupWho = null; attSetupMsg = ''; attSetupOk = false; attLinkMsg = ''; render(); });
+  /* ★ 컴시간을 먼저 못 받아 둔 채로 출결 연결부터 하면, 나중에 «컴시간» 탭에서 받아 와도
+     ATT_ME(선생님 목록)가 그때 뿐이라 안 새로 고쳐졌다 — 다시 불러오기 단추로 바로 잡는다 */
+  on('#atMeRetry', function () { attMeLoad(); });
   on('#atLinkSave', function () {
     var el = app.querySelector('#atLink');
     var v = el ? el.value : '';
