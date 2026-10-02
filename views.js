@@ -1,5 +1,10 @@
-/* 파일명: views.js | @version 2.4.6
-   수정요약: v2.4.6 출결 — v2.4.5 의 attMonOverlap 이 «종료일»을 늘 날짜로 알고 있었는데,
+/* 파일명: views.js | @version 2.4.7
+   수정요약: v2.4.7 출결 — 내용이 완전히 같은 줄(학번·이름·날짜·유형·사유 다 같은, 실수로
+     겹쳐 적힌 경우)이 두 개 있으면 지우기(✕)가 sig(내용)만 보고 가려서 "한 번 더 ✕"가
+     둘 다에 뜨고 어느 쪽을 지워도 안 지워지는 것처럼 보이던 것 고침 — 고치기(✎)도 같이.
+     r(그 시트 줄 번호)까지 같이 키로 써서 정확히 그 줄만 가리킴(attFind(sig,r), 다른 곳에서
+     이미 쓰던 패턴). att-del 요청에도 r 을 함께 보냄(다리가 안 써도 해는 없음).
+   v2.4.6 출결 — v2.4.5 의 attMonOverlap 이 «종료일»을 늘 날짜로 알고 있었는데,
      조퇴·지각 같은 하루짜리 줄은 그 자리에 «정문확인»·«NEIS» 같은 확인 방법 글자가 들어
      있다(실측: 3211안효주 r:58). 한글이 날짜 문자열보다 사전순으로 커서 «그 달부터 그 뒤
      모든 달»에 다 새어 보이던 것 고침 — 진짜 yyyy-mm-dd 꼴일 때만 종료월로 본다.
@@ -2526,12 +2531,16 @@ function attNewGate(app, p) {
 }
 function attRowBtns(x, lock) {
   if (lock) return '';
-  var busy = !!attRowBusy[x.sig];
+  /* ★ sig(학번·이름·날짜·유형) 만으로는 못 가른다 — 내용이 똑같은 줄이 두 개면(실수로
+     겹쳐 적힌 경우) 같은 sig 를 들고 있어, 하나를 지워도 "한 번 더 ✕" 가 둘 다에 뜨고
+     어느 쪽이 지워졌는지 안 보였다(2026-10-02). r(그 시트 줄 번호)까지 함께 키로 쓴다. */
+  var rk = x.sig + '|' + x.r;
+  var busy = !!attRowBusy[rk];
   return '<span class="atrb">'
-    + '<button class="atx" data-atedit="' + esc(x.sig) + '" title="이 줄 고치기 — 아래 줄에 채워집니다"' + (busy ? ' disabled' : '') + '>✎</button>'
-    + '<button class="atx' + (attDelAsk === x.sig ? ' ask' : '') + '" data-atdel="' + esc(x.sig) + '" title="'
+    + '<button class="atx" data-atedit="' + esc(x.sig) + '" data-r="' + x.r + '" title="이 줄 고치기 — 아래 줄에 채워집니다"' + (busy ? ' disabled' : '') + '>✎</button>'
+    + '<button class="atx' + (attDelAsk === rk ? ' ask' : '') + '" data-atdel="' + esc(x.sig) + '" data-r="' + x.r + '" title="'
     + (x.local ? '앱에서 지우기' : '«입력» 탭에서 이 줄 비우기 — 교사확인이 내 이름인 줄만') + '"' + (busy ? ' disabled' : '') + '>'
-    + (attDelAsk === x.sig ? '한 번 더 ✕' : '✕') + '</button></span>';
+    + (attDelAsk === rk ? '한 번 더 ✕' : '✕') + '</button></span>';
 }
 function attNewRow(folded) {
   var A = attNew;
@@ -3056,7 +3065,7 @@ function wireAtt(app) {
   });
   /* ✎ — 줄 내용을 아래 새 줄에 채운다 */
   on('[data-atedit]', function (b) {
-    var x = attRows().filter(function (y) { return y.sig === b.dataset.atedit; })[0];
+    var x = attFind(b.dataset.atedit, b.dataset.r);
     if (!x) return;
     attEditing = { sig: x.sig, r: x.r, local: !!x.local, key: x.key, gubun: x.gubun,
       old: { id: x.id, date: x.start, type: x.type, reason: x.reason },
@@ -3090,23 +3099,23 @@ function wireAtt(app) {
   on('#atEditX', function () { attEditing = null; attNewDateOk = false; attNew = { gubun: '', id: '', name: '', date: gpToday(), time: '', end: '', type: '', reason: '' }; render(); });
   /* ✕ — 두 번 눌러야 지운다 */
   on('[data-atdel]', function (b) {
-    var sig = b.dataset.atdel;
-    if (attDelAsk !== sig) { attDelAsk = sig; render(); setTimeout(function () { if (attDelAsk === sig) { attDelAsk = ''; render(); } }, 6000); return; }
-    attDelAsk = '';
-    var x = attRows().filter(function (y) { return y.sig === sig; })[0];
+    var sig = b.dataset.atdel, x = attFind(sig, b.dataset.r);
     if (!x) return;
-    attRowBusy[x.sig] = true; attErr = ''; render();
+    var rk = sig + '|' + x.r;
+    if (attDelAsk !== rk) { attDelAsk = rk; render(); setTimeout(function () { if (attDelAsk === rk) { attDelAsk = ''; render(); } }, 6000); return; }
+    attDelAsk = '';
+    attRowBusy[rk] = true; attErr = ''; render();
     var pr = x.local ? widgetAPI.attLocalDel(x.key)
-      : widgetAPI.attDel({ cls: attCls(), id: x.id, name: x.name, date: x.start, type: x.type, reason: x.reason });
+      : widgetAPI.attDel({ cls: attCls(), r: x.r, id: x.id, name: x.name, date: x.start, type: x.type, reason: x.reason });
     pr.then(function (r) {
-      delete attRowBusy[x.sig];
+      delete attRowBusy[rk];
       if (r && r.ok) {
         attMsg = (r.how || '지웠습니다') + ' — ' + x.name + ' ' + attMd(x.start) + ' ' + x.type; attMsgAt = r.savedAt || 지금시각();
         if (x.local) ATTLOCAL = r.list || []; else { attSeqTried = ''; attLoad(); }
         if (attLast && attLast.id === x.id && attLast.date === x.start) attLast = null;
       } else attErr = (r && r.msg) || '지우지 못했습니다';
       render();
-    }).catch(function (e) { delete attRowBusy[x.sig]; attErr = attErrText(e); render(); });
+    }).catch(function (e) { delete attRowBusy[rk]; attErr = attErrText(e); render(); });
   });
   on('#atUndo', function () {
     if (!attLast || attAddBusy) return;

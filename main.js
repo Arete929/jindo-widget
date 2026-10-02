@@ -1,5 +1,8 @@
-// 파일명: main.js | @version 2.10.3
-// 수정요약: v2.10.3 인쇄 후 미리보기·브라우저 창 자동으로 닫기 — 제 인쇄창(Electron)으로 실제 보냈을 때,
+// 파일명: main.js | @version 2.10.4
+// 수정요약: v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
+//   둘 이상이면 id·날짜·유형·사유만으론 못 가르던 것, 다리가 받으면 그걸로 가를 수 있게(views.js
+//   2.4.7 과 짝). /
+// v2.10.3 인쇄 후 미리보기·브라우저 창 자동으로 닫기 — 제 인쇄창(Electron)으로 실제 보냈을 때,
 //   또는 브라우저로 넘겨 열었을 때 모두 «보냈습니다» 알림을 잠깐 보여준 뒤 미리보기 창을 닫음(paperCloseSoon).
 //   브라우저 쪽 인쇄 탭도 window.onafterprint 로 스스로 닫기를 시도 — 다만 브라우저 보안 정책상
 //   OS가 연 탭은 스크립트로 못 닫을 수 있어(그때는 탭이 남는다), 100% 보장은 아님. /
@@ -3566,8 +3569,12 @@ ipcMain.handle('att-fold', async (_e, p) => {
 ipcMain.handle('att-unblock', async (_e, cls) => attCall({ op: 'att-unblock', cls: String(cls || '') }));
 /* «입력» 줄을 제자리에서 고치기·비우기 — 다리가 «교사확인이 내 이름인 줄 하나» 일 때만 손댄다 */
 function attFields(o) {
-  return { id: String(o.id || ''), name: String(o.name || ''), date: String(o.date || ''),
+  var f = { id: String(o.id || ''), name: String(o.name || ''), date: String(o.date || ''),
     time: String(o.time || ''), end: String(o.end || ''), type: String(o.type || ''), reason: String(o.reason || '') };
+  /* ★ 내용이 완전히 같은 줄이 둘 이상이면(실수로 겹쳐 적힌 경우) 이 칸들만으론 못 가른다 —
+     r(그 시트 줄 번호)이 있으면 함께 보낸다. 다리가 몰라도 그냥 더 받는 칸이라 해는 없다. */
+  if (o.r) f.r = Number(o.r) || 0;
+  return f;
 }
 ipcMain.handle('att-edit', async (_e, p) => {
   const o = p || {};
