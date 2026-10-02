@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   gradeFetch: (g) => ipcRenderer.invoke('grade-fetch', g),
   gradeAdd: (o) => ipcRenderer.invoke('grade-add', o),
   gradeUndo: (o) => ipcRenderer.invoke('grade-undo', o),
+  gradeDel: (o) => ipcRenderer.invoke('grade-del', o),
   gradeCats: (g) => ipcRenderer.invoke('grade-cats', g),
   /* 담임 출결 (지비스만 — 메인이 막는다) */
   attList: (cls) => ipcRenderer.invoke('att-list', cls),

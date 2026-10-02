@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 2.0.5 — 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
+/* 파일명: ui.css | @version 2.0.6 — 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -1395,6 +1395,10 @@
     padding: 2px 9px 8px 9px; color: var(--fg2); white-space: pre-wrap;
     font-size: calc(10px * var(--wf)); line-height: 1.6; word-break: break-word;
   }
+  /* 학년부 일정 지우기(지비스) — 펼친 항목 맨 아래. 한 번 누르면 붉게 «한 번 더» */
+  .gpb.gpact { display: flex; align-items: center; gap: 8px; white-space: normal; padding-top: 0; }
+  .gpact .gpdel { font-size: calc(10px * var(--wf)); padding: 3px 10px; border-color: color-mix(in srgb, #e5484d 45%, var(--line)); color: #c0392b; }
+  .gpact .gpdel.ask { background: #c0392b; border-color: #c0392b; color: #fff; font-weight: 800; }
   /* 구분 색 여덟 — 바탕에 섞어 만들어 어느 테마에서나 또렷하다 */
   .h0 { background: color-mix(in srgb, #6c5ce7 30%, var(--bg)); color: var(--fg); }
   .h1 { background: color-mix(in srgb, #0e7c58 30%, var(--bg)); color: var(--fg); }

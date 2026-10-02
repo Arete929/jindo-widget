@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 2.10.5
-// 수정요약: v2.10.5 컴시간 설정 기본값 — 혜원이지는 처음부터 학급 시간표도 보이게(wantClasses 미설정이면 혜원이지만 켬, 이미 고른 값은 그대로). / v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
+// 파일명: main.js | @version 2.10.6
+// 수정요약: v2.10.6 grade-del — 학년부 일지 일정 삭제(다리 find 로 줄을 찾아 undo 로 지움, 같은 내용 개수가 어긋나면 안 지움). / v2.10.5 컴시간 설정 기본값 — 혜원이지는 처음부터 학급 시간표도 보이게(wantClasses 미설정이면 혜원이지만 켬, 이미 고른 값은 그대로). / v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
 //   둘 이상이면 id·날짜·유형·사유만으론 못 가르던 것, 다리가 받으면 그걸로 가를 수 있게(views.js
 //   2.4.7 과 짝). /
 // v2.10.3 인쇄 후 미리보기·브라우저 창 자동으로 닫기 — 제 인쇄창(Electron)으로 실제 보냈을 때,
@@ -3464,6 +3464,45 @@ ipcMain.handle('grade-undo', async (_e, p) => {
     if (r.ok) {
       debugLog("학년부 일지 — 되돌림 (" + r.how + ")");
       try { await refreshGradePlan(Number(o.grade) || 3); } catch (e) { /* 마찬가지 */ }
+    }
+    return r;
+  } catch (e) {
+    return { ok: false, msg: (e && e.message) || String(e) };
+  }
+});
+/* ★ 일지에서 한 건 지우기 — 화면에 보이는 항목은 시트 줄 번호를 모른다(CSV 로 받아서).
+   그래서 다리의 «find» 로 그 내용이 든 줄을 시트에 직접 묻고, «같은 내용의 n번째» 를 골라
+   다리의 «undo»(= 줄 내용이 같을 때만 지움·날짜 줄이면 내용만 비움)로 지운다.
+   ★ 내용이 똑같은 줄 개수가 화면 쪽과 시트 쪽이 다르면(그 사이 시트가 바뀜) 아무것도 안 지운다. */
+ipcMain.handle('grade-del', async (_e, p) => {
+  if (!HAS_TT) return { ok: false, msg: "학년부 일지 쓰기는 지비스에서만 됩니다" };
+  const o = p || {};
+  const g = Number(o.grade) || 3;
+  const title = String(o.title || '').trim();
+  const nth = Number(o.nth) || 0;            // 화면에서 «같은 내용 중 몇 번째(0부터)»
+  const total = Number(o.total) || 1;        // 화면에서 «같은 내용이 모두 몇 개»
+  if (!title) return { ok: false, msg: "내용이 비어 있는 줄은 앱에서 못 지웁니다 — 시트에서 직접 해 주세요" };
+  const w = getGradeWrite();
+  if (!w.url) return { ok: false, msg: "일지 쓰기 주소가 없습니다" };
+  try {
+    const f = await request({
+      method: "GET",
+      url: w.url + "?api=find&grade=" + g + "&key=" + encodeURIComponent(w.key) + "&q=" + encodeURIComponent(title),
+      timeout: 30000
+    });
+    const j = JSON.parse(f.text);
+    if (!j || !j.ok) return { ok: false, msg: (j && j.msg) || "시트에서 줄을 찾지 못했습니다" };
+    const hits = (j.hits || []).filter((h) => String(h.title || '').trim() === title)
+      .sort((a, b) => a.row - b.row);
+    if (!hits.length) return { ok: false, msg: "시트에서 그 줄을 못 찾았습니다 — 이미 지워졌거나 바뀌었습니다. ⟳ 로 다시 받아 보세요" };
+    if (hits.length !== total || nth >= hits.length) {
+      return { ok: false, msg: "화면과 시트의 같은 내용 개수가 달라(화면 " + total + " · 시트 " + hits.length + ") 어느 줄인지 몰라 건드리지 않았습니다 — ⟳ 로 다시 받아 보세요" };
+    }
+    const row = hits[nth].row;
+    const r = await gradeBridge({ op: "undo", grade: g, row: row, expect: title });
+    if (r.ok) {
+      debugLog("학년부 일지 — " + g + "학년 «" + title.slice(0, 20) + "» 지움 (줄 " + row + ", " + r.how + ")");
+      try { await refreshGradePlan(g); } catch (e) { /* 화면은 곧 다시 받는다 */ }
     }
     return r;
   } catch (e) {

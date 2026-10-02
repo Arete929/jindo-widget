@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.4.12
-   수정요약: v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+/* 파일명: views.js | @version 2.4.13
+   수정요약: v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
      목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
      그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
    v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
@@ -1662,6 +1662,8 @@ function viewAcademic() {
           : '')
       + '<button class="wkb" id="gpGet" title="학년부 일지 다시 받기">⟳</button></div>';
     h += gpAddBox();
+    /* 지운 결과 — 항목이 사라지면 그 자리의 알림도 같이 사라지므로 위쪽에 남긴다 */
+    if (HAS_TT && !gpAdd && gpDelDone) h += '<div class="rsaved">✅ ' + esc(gpDelDone) + '</div>';
   }
 
   h += ms.map(function (m) {
@@ -1786,6 +1788,22 @@ function gpToday() {
   return d.getFullYear() + '-' + 두(d.getMonth() + 1) + '-' + 두(d.getDate());
 }
 
+/* ── 일정 지우기 (지비스만) — 항목을 눌러 펼치면 아래에 «삭제» 가 나온다. 두 번 눌러야 지운다.
+   화면 항목은 시트 줄 번호를 모른다 — 같은 내용 중 몇 번째인지(nth/total)를 같이 보내
+   main 이 시트에 직접 물어 줄을 정한다(개수가 어긋나면 아무것도 안 지움). */
+var gpDelAsk = '', gpDelBusy = false, gpDelMsg = '', gpDelDone = '';
+function gpDelKey(it) {
+  var items = (GPD[it.g] || {}).items || [];
+  return it.g + '|' + items.indexOf(it.x);
+}
+function gpDelBar(it) {
+  if (!HAS_TT) return '';
+  var k = gpDelKey(it), ask = gpDelAsk === k;
+  return '<div class="gpb gpact"><button class="wkb gpdel' + (ask ? ' ask' : '') + '" data-gpdel="' + esc(k) + '"'
+    + (gpDelBusy ? ' disabled' : '') + ' title="시트의 이 줄을 지웁니다(날짜 줄이면 내용만 비웁니다)">'
+    + (gpDelBusy ? '지우는 중…' : (ask ? '한 번 더 눌러 삭제' : '🗑 이 일정 삭제')) + '</button>'
+    + (gpDelMsg ? '<span class="rhint">' + esc(gpDelMsg) + '</span>' : '') + '</div>';
+}
 function gpRows(month, day) {
   var list = gpOf(month, day);
   if (!list.length) return '';
@@ -1803,6 +1821,7 @@ function gpRows(month, day) {
       + '</button>'
       /* ★ 시트의 «세부사항» 은 여러 줄인 채로 온다 — 줄바꿈을 그대로 살린다 */
       + (x.detail ? '<div class="gpb">' + gpLines(x.detail) + '</div>' : '')
+      + (open ? gpDelBar(it) : '')
       + '</div>';
   }).join('') + '</div>';
 }
@@ -7935,6 +7954,40 @@ function wireViews(app) {
       }).catch(function (e) {
         gpAddBusy = false; gpAddMsg = String((e && e.message) || e); render();
       });
+  });
+  /* 일정 지우기 — 두 번 눌러야 지운다 */
+  app.querySelectorAll('[data-gpdel]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (gpDelBusy) return;
+      var k = b.dataset.gpdel, p = k.split('|'), g = Number(p[0]), idx = Number(p[1]);
+      if (gpDelAsk !== k) {
+        gpDelAsk = k; gpDelMsg = ''; render();
+        setTimeout(function () { if (gpDelAsk === k) { gpDelAsk = ''; render(); } }, 6000);
+        return;
+      }
+      gpDelAsk = '';
+      var items = (GPD[g] || {}).items || [], x = items[idx];
+      if (!x) { gpDelMsg = '화면 목록이 바뀌었습니다 — ⟳ 로 다시 받아 주세요'; render(); return; }
+      var t = String(x.title || '').trim();
+      var same = items.filter(function (y) { return String(y.title || '').trim() === t; });
+      gpDelBusy = true; gpDelMsg = ''; render();
+      widgetAPI.gradeDel({ grade: g, title: t, nth: same.indexOf(x), total: same.length })
+        .then(function (r) {
+          gpDelBusy = false;
+          if (r && r.ok) {
+            gpDelMsg = ''; gpOpen = '';
+            gpDelDone = (r.how || '지웠습니다') + ' — ' + (t.length > 24 ? t.slice(0, 24) + '…' : t) + ' · ' + 지금시각();
+            GPD[g] = null; gpLoad(g, true);
+          } else {
+            gpDelMsg = (r && r.msg) || '지우지 못했습니다';
+          }
+          render();
+        }).catch(function (e) {
+          gpDelBusy = false;
+          gpDelMsg = String((e && e.message) || e).replace(/^Error invoking remote method .[^.]*.:\s*/, '');
+          render();
+        });
+    });
   });
   var gge = app.querySelector('#gpGet');
   if (gge) gge.addEventListener('click', function () {
