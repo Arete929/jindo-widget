@@ -1,4 +1,4 @@
-/* 파일명: toolbox.js | @version 1.1.0 (v1.1.0 이름외우기에 학생 사진)
+/* 파일명: toolbox.js | @version 1.2.0 (v1.1.0 이름외우기에 학생 사진)
    도구상자 — «바로가기» 탭 안의 타일로 들어간다. 지비스·혜원이지 공통(views.js 다음에 읽힌다).
    스쿨보드(제작 호똑쌤)의 도구상자를 본떠 «선으로 그린 아이콘» 카드 여덟 개:
    PDF 편집기 · 랜덤 뽑기·모둠 편성 · QR 생성기 · 수업 타이머 · 학생이름외우기 · 계산기 ·
@@ -7,7 +7,7 @@
    ★ <select> 를 쓰지 않는다(단추 팔레트). 파일을 다루는 일(PDF·QR 저장)은 main.js 의 tb-* 가 한다. */
 
 var TB = {
-  open: false, tool: '',
+  open: false, tool: '', direct: false,   // direct: 바로가기 탭의 카드에서 곧장 연 것 → ← 는 바로가기로
   pdf: { mode: 'merge', files: [], pages: '', angle: 90, fit: true, busy: false, msg: '', ok: true, saved: [] },
   rnd: { names: '', mode: 'pick', n: 1, noRepeat: true, picked: [], left: null, gBy: 'count', gNum: 4, groups: [], msg: '' },
   qr: { text: '', size: 512, level: 'M', dark: '#000000', dataUrl: '', msg: '', ok: true, busy: false },
@@ -47,16 +47,20 @@ var TB_TOOLS = [
 ];
 
 /* ── 바로가기 탭에 들어가는 «도구상자» 타일 ── */
+/* ★ v1.2.0 — 도구 여덟 개를 바로가기 탭에 «그대로» 펼친다(한 번 더 들어가지 않는다). 누르면 그 도구가 바로 열린다 */
 function tbEntryTile() {
-  return '<div class="lgrp">도구상자</div><div class="lnks">'
-    + '<button class="tbentry" data-tbact="open"><span class="tbei">' + tbIcon('wrench', 26) + '</span>'
-    + '<span class="tbet"><b>도구상자</b><small>PDF · 뽑기·모둠 · QR · 타이머 · 계산기 외 8가지</small></span></button></div>';
+  return '<div class="lgrp">도구상자</div><div class="tbgrid tbinline">'
+    + TB_TOOLS.map(function (x) {
+        return '<button class="tbcard" data-tbact="opentool" data-tbv="' + x.k + '">'
+          + (x.badge ? '<em class="tbbadge">' + x.badge + '</em>' : '')
+          + '<span class="tbci">' + tbIcon(x.ic, 26) + '</span><b>' + esc(x.t) + '</b><small>' + esc(x.d) + '</small></button>';
+      }).join('') + '</div>';
 }
 
 function viewToolbox() {
   var tool = TB_TOOLS.filter(function (x) { return x.k === TB.tool; })[0];
   var h = '<div class="top2"><div class="wknav">'
-    + '<button class="wkb" data-tbact="back">← ' + (tool ? '도구상자' : '바로가기') + '</button>'
+    + '<button class="wkb" data-tbact="back">← ' + (tool && !TB.direct ? '도구상자' : '바로가기') + '</button>'
     + '<span class="wklab">' + (tool ? tbIcon(tool.ic, 18) + ' ' + esc(tool.t) : tbIcon('wrench', 18) + ' 도구상자') + '</span></div></div>';
   if (!tool) {
     h += '<div class="tbsub">필요한 도구를 고르세요. 각 도구는 별도의 화면으로 열립니다.</div><div class="tbgrid">'
@@ -564,8 +568,9 @@ function tbGrHtml() {
 function tbAct(act, v, b) {
   var s;
   switch (act) {
-    case 'open': TB.open = true; TB.tool = ''; break;
-    case 'back': if (TB.tool) TB.tool = ''; else TB.open = false; break;
+    case 'open': TB.open = true; TB.tool = ''; TB.direct = false; break;
+    case 'opentool': TB.open = true; TB.tool = v; TB.direct = true; break;
+    case 'back': if (TB.tool && !TB.direct) TB.tool = ''; else { TB.open = false; TB.tool = ''; TB.direct = false; } break;
     case 'tool': TB.tool = v; break;
     case 'set': {
       var pp = tbPath(b.dataset.tbp), cur = pp[0][pp[1]];
