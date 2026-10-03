@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 2.0.7 — 도구상자(.tb*) · 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
+/* 파일명: ui.css | @version 2.0.8 — 이름외우기 사진(.tbph·.tbpgrid) · 도구상자(.tb*) · 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -2548,6 +2548,17 @@
   .tbmb { padding: 9px 6px; font-size: calc(14px * var(--wf)); font-weight: 800; }
   .tbmb.sel { background: var(--accent); border-color: var(--accent); color: var(--on); }
   .tbmb.done { opacity: .35; text-decoration: line-through; }
+  .tbph { width: calc(150px * var(--wf)); height: calc(190px * var(--wf)); object-fit: cover; object-position: center top; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
+  .tbcn.sm { font-size: calc(22px * var(--wf)); }
+  .tbmb.hasph { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; }
+  .tbthumb { width: calc(84px * var(--wf)); height: calc(104px * var(--wf)); object-fit: cover; object-position: center top; border-radius: 8px; }
+  .tbpgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(78px * var(--wf)), 1fr)); gap: 8px; margin: 8px 0; max-height: calc(300px * var(--wf)); overflow-y: auto; }
+  .tbpcell { position: relative; text-align: center; }
+  .tbpbtn { width: 100%; aspect-ratio: 3 / 4; padding: 0; border-radius: 10px; border: 1.5px dashed var(--line); background: var(--card); color: var(--dim); cursor: pointer; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .tbpbtn img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+  .tbpno { font-size: calc(24px * var(--wf)); font-weight: 900; }
+  .tbpnm { font-size: calc(12px * var(--wf)); font-weight: 700; margin-top: 3px; word-break: keep-all; }
+  .tbpx { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(0,0,0,.6); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; }
   .tbexpr { margin: 6px 0; }
   .tbexpr input { font-size: calc(18px * var(--wf)); text-align: right; }
   .tbcres { font-size: calc(26px * var(--wf)); font-weight: 900; text-align: right; color: var(--accent); margin: 6px 2px; word-break: break-all; }

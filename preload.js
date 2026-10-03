@@ -43,6 +43,11 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   tbQrSave: (o) => ipcRenderer.invoke('tb-qr-save', o),
   tbQrCopy: (o) => ipcRenderer.invoke('tb-qr-copy', o),
   tbReveal: (p) => ipcRenderer.send('tb-reveal', p),
+  tbPhotoPick: (multi) => ipcRenderer.invoke('tb-photo-pick', !!multi),
+  tbPhotoRead: (p) => ipcRenderer.invoke('tb-photo-read', p),
+  tbPhotoSave: (o) => ipcRenderer.invoke('tb-photo-save', o),
+  tbPhotoGet: (names) => ipcRenderer.invoke('tb-photo-get', names),
+  tbPhotoDel: (names) => ipcRenderer.invoke('tb-photo-del', names),
   gradeCats: (g) => ipcRenderer.invoke('grade-cats', g),
   /* 담임 출결 (지비스만 — 메인이 막는다) */
   attList: (cls) => ipcRenderer.invoke('att-list', cls),

@@ -1,4 +1,4 @@
-/* 파일명: toolbox.js | @version 1.0.0
+/* 파일명: toolbox.js | @version 1.1.0 (v1.1.0 이름외우기에 학생 사진)
    도구상자 — «바로가기» 탭 안의 타일로 들어간다. 지비스·혜원이지 공통(views.js 다음에 읽힌다).
    스쿨보드(제작 호똑쌤)의 도구상자를 본떠 «선으로 그린 아이콘» 카드 여덟 개:
    PDF 편집기 · 랜덤 뽑기·모둠 편성 · QR 생성기 · 수업 타이머 · 학생이름외우기 · 계산기 ·
@@ -12,7 +12,7 @@ var TB = {
   rnd: { names: '', mode: 'pick', n: 1, noRepeat: true, picked: [], left: null, gBy: 'count', gNum: 4, groups: [], msg: '' },
   qr: { text: '', size: 512, level: 'M', dark: '#000000', dataUrl: '', msg: '', ok: true, busy: false },
   tm: { mins: 10, left: 600, run: false, end: 0, msg: '', big: false, done: false },
-  nm: { src: '', mode: 'card', idx: 0, flip: false, order: [], score: 0, tried: 0, q: null, picked: '', pairs: null, selL: -1, selR: -1, fails: 0, msg: '' },
+  nm: { src: '', mode: 'card', idx: 0, flip: false, order: [], score: 0, tried: 0, q: null, picked: '', pairs: null, selL: -1, selR: -1, fails: 0, msg: '', photos: {}, photoSig: '', show: 'photo', manage: false, busy: false },
   cal: { tab: 'calc', expr: '', hist: [], res: '', err: '', d1: '', d2: '', dn: 30, dres: '', unitCat: 'len', unitVal: '1', unitFrom: 'm' },
   sc: { total: 100, n: 20, nSub: 4, step: 0.5, diffs: [], res: null, msg: '' },
   gr: { total: 200, scheme: '9', round: 'round', res: null }
@@ -247,56 +247,172 @@ function tbTick() {
 }
 
 /* ═══════════ ⑤ 학생이름외우기 ═══════════ */
-function tbNmList() {   // [{no, name}] — «번호 이름» 한 줄씩
+function tbNmList() {   // [{no, name, ph}] — «번호 이름» 한 줄씩, ph = 사진(있으면)
   return String(TB.nm.src || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean).map(function (l) {
     var m = l.match(/^(\S+)\s+(.+)$/);
-    return m ? { no: m[1], name: m[2].trim() } : { no: '', name: l };
+    var it = m ? { no: m[1], name: m[2].trim() } : { no: '', name: l };
+    it.ph = TB.nm.photos[it.name] || '';
+    return it;
   });
+}
+/* 사진 보기 상태면, 사진 있는 학생만 연습한다(둘 이상일 때) — 사진 없는 학생이 섞이면 헷갈린다 */
+function tbNmPool(list) {
+  if (TB.nm.show !== 'photo') return list;
+  var w = list.filter(function (x) { return x.ph; });
+  return w.length >= 2 ? w : list;
+}
+function tbNmPhotoCount(list) { return list.filter(function (x) { return x.ph; }).length; }
+/* 명단이 바뀌었으면 저장된 사진을 한 번 불러온다(그린 뒤 비동기 → 다시 그림) */
+function tbNmPhotoSync(list) {
+  var s = TB.nm, sig = list.map(function (x) { return x.name; }).join('|');
+  if (sig === s.photoSig) return;
+  s.photoSig = sig;
+  if (!list.length) return;
+  widgetAPI.tbPhotoGet(list.map(function (x) { return x.name; })).then(function (r) {
+    var got = (r && r.photos) || {}, n = 0;
+    Object.keys(got).forEach(function (k) { if (s.photos[k] !== got[k]) { s.photos[k] = got[k]; n++; } });
+    if (n) { s.order = []; s.q = null; s.pairs = null; render(); }
+  }).catch(function () { /* 사진을 못 불러와도 번호·이름 연습은 된다 */ });
+}
+/* 파일 이름 → 명단의 누구인가. 이름이 들어 있으면 그 사람(긴 이름 먼저), 아니면 번호가 «따로 떨어진 숫자» 로 들어 있는 사람 */
+function tbNmMatch(base, list) {
+  var b = String(base || '').replace(/\.[^.]+$/, '');
+  var byName = list.filter(function (x) { return x.name && b.indexOf(x.name) >= 0; })
+    .sort(function (a, c) { return c.name.length - a.name.length; });
+  if (byName.length) return byName[0];
+  var nums = b.match(/\d+/g) || [];
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].no && nums.indexOf(String(list[i].no)) >= 0) return list[i];
+  }
+  return null;
+}
+/* 큰 사진을 줄인다 — canvas 로 그리면 휴대폰 세로 사진의 회전(EXIF)이 반영된다. 긴 쪽 360px JPEG */
+function tbNmShrink(dataUrl) {
+  return new Promise(function (res, rej) {
+    var im = new Image();
+    im.onload = function () {
+      var w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, 360 / Math.max(w, h));
+      var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+      var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+      res(c.toDataURL('image/jpeg', 0.85));
+    };
+    im.onerror = function () { rej(new Error('그림을 열 수 없습니다')); };
+    im.src = dataUrl;
+  });
+}
+function tbNmPhotoStore(name, path) {   // 한 장: 읽기 → 줄이기 → 저장 → 화면 사진 갱신
+  return widgetAPI.tbPhotoRead(path).then(function (r) {
+    if (!r || !r.ok) throw new Error((r && r.msg) || '읽지 못했습니다');
+    return tbNmShrink(r.dataUrl);
+  }).then(function (small) {
+    return widgetAPI.tbPhotoSave({ name: name, dataUrl: small }).then(function (r) {
+      if (!r || !r.ok) throw new Error((r && r.msg) || '저장하지 못했습니다');
+      TB.nm.photos[name] = small;
+    });
+  });
+}
+function tbNmPhotosBulk() {
+  var s = TB.nm, list = tbNmList();
+  if (!list.length) { s.msg = '먼저 위에 학생 명단을 적어 주세요'; render(); return; }
+  widgetAPI.tbPhotoPick(true).then(function (r) {
+    var files = (r && r.files) || [];
+    if (!files.length) return;
+    s.busy = true; s.msg = '사진 ' + files.length + '장을 넣는 중…'; render();
+    var okN = 0, miss = [], dup = {}, chain = Promise.resolve();
+    files.forEach(function (f) {
+      chain = chain.then(function () {
+        var who = tbNmMatch(f.name, list);
+        if (!who) { miss.push(f.name); return; }
+        if (dup[who.name]) { miss.push(f.name + '(같은 학생 « ' + who.name + ' » 사진이 이미 있어 건너뜀)'); return; }
+        dup[who.name] = 1;
+        return tbNmPhotoStore(who.name, f.path).then(function () { okN++; }).catch(function (e) { miss.push(f.name + ' — ' + ((e && e.message) || e)); });
+      });
+    });
+    return chain.then(function () {
+      s.busy = false; s.order = []; s.q = null; s.pairs = null;
+      s.msg = '사진 ' + okN + '장을 넣었습니다.' + (miss.length ? ' 짝을 못 찾은 파일 ' + miss.length + '개: ' + miss.slice(0, 4).join(', ') + (miss.length > 4 ? ' …' : '') : '');
+      render();
+    });
+  }).catch(function (e) { s.busy = false; s.msg = String((e && e.message) || e); render(); });
+}
+function tbNmPhotoOne(name) {
+  var s = TB.nm;
+  widgetAPI.tbPhotoPick(false).then(function (r) {
+    var f = r && r.files && r.files[0];
+    if (!f) return;
+    return tbNmPhotoStore(name, f.path).then(function () { s.order = []; s.q = null; s.pairs = null; s.msg = name + ' 사진을 넣었습니다'; render(); });
+  }).catch(function (e) { s.msg = String((e && e.message) || e); render(); });
+}
+function tbNmThumb(x, cls) {
+  return x.ph ? '<img class="' + cls + '" src="' + x.ph + '" alt="">' : '';
 }
 function tbNmHtml() {
   var s = TB.nm, list = tbNmList();
+  tbNmPhotoSync(list);
+  var nph = tbNmPhotoCount(list), pool = tbNmPool(list), photoMode = s.show === 'photo' && nph >= 2;
   var h = tbRosterBtns('nm.src', true)
     + '<textarea class="gpai wide tbta" rows="4" data-tbin="nm.src" placeholder="한 줄에 «번호 이름» (예: 3201 강재은). 학급 명단 단추를 눌러도 됩니다">' + esc(s.src) + '</textarea>'
-    + '<div class="tbhint">현재 ' + list.length + '명 · 사진 없이 번호와 이름으로 연습합니다</div>'
-    + '<div class="tbrow">' + tbPal('nm.mode', s.mode, [['card', '🃏 카드 연습'], ['quiz', '❓ 퀴즈'], ['match', '🔗 짝맞추기']]) + '</div>';
-  if (list.length < 2) return h + '<div class="empty">두 명 이상 적어 주세요.</div>';
+    + '<div class="tbhint">현재 ' + list.length + '명 · 사진 ' + nph + '명'
+    + (nph ? '' : ' — 사진이 없으면 번호와 이름으로 연습합니다')
+    + (photoMode && pool.length < list.length ? ' · 사진 있는 ' + pool.length + '명만 연습' : '') + '</div>'
+    + '<div class="tbrow"><button class="wkb go" data-tbact="nmphotos"' + (s.busy ? ' disabled' : '') + '>📷 사진 넣기(여러 장)</button>'
+    + '<button class="wkb' + (s.manage ? ' go' : '') + '" data-tbact="nmmanage">🖼 학생별 사진</button>'
+    + (nph ? '<button class="wkb" data-tbact="nmphotoclear">🗑 사진 모두 지우기</button>' : '') + '</div>'
+    + '<div class="tbhint">파일 이름에 <b>학생 이름</b>이나 <b>번호</b>가 들어 있으면 자동으로 짝지어 줍니다 (예: 강재은.jpg · 3201.jpg · 3201_강재은.png). 사진은 이 PC 에만 저장되고 밖으로 나가지 않습니다.</div>';
+  if (s.manage) {
+    h += list.length ? '<div class="tbpgrid">' + list.map(function (x) {
+      return '<div class="tbpcell"><button class="tbpbtn" data-tbact="nmphoto1" data-tbv="' + esc(x.name) + '" title="사진 고르기">'
+        + (x.ph ? '<img src="' + x.ph + '" alt="">' : '<span class="tbpno">＋</span>') + '</button>'
+        + '<div class="tbpnm">' + esc(x.name) + '</div>'
+        + (x.ph ? '<button class="tbpx" data-tbact="nmphotodel" data-tbv="' + esc(x.name) + '" title="이 사진 지우기">×</button>' : '') + '</div>';
+    }).join('') + '</div>' : '<div class="empty">명단을 먼저 적어 주세요.</div>';
+  }
+  h += '<div class="tbrow">' + tbPal('nm.mode', s.mode, [['card', '🃏 카드 연습'], ['quiz', '❓ 퀴즈'], ['match', '🔗 짝맞추기']])
+    + (nph >= 2 ? tbPal('nm.show', s.show, [['photo', '🖼 사진으로'], ['no', '# 번호로']]) : '') + '</div>';
+  if (list.length < 2) return h + '<div class="empty">두 명 이상 적어 주세요.</div>' + tbMsg(s.msg, true);
   if (s.mode === 'card') {
-    if (!s.order.length || s.order.length !== list.length) { s.order = list.map(function (_, i) { return i; }); s.idx = 0; s.flip = false; }
-    var cur = list[s.order[s.idx % s.order.length]];
-    h += '<div class="tbcardbig" data-tbact="nmflip"><small>' + (s.idx + 1) + ' / ' + list.length + '</small>'
-      + '<div class="tbcn">' + esc(cur.no || '·') + '</div>'
+    if (!s.order.length || s.order.length !== pool.length) { s.order = pool.map(function (_, i) { return i; }); s.idx = 0; s.flip = false; }
+    var cur = pool[s.order[s.idx % s.order.length]];
+    h += '<div class="tbcardbig" data-tbact="nmflip"><small>' + (s.idx + 1) + ' / ' + pool.length + '</small>'
+      + (photoMode ? tbNmThumb(cur, 'tbph') : '')
+      + '<div class="tbcn' + (photoMode && cur.ph ? ' sm' : '') + '">' + esc(cur.no || '·') + '</div>'
       + '<div class="tbcm">' + (s.flip ? esc(cur.name) : '눌러서 이름 보기') + '</div></div>'
       + '<div class="tbrow"><button class="wkb" data-tbact="nmprev">◀ 이전</button><button class="wkb go" data-tbact="nmnext">다음 ▶</button>'
       + '<button class="wkb" data-tbact="nmshuf">🔀 섞기</button></div>';
   } else if (s.mode === 'quiz') {
-    if (!s.q) s.q = tbNmQuiz(list);
+    if (!s.q) s.q = tbNmQuiz(pool, list);
     h += '<div class="tbhint">맞힘 ' + s.score + ' / 시도 ' + s.tried + '</div>'
-      + '<div class="tbcardbig"><small>이 번호의 이름은?</small><div class="tbcn">' + esc(s.q.cur.no || '·') + '</div></div>'
+      + '<div class="tbcardbig"><small>' + (photoMode ? '이 학생의 이름은?' : '이 번호의 이름은?') + '</small>'
+      + (photoMode ? tbNmThumb(s.q.cur, 'tbph') : '')
+      + '<div class="tbcn' + (photoMode && s.q.cur.ph ? ' sm' : '') + '">' + esc(s.q.cur.no || '·') + '</div></div>'
       + '<div class="tbchoices">' + s.q.choices.map(function (c) {
           var cls = s.picked ? (c === s.q.cur.name ? ' ok' : (c === s.picked ? ' bad' : '')) : '';
           return '<button class="wkb tbch' + cls + '" data-tbact="nmans" data-tbv="' + esc(c) + '"' + (s.picked ? ' disabled' : '') + '>' + esc(c) + '</button>';
         }).join('') + '</div>'
       + (s.picked ? '<div class="tbrow"><button class="wkb go" data-tbact="nmnextq">다음 문제 ▶</button></div>' : '');
   } else {
-    if (!s.pairs) s.pairs = tbNmPairs(list);
+    if (!s.pairs) s.pairs = tbNmPairs(pool);
     var left = s.pairs.filter(function (p) { return !p.done; });
     h += '<div class="tbhint">틀린 횟수 ' + s.fails + (left.length ? '' : ' — 모두 맞췄어요! 🎉') + '</div><div class="tbmatch"><div class="tbmc">'
-      + s.pairs.map(function (p, i) { return '<button class="wkb tbmb' + (p.done ? ' done' : '') + (s.selL === i ? ' sel' : '') + '" data-tbact="nmL" data-tbv="' + i + '"' + (p.done ? ' disabled' : '') + '>' + esc(p.no || '·') + '</button>'; }).join('')
+      + s.pairs.map(function (p, i) {
+          var lab = (photoMode && p.ph) ? '<img class="tbthumb" src="' + p.ph + '" alt=""><span>' + esc(p.no || '·') + '</span>' : esc(p.no || '·');
+          return '<button class="wkb tbmb' + (photoMode && p.ph ? ' hasph' : '') + (p.done ? ' done' : '') + (s.selL === i ? ' sel' : '') + '" data-tbact="nmL" data-tbv="' + i + '"' + (p.done ? ' disabled' : '') + '>' + lab + '</button>';
+        }).join('')
       + '</div><div class="tbmc">'
       + s.pairs.map(function (p, i) { var j = p.rpos; var q = s.pairs[j]; return '<button class="wkb tbmb' + (q.done ? ' done' : '') + (s.selR === j ? ' sel' : '') + '" data-tbact="nmR" data-tbv="' + j + '"' + (q.done ? ' disabled' : '') + '>' + esc(q.name) + '</button>'; }).join('')
       + '</div></div><div class="tbrow"><button class="wkb" data-tbact="nmagain">🔀 새로 섞기</button></div>';
   }
   return h + tbMsg(s.msg, true);
 }
-function tbNmQuiz(list) {
-  var cur = list[Math.floor(Math.random() * list.length)];
-  var others = tbShuffle(list.filter(function (x) { return x.name !== cur.name; })).slice(0, 3).map(function (x) { return x.name; });
+function tbNmQuiz(pool, all) {
+  var cur = pool[Math.floor(Math.random() * pool.length)];
+  var others = tbShuffle((all || pool).filter(function (x) { return x.name !== cur.name; })).slice(0, 3).map(function (x) { return x.name; });
   return { cur: cur, choices: tbShuffle(others.concat([cur.name])) };
 }
 function tbNmPairs(list) {
   var pick = tbShuffle(list).slice(0, 6);
   var right = tbShuffle(pick.map(function (_, i) { return i; }));
-  return pick.map(function (p, i) { return { no: p.no, name: p.name, done: false, rpos: right[i] }; });
+  return pick.map(function (p, i) { return { no: p.no, name: p.name, ph: p.ph, done: false, rpos: right[i] }; });
 }
 
 /* ═══════════ ⑥ 계산기 ═══════════ */
@@ -457,7 +573,7 @@ function tbAct(act, v, b) {
       if (b.dataset.tbp === 'pdf.mode') { TB.pdf.files = []; TB.pdf.msg = ''; TB.pdf.saved = []; }
       if (b.dataset.tbp === 'tm.mins') { TB.tm.left = TB.tm.mins * 60; TB.tm.run = false; TB.tm.done = false; clearInterval(tbTimerId); tbTimerId = null; }
       if (b.dataset.tbp === 'rnd.mode' || b.dataset.tbp === 'rnd.noRepeat') { TB.rnd.left = null; TB.rnd.picked = []; }
-      if (b.dataset.tbp === 'nm.mode') { TB.nm.q = null; TB.nm.pairs = null; TB.nm.picked = ''; TB.nm.selL = TB.nm.selR = -1; }
+      if (b.dataset.tbp === 'nm.mode' || b.dataset.tbp === 'nm.show') { TB.nm.msg = ''; TB.nm.order = []; TB.nm.q = null; TB.nm.pairs = null; TB.nm.picked = ''; TB.nm.selL = TB.nm.selR = -1; }
       if (b.dataset.tbp === 'cal.unitFrom' || b.dataset.tbp === 'cal.unitCat') {
         if (b.dataset.tbp === 'cal.unitCat') TB.cal.unitFrom = Object.keys(TB_UNITS[TB.cal.unitCat].base)[0];
       }
@@ -559,9 +675,21 @@ function tbAct(act, v, b) {
     case 'nmflip': TB.nm.flip = !TB.nm.flip; break;
     case 'nmnext': TB.nm.idx = (TB.nm.idx + 1) % Math.max(1, TB.nm.order.length); TB.nm.flip = false; break;
     case 'nmprev': TB.nm.idx = (TB.nm.idx - 1 + TB.nm.order.length) % Math.max(1, TB.nm.order.length); TB.nm.flip = false; break;
-    case 'nmshuf': TB.nm.order = tbShuffle(tbNmList().map(function (_, i) { return i; })); TB.nm.idx = 0; TB.nm.flip = false; break;
+    case 'nmphotos': tbNmPhotosBulk(); return;
+    case 'nmphoto1': tbNmPhotoOne(v); return;
+    case 'nmphotodel': {
+      widgetAPI.tbPhotoDel([v]).then(function () { delete TB.nm.photos[v]; TB.nm.order = []; TB.nm.q = null; TB.nm.pairs = null; TB.nm.msg = v + ' 사진을 지웠습니다'; render(); });
+      return;
+    }
+    case 'nmphotoclear': {
+      var allN = tbNmList().map(function (x) { return x.name; });
+      widgetAPI.tbPhotoDel(allN).then(function (r) { TB.nm.photos = {}; TB.nm.order = []; TB.nm.q = null; TB.nm.pairs = null; TB.nm.msg = '이 명단의 사진 ' + ((r && r.n) || 0) + '장을 지웠습니다'; render(); });
+      return;
+    }
+    case 'nmmanage': TB.nm.manage = !TB.nm.manage; break;
+    case 'nmshuf': TB.nm.order = tbShuffle(tbNmPool(tbNmList()).map(function (_, i) { return i; })); TB.nm.idx = 0; TB.nm.flip = false; break;
     case 'nmans': s = TB.nm; if (!s.picked) { s.picked = v; s.tried++; if (v === s.q.cur.name) s.score++; } break;
-    case 'nmnextq': TB.nm.q = tbNmQuiz(tbNmList()); TB.nm.picked = ''; break;
+    case 'nmnextq': TB.nm.q = tbNmQuiz(tbNmPool(tbNmList()), tbNmList()); TB.nm.picked = ''; break;
     case 'nmL': TB.nm.selL = Number(v); tbNmCheck(); break;
     case 'nmR': TB.nm.selR = Number(v); tbNmCheck(); break;
     case 'nmagain': TB.nm.pairs = null; TB.nm.selL = TB.nm.selR = -1; TB.nm.fails = 0; break;

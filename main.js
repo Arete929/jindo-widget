@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 2.10.7
-// 수정요약: v2.10.7 도구상자 IPC — PDF(합치기·나누기·쪽 뽑기·지우기·돌리기·그림→PDF)·QR 만들기/저장/복사(pdf-lib·qrcode). / v2.10.6 grade-del — 학년부 일지 일정 삭제(다리 find 로 줄을 찾아 undo 로 지움, 같은 내용 개수가 어긋나면 안 지움). / v2.10.5 컴시간 설정 기본값 — 혜원이지는 처음부터 학급 시간표도 보이게(wantClasses 미설정이면 혜원이지만 켬, 이미 고른 값은 그대로). / v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
+// 파일명: main.js | @version 2.10.8
+// 수정요약: v2.10.8 이름외우기 사진 — tb-photo-pick/read/save/get/del(이 PC userData	b-photos 에만 저장). / v2.10.7 도구상자 IPC — PDF(합치기·나누기·쪽 뽑기·지우기·돌리기·그림→PDF)·QR 만들기/저장/복사(pdf-lib·qrcode). / v2.10.6 grade-del — 학년부 일지 일정 삭제(다리 find 로 줄을 찾아 undo 로 지움, 같은 내용 개수가 어긋나면 안 지움). / v2.10.5 컴시간 설정 기본값 — 혜원이지는 처음부터 학급 시간표도 보이게(wantClasses 미설정이면 혜원이지만 켬, 이미 고른 값은 그대로). / v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
 //   둘 이상이면 id·날짜·유형·사유만으론 못 가르던 것, 다리가 받으면 그걸로 가를 수 있게(views.js
 //   2.4.7 과 짝). /
 // v2.10.3 인쇄 후 미리보기·브라우저 창 자동으로 닫기 — 제 인쇄창(Electron)으로 실제 보냈을 때,
@@ -3627,6 +3627,66 @@ ipcMain.handle('tb-qr-copy', (_e, o) => {
   } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
 });
 ipcMain.on('tb-reveal', (_e, p) => { try { if (p) shell.showItemInFolder(String(p)); } catch (err) { /* 못 열어도 그만 */ } });
+
+/* ── 학생이름외우기 사진(v2.10.8) ──
+   ★ 학생 얼굴이라 이 PC 의 앱 폴더(userData\tb-photos)에만 둔다 — 서버·OneDrive 로 안 나간다.
+   ★ 줄이기(EXIF 회전 반영)는 화면 쪽 canvas 가 한다 — nativeImage 는 휴대폰 세로 사진을 눕혀 버린다.
+     여기서는 «고른 파일 읽어 주기» 와 «줄인 JPEG 저장·읽기·지우기» 만 한다.
+   ★ 파일 이름은 학생 이름의 해시 — 이름에 쓸 수 없는 글자가 있어도 안전하다. */
+const tbPhotoDir = () => path.join(app.getPath('userData'), 'tb-photos');
+const tbPhotoFile = (name) => path.join(tbPhotoDir(), require('crypto').createHash('sha1').update(String(name).trim()).digest('hex').slice(0, 24) + '.jpg');
+const tbPhotoAllowed = new Set();   // 대화상자로 고른 경로만 읽어 준다
+ipcMain.handle('tb-photo-pick', async (e, multi) => {
+  try {
+    const r = await dialog.showOpenDialog(tbWin(e), {
+      title: multi ? '학생 사진 고르기 (여러 장 가능)' : '사진 고르기',
+      properties: multi ? ['openFile', 'multiSelections'] : ['openFile'],
+      filters: [{ name: '그림', extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'] }]
+    });
+    if (r.canceled || !r.filePaths.length) return { ok: true, files: [] };
+    r.filePaths.forEach((p) => tbPhotoAllowed.add(p));
+    return { ok: true, files: r.filePaths.map((p) => ({ path: p, name: path.basename(p) })) };
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err), files: [] }; }
+});
+ipcMain.handle('tb-photo-read', (_e, p) => {
+  try {
+    p = String(p || '');
+    if (!tbPhotoAllowed.has(p)) return { ok: false, msg: '고르지 않은 파일은 읽지 않습니다' };
+    const st = fs.statSync(p);
+    if (st.size > 40 * 1024 * 1024) return { ok: false, msg: '파일이 너무 큽니다(40MB 초과)' };
+    const ext = path.extname(p).slice(1).toLowerCase().replace('jpg', 'jpeg');
+    return { ok: true, dataUrl: 'data:image/' + (ext || 'jpeg') + ';base64,' + fs.readFileSync(p).toString('base64') };
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
+ipcMain.handle('tb-photo-save', (_e, o) => {
+  try {
+    const name = String((o && o.name) || '').trim();
+    const m = String((o && o.dataUrl) || '').match(/^data:image\/jpeg;base64,(.+)$/);
+    if (!name || !m) return { ok: false, msg: '저장할 사진이 없습니다' };
+    const buf = Buffer.from(m[1], 'base64');
+    if (buf.length > 2 * 1024 * 1024) return { ok: false, msg: '줄인 사진이 너무 큽니다' };
+    fs.mkdirSync(tbPhotoDir(), { recursive: true });
+    fs.writeFileSync(tbPhotoFile(name), buf);
+    return { ok: true };
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
+ipcMain.handle('tb-photo-get', (_e, names) => {
+  const out = {};
+  try {
+    (Array.isArray(names) ? names : []).slice(0, 600).forEach((n) => {
+      const f = tbPhotoFile(n);
+      if (fs.existsSync(f)) out[n] = 'data:image/jpeg;base64,' + fs.readFileSync(f).toString('base64');
+    });
+  } catch (err) { /* 못 읽은 건 «사진 없음» 으로 */ }
+  return { ok: true, photos: out };
+});
+ipcMain.handle('tb-photo-del', (_e, names) => {   // names 배열 — 이 학생들 것만 지운다
+  let n = 0;
+  try {
+    (Array.isArray(names) ? names : []).forEach((nm) => { const f = tbPhotoFile(nm); if (fs.existsSync(f)) { fs.unlinkSync(f); n++; } });
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+  return { ok: true, n };
+});
 
 /* ★ 일지에서 한 건 지우기 — 화면에 보이는 항목은 시트 줄 번호를 모른다(CSV 로 받아서).
    그래서 다리의 «find» 로 그 내용이 든 줄을 시트에 직접 묻고, «같은 내용의 n번째» 를 골라
