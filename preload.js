@@ -37,6 +37,12 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   gradeAdd: (o) => ipcRenderer.invoke('grade-add', o),
   gradeUndo: (o) => ipcRenderer.invoke('grade-undo', o),
   gradeDel: (o) => ipcRenderer.invoke('grade-del', o),
+  tbPdfPick: (kind) => ipcRenderer.invoke('tb-pdf-pick', kind),
+  tbPdfRun: (o) => ipcRenderer.invoke('tb-pdf-run', o),
+  tbQr: (o) => ipcRenderer.invoke('tb-qr', o),
+  tbQrSave: (o) => ipcRenderer.invoke('tb-qr-save', o),
+  tbQrCopy: (o) => ipcRenderer.invoke('tb-qr-copy', o),
+  tbReveal: (p) => ipcRenderer.send('tb-reveal', p),
   gradeCats: (g) => ipcRenderer.invoke('grade-cats', g),
   /* 담임 출결 (지비스만 — 메인이 막는다) */
   attList: (cls) => ipcRenderer.invoke('att-list', cls),

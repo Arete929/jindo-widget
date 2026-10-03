@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 2.10.6
-// 수정요약: v2.10.6 grade-del — 학년부 일지 일정 삭제(다리 find 로 줄을 찾아 undo 로 지움, 같은 내용 개수가 어긋나면 안 지움). / v2.10.5 컴시간 설정 기본값 — 혜원이지는 처음부터 학급 시간표도 보이게(wantClasses 미설정이면 혜원이지만 켬, 이미 고른 값은 그대로). / v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
+// 파일명: main.js | @version 2.10.7
+// 수정요약: v2.10.7 도구상자 IPC — PDF(합치기·나누기·쪽 뽑기·지우기·돌리기·그림→PDF)·QR 만들기/저장/복사(pdf-lib·qrcode). / v2.10.6 grade-del — 학년부 일지 일정 삭제(다리 find 로 줄을 찾아 undo 로 지움, 같은 내용 개수가 어긋나면 안 지움). / v2.10.5 컴시간 설정 기본값 — 혜원이지는 처음부터 학급 시간표도 보이게(wantClasses 미설정이면 혜원이지만 켬, 이미 고른 값은 그대로). / v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
 //   둘 이상이면 id·날짜·유형·사유만으론 못 가르던 것, 다리가 받으면 그걸로 가를 수 있게(views.js
 //   2.4.7 과 짝). /
 // v2.10.3 인쇄 후 미리보기·브라우저 창 자동으로 닫기 — 제 인쇄창(Electron)으로 실제 보냈을 때,
@@ -3470,6 +3470,164 @@ ipcMain.handle('grade-undo', async (_e, p) => {
     return { ok: false, msg: (e && e.message) || String(e) };
   }
 });
+/* ───────── 도구상자(바로가기 탭 안) — PDF 편집기·QR 생성기의 «파일을 다루는» 쪽 ─────────
+   ★ PDF 는 여기(main)에서 pdf-lib 로 처리한다 — 파일 바이트를 화면으로 주고받지 않고 경로만 오간다.
+   ★ 압축·한글 문서 변환은 아직 없다(pdf-lib 는 이미지를 다시 줄이지 못한다). */
+function tbWin(e) { return BrowserWindow.fromWebContents(e.sender) || undefined; }
+/* «1-3,5,8-» → [1,2,3,5,8,…끝] (1부터). 틀리면 Error */
+function tbRanges(spec, total, 묶음) {
+  const s = String(spec || '').replace(/\s+/g, '');
+  if (!s) throw new Error('쪽 번호를 적어 주세요 (예: 1-3,5,8-)');
+  const groups = [];
+  s.split(',').forEach((part) => {
+    if (!part) return;
+    const m = part.match(/^(\d*)-(\d*)$/) || part.match(/^(\d+)$/);
+    if (!m) throw new Error('«' + part + '» 을(를) 알아볼 수 없습니다 — 예: 1-3,5,8-');
+    let a, b;
+    if (m.length === 2) { a = b = Number(m[1]); }
+    else { a = m[1] ? Number(m[1]) : 1; b = m[2] ? Number(m[2]) : total; }
+    if (a < 1 || b < a || b > total) throw new Error('«' + part + '» 이(가) 쪽 수(1~' + total + ')를 벗어났습니다');
+    const g = []; for (let i = a; i <= b; i++) g.push(i);
+    groups.push({ label: part, pages: g });
+  });
+  if (!groups.length) throw new Error('쪽 번호를 적어 주세요');
+  return 묶음 ? groups : groups.reduce((all, g) => all.concat(g.pages), []);
+}
+ipcMain.handle('tb-pdf-pick', async (e, kind) => {
+  const isImg = kind === 'image';
+  const r = await dialog.showOpenDialog(tbWin(e), {
+    title: isImg ? 'PDF 로 만들 그림 고르기' : 'PDF 고르기',
+    properties: isImg || kind === 'multi' ? ['openFile', 'multiSelections'] : ['openFile'],
+    filters: isImg ? [{ name: '그림', extensions: ['png', 'jpg', 'jpeg'] }] : [{ name: 'PDF', extensions: ['pdf'] }]
+  });
+  if (r.canceled || !r.filePaths.length) return { ok: true, files: [] };
+  const { PDFDocument } = require('pdf-lib');
+  const files = [];
+  for (const p of r.filePaths) {
+    const f = { path: p, name: path.basename(p), size: 0, pages: 0 };
+    try {
+      f.size = fs.statSync(p).size;
+      if (!isImg) f.pages = (await PDFDocument.load(fs.readFileSync(p), { ignoreEncryption: true })).getPageCount();
+    } catch (err) { f.error = '열 수 없는 파일입니다(암호가 걸렸거나 깨진 PDF)'; }
+    files.push(f);
+  }
+  return { ok: true, files };
+});
+ipcMain.handle('tb-pdf-run', async (e, o) => {
+  o = o || {};
+  try {
+    const { PDFDocument, degrees } = require('pdf-lib');
+    const files = (o.files || []).map(String);
+    if (!files.length) throw new Error('파일을 먼저 골라 주세요');
+    const load = async (p) => PDFDocument.load(fs.readFileSync(p), { ignoreEncryption: true });
+    const base = path.basename(files[0]).replace(/\.[^.]+$/, '');
+    const saveOne = async (doc, suggest) => {
+      const s = await dialog.showSaveDialog(tbWin(e), { title: 'PDF 저장', defaultPath: suggest, filters: [{ name: 'PDF', extensions: ['pdf'] }] });
+      if (s.canceled || !s.filePath) return { ok: false, canceled: true, msg: '저장을 취소했습니다' };
+      fs.writeFileSync(s.filePath, await doc.save());
+      return { ok: true, saved: [s.filePath], msg: '저장했습니다 — ' + path.basename(s.filePath) };
+    };
+    if (o.op === 'merge') {
+      if (files.length < 2) throw new Error('합치려면 PDF 를 둘 이상 골라 주세요');
+      const out = await PDFDocument.create();
+      for (const p of files) { const src = await load(p); (await out.copyPages(src, src.getPageIndices())).forEach((pg) => out.addPage(pg)); }
+      return saveOne(out, base + '_합본.pdf');
+    }
+    if (o.op === 'images') {
+      const out = await PDFDocument.create();
+      for (const p of files) {
+        const bytes = fs.readFileSync(p);
+        const img = /\.png$/i.test(p) ? await out.embedPng(bytes) : await out.embedJpg(bytes);
+        const W = 595.28, H = 841.89, M = 28;                 // A4, 여백 28pt
+        const fit = o.fit !== false;
+        if (fit) {
+          const sc = Math.min((W - M * 2) / img.width, (H - M * 2) / img.height, 1);
+          const w = img.width * sc, h = img.height * sc;
+          out.addPage([W, H]).drawImage(img, { x: (W - w) / 2, y: (H - h) / 2, width: w, height: h });
+        } else {
+          out.addPage([img.width, img.height]).drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+        }
+      }
+      return saveOne(out, base + '.pdf');
+    }
+    const src = await load(files[0]);
+    const total = src.getPageCount();
+    if (o.op === 'extract' || o.op === 'delete' || o.op === 'rotate') {
+      const pages = tbRanges(o.pages, total, false);
+      const out = await PDFDocument.create();
+      if (o.op === 'extract') {
+        (await out.copyPages(src, pages.map((n) => n - 1))).forEach((pg) => out.addPage(pg));
+      } else if (o.op === 'delete') {
+        const del = new Set(pages);
+        const keep = src.getPageIndices().filter((i) => !del.has(i + 1));
+        if (!keep.length) throw new Error('모든 쪽을 지울 수는 없습니다');
+        (await out.copyPages(src, keep)).forEach((pg) => out.addPage(pg));
+      } else {
+        const ang = Number(o.angle) || 90;
+        const rot = new Set(pages);
+        (await out.copyPages(src, src.getPageIndices())).forEach((pg, i) => {
+          if (rot.has(i + 1)) pg.setRotation(degrees(((pg.getRotation().angle || 0) + ang) % 360));
+          out.addPage(pg);
+        });
+      }
+      const tag = o.op === 'extract' ? '_추출' : o.op === 'delete' ? '_삭제본' : '_회전';
+      return saveOne(out, base + tag + '.pdf');
+    }
+    if (o.op === 'split') {
+      const groups = tbRanges(o.pages, total, true);
+      const d = await dialog.showOpenDialog(tbWin(e), { title: '나눈 PDF 를 저장할 폴더', properties: ['openDirectory', 'createDirectory'] });
+      if (d.canceled || !d.filePaths.length) return { ok: false, canceled: true, msg: '저장을 취소했습니다' };
+      const saved = [];
+      for (const g of groups) {
+        const out = await PDFDocument.create();
+        (await out.copyPages(src, g.pages.map((n) => n - 1))).forEach((pg) => out.addPage(pg));
+        const fp = path.join(d.filePaths[0], base + '_' + g.label.replace(/[^0-9-]/g, '') + '.pdf');
+        fs.writeFileSync(fp, await out.save());
+        saved.push(fp);
+      }
+      return { ok: true, saved, msg: saved.length + '개 파일로 나눠 저장했습니다' };
+    }
+    throw new Error('알 수 없는 작업입니다');
+  } catch (err) {
+    return { ok: false, msg: (err && err.message) || String(err) };
+  }
+});
+ipcMain.handle('tb-qr', async (_e, o) => {
+  try {
+    const QR = require('qrcode');
+    o = o || {};
+    const text = String(o.text || '');
+    if (!text) return { ok: false, msg: '글을 적어 주세요' };
+    const dark = /^#[0-9a-fA-F]{6}$/.test(o.dark || '') ? o.dark : '#000000';
+    const light = /^#[0-9a-fA-F]{6}$/.test(o.light || '') ? o.light : '#ffffff';
+    const level = ['L', 'M', 'Q', 'H'].indexOf(o.level) >= 0 ? o.level : 'M';
+    const dataUrl = await QR.toDataURL(text, { width: Math.min(1200, Math.max(200, Number(o.size) || 512)), margin: 2, errorCorrectionLevel: level, color: { dark, light } });
+    return { ok: true, dataUrl };
+  } catch (err) {
+    return { ok: false, msg: /too big|길/i.test((err && err.message) || '') ? '글이 너무 길어 QR 로 못 만듭니다' : ((err && err.message) || String(err)) };
+  }
+});
+ipcMain.handle('tb-qr-save', async (e, o) => {
+  try {
+    const m = String((o && o.dataUrl) || '').match(/^data:image\/png;base64,(.+)$/);
+    if (!m) return { ok: false, msg: '그림이 없습니다' };
+    const s = await dialog.showSaveDialog(tbWin(e), { title: 'QR 그림 저장', defaultPath: (String((o && o.name) || 'QR') || 'QR').replace(/[\\/:*?"<>|]/g, ' ').slice(0, 40) + '.png', filters: [{ name: 'PNG', extensions: ['png'] }] });
+    if (s.canceled || !s.filePath) return { ok: false, canceled: true, msg: '저장을 취소했습니다' };
+    fs.writeFileSync(s.filePath, Buffer.from(m[1], 'base64'));
+    return { ok: true, saved: [s.filePath], msg: '저장했습니다 — ' + path.basename(s.filePath) };
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
+ipcMain.handle('tb-qr-copy', (_e, o) => {
+  try {
+    const { clipboard, nativeImage } = require('electron');
+    const img = nativeImage.createFromDataURL(String((o && o.dataUrl) || ''));
+    if (img.isEmpty()) return { ok: false, msg: '그림이 없습니다' };
+    clipboard.writeImage(img);
+    return { ok: true, msg: '복사했습니다 — 한글·워드·카톡에 붙여넣기(Ctrl+V)' };
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
+ipcMain.on('tb-reveal', (_e, p) => { try { if (p) shell.showItemInFolder(String(p)); } catch (err) { /* 못 열어도 그만 */ } });
+
 /* ★ 일지에서 한 건 지우기 — 화면에 보이는 항목은 시트 줄 번호를 모른다(CSV 로 받아서).
    그래서 다리의 «find» 로 그 내용이 든 줄을 시트에 직접 묻고, «같은 내용의 n번째» 를 골라
    다리의 «undo»(= 줄 내용이 같을 때만 지움·날짜 줄이면 내용만 비움)로 지운다.

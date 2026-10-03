@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 2.0.6 — 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
+/* 파일명: ui.css | @version 2.0.7 — 도구상자(.tb*) · 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -2474,3 +2474,91 @@
   }
   .pwh.now { color: var(--accent); }
   .pwh + .gr { margin-bottom: calc(4px * var(--wf)); }
+
+  /* ───────── 도구상자(toolbox.js) — 바로가기 탭 안 ───────── */
+  .tbentry { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer;
+    padding: 12px 14px; border-radius: 14px; border: 2px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+    background: color-mix(in srgb, var(--accent) 8%, var(--card)); color: var(--fg); font-family: inherit;
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 16%, transparent); }
+  .tbentry:hover { border-color: var(--accent); }
+  .tbei { display: inline-flex; width: calc(44px * var(--wf)); height: calc(44px * var(--wf)); align-items: center; justify-content: center;
+    border-radius: 12px; background: color-mix(in srgb, var(--accent) 16%, var(--card)); color: var(--accent); flex: 0 0 auto; }
+  .tbet { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .tbet b { font-size: calc(14px * var(--wf)); }
+  .tbet small { font-size: calc(10.5px * var(--wf)); color: var(--dim); }
+  .tbi { display: block; }
+  .tbsub { margin: 6px 2px 10px; font-size: calc(11.5px * var(--wf)); color: var(--dim); }
+  .tbgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(210px * var(--wf)), 1fr)); gap: 10px; }
+  .tbcard { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; cursor: pointer;
+    padding: 14px 14px 13px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--card); color: var(--fg); font-family: inherit; }
+  .tbcard:hover { border-color: var(--accent); box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 20%, transparent); }
+  .tbcard b { font-size: calc(13.5px * var(--wf)); }
+  .tbcard small { font-size: calc(10.5px * var(--wf)); color: var(--dim); line-height: 1.5; }
+  .tbci { display: inline-flex; width: calc(46px * var(--wf)); height: calc(46px * var(--wf)); align-items: center; justify-content: center;
+    border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, var(--card)); color: var(--accent); }
+  .tbbadge { position: absolute; top: 9px; right: 10px; font-style: normal; font-size: 9.5px; font-weight: 800; color: #fff;
+    background: #e5484d; padding: 1px 7px; border-radius: 999px; }
+  .tbbody { padding: 2px 2px 14px; }
+  .tbrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
+  .tbl { font-size: calc(11px * var(--wf)); font-weight: 800; color: var(--dim); }
+  .tbpal { display: inline-flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .tbstep { display: inline-flex; align-items: center; gap: 6px; }
+  .tbstep b { min-width: 2.2em; text-align: center; font-size: calc(14px * var(--wf)); }
+  .tbhint { font-size: calc(10.5px * var(--wf)); color: var(--dim); margin: 4px 0; }
+  .tbfoot { margin-top: 14px; font-size: calc(10px * var(--wf)); color: var(--dim); }
+  .tbta { width: 100%; box-sizing: border-box; resize: vertical; margin: 6px 0 2px; font-family: inherit; }
+  .tbgo { padding: 8px 18px; font-weight: 800; }
+  .tbfiles { display: flex; flex-direction: column; gap: 5px; margin: 6px 0; }
+  .tbf { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); }
+  .tbf.bad { border-color: #e5484d; }
+  .tbfn { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .tbfn b { font-size: calc(12px * var(--wf)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tbfn i { font-style: normal; font-size: calc(10px * var(--wf)); color: var(--dim); }
+  .tbres { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .tbtag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: calc(11.5px * var(--wf)); font-weight: 700;
+    background: color-mix(in srgb, var(--accent) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); }
+  .tbtag.big { font-size: calc(20px * var(--wf)); padding: 8px 20px; border-width: 2px; border-color: var(--accent); }
+  .tbtag.on { background: var(--accent); color: var(--on); border-color: var(--accent); }
+  .tbgroups { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(170px * var(--wf)), 1fr)); gap: 8px; margin-top: 10px; }
+  .tbgrp { display: flex; flex-wrap: wrap; gap: 5px; align-content: flex-start; padding: 9px 10px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); }
+  .tbgrp b { width: 100%; font-size: calc(12px * var(--wf)); color: var(--accent); }
+  .tbgrp small { color: var(--dim); font-weight: 600; }
+  .tbqr { display: flex; justify-content: center; margin: 10px 0; }
+  .tbqr img { width: min(100%, 300px); height: auto; border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 6px; }
+  .tbdigits { text-align: center; font-weight: 900; font-variant-numeric: tabular-nums; font-size: calc(76px * var(--wf)); line-height: 1.1;
+    margin: 12px 0 4px; color: var(--fg); letter-spacing: 2px; }
+  .tbdigits.done { color: #e5484d; }
+  .tbtmmsg { text-align: center; font-size: calc(15px * var(--wf)); font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+  .tbbig { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    background: var(--bg); cursor: pointer; text-align: center; padding: 20px; }
+  .tbbigd { font-weight: 900; font-variant-numeric: tabular-nums; font-size: min(26vw, 38vh); line-height: 1; color: var(--fg); }
+  .tbbigm { font-size: min(5vw, 7vh); font-weight: 800; color: var(--accent); }
+  .tbbig small { color: var(--dim); }
+  .tbcardbig { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: calc(150px * var(--wf));
+    margin: 10px 0; padding: 16px; border-radius: 16px; border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--card)); cursor: pointer; }
+  .tbcardbig small { color: var(--dim); }
+  .tbcn { font-size: calc(38px * var(--wf)); font-weight: 900; }
+  .tbcm { font-size: calc(20px * var(--wf)); font-weight: 800; color: var(--accent); }
+  .tbchoices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 8px 0; }
+  .tbch { padding: 12px 8px; font-size: calc(15px * var(--wf)); font-weight: 800; }
+  .tbch.ok { background: #16a34a; border-color: #16a34a; color: #fff; }
+  .tbch.bad { background: #e5484d; border-color: #e5484d; color: #fff; }
+  .tbmatch { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 8px 0; }
+  .tbmc { display: flex; flex-direction: column; gap: 6px; }
+  .tbmb { padding: 9px 6px; font-size: calc(14px * var(--wf)); font-weight: 800; }
+  .tbmb.sel { background: var(--accent); border-color: var(--accent); color: var(--on); }
+  .tbmb.done { opacity: .35; text-decoration: line-through; }
+  .tbexpr { margin: 6px 0; }
+  .tbexpr input { font-size: calc(18px * var(--wf)); text-align: right; }
+  .tbcres { font-size: calc(26px * var(--wf)); font-weight: 900; text-align: right; color: var(--accent); margin: 6px 2px; word-break: break-all; }
+  .tbkeys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-width: 340px; margin: 8px 0; }
+  .tbk { padding: 12px 0; font-size: calc(16px * var(--wf)); font-weight: 800; }
+  .tbk.op { background: color-mix(in srgb, var(--accent) 12%, var(--card)); color: var(--accent); }
+  .tbk.eq { grid-column: span 4; }
+  .tbhist { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 8px; }
+  .tbhist > b { width: 100%; font-size: calc(11px * var(--wf)); color: var(--dim); }
+  .tbunits { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tbtbl { border-collapse: collapse; margin: 8px 0; min-width: min(100%, 360px); font-size: calc(12px * var(--wf)); }
+  .tbtbl th, .tbtbl td { border: 1px solid var(--line); padding: 5px 10px; text-align: center; }
+  .tbtbl th { background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+  .tbtbl tfoot td { font-weight: 800; background: color-mix(in srgb, var(--accent) 6%, var(--card)); }

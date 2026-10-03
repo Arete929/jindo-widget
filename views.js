@@ -5333,6 +5333,7 @@ function lkAddFrom(app) {
 }
 
 function viewLinks() {
+  if (typeof TB !== 'undefined' && TB.open) return viewToolbox();   // 도구상자(toolbox.js)가 열려 있으면 그 화면
   var feed = feedTiles();
   /* ★ 머리줄 하나에 다 모은다 — 검색칸과 «앱 고치기» 가 아래 따로 있으면,
      서른일곱 개를 굴려 내려간 자리에서는 둘 다 화면 밖이라 못 쓴다.
@@ -5367,6 +5368,8 @@ function viewLinks() {
         }).join('') + '</div>'
       + '</div>';
   }
+
+  if (typeof tbEntryTile === 'function') h += tbEntryTile();   // 도구상자 타일(toolbox.js)
 
   if (LINKS.length) {
     h += '<div class="lgrp">내 바로가기' + lkStamp() + '</div><div class="lnks">'
@@ -7785,6 +7788,7 @@ function wireViews(app) {
     try { localStorage.setItem('dutyHid', dutyHidDay); } catch (e) { /* 못 적어도 그만 */ }
     render();
   });
+  if (typeof wireToolbox === 'function' && typeof TB !== 'undefined' && TB.open) wireToolbox(app);   // 도구상자 단추·입력칸
   /* 급식 검색 — Enter·검색 단추로만 찾는다(칠 때마다 다시 그리면 버벅인다) */
   var mlI = app.querySelector('#mlQ');
   if (mlI) {
