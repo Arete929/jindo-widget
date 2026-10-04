@@ -1,5 +1,5 @@
-// 파일명: main.js | @version 2.10.8
-// 수정요약: v2.10.8 이름외우기 사진 — tb-photo-pick/read/save/get/del(이 PC userData	b-photos 에만 저장). / v2.10.7 도구상자 IPC — PDF(합치기·나누기·쪽 뽑기·지우기·돌리기·그림→PDF)·QR 만들기/저장/복사(pdf-lib·qrcode). / v2.10.6 grade-del — 학년부 일지 일정 삭제(다리 find 로 줄을 찾아 undo 로 지움, 같은 내용 개수가 어긋나면 안 지움). / v2.10.5 컴시간 설정 기본값 — 혜원이지는 처음부터 학급 시간표도 보이게(wantClasses 미설정이면 혜원이지만 켬, 이미 고른 값은 그대로). / v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
+// 파일명: main.js | @version 2.10.9
+// 수정요약: v2.10.9 도구상자 PDF — 영역 자르기(crop)·회전·대칭(flip)·균등 분할(splitn), 반별 «사진 N명»(tb-photo-has). / v2.10.8 이름외우기 사진 — tb-photo-pick/read/save/get/del(이 PC userData	b-photos 에만 저장). / v2.10.7 도구상자 IPC — PDF(합치기·나누기·쪽 뽑기·지우기·돌리기·그림→PDF)·QR 만들기/저장/복사(pdf-lib·qrcode). / v2.10.6 grade-del — 학년부 일지 일정 삭제(다리 find 로 줄을 찾아 undo 로 지움, 같은 내용 개수가 어긋나면 안 지움). / v2.10.5 컴시간 설정 기본값 — 혜원이지는 처음부터 학급 시간표도 보이게(wantClasses 미설정이면 혜원이지만 켬, 이미 고른 값은 그대로). / v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
 //   둘 이상이면 id·날짜·유형·사유만으론 못 가르던 것, 다리가 받으면 그걸로 가를 수 있게(views.js
 //   2.4.7 과 짝). /
 // v2.10.3 인쇄 후 미리보기·브라우저 창 자동으로 닫기 — 제 인쇄창(Electron)으로 실제 보냈을 때,
@@ -3573,6 +3573,59 @@ ipcMain.handle('tb-pdf-run', async (e, o) => {
       const tag = o.op === 'extract' ? '_추출' : o.op === 'delete' ? '_삭제본' : '_회전';
       return saveOne(out, base + tag + '.pdf');
     }
+    /* 영역 자르기 — 쪽 가장자리를 mm 로 잘라 낸다. «텍스트를 유지한 채» — CropBox·MediaBox 만 줄이므로 글자는 그대로 선택·검색된다 */
+    if (o.op === 'crop') {
+      const mm = (v) => Math.max(0, Number(v) || 0) * 72 / 25.4;
+      const m = { t: mm(o.mt), b: mm(o.mb), l: mm(o.ml), r: mm(o.mr) };
+      if (!(m.t || m.b || m.l || m.r)) throw new Error('자를 여백(mm)을 한 곳 이상 적어 주세요');
+      const sel = String(o.pages || '').trim() ? new Set(tbRanges(o.pages, total, false)) : null;
+      src.getPages().forEach((pg, i) => {
+        if (sel && !sel.has(i + 1)) return;
+        const mb = pg.getMediaBox();
+        const x = mb.x + m.l, y = mb.y + m.b, w = mb.width - m.l - m.r, h = mb.height - m.t - m.b;
+        if (w < 20 || h < 20) throw new Error((i + 1) + '쪽은 이만큼 자르면 남는 부분이 너무 작습니다');
+        pg.setCropBox(x, y, w, h); pg.setMediaBox(x, y, w, h);
+      });
+      return saveOne(src, base + '_자르기.pdf');
+    }
+    /* 회전·대칭 — 쪽을 돌리고(선택), 좌우·상하로 뒤집는다(선택). 뒤집기는 쪽을 새 문서에 «그려 넣으며» 변환 행렬로 한다 */
+    if (o.op === 'flip') {
+      const sel = String(o.pages || '').trim() ? new Set(tbRanges(o.pages, total, false)) : null;
+      const ang = Number(o.angle) || 0, flip = String(o.flip || 'none');
+      if (!ang && flip === 'none') throw new Error('돌리거나 뒤집을 방법을 골라 주세요');
+      const out = await PDFDocument.create();
+      const embedded = await out.embedPdf(src, src.getPageIndices());
+      embedded.forEach((ep, i) => {
+        const on = !sel || sel.has(i + 1);
+        const w = ep.width, h = ep.height;
+        const pg = out.addPage([w, h]);
+        if (on && (flip === 'h' || flip === 'v')) {
+          pg.drawPage(ep, { x: flip === 'h' ? w : 0, y: flip === 'v' ? h : 0, xScale: flip === 'h' ? -1 : 1, yScale: flip === 'v' ? -1 : 1 });
+        } else pg.drawPage(ep, { x: 0, y: 0 });
+        const r0 = src.getPage(i).getRotation().angle || 0;
+        pg.setRotation(degrees(((r0 + (on ? ang : 0)) % 360 + 360) % 360));
+      });
+      return saveOne(out, base + '_회전대칭.pdf');
+    }
+    /* 균등 분할 — 파일마다 N 쪽씩 */
+    if (o.op === 'splitn') {
+      const per = Math.floor(Number(o.per) || 0);
+      if (per < 1) throw new Error('파일마다 몇 쪽씩인지 1 이상으로 적어 주세요');
+      if (per >= total) throw new Error('한 파일에 ' + per + '쪽씩이면 나눌 것이 없습니다(전체 ' + total + '쪽)');
+      const d = await dialog.showOpenDialog(tbWin(e), { title: '나눈 PDF 를 저장할 폴더', properties: ['openDirectory', 'createDirectory'] });
+      if (d.canceled || !d.filePaths.length) return { ok: false, canceled: true, msg: '저장을 취소했습니다' };
+      const prefix = (String(o.prefix || '').trim() || base).replace(/[\\/:*?"<>|]/g, ' ').slice(0, 60);
+      const saved = [], count = Math.ceil(total / per), pad = String(count).length < 2 ? 2 : String(count).length;
+      for (let k = 0; k < count; k++) {
+        const idx = []; for (let i = k * per; i < Math.min(total, (k + 1) * per); i++) idx.push(i);
+        const out = await PDFDocument.create();
+        (await out.copyPages(src, idx)).forEach((pg) => out.addPage(pg));
+        const fp = path.join(d.filePaths[0], prefix + '_' + String(k + 1).padStart(pad, '0') + '.pdf');
+        fs.writeFileSync(fp, await out.save());
+        saved.push(fp);
+      }
+      return { ok: true, saved, msg: count + '개 파일로 나눠 저장했습니다 (' + per + '쪽씩)' };
+    }
     if (o.op === 'split') {
       const groups = tbRanges(o.pages, total, true);
       const d = await dialog.showOpenDialog(tbWin(e), { title: '나눈 PDF 를 저장할 폴더', properties: ['openDirectory', 'createDirectory'] });
@@ -3679,6 +3732,11 @@ ipcMain.handle('tb-photo-get', (_e, names) => {
     });
   } catch (err) { /* 못 읽은 건 «사진 없음» 으로 */ }
   return { ok: true, photos: out };
+});
+ipcMain.handle('tb-photo-has', (_e, names) => {
+  const has = [];
+  try { (Array.isArray(names) ? names : []).slice(0, 2000).forEach((n) => { if (fs.existsSync(tbPhotoFile(n))) has.push(n); }); } catch (err) { /* 못 본 건 «없음» */ }
+  return { ok: true, has };
 });
 ipcMain.handle('tb-photo-del', (_e, names) => {   // names 배열 — 이 학생들 것만 지운다
   let n = 0;
