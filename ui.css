@@ -2719,3 +2719,8 @@
     .tbmit small { display: none; }
     .tbflds, .tbflds.four { grid-template-columns: 1fr 1fr; }
   }
+/* v2.1.1 이름외우기 «한 바퀴» 결과 — 틀린 학생 목록 */
+.tbres .tbcn{font-size:46px}
+.tbwrong{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.tbwk{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--line,#d6d6e4);background:var(--card,#fff);font-size:13.5px}
+.tbwk .tbthumb{width:30px;height:30px;border-radius:50%;object-fit:cover}
