@@ -1,4 +1,5 @@
-// 파일명: recordsmain.js | @version 1.114.5
+// 파일명: recordsmain.js | @version 1.115.0
+// v1.115.0 tb-photo-notion-list / tb-photo-notion-get — 학생이름외우기 사진을 노션 학생 INFO 에서 가져옴(지비스 전용, 사진은 이 PC 에만 둔다).
 // v1.114.5 rec-notion-get 이 «누가기록» 속성(AI 자동 채우기)을 먼저 읽던 것을 그만두고
 //   본문 콜아웃만 보게 바꿈 — 속성 값이 화면(콜아웃)과 다르게(더 짧고 표현도 다르게)
 //   나오는 사례를 실측(2026-10-02). 선생님 확인: "누가기록 상관없이 콜아웃을 보도록".
@@ -118,6 +119,34 @@ function register(helpers) {
   const { ipcMain } = S;
 
   ipcMain.handle('rec-state', () => recState());
+
+  /* ── 학생이름외우기 사진 — 노션 학생 INFO 에서 가져오기(지비스 전용) ──
+     ★ 학생 얼굴이다. 노션 → 이 PC 의 앱 폴더로만 옮긴다(저장은 화면 쪽이 줄여서 tb-photo-save 로).
+     ★ 열쇠(노션 통합)는 설정 → 업무관리에 넣어 둔 것을 쓴다. 혜원이지에는 이 기능이 없다. */
+  ipcMain.handle('tb-photo-notion-list', async () => {
+    if (!S.hasTT) return { ok: false, msg: '노션 사진 가져오기는 지비스에서만 됩니다' };
+    const key = S.load().notionKey || '';
+    if (!String(key).trim()) return { ok: false, msg: '노션 열쇠가 없습니다 (설정 → 업무관리에 넣어 주세요)' };
+    try {
+      const list = await nrec.studentPhotos(key);
+      return { ok: true, items: list };
+    } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+  });
+  ipcMain.handle('tb-photo-notion-get', async (_e, url) => {
+    if (!S.hasTT) return { ok: false, msg: '지비스에서만 됩니다' };
+    try {
+      const u = new URL(String(url || ''));
+      /* 노션이 파일을 맡겨 둔 주소만 연다 — 아무 주소나 받아 오지 않는다 */
+      if (u.protocol !== 'https:' || !/(^|\.)(amazonaws\.com|notion\.so|notion\.com|notion-static\.com)$/i.test(u.hostname)) {
+        return { ok: false, msg: '노션 파일 주소가 아닙니다' };
+      }
+      const r = await require('./httpx.js').request({ method: 'GET', url: u.href, binary: true, timeout: 40000 });
+      if (r.status < 200 || r.status >= 300 || !r.buf || !r.buf.length) return { ok: false, msg: '내려받지 못했습니다(' + r.status + ')' };
+      if (r.buf.length > 30 * 1024 * 1024) return { ok: false, msg: '사진이 너무 큽니다' };
+      const b = r.buf, mime = (b[0] === 0x89 && b[1] === 0x50) ? 'png' : (b[0] === 0x47 && b[1] === 0x49) ? 'gif' : (b[0] === 0x52 && b[1] === 0x49) ? 'webp' : 'jpeg';
+      return { ok: true, dataUrl: 'data:image/' + mime + ';base64,' + b.toString('base64') };
+    } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+  });
 
   /* ── 수업 메모(진도표) ────────────────────────────────────
      컴시간 시간표가 «어느 수업인지» 를 채워 주므로, 사람은 한 줄만 적는다. */

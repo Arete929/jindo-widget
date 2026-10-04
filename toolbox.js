@@ -1,4 +1,4 @@
-/* 파일명: toolbox.js | @version 1.3.1 — v1.3.1 뽑기 자동/수동·v1.3.0 스쿨보드 모양(PDF 메뉴·계산기·등급표·이름외우기 학급 카드)
+/* 파일명: toolbox.js | @version 1.4.0 — v1.4.2 사진은 «3201 강재은» (학번 이름) 꼴로 보관 — 동명이인도 저절로 갈림 · v1.4.0 학생이름외우기는 지비스 전용(혜원이지에서 뺌) + 노션 학생 INFO 사진 가져오기 · v1.3.1 뽑기 자동/수동·v1.3.0 스쿨보드 모양(PDF 메뉴·계산기·등급표·이름외우기 학급 카드)
    도구상자 — «바로가기» 탭 안의 타일로 들어간다. 지비스·혜원이지 공통(views.js 다음에 읽힌다).
    스쿨보드(제작 호똑쌤)의 도구상자를 본떠 «선으로 그린 아이콘» 카드 여덟 개:
    PDF 편집기 · 랜덤 뽑기·모둠 편성 · QR 생성기 · 수업 타이머 · 학생이름외우기 · 계산기 ·
@@ -56,11 +56,14 @@ var TB_TOOLS = [
   { k: 'gr', ic: 'award', t: '등급별 인원 예측', d: '총 인원 기준으로 등급별 인원과 누적 석차를 예측합니다.' }
 ];
 
+/* ★ 학생이름외우기는 지비스에서만 쓴다(학생 얼굴 사진이 들어간다) — 혜원이지에서는 카드 자체를 뺀다 */
+function tbTools() { return TB_TOOLS.filter(function (x) { return HAS_TT || x.k !== 'nm'; }); }
+
 /* ── 바로가기 탭에 들어가는 «도구상자» 타일 ── */
 /* ★ v1.2.0 — 도구 여덟 개를 바로가기 탭에 «그대로» 펼친다(한 번 더 들어가지 않는다). 누르면 그 도구가 바로 열린다 */
 function tbEntryTile() {
   return '<div class="lgrp">도구상자</div><div class="tbgrid tbinline">'
-    + TB_TOOLS.map(function (x) {
+    + tbTools().map(function (x) {
         return '<button class="tbcard" data-tbact="opentool" data-tbv="' + x.k + '">'
           + (x.badge ? '<em class="tbbadge">' + x.badge + '</em>' : '')
           + '<span class="tbci">' + tbIcon(x.ic, 26) + '</span><b>' + esc(x.t) + '</b><small>' + esc(x.d) + '</small></button>';
@@ -68,13 +71,13 @@ function tbEntryTile() {
 }
 
 function viewToolbox() {
-  var tool = TB_TOOLS.filter(function (x) { return x.k === TB.tool; })[0];
+  var tool = tbTools().filter(function (x) { return x.k === TB.tool; })[0];
   var h = '<div class="top2"><div class="wknav">'
     + '<button class="wkb" data-tbact="back">← ' + (tool && !TB.direct ? '도구상자' : '바로가기') + '</button>'
     + '<span class="wklab">' + (tool ? tbIcon(tool.ic, 18) + ' ' + esc(tool.t) : tbIcon('wrench', 18) + ' 도구상자') + '</span></div></div>';
   if (!tool) {
     h += '<div class="tbsub">필요한 도구를 고르세요. 각 도구는 별도의 화면으로 열립니다.</div><div class="tbgrid">'
-      + TB_TOOLS.map(function (x) {
+      + tbTools().map(function (x) {
           return '<button class="tbcard" data-tbact="tool" data-tbv="' + x.k + '">'
             + (x.badge ? '<em class="tbbadge">' + x.badge + '</em>' : '')
             + '<span class="tbci">' + tbIcon(x.ic, 28) + '</span><b>' + esc(x.t) + '</b><small>' + esc(x.d) + '</small></button>';
@@ -138,15 +141,18 @@ var TB_PDF_MENU = [
   { k: 'hwp', t: '한글→PDF', d: 'HWP·HWPX 일괄 변환', ic: 'm_doc', soon: true, h: '한글 → PDF', hd: '한글 문서를 PDF 로 바꿉니다.', go: '변환 시작' },
   { k: 'hwpimg', t: '한글→이미지', d: 'HWP·HWPX를 PNG·JPG로', ic: 'm_image', soon: true, h: '한글 → 이미지', hd: '한글 문서를 그림 파일로 바꿉니다.', go: '변환 시작' }
 ];
+/* ★ 아직 안 되는 것(soon)은 메뉴에 보이지 않는다 — 만들어지면 위 목록에서 soon 만 지우면 나타난다 */
+function tbPdfMenu() { return TB_PDF_MENU.filter(function (x) { return !x.soon; }); }
 function tbPdfNum(path, label, val, hint) {
   return '<label class="tbfld"><span>' + label + '</span>' + (hint ? '<em>' + hint + '</em>' : '')
     + '<input class="gpai" type="number" min="0" step="any" data-tbin="' + path + '" value="' + esc(val) + '"></label>';
 }
 function tbPdfHtml() {
-  var s = TB.pdf, m = s.mode, cur = TB_PDF_MENU.filter(function (x) { return x.k === m; })[0] || TB_PDF_MENU[0];
+  var s = TB.pdf, m = s.mode, cur = tbPdfMenu().filter(function (x) { return x.k === m; })[0] || tbPdfMenu()[0];
+  if (m !== cur.k) m = s.mode = cur.k;   // 숨긴(준비 중) 기능이 남아 있으면 첫 기능으로
   var multi = (m === 'merge' || m === 'images');
-  var menu = '<nav class="tbmenu">' + TB_PDF_MENU.map(function (x) {
-    return '<button class="tbmi' + (x.k === m ? ' on' : '') + '" data-tbact="set" data-tbp="pdf.mode" data-tbv="' + x.k + '">'
+  var menu = '<nav class="tbmenu">' + tbPdfMenu().map(function (x) {
+    return '<button class="tbmi' + (x.k === cur.k ? ' on' : '') + '" data-tbact="set" data-tbp="pdf.mode" data-tbv="' + x.k + '">'
       + '<span class="tbmic">' + tbIcon(x.ic, 18) + '</span><span class="tbmit"><b>' + x.t + (x.soon ? ' <i class="tbsoon">준비 중</i>' : '') + '</b><small>' + x.d + '</small></span></button>';
   }).join('') + '</nav>';
   var body = '<div class="tbph2"><span class="tbphi">' + tbIcon(cur.ic, 22) + '</span><div><b>' + cur.h + '</b><small>' + cur.hd + '</small></div></div>';
@@ -355,11 +361,16 @@ function tbTick() {
 }
 
 /* ═══════════ ⑤ 학생이름외우기 ═══════════ */
-function tbNmList() {   // [{no, name, ph}] — «번호 이름» 한 줄씩, ph = 사진(있으면)
+/* 사진 보관 열쇠 — «3201 강재은» (학번 이름) 꼴. 학번이 붙어 있어 이름이 같은 학생(동명이인)도 서로 섞이지 않는다.
+   학번이 없는 줄(직접 입력으로 이름만 적은 경우)은 이름 그대로. */
+function tbNmKey(id, name) { return /^\d{4}$/.test(String(id || '')) ? id + ' ' + name : name; }
+function tbNmKeyName(key) { return String(key).replace(/^\d{4} /, ''); }
+function tbNmList() {   // [{no, name, key, ph}] — «번호 이름» 한 줄씩, ph = 사진(있으면)
   return String(TB.nm.src || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean).map(function (l) {
     var m = l.match(/^(\S+)\s+(.+)$/);
     var it = m ? { no: m[1], name: m[2].trim() } : { no: '', name: l };
-    it.ph = TB.nm.photos[it.name] || '';
+    it.key = tbNmKey(it.no, it.name);
+    it.ph = TB.nm.photos[it.key] || '';
     return it;
   });
 }
@@ -372,11 +383,11 @@ function tbNmPool(list) {
 function tbNmPhotoCount(list) { return list.filter(function (x) { return x.ph; }).length; }
 /* 명단이 바뀌었으면 저장된 사진을 한 번 불러온다(그린 뒤 비동기 → 다시 그림) */
 function tbNmPhotoSync(list) {
-  var s = TB.nm, sig = list.map(function (x) { return x.name; }).join('|');
+  var s = TB.nm, sig = list.map(function (x) { return x.key; }).join('|');
   if (sig === s.photoSig) return;
   s.photoSig = sig;
   if (!list.length) return;
-  widgetAPI.tbPhotoGet(list.map(function (x) { return x.name; })).then(function (r) {
+  widgetAPI.tbPhotoGet(list.map(function (x) { return x.key; })).then(function (r) {
     var got = (r && r.photos) || {}, n = 0;
     Object.keys(got).forEach(function (k) { if (s.photos[k] !== got[k]) { s.photos[k] = got[k]; n++; } });
     if (n) { s.order = []; s.q = null; s.pairs = null; render(); }
@@ -431,9 +442,9 @@ function tbNmPhotosBulk() {
       chain = chain.then(function () {
         var who = tbNmMatch(f.name, list);
         if (!who) { miss.push(f.name); return; }
-        if (dup[who.name]) { miss.push(f.name + '(같은 학생 « ' + who.name + ' » 사진이 이미 있어 건너뜀)'); return; }
-        dup[who.name] = 1;
-        return tbNmPhotoStore(who.name, f.path).then(function () { okN++; }).catch(function (e) { miss.push(f.name + ' — ' + ((e && e.message) || e)); });
+        if (dup[who.key]) { miss.push(f.name + '(같은 학생 « ' + who.name + ' » 사진이 이미 있어 건너뜀)'); return; }
+        dup[who.key] = 1;
+        return tbNmPhotoStore(who.key, f.path).then(function () { okN++; }).catch(function (e) { miss.push(f.name + ' — ' + ((e && e.message) || e)); });
       });
     });
     return chain.then(function () {
@@ -443,12 +454,77 @@ function tbNmPhotosBulk() {
     });
   }).catch(function (e) { s.busy = false; s.msg = String((e && e.message) || e); render(); });
 }
+/* ★ 노션 [DB] '26 혜원학생 INFO 의 «사진» → 이 PC(userData\tb-photos). 지비스 전용.
+   명단(학생기록 탭에서 받은 학급 명단)에 있는 이름만 가져온다. 이미 사진이 있는 학생은 건너뛴다. */
+function tbNmNotion() {
+  var s = TB.nm;
+  if (!HAS_TT || s.busy) return;
+  var byId = {}, byClsName = {}, n = 0;
+  tbRoster().forEach(function (c) {
+    c.students.forEach(function (st) {
+      var key = tbNmKey(st.id, st.name);
+      byId[st.id] = { key: key, name: st.name }; byClsName[c.key + '|' + st.name] = { key: key, name: st.name }; n++;
+    });
+  });
+  if (!n) { s.msg = '학급 명단이 아직 없습니다 — «학생기록» 탭을 한 번 열어 명단을 받은 뒤 다시 눌러 주세요'; render(); return; }
+  s.busy = true; s.msg = '노션 학생 INFO 에서 사진 목록을 불러오는 중…'; render();
+  widgetAPI.tbPhotoNotionList().then(function (r) {
+    if (!r || !r.ok) throw new Error((r && r.msg) || '목록을 받지 못했습니다');
+    var items = [], noRoster = 0, skipHave = 0, seen = {};
+    (r.items || []).forEach(function (x) {
+      /* 명단의 «학번 이름» 과 짝 — 학번이 같고 이름도 같으면 그 학생, 학번이 달라도 같은 반에 같은 이름이 있으면 그 학생 */
+      var hit = (byId[x.id] && byId[x.id].name === x.name) ? byId[x.id] : byClsName[x.cls + '|' + x.name];
+      if (!hit) { noRoster++; return; }
+      if (seen[hit.key]) return; seen[hit.key] = 1;
+      if (s.have[hit.key]) { skipHave++; return; }
+      items.push({ key: hit.key, name: x.name, cls: x.cls, url: x.url });
+    });
+    var done = 0, fail = [], chain = Promise.resolve();
+    if (!items.length) { s.busy = false; s.msg = '새로 가져올 사진이 없습니다 — ' + skipHave + '명은 이미 있고' + (noRoster ? ', ' + noRoster + '명은 명단에 없는 학생입니다' : '') + '.'; render(); return; }
+    items.forEach(function (x, i) {
+      chain = chain.then(function () {
+        s.msg = '사진 가져오는 중… ' + (i + 1) + ' / ' + items.length + '  (' + x.key + ')';
+        if (i % 4 === 0) render();
+        return widgetAPI.tbPhotoNotionGet(x.url).then(function (g) {
+          if (!g || !g.ok) throw new Error((g && g.msg) || '내려받지 못했습니다');
+          return tbNmShrink(g.dataUrl);
+        }).then(function (small) {
+          return widgetAPI.tbPhotoSave({ name: x.key, dataUrl: small }).then(function (sv) {
+            if (!sv || !sv.ok) throw new Error((sv && sv.msg) || '저장하지 못했습니다');
+            s.photos[x.key] = small; s.have[x.key] = true; done++;
+          });
+        }).catch(function (e) { fail.push(x.key + ' — ' + ((e && e.message) || e)); });
+      });
+    });
+    return chain.then(function () {
+      s.busy = false; s.order = []; s.q = null; s.pairs = null; s.photoSig = '';
+      s.msg = '노션에서 사진 ' + done + '장을 가져왔습니다.' + (skipHave ? ' (이미 있던 ' + skipHave + '명은 건너뜀)' : '')
+        + (noRoster ? ' 명단에 없는 학생 ' + noRoster + '명은 가져오지 않았습니다.' : '')
+        + (fail.length ? ' 실패 ' + fail.length + '건: ' + fail.slice(0, 3).join(', ') + (fail.length > 3 ? ' …' : '') : '');
+      render();
+    });
+  }).catch(function (e) { s.busy = false; s.msg = String((e && e.message) || e); render(); });
+}
+/* 폰으로 옮길 «사진 묶음» 파일 한 개를 만든다(지비스 전용) — 혜원이지 모바일 «이름 외우기» 가 불러간다 */
+function tbNmExport() {
+  var s = TB.nm;
+  if (!HAS_TT || s.busy) return;
+  var cl = tbRoster().map(function (c) { return { key: c.key, students: c.students.map(function (st) { return { id: st.id, no: st.no, name: st.name }; }) }; });
+  s.busy = true; s.msg = '폰용 사진 묶음을 만드는 중…'; render();
+  widgetAPI.tbPhotoExport({ classes: cl }).then(function (r) {
+    s.busy = false;
+    if (r && r.ok) { s.msg = '폰용 사진 묶음을 저장했습니다 — 사진 ' + r.n + '장 · ' + r.mb + 'MB. 이 파일을 카톡 «나와의 채팅»이나 드라이브로 폰에 보낸 뒤, 혜원이지 모바일 → 이름 외우기 → «사진 묶음 불러오기» 를 누르세요.'; s.exported = (r.saved || [])[0] || ''; }
+    else if (!(r && r.canceled)) s.msg = (r && r.msg) || '내보내지 못했습니다';
+    else s.msg = '';
+    render();
+  }).catch(function (e) { s.busy = false; s.msg = String((e && e.message) || e); render(); });
+}
 function tbNmPhotoOne(name) {
   var s = TB.nm;
   widgetAPI.tbPhotoPick(false).then(function (r) {
     var f = r && r.files && r.files[0];
     if (!f) return;
-    return tbNmPhotoStore(name, f.path).then(function () { s.order = []; s.q = null; s.pairs = null; s.msg = name + ' 사진을 넣었습니다'; render(); });
+    return tbNmPhotoStore(name, f.path).then(function () { s.order = []; s.q = null; s.pairs = null; s.msg = tbNmKeyName(name) + ' 사진을 넣었습니다'; render(); });
   }).catch(function (e) { s.msg = String((e && e.message) || e); render(); });
 }
 function tbNmThumb(x, cls) {
@@ -457,7 +533,7 @@ function tbNmThumb(x, cls) {
 /* 반별 «사진 N명» 숫자용 — 사진 자체는 안 불러오고, 있는 학생 이름만 한 번 묻는다 */
 function tbNmHaveSync() {
   var s = TB.nm, all = [];
-  tbRoster().forEach(function (c) { c.students.forEach(function (st) { all.push(st.name); }); });
+  tbRoster().forEach(function (c) { c.students.forEach(function (st) { all.push(tbNmKey(st.id, st.name)); }); });
   var sig = all.join('|');
   if (sig === s.haveSig) return;
   s.haveSig = sig;
@@ -476,7 +552,7 @@ function tbNmHtml() {
   /* ① 학급 선택 */
   h += '<div class="tbstp"><span class="tbn">1</span> 학급 선택</div><div class="tbclsc">'
     + cs.map(function (c) {
-        var pc = c.students.filter(function (st) { return s.have[st.name]; }).length;
+        var pc = c.students.filter(function (st) { return s.have[tbNmKey(st.id, st.name)]; }).length;
         return '<button class="tbclsk' + (s.cls === c.key ? ' on' : '') + '" data-tbact="roster" data-tbp="nm.src" data-tbv="' + esc(c.key) + '" data-tbno="1">'
           + '<b>' + esc(c.key) + '</b><i class="tbdot ' + (pc >= 4 ? 'ok' : 'warn') + '"></i>'
           + '<small>👥 ' + c.students.length + '명 &nbsp; 📷 사진 ' + pc + '명</small></button>';
@@ -490,22 +566,24 @@ function tbNmHtml() {
   /* 사진 */
   h += '<div class="tbrow"><span class="tbhint"><b>' + (s.cls && s.cls !== '__manual' ? esc(s.cls) : '직접 입력') + '</b> · ' + list.length + '명 · 사진 ' + nph + '명'
     + (photoMode && pool.length < list.length ? ' · 사진 있는 ' + pool.length + '명만 연습' : '') + '</span>'
-    + '<button class="wkb go" data-tbact="nmphotos"' + (s.busy ? ' disabled' : '') + '>📷 사진 넣기(여러 장)</button>'
+    + (HAS_TT ? '<button class="wkb go" data-tbact="nmnotion"' + (s.busy ? ' disabled' : '') + ' title="노션 학생 INFO 의 사진을 이 컴퓨터로 가져옵니다">⬇ 노션에서 사진 가져오기</button>' : '')
+    + (HAS_TT ? '<button class="wkb" data-tbact="nmexport"' + (s.busy ? ' disabled' : '') + ' title="학급 명단과 사진을 파일 하나로 — 폰으로 옮겨 혜원이지 모바일에서 씁니다">📱 폰용 사진 묶음 내보내기</button>' : '')
+    + '<button class="wkb' + (HAS_TT ? '' : ' go') + '" data-tbact="nmphotos"' + (s.busy ? ' disabled' : '') + '>📷 사진 넣기(여러 장)</button>'
     + '<button class="wkb' + (s.manage ? ' go' : '') + '" data-tbact="nmmanage">🖼 학생별 사진</button>'
     + (nph ? '<button class="wkb" data-tbact="nmphotoclear">🗑 사진 모두 지우기</button>' : '') + '</div>';
   if (nph < 2) {
     h += '<div class="tbnote"><b>‘' + esc(s.cls && s.cls !== '__manual' ? s.cls : '이 명단') + '’에 사진이 등록된 학생이 ' + nph + '명입니다.</b>'
       + '<small>사진이 있어야 «사진 보고 이름 맞히기» 연습이 됩니다(퀴즈는 사진 있는 학생 4명 이상 권장). 사진이 없어도 번호와 이름으로 연습할 수 있습니다.</small>'
-      + '<button class="wkb go" data-tbact="nmphotos">사진 등록하러 가기 ›</button></div>';
+      + '<button class="wkb' + (HAS_TT ? '' : ' go') + '" data-tbact="nmphotos">사진 등록하러 가기 ›</button></div>';
   } else {
     h += '<div class="tbhint">파일 이름에 <b>학생 이름</b>이나 <b>번호</b>가 들어 있으면 자동으로 짝지어 줍니다 (예: 강재은.jpg · 3201.jpg). 사진은 이 PC 에만 저장되고 밖으로 나가지 않습니다.</div>';
   }
   if (s.manage) {
     h += '<div class="tbpgrid">' + list.map(function (x) {
-      return '<div class="tbpcell"><button class="tbpbtn" data-tbact="nmphoto1" data-tbv="' + esc(x.name) + '" title="사진 고르기">'
+      return '<div class="tbpcell"><button class="tbpbtn" data-tbact="nmphoto1" data-tbv="' + esc(x.key) + '" title="사진 고르기">'
         + (x.ph ? '<img src="' + x.ph + '" alt="">' : '<span class="tbpno">＋</span>') + '</button>'
         + '<div class="tbpnm">' + esc(x.name) + '</div>'
-        + (x.ph ? '<button class="tbpx" data-tbact="nmphotodel" data-tbv="' + esc(x.name) + '" title="이 사진 지우기">×</button>' : '') + '</div>';
+        + (x.ph ? '<button class="tbpx" data-tbact="nmphotodel" data-tbv="' + esc(x.key) + '" title="이 사진 지우기">×</button>' : '') + '</div>';
     }).join('') + '</div>';
   }
   /* ② 연습 방식 */
@@ -891,13 +969,15 @@ function tbAct(act, v, b) {
     case 'nmnext': TB.nm.idx = (TB.nm.idx + 1) % Math.max(1, TB.nm.order.length); TB.nm.flip = false; break;
     case 'nmprev': TB.nm.idx = (TB.nm.idx - 1 + TB.nm.order.length) % Math.max(1, TB.nm.order.length); TB.nm.flip = false; break;
     case 'nmphotos': tbNmPhotosBulk(); return;
+    case 'nmnotion': tbNmNotion(); return;
+    case 'nmexport': tbNmExport(); return;
     case 'nmphoto1': tbNmPhotoOne(v); return;
     case 'nmphotodel': {
-      widgetAPI.tbPhotoDel([v]).then(function () { delete TB.nm.photos[v]; delete TB.nm.have[v]; TB.nm.order = []; TB.nm.q = null; TB.nm.pairs = null; TB.nm.msg = v + ' 사진을 지웠습니다'; render(); });
+      widgetAPI.tbPhotoDel([v]).then(function () { delete TB.nm.photos[v]; delete TB.nm.have[v]; TB.nm.order = []; TB.nm.q = null; TB.nm.pairs = null; TB.nm.msg = tbNmKeyName(v) + ' 사진을 지웠습니다'; render(); });
       return;
     }
     case 'nmphotoclear': {
-      var allN = tbNmList().map(function (x) { return x.name; });
+      var allN = tbNmList().map(function (x) { return x.key; });
       widgetAPI.tbPhotoDel(allN).then(function (r) { TB.nm.photos = {}; TB.nm.have = {}; TB.nm.order = []; TB.nm.q = null; TB.nm.pairs = null; TB.nm.msg = '이 명단의 사진 ' + ((r && r.n) || 0) + '장을 지웠습니다'; render(); });
       return;
     }

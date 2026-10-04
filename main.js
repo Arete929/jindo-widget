@@ -1,5 +1,5 @@
 // 파일명: main.js | @version 2.10.9
-// 수정요약: v2.10.9 도구상자 PDF — 영역 자르기(crop)·회전·대칭(flip)·균등 분할(splitn), 반별 «사진 N명»(tb-photo-has). / v2.10.8 이름외우기 사진 — tb-photo-pick/read/save/get/del(이 PC userData	b-photos 에만 저장). / v2.10.7 도구상자 IPC — PDF(합치기·나누기·쪽 뽑기·지우기·돌리기·그림→PDF)·QR 만들기/저장/복사(pdf-lib·qrcode). / v2.10.6 grade-del — 학년부 일지 일정 삭제(다리 find 로 줄을 찾아 undo 로 지움, 같은 내용 개수가 어긋나면 안 지움). / v2.10.5 컴시간 설정 기본값 — 혜원이지는 처음부터 학급 시간표도 보이게(wantClasses 미설정이면 혜원이지만 켬, 이미 고른 값은 그대로). / v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
+// 수정요약: v2.10.21 폰용 사진 묶음 내보내기(tb-photo-export — 학급 명단+줄인 사진을 JSON 한 파일로, 혜원이지 모바일 «이름 외우기» 가 불러간다·지비스 전용) / 학생이름외우기 «노션에서 사진 가져오기»(지비스 전용, recordsmain tb-photo-notion-*) · 혜원이지에서는 학생이름외우기를 뺌. / v2.10.9 도구상자 PDF — 영역 자르기(crop)·회전·대칭(flip)·균등 분할(splitn), 반별 «사진 N명»(tb-photo-has). / v2.10.8 이름외우기 사진 — tb-photo-pick/read/save/get/del(이 PC userData	b-photos 에만 저장). / v2.10.7 도구상자 IPC — PDF(합치기·나누기·쪽 뽑기·지우기·돌리기·그림→PDF)·QR 만들기/저장/복사(pdf-lib·qrcode). / v2.10.6 grade-del — 학년부 일지 일정 삭제(다리 find 로 줄을 찾아 undo 로 지움, 같은 내용 개수가 어긋나면 안 지움). / v2.10.5 컴시간 설정 기본값 — 혜원이지는 처음부터 학급 시간표도 보이게(wantClasses 미설정이면 혜원이지만 켬, 이미 고른 값은 그대로). / v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
 //   둘 이상이면 id·날짜·유형·사유만으론 못 가르던 것, 다리가 받으면 그걸로 가를 수 있게(views.js
 //   2.4.7 과 짝). /
 // v2.10.3 인쇄 후 미리보기·브라우저 창 자동으로 닫기 — 제 인쇄창(Electron)으로 실제 보냈을 때,
@@ -3746,6 +3746,40 @@ ipcMain.handle('tb-photo-del', (_e, names) => {   // names 배열 — 이 학생
   return { ok: true, n };
 });
 
+/* ── 폰용 사진 묶음(v2.10.21, 지비스 전용) ──
+   ★ 혜원이지 모바일 «이름 외우기» 로 옮길 파일 한 개 — 학급 명단(학번·번호·이름) + 이 PC 에 넣어 둔 줄인 사진.
+   ★ 사진은 서버로 안 올린다. 사용자가 이 파일을 직접 폰으로 옮긴다(카톡 «나와의 채팅»·드라이브·USB).
+   ★ 열쇠는 화면 쪽(toolbox.js tbNmKey)과 같은 «3201 강재은» 꼴이다. */
+ipcMain.handle('tb-photo-export', async (e, o) => {
+  try {
+    if (!HAS_TT) return { ok: false, msg: '폰용 사진 묶음은 지비스에서만 만듭니다' };
+    const key = (id, name) => (/^\d{4}$/.test(String(id || '')) ? id + ' ' + name : name);
+    const classes = [], photos = {};
+    let n = 0, people = 0;
+    (Array.isArray(o && o.classes) ? o.classes : []).slice(0, 40).forEach((c) => {
+      const ck = String((c && c.key) || '');
+      if (!/^\d-\d{1,2}$/.test(ck)) return;   // 학년-반 학급만 (동아리 등 제외)
+      const stu = [];
+      (Array.isArray(c.students) ? c.students : []).slice(0, 60).forEach((s) => {
+        const name = String((s && s.name) || '').trim().slice(0, 12), id = String((s && s.id) || '').trim().slice(0, 4);
+        if (!name) return;
+        const k = key(id, name), f = tbPhotoFile(k);
+        let has = 0;
+        if (fs.existsSync(f)) { photos[k] = 'data:image/jpeg;base64,' + fs.readFileSync(f).toString('base64'); has = 1; n++; }
+        stu.push({ id: id, no: Number(s.no) || 0, name: name, k: k, p: has });
+        people++;
+      });
+      if (stu.length) classes.push({ key: ck, students: stu });
+    });
+    if (!n) return { ok: false, msg: '내보낼 사진이 없습니다 — 먼저 «노션에서 사진 가져오기» 를 해 주세요' };
+    const body = JSON.stringify({ v: 1, kind: 'hyewon-nm', at: new Date().toISOString(), classes: classes, photos: photos });
+    const s = await dialog.showSaveDialog(tbWin(e), { title: '폰용 사진 묶음 저장', defaultPath: '이름외우기_폰용사진.json', filters: [{ name: '사진 묶음', extensions: ['json'] }] });
+    if (s.canceled || !s.filePath) return { ok: false, canceled: true, msg: '저장을 취소했습니다' };
+    fs.writeFileSync(s.filePath, body, 'utf8');
+    return { ok: true, saved: [s.filePath], n: n, people: people, mb: Math.round(Buffer.byteLength(body) / 104857.6) / 10, msg: '저장했습니다 — ' + path.basename(s.filePath) };
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
+
 /* ★ 일지에서 한 건 지우기 — 화면에 보이는 항목은 시트 줄 번호를 모른다(CSV 로 받아서).
    그래서 다리의 «find» 로 그 내용이 든 줄을 시트에 직접 묻고, «같은 내용의 n번째» 를 골라
    다리의 «undo»(= 줄 내용이 같을 때만 지움·날짜 줄이면 내용만 비움)로 지운다.
@@ -4628,6 +4662,7 @@ if (!gotLock) {
       save: saveState,
       log: debugLog,
       send: sendToWidget,
+      hasTT: HAS_TT,
       openInBrowser: openInBrowser
     });
     // 명렬표가 아직 없으면 조용히 한 번 받아 둔다

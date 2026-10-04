@@ -229,7 +229,37 @@ async function nrWaitProp(token, pageId, name, opt) {
   return '';
 }
 
+/* ── 학생 INFO 사진 (이름외우기용) ──────────────────────────
+   [DB] '26 혜원학생 INFO 의 «사진» 칸(파일) 중 2·3학년 학생 것을 모은다.
+   ★ 파일 주소는 노션이 잠깐(약 1시간)만 열어 둔다 — 받자마자 쓴다. 주소·사진은 이 PC 밖으로 안 나간다.
+   돌려주는 것: [{ id:'3223', name:'이경언', cls:'3-2', url:'https://…' }] (사진 없는 학생은 뺀다) */
+async function nrStudentPhotos(token) {
+  const dbid = await nrStudentDb(token);
+  const out = [];
+  let cursor = '';
+  for (let guard = 0; guard < 20; guard++) {
+    const body = { page_size: 100, filter: { or: [
+      { property: '학년', select: { equals: '2학년' } }, { property: '학년', select: { equals: '3학년' } }] } };
+    if (cursor) body.start_cursor = cursor;
+    const q = await nrCall(token, 'POST', '/databases/' + dbid + '/query', body);
+    (q.results || []).forEach((pg) => {
+      const p = pg.properties || {};
+      const title = ((p['학번이름'] && p['학번이름'].title) || []).map((x) => x.plain_text || '').join('').trim();
+      const m = title.match(/^(\d{4})\s*(.+)$/);
+      if (!m) return;
+      const files = (p['사진'] && p['사진'].files) || [];
+      const f = files.filter((x) => (x.type === 'file' && x.file && x.file.url) || (x.type === 'external' && x.external && x.external.url))[0];
+      if (!f) return;
+      const url = f.type === 'file' ? f.file.url : f.external.url;
+      out.push({ id: m[1], name: m[2].trim(), cls: m[1].charAt(0) + '-' + m[1].charAt(1), url: url });
+    });
+    if (!q.has_more || !q.next_cursor) break;
+    cursor = q.next_cursor;
+  }
+  return out;
+}
+
 module.exports = { send: nrSend, fetchNote: nrFetchNote, findPage: nrFindPage,
   readProp: nrReadProp, waitProp: nrWaitProp, putNote: nrPutNote, putStudent: nrPutStudent,
   setTitle: nrSetTitle, cutTitle: nrCutTitle,
-  studentDb: nrStudentDb, REC_DB };
+  studentDb: nrStudentDb, studentPhotos: nrStudentPhotos, REC_DB };

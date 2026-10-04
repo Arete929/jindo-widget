@@ -49,6 +49,9 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   tbPhotoGet: (names) => ipcRenderer.invoke('tb-photo-get', names),
   tbPhotoDel: (names) => ipcRenderer.invoke('tb-photo-del', names),
   tbPhotoHas: (names) => ipcRenderer.invoke('tb-photo-has', names),
+  tbPhotoExport: (o) => ipcRenderer.invoke('tb-photo-export', o),
+  tbPhotoNotionList: () => ipcRenderer.invoke('tb-photo-notion-list'),
+  tbPhotoNotionGet: (url) => ipcRenderer.invoke('tb-photo-notion-get', url),
   gradeCats: (g) => ipcRenderer.invoke('grade-cats', g),
   /* 담임 출결 (지비스만 — 메인이 막는다) */
   attList: (cls) => ipcRenderer.invoke('att-list', cls),

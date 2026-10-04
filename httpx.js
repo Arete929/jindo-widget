@@ -22,16 +22,15 @@ function request(opts) {
     req.setHeader('User-Agent', UA);
     if (o.token) req.setHeader('Authorization', 'Bearer ' + o.token);
     if (o.contentType) req.setHeader('Content-Type', o.contentType);
-    req.setHeader('Accept', 'application/json');
+    req.setHeader('Accept', o.binary ? '*/*' : 'application/json');
     Object.keys(o.headers || {}).forEach((k) => req.setHeader(k, o.headers[k]));
 
     req.on('response', (res) => {
       const chunks = [];
       res.on('data', (c) => chunks.push(Buffer.from(c)));
-      res.on('end', () => finish(resolve, {
-        status: res.statusCode,
-        text: Buffer.concat(chunks).toString('utf8')
-      }));
+      res.on('end', () => finish(resolve, o.binary
+        ? { status: res.statusCode, text: '', buf: Buffer.concat(chunks) }   // 그림 내려받기 — 글자로 바꾸지 않는다
+        : { status: res.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
       res.on('error', (e) => finish(reject, e));
     });
     req.on('error', (e) => {
