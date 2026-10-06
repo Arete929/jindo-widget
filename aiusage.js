@@ -1,4 +1,5 @@
-// 파일명: aiusage.js | @version 1.105.0
+// 파일명: aiusage.js | @version 1.105.1
+// v1.105.1 clockAt — «목요일 오후 11:00» 처럼 요일·날짜가 붙은 초기화 문구를 «오늘 23:00» 으로 읽어 주간 초기화가 «46분 남음» 으로 보이던 것 고침(2026-10-06). relMs 는 «10월 8일» 을 «8일 뒤» 로 읽지 않게.
 // 클로드·제미나이 사용량을 위젯이 «직접» 읽어 온다.
 //
 // 어떻게 읽나
@@ -319,21 +320,44 @@ function worker(key) {
      제미나이 «오후 10:00에 초기화» → 오늘(이미 지났으면 내일) 그 시각 */
 function relMs(t) {
   if (!t) return 0;
+  if (/\d+\s*월\s*\d+\s*일/.test(String(t))) return 0;   // «10월 8일 …» 은 날짜다 — «8일 뒤» 로 읽지 않는다(clockAt 이 날짜로 읽는다)
   const d = String(t).match(/(\d+)\s*(?:일|days?)/i);
   const h = String(t).match(/(\d+)\s*(?:시간|hours?|hrs?)/i);
   const m = String(t).match(/(\d+)\s*(?:분|minutes?|mins?)/i);
   return (d ? +d[1] : 0) * 86400000 + (h ? +h[1] : 0) * 3600000 + (m ? +m[1] : 0) * 60000;
 }
 function clockAt(t) {
-  const m = String(t || '').match(/(오전|오후|AM|PM)?\s*(\d{1,2})\s*:\s*(\d{2})\s*(AM|PM)?/i);
+  const s = String(t || '');
+  const m = s.match(/(오전|오후|AM|PM)?\s*(\d{1,2})\s*:\s*(\d{2})\s*(AM|PM)?/i);
   if (!m) return null;
   let h = Number(m[2]);
   const ap = (m[1] || m[4] || '').toUpperCase();
   if (ap === '오후' || ap === 'PM') { if (h < 12) h += 12; }
   if (ap === '오전' || ap === 'AM') { if (h === 12) h = 0; }
+  const min = Number(m[3]);
   const now = new Date();
-  const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, Number(m[3]), 0, 0);
-  if (at.getTime() <= now.getTime()) at.setDate(at.getDate() + 1);   // 이미 지났으면 내일 그 시각
+  /* ★ 주간 한도는 «목요일 오후 11:00» 처럼 요일이 붙어 온다 — 시각만 읽으면 «오늘 23:00» 이 되어
+       목요일 초기화가 «46분 남음» 으로 보이던 문제(2026-10-06). 날짜·요일이 있으면 그것을 따른다. */
+  const md = s.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
+  if (md) {                                                          // 10월 8일 오후 11:00
+    const at = new Date(now.getFullYear(), Number(md[1]) - 1, Number(md[2]), h, min, 0, 0);
+    if (at.getTime() <= now.getTime()) at.setFullYear(at.getFullYear() + 1);
+    return at.getTime();
+  }
+  let dow = -1;
+  const ko = s.match(/([일월화수목금토])\s*요일/) || s.match(/(?:^|[\s(])([일월화수목금토])(?=[\s)\d]|오전|오후|$)/);
+  if (ko) dow = '일월화수목금토'.indexOf(ko[1]);
+  else {
+    const en = s.match(/\b(sun|mon|tue|wed|thu|fri|sat)[a-z]*\b/i);
+    if (en) dow = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(en[1].toLowerCase());
+  }
+  const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, min, 0, 0);
+  if (dow >= 0) {                                                    // 목요일 오후 11:00 → 다가오는 목요일(오늘이 목요일이고 아직 안 지났으면 오늘)
+    at.setDate(at.getDate() + ((dow - now.getDay() + 7) % 7));
+    if (at.getTime() <= now.getTime()) at.setDate(at.getDate() + 7);
+    return at.getTime();
+  }
+  if (at.getTime() <= now.getTime()) at.setDate(at.getDate() + 1);   // 요일이 없으면: 이미 지났으면 내일 그 시각
   return at.getTime();
 }
 function enrich(x) {
