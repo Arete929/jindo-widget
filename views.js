@@ -724,6 +724,92 @@ function cmWeekName(src) {
   if (g === 1) return '다음 주';
   return src && src.start ? cmDate(src.start, 0) + ' 주' : '이번 주';
 }
+/* ── 학년 시간표 ─────────────────────────────────────────────
+   «학급 시간표» 는 한 반의 일주일, «학년 시간표» 는 한 학년 전체를 한 시간 단위로 본다.
+   학년을 고르고 요일×교시 칸을 누르면 → 그 시간에 그 학년 모든 반의 과목·교과교사가 나온다. 같은 자료(d.classes)라 새로 받는 것은 없다. */
+var cmView = 'cls';                    // cls = 한 반 · grade = 한 학년 전체
+var cmGT = { di: -1, p: 0 };           // 고른 칸(요일 번호 0=월, 교시 1~)
+function cmGtShort(s) { s = String(s || '').trim(); return s.length > 2 ? s.slice(0, 2) : s; }
+/* 한 학년·요일 번호·교시의 모든 반 칸 → [{ cls, subject, teacher }] (빈 반은 뺀다) */
+function cmGtItems(g, di, p) {
+  var out = [];
+  (g.classes || []).forEach(function (c) {
+    var dy = (c.days || [])[di], x = dy && (dy.periods || [])[p - 1];
+    if (x && (x.subject || x.teacher)) out.push({ cls: c.cls, subject: String(x.subject || ''), teacher: String(x.teacher || '') });
+  });
+  return out;
+}
+function cmGtBySubject(items) {
+  var by = {}, order = [];
+  items.forEach(function (x) { var k = x.subject || '(과목 없음)'; if (!by[k]) { by[k] = []; order.push(k); } by[k].push(x); });
+  return order.map(function (k) { return { subject: k, items: by[k] }; }).sort(function (a, b) { return b.items.length - a.items.length; });
+}
+function cmGtMaxP(g) {
+  var m = 1;
+  (g.classes || []).forEach(function (c) { (c.days || []).forEach(function (d) { m = Math.max(m, (d.periods || []).length); }); });
+  return m;
+}
+/* 처음 열면 «지금» — 이번 주면 오늘의 현재(또는 다음) 교시, 아니면 월요일 1교시 */
+function cmGtDefault(g, src, times) {
+  var days = ((g.classes && g.classes[0] && g.classes[0].days) || []).length;
+  var di = (new Date().getDay() + 6) % 7;
+  if (cmWeekGap(src.start) !== 0 || di > 4 || di >= days) { cmGT.di = 0; cmGT.p = 1; return; }
+  var now = new Date(), mm = now.getHours() * 60 + now.getMinutes(), p = 1;
+  for (var i = 1; i <= cmGtMaxP(g); i++) {
+    var t = String((times || {})[i] || '').match(/^(\d+):(\d+)/);
+    if (t && mm >= Number(t[1]) * 60 + Number(t[2])) p = i;
+  }
+  /* 그 시간이 모든 반 비어 있으면 가까운 수업 시간으로 — 뒤쪽 먼저, 없으면 앞쪽 */
+  if (!cmGtItems(g, di, p).length) {
+    var q, maxP = cmGtMaxP(g);
+    for (q = p + 1; q <= maxP && !cmGtItems(g, di, q).length; q++);
+    if (q > maxP) for (q = p - 1; q >= 1 && !cmGtItems(g, di, q).length; q--);
+    if (q >= 1 && q <= maxP) p = q;
+  }
+  cmGT.di = di; cmGT.p = p;
+}
+function cmGradeBlock(src, g, times) {
+  var days = ((g.classes && g.classes[0] && g.classes[0].days) || []), maxP = cmGtMaxP(g);
+  if (!days.length) return '<div class="empty">이 학년의 시간표가 없습니다.</div>';
+  if (cmGT.di < 0 || cmGT.di >= days.length || !cmGT.p) cmGtDefault(g, src, times);
+  if (cmGT.p > maxP) cmGT.p = maxP;
+  var tdyDi = cmWeekGap(src.start) === 0 ? (new Date().getDay() + 6) % 7 : -1;
+  var h = '<table class="gr gtab"><thead><tr><th class="pc"></th>' + days.map(function (d, i) {
+    var dt = cmDate(src.start, i);
+    return '<th' + (i === tdyDi ? ' class="tdy"' : '') + '>' + esc(d.dow) + (dt ? '<small>' + dt + '</small>' : '') + '</th>';
+  }).join('') + '</tr></thead><tbody>';
+  for (var p = 1; p <= maxP; p++) {
+    h += '<tr><td class="pc">' + p + (times && times[p] ? '<small>' + esc(times[p]) + '</small>' : '') + '</td>';
+    days.forEach(function (d, di) {
+      var items = cmGtItems(g, di, p), sel = cmGT.di === di && cmGT.p === p;
+      var klass = 'c gt' + (sel ? ' sel' : '') + (items.length ? '' : ' none');
+      var inner = '';
+      if (items.length) {
+        var by = cmGtBySubject(items);
+        inner = '<b>' + esc(cmGtShort(by[0].subject)) + '</b>'
+          + (by.length === 1 ? (items.length > 1 ? '<u>전 학급</u>' : '') : '<u>+' + (by.length - 1) + '</u>');
+      }
+      h += '<td class="' + klass + '" data-gt="' + di + '|' + p + '" title="' + esc(d.dow + ' ' + p + '교시') + '">' + inner + '</td>';
+    });
+    h += '</tr>';
+  }
+  h += '</tbody></table>';
+  /* 아래 — 고른 칸의 반별 과목·교과교사 */
+  var items2 = cmGtItems(g, cmGT.di, cmGT.p), dow = (days[cmGT.di] || {}).dow || '';
+  h += '<div class="gtd"><div class="gth">' + g.grade + '학년 · ' + esc(dow) + '요일 ' + cmGT.p + '교시'
+    + (times && times[cmGT.p] ? ' · ' + esc(times[cmGT.p]) + ' 시작' : '') + '</div>';
+  if (!items2.length) return h + '<div class="empty" style="padding:6px 0">이 시간에는 수업이 없어요</div></div>';
+  h += items2.map(function (x) {
+    return '<div class="gtr"><span class="gtk">' + g.grade + '-' + x.cls + '</span><b>' + esc(x.subject) + '</b><span class="gtt">' + esc(x.teacher) + '</span></div>';
+  }).join('');
+  var by2 = cmGtBySubject(items2);
+  if (by2.some(function (s) { return s.items.length > 1; })) {
+    h += '<div class="gts">' + by2.map(function (s) {
+      return '<span><i>' + esc(s.subject) + '</i> ' + s.items.map(function (x) { return g.grade + '-' + x.cls; }).join('·') + '</span>';
+    }).join('') + '</div>';
+  }
+  return h + '</div>';
+}
 function cmTable(days, cell, start) {
   var maxP = 1;
   days.forEach(function (d) { maxP = Math.max(maxP, (d.periods || []).length); });
@@ -819,17 +905,27 @@ function viewComci() {
     h += '<div class="cmcol">';
     var gsel = d.classes.filter(function (g) { return g.grade === cmGrade; })[0] || d.classes[0];
     cmGrade = gsel.grade;
-    h += '<div class="cmh">학급 시간표</div>';
+    h += '<div class="cmh">' + (cmView === 'grade' ? '학년 시간표' : '학급 시간표') + '</div>';
+    h += '<div class="wknav"><span class="slab">보기</span>'
+      + '<button class="wkb' + (cmView === 'cls' ? ' now' : '') + '" data-cm="cls" title="한 반의 일주일">학급</button>'
+      + '<button class="wkb' + (cmView === 'grade' ? ' now' : '') + '" data-cm="grade" title="한 학년 전체 — 요일·교시 칸을 누르면 반별 과목·교사">학년</button></div>';
     h += '<div class="wknav">'
       + d.classes.map(function (g) {
           return '<button class="wkb' + (g.grade === cmGrade ? ' now' : '') + '" data-cg="' + g.grade + '">'
             + g.grade + '학년</button>';
         }).join('')
-      + '<span class="spacer"></span>'
+      + (cmView === 'grade' ? '' : '<span class="spacer"></span>'
       + gsel.classes.map(function (c) {
           return '<button class="wkb' + (c.cls === cmCls ? ' now' : '') + '" data-cc="' + c.cls + '">'
             + c.cls + '반</button>';
-        }).join('') + '</div>';
+        }).join('')) + '</div>';
+    if (cmView === 'grade') {                      // 학년 시간표 — «함께» 에서는 이번 주(첫 주)만
+      var gsrc = weeks[0];
+      var gg0 = (gsrc.classes || []).filter(function (g) { return g.grade === gsel.grade; })[0];
+      if (wk === 2) h += '<div class="cmwk">' + esc(cmWeekName(gsrc)) + '<small>' + esc(cmDate(gsrc.start, 0) + ' ~ ' + cmDate(gsrc.start, 4)) + '</small></div>';
+      h += gg0 ? cmGradeBlock(gsrc, gg0, d.times) : '<div class="empty">이 주에는 이 학년 자료가 없습니다.</div>';
+      return h + '</div></div>';
+    }
     var cl = gsel.classes.filter(function (c) { return c.cls === cmCls; })[0] || gsel.classes[0];
     cmCls = cl.cls;
     weeks.forEach(function (src) {
@@ -7555,6 +7651,7 @@ widgetAPI.onData(function (p) {
   }
   if (p.easyFav) EASYFAV = p.easyFav;
   if (p.comciSide) cmSide = p.comciSide === 'row' ? 'row' : 'col';
+  if (p.comciView) cmView = p.comciView === 'grade' ? 'grade' : 'cls';
   if (p.sys) {
     SYSSHOW = !!p.sys.show;
     SYS = p.sys.data || null;
@@ -7640,6 +7737,19 @@ function wireViews(app) {
   app.querySelectorAll('[data-gwk]').forEach(function (b) {
     b.addEventListener('click', function () {
       gWeekOff += Number(b.dataset.gwk) || 0; render();
+    });
+  });
+  // 컴시간 «학급 / 학년» 보기 · 학년 시간표 칸 고르기
+  app.querySelectorAll('[data-cm]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      cmView = b.dataset.cm === 'grade' ? 'grade' : 'cls'; cmGT.di = -1;
+      widgetAPI.setUi({ comciView: cmView });
+      render();
+    });
+  });
+  app.querySelectorAll('[data-gt]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var a = b.dataset.gt.split('|'); cmGT.di = Number(a[0]); cmGT.p = Number(a[1]); render();
     });
   });
   var gn = app.querySelector('#gNow');
@@ -8162,7 +8272,7 @@ function wireViews(app) {
         render(); return;
       }
       if (b.dataset.cg) {
-        cmGrade = Number(b.dataset.cg); cmCls = 1;
+        cmGrade = Number(b.dataset.cg); cmCls = 1; cmGT.di = -1;
         widgetAPI.setComciPick({ grade: cmGrade, cls: cmCls });   // 마지막으로 본 반을 기억
         render(); return;
       }

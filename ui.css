@@ -1248,6 +1248,24 @@
   .cmwrap.row { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: flex-start; }
   .cmwrap.row > .cmcol { flex: 1 1 300px; min-width: 0; }
   .cmwrap.row > .cmcol .cmh { margin-top: 0; }
+  /* ── 학년 시간표(컴시간) — 칸을 누르면 아래에 반별 과목·교사 ── */
+  .gr.gtab td.pc small { display: block; font-size: calc(7.5px * var(--wf) * var(--grz, 1)); font-weight: 600; color: var(--dim); }
+  .gr td.gt { background: var(--card2); color: var(--fg); cursor: pointer; height: calc(38px * var(--wf) * var(--grz, 1)); }
+  .gr td.gt:hover { background: color-mix(in srgb, var(--now) 12%, var(--card2)); }
+  .gr td.gt b { color: var(--fg); }
+  .gr td.gt u { color: var(--dim); opacity: 1; font-weight: 700; }
+  .gr td.gt.none { background: transparent; cursor: default; }
+  .gr td.gt.sel { box-shadow: inset 0 0 0 2px var(--now); background: color-mix(in srgb, var(--now) 18%, var(--card2)); }
+  .gr thead th.tdy { background: color-mix(in srgb, var(--now) 22%, var(--card2)); }
+  .gtd { margin-top: 8px; padding: 8px 10px; border-radius: 9px; background: var(--card); }
+  .gtd .gth { font-size: 11.5px; font-weight: 800; margin-bottom: 4px; }
+  .gtr { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); font-size: 11.5px; }
+  .gtr:first-of-type { border-top: 0; }
+  .gtr .gtk { flex: none; min-width: 34px; text-align: center; padding: 1px 6px; border-radius: 999px; background: var(--card2); font-weight: 800; color: var(--fg2); }
+  .gtr b { flex: 1 1 auto; min-width: 0; font-weight: 800; }
+  .gtr .gtt { flex: none; color: var(--fg2); font-weight: 600; }
+  .gts { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); font-size: 10.5px; color: var(--dim); }
+  .gts i { font-style: normal; font-weight: 800; color: var(--fg2); margin-right: 2px; }
   /* ── 날씨·미세먼지 띠 ─────────────────────────────────────
      아침에 실내수업을 정할 때 보는 것이라 «늘 보이는» 자리에 둔다.
      띠 전체가 단추다 — 누르면 다시 받는다. */
