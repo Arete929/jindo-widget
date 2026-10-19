@@ -1,5 +1,5 @@
 // 파일명: main.js | @version 2.10.9
-// 수정요약: v2.10.23 AI 사용량 초기화 — «목요일 오후 11:00» 을 오늘 23:00 으로 읽던 오류(aiusage.js clockAt) / v2.10.22 학생이름외우기 «한 바퀴»(중복 없이)·틀린 학생만 다시 / v2.10.21 폰용 사진 묶음 내보내기(tb-photo-export — 학급 명단+줄인 사진을 JSON 한 파일로, 지비스 모바일(jivis_mobile)이 불러간다·지비스 전용) / 학생이름외우기 «노션에서 사진 가져오기»(지비스 전용, recordsmain tb-photo-notion-*) · 혜원이지에서는 학생이름외우기를 뺌. / v2.10.9 도구상자 PDF — 영역 자르기(crop)·회전·대칭(flip)·균등 분할(splitn), 반별 «사진 N명»(tb-photo-has). / v2.10.8 이름외우기 사진 — tb-photo-pick/read/save/get/del(이 PC userData	b-photos 에만 저장). / v2.10.7 도구상자 IPC — PDF(합치기·나누기·쪽 뽑기·지우기·돌리기·그림→PDF)·QR 만들기/저장/복사(pdf-lib·qrcode). / v2.10.6 grade-del — 학년부 일지 일정 삭제(다리 find 로 줄을 찾아 undo 로 지움, 같은 내용 개수가 어긋나면 안 지움). / v2.10.5 컴시간 설정 기본값 — 혜원이지는 처음부터 학급 시간표도 보이게(wantClasses 미설정이면 혜원이지만 켬, 이미 고른 값은 그대로). / v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
+// 수정요약: v2.10.38 혜원이지도 주간업무 표(부서 제목 아래 데이터 표)가 한 줄씩 풀려 보이던 것을 같이 고침(worknotice 1.115.2). 사용량 «계정» 줄은 지비스 전용이라 혜원이지 설정에는 안 보이게(data-only=jinho). / v2.10.37 사용량 웹앱(폰)에도 로그인한 계정을 보냄 — phonesync.slimAi 가 이메일 꼴일 때만·로그아웃이 아닐 때만 account 를 담는다(전체 주소는 개인 열쇠로 올리는 길로만, 공개 읽기 열쇠로는 중계가 가려서 내려 줌: usage-relay 1.2.0, 웹앱 1.4.0). / v2.10.36 사용량 계정을 «설정 → 사용량» 에 «계정» 줄(서비스별 이메일·계정 바꾸기·로그인하기, 로그인이 끝나면 저절로 갱신)로 보이고, 위쪽 작은 띠에도 서비스 이름 밑에 계정을 붙임(usage-snapshot). / v2.10.35 사용량 — 클로드·제미나이(·ChatGPT)가 «어느 계정으로» 읽히는지 카드에 보이고(한 번 읽은 계정은 기억), «계정 바꾸기» 로 그 서비스만 로그아웃하고 다른 계정으로 다시 로그인(서비스마다 로그인 칸이 따로라 서로 다른 계정 가능)(aiusage 1.106.0, usage-switch). / v2.10.34 주간업무 — 부서 제목 아래 데이터 표(생활상담부 교육 일정 등)가 칸마다 한 줄로 풀어져 보이던 것을 표 그대로 보이게(worknotice 1.115.2, PARSE_VER 4). / v2.10.33 증빙을 드라이브에 올릴 때 큰 사진은 1600px JPEG 으로 줄여서 올린다(원본은 이 PC 에 그대로 — 폰에서 바로 열리고 드라이브도 덜 찬다). / v2.10.32 지비스 출결 증빙 — 칩을 누르면 미리보기 창(att-file-url)·이름 바꾸기(att-file-rename)·붙일 때 자동 이름(학번이름_YYMMDD_(교시)유형_증빙서류)·구글 드라이브(학교 계정 «지비스 출결 증빙서류» 폴더)에도 보관(drivebox.js, shared.json 의 photoRelay). / v2.10.31 혜원이지의 «업데이트 내역» 에서 지비스 전용 덩어리(굵은 제목에 «지비스» 만 있는 것)를 감춤(notesForFlavor) / v2.10.30 ★출결 «증빙» 칸 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기·끌어다 놓기·첨부(이 PC 보관, attfiles.js) → «노션으로» 때 노션 «증빙서류» 파일 칸에 함께 올림(큰 파일은 나눠서, 이미 있는 기록엔 증빙만 더하기) / v2.10.29 출결 노션 보내기에 «시간» 칸(시트의 시간·정문확인)도 함께 + 연결 안내 문구 / v2.10.28 ★출결 «노션으로» — 현재까지의 출결을 노션 [DB]’26 3-2 출결 로 바로 보내기(미리 읽어 보이고 → 확인하면 만듦, 이미 있는 것은 건너뜀; notionatt.js·att-notion) / v2.10.27 ★지비스 «이번주» = 수업진도 웹앱의 시간표계획 주간표 + 1주·지난+이번·이번+다음·3주 나란히 보기(가로, 세로 창이면 위아래; dash-week-mode) / v2.10.26 도구상자의 도구마다 크게·작게 단추(A− 100% A+, tbz_*, 도구별로 기억) / v2.10.25 사진 줄이기 화면이 왼쪽 좁은 칸에 갇혀 나오던 것(틀 .tbpdf → .tbimwrap) / v2.10.24 ★도구상자 «사진 줄이기» — 폴더·사진을 고르거나 끌어다 놓으면 새 폴더에 줄여 저장(나이스 고입 200KB 등, tb-img-* · imgshrink.js: 무손실 정리→mozjpeg→Lanczos) / ★날이 바뀌면 수업진도 화면(숨은 일꾼 창·진호 시간표 탭)을 새로 불러옴 — 웹앱이 «오늘·이번 주 월요일» 을 열 때 한 번만 정해서, 지난주에 켠 채 두면 10/12 에도 지난주(대체공휴일) 달력으로 «휴업일·오늘 수업 0개» 가 나왔다 / 컴시간 다음 주 시간표(이번 주/다음 주/함께 보기) + 시간표 요일 머리에 날짜(comcigan.js v1.2.0 · views.js v2.5.0) / v2.10.23 AI 사용량 초기화 — «목요일 오후 11:00» 을 오늘 23:00 으로 읽던 오류(aiusage.js clockAt) / v2.10.22 학생이름외우기 «한 바퀴»(중복 없이)·틀린 학생만 다시 / v2.10.21 폰용 사진 묶음 내보내기(tb-photo-export — 학급 명단+줄인 사진을 JSON 한 파일로, 지비스 모바일(jivis_mobile)이 불러간다·지비스 전용) / 학생이름외우기 «노션에서 사진 가져오기»(지비스 전용, recordsmain tb-photo-notion-*) · 혜원이지에서는 학생이름외우기를 뺌. / v2.10.9 도구상자 PDF — 영역 자르기(crop)·회전·대칭(flip)·균등 분할(splitn), 반별 «사진 N명»(tb-photo-has). / v2.10.8 이름외우기 사진 — tb-photo-pick/read/save/get/del(이 PC userData	b-photos 에만 저장). / v2.10.7 도구상자 IPC — PDF(합치기·나누기·쪽 뽑기·지우기·돌리기·그림→PDF)·QR 만들기/저장/복사(pdf-lib·qrcode). / v2.10.6 grade-del — 학년부 일지 일정 삭제(다리 find 로 줄을 찾아 undo 로 지움, 같은 내용 개수가 어긋나면 안 지움). / v2.10.5 컴시간 설정 기본값 — 혜원이지는 처음부터 학급 시간표도 보이게(wantClasses 미설정이면 혜원이지만 켬, 이미 고른 값은 그대로). / v2.10.4 attFields 에 r(출결 시트 줄 번호)을 실어 보냄 — 내용이 완전히 같은 줄이
 //   둘 이상이면 id·날짜·유형·사유만으론 못 가르던 것, 다리가 받으면 그걸로 가를 수 있게(views.js
 //   2.4.7 과 짝). /
 // v2.10.3 인쇄 후 미리보기·브라우저 창 자동으로 닫기 — 제 인쇄창(Electron)으로 실제 보냈을 때,
@@ -54,6 +54,8 @@ const aiusage = require('./aiusage.js');
 const phonesync = require('./phonesync.js');   // 폰 사용량 앱으로 올리기(지비스 전용)
 const recordsmain = require('./recordsmain.js');
 const notion = require('./notion.js');
+const notionatt = require('./notionatt.js');   // 출결 → 노션 [DB]’26 3-2 출결 (지비스 전용)
+const attfiles = require('./attfiles.js');    // 출결 증빙서류 보관함 (지비스 전용, 이 PC)
 const ticktick = require('./ticktick.js');
 const backup = require('./backup.js');
 const roster = require('./roster.js');
@@ -257,7 +259,9 @@ function getFontScale() {
   const v = loadState().fontScale;
   /* ★ 여기 없는 이름은 저장이 통째로 무시된다 — usage·task·tt 가 빠져 있었다(2026-09-04) */
   const out = { work: 1, comci: 1, cal: 1, meal: 1, rec: 1, home: 1, note: 1, link: 1,
-    grid: 1, office: 1, usage: 1, task: 1, tt: 1, att: 1 };
+    grid: 1, office: 1, usage: 1, task: 1, tt: 1, att: 1,
+    /* 도구상자의 도구마다 «크게·작게» (toolbox.js tbz) */
+    tbz_pdf: 1, tbz_im: 1, tbz_rnd: 1, tbz_qr: 1, tbz_tm: 1, tbz_nm: 1, tbz_cal: 1, tbz_sc: 1, tbz_gr: 1 };
   if (v && typeof v === 'object') {
     Object.keys(out).forEach((k) => {
       const n = Number(v[k]);
@@ -972,13 +976,47 @@ function saveNotes(version, notes) {
 function loadNotes() {
   try { return JSON.parse(fs.readFileSync(notesFile, 'utf-8')); } catch (e) { return null; }
 }
+/* ★ 지비스·혜원이지는 «같은 릴리스» 를 쓴다 — 그래서 지비스에만 있는 기능(노션·진호 시간표…) 이 혜원이지의
+   «업데이트 내역» 에도 떴다(2026-10-12). 혜원이지에서는 보여 줄 때 지비스 전용 덩어리를 뺀다.
+   약속: 릴리스 설명에서 «지비스 전용» 덩어리는 «굵은 제목 줄»(**지비스 — …**) 로 시작한다 — 그 제목에
+   «지비스» 만 있고 «혜원이지» 는 없으면, 다음 제목 줄이 나올 때까지(그 뒤의 문단·목록 모두) 혜원이지에서는 감춘다.
+   GitHub 이 내려주는 HTML(<h2>·<p><strong>…</strong></p>·<ul>)과 글(마크다운) 둘 다 읽는다. */
+function notesForFlavor(text) {
+  text = String(text || '');
+  if (HAS_TT || !text) return text;
+  const plainOf = (h) => String(h).replace(/<[^>]+>/g, '').replace(/\*\*/g, '').replace(/^#+\s*/, '').trim();
+  const jinhoOnly = (title) => /지비스/.test(title) && !/혜원이지/.test(title);
+  let blocks, isHead;
+  if (/<(h[1-6]|p|ul|ol)[\s>]/i.test(text)) {                       // HTML
+    blocks = text.match(/<(h[1-6]|p|ul|ol|blockquote)[^>]*>[\s\S]*?<\/\1>/gi) || [text];
+    isHead = (b) => /^<h[1-6]/i.test(b) || /^<p>\s*<strong>[\s\S]*<\/strong>\s*<\/p>$/i.test(b);
+  } else {                                                            // 글
+    blocks = text.split(/\n/);
+    isHead = (b) => /^\s*#{1,6}\s+\S/.test(b) || /^\s*\*\*[^*]+\*\*\s*$/.test(b);
+  }
+  const out = []; let skip = false, body = 0;
+  blocks.forEach((b) => {
+    if (isHead(b)) {
+      const t = plainOf(b);
+      if (/^v?\d+\.\d+\.\d+/.test(t)) { skip = false; out.push(b); return; }   // «v2.10.30» 같은 판 제목은 늘 남긴다
+      skip = jinhoOnly(t);
+      if (!skip) out.push(b);
+      return;
+    }
+    if (skip) return;
+    if (plainOf(b)) body++;
+    out.push(b);
+  });
+  return body ? out.join('\n') : '';                                  // 보여 줄 알맹이가 없으면 아예 안 띄운다
+}
 /* 이 버전 것을 아직 안 봤으면 띄운다 */
 function notesToShow() {
   const n = loadNotes();
   if (!n || !n.text) return null;
   if (n.version !== app.getVersion()) return null;
   if (!showNotes && loadState().seenNotesVersion === app.getVersion()) return null;
-  return n;
+  const text = notesForFlavor(n.text);
+  return text ? Object.assign({}, n, { text }) : null;
 }
 
 autoUpdater.autoDownload = true;
@@ -1087,6 +1125,7 @@ function getWorkerWindow() {
     webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false }
   });
   workerWin.on('closed', () => { workerWin = null; });
+  workerDayKey = localYmd();
   /* ★ ?widgetworker=1 — 웹이 이 표식을 보면 로그인·캐시를 «메모리 전용» 으로 돌린다.
      보안 프로그램 격리가 저장창고(IndexedDB)를 손상시켜 로그인이 몇 초 만에 풀리던
      문제(2026-09-01 실측)의 뿌리 해결 — 디스크에 저장할 것 자체를 없앤다. */
@@ -1101,6 +1140,24 @@ function getWorkerWindow() {
   return workerWin;
 }
 
+/* ★ 수업진도 웹앱은 «오늘(TODAY)·이번 주 월요일(thisMonday)» 을 페이지를 열 때 «한 번만» 정한다
+   (2026-10-12 실측: 지난주에 켠 창이 밤새·주말 내내 떠 있다가 월요일 아침에도 10/5 주 달력을 써서
+   «휴업일 · 대체공휴일(개천절) / 오늘 수업 0개» 가 나왔고, 진호 시간표 탭도 10/5~10/9 주였다).
+   웹앱을 고치는 것은 그쪽 일이고, 여기서는 «날이 바뀌면 두 화면을 새로 불러오는» 것으로 막는다. */
+function localYmd() {
+  const d = new Date(), z = (n) => (n < 10 ? '0' : '') + n;
+  return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate());
+}
+let workerDayKey = '';           // 숨은 일꾼 창을 불러온 날
+let lastStaleReload = 0;         // 달력이 낡았다고 보고 새로 부른 마지막 때
+function reloadForNewDay(win, why) {
+  workerDayKey = localYmd();
+  lastStaleReload = Date.now();
+  debugLog('수업진도 화면을 새로 불러옴 — ' + why);
+  try { win.webContents.reloadIgnoringCache(); } catch (e) { /* 무시 */ }
+  dashFreshen(why).catch(() => { /* 탭을 안 봤으면 얹은 화면이 없다 */ });
+}
+
 let lastPollDone = Date.now();   // 심장 도장 — pollOnce 가 «끝난» 마지막 때
 async function pollOnce() {
   // ★ 시간표가 없는 판(혜원 데스크·혜원이지)은 수업진도를 아예 안 쓴다.
@@ -1109,6 +1166,7 @@ async function pollOnce() {
   if (!HAS_TT) return;
   const win = getWorkerWindow();
   try {
+    if (workerDayKey && workerDayKey !== localYmd()) { reloadForNewDay(win, '날이 바뀜'); return; }
     const data = await win.webContents.executeJavaScript(
       'window.__widgetData ? window.__widgetData() : { ready:false, noFn:true }', true);
     if (!data) return;
@@ -1142,6 +1200,13 @@ async function pollOnce() {
       return;
     }
     if (!data.ready) return;                 // 아직 자료를 불러오는 중
+    /* 안전망: 평일인데 «이번 주» 표에 오늘 날짜가 없으면 달력이 낡은 것이다(5분에 한 번만 새로 부른다) */
+    if (data.weekday && Array.isArray(data.week) && data.week.length
+        && !data.week.some((w) => w && w.date === data.date)
+        && Date.now() - lastStaleReload > 5 * 60 * 1000) {
+      reloadForNewDay(win, '이번 주 표에 오늘(' + data.date + ')이 없음');
+      return;
+    }
     lastData = data;
     debugLog(`값 갱신 ok — 오늘 수업 ${(data.lessons || []).length}개`);
     sendToWidget();
@@ -1172,6 +1237,8 @@ function sendToWidget() {
     usage: { show: getUsageShow(), on: getUsageOn(), style: getUsageStyle(), panel: getUsagePanel(),
              data: aiusage.snapshot() },
     comciPick: loadState().comciPick || null,
+    dashWeekMode: DASH_WEEK_MODES.includes(loadState().dashWeekMode) ? loadState().dashWeekMode : 'one',
+    attNotionAt: HAS_TT ? String(loadState().attNotionAt || '') : '',
     comciSide: loadState().comciSide === 'row' ? 'row' : 'col',
     grade: { on: getGradeOn(), sheets: getGradeSheets() },
     wx: { show: getWxShow(), spot: getWxSpot(), data: wxData },
@@ -2149,7 +2216,7 @@ async function refreshDashVer(force) {
     }
   } catch (e) { debugLog('수업진도 웹앱 판을 못 읽음 — ' + ((e && e.message) || e)); }
 }
-const DASH_SCREENS = { plan: 'plan', daily: 'daily', grid: 'grid' };
+const DASH_SCREENS = { plan: 'plan', daily: 'daily', grid: 'grid', week: 'plan' };   // week = 시간표계획의 «주간 시간표» 만 (이번주 탭)
 
 function dashDetach() {
   if (!dashView) return;
@@ -2164,14 +2231,62 @@ function dashDestroy() {
   dashView = null; dashScreen = '';
 }
 /* 그 앱 안에서 화면을 갈아 끼운다 — 위쪽 탭 단추를 눌러 주는 것과 같다 */
+/* ── 이번주 화면(시간표계획의 주간표만) ──────────────────────────────
+   ★ 웹앱의 주간표는 «지난주 표 · 이번주 표 · 다음주 표»(#ttPrev · #ttTable · #ttNext)가 위아래로 쌓인다.
+     여기서는 세 덩어리를 한 줄(#jvRow)에 묶어 «가로로 나란히» 놓고, 창이 세로로 길면(CSS 미디어쿼리) 다시 위아래로 쌓는다.
+     웹앱의 함수·아이디는 건드리지 않고 «자리만» 옮긴다 — 표는 그대로 웹앱이 그린다. */
+const DASH_WEEK_MODES = ['one', 'pn', 'nn', 'three'];   // 1주 · 지난+이번 · 이번+다음 · 지난+이번+다음
+function dashWeekPrepJs(weekOnly) {
+  return '(function(){try{'
+    + 'var tt=document.getElementById("ttTable"); if(!tt) return "nodom";'
+    + 'var sec=tt.closest("section"); if(sec) sec.classList.add("jv-keep");'
+    + 'if(!document.getElementById("jvRow")){'
+    + ' var prev=document.getElementById("ttPrev"), nt=document.getElementById("ttNowTitle"), cap=document.getElementById("ttCap"),'
+    + ' wrap=tt.closest(".ttwrap"), next=document.getElementById("ttNext");'
+    + ' if(!prev||!nt||!cap||!wrap||!next) return "nopart";'
+    + ' var row=document.createElement("div"); row.id="jvRow"; var box=document.createElement("div"); box.id="ttNowBox";'
+    + ' prev.parentNode.insertBefore(row, prev);'
+    + ' row.appendChild(prev); box.appendChild(nt); box.appendChild(cap); box.appendChild(wrap); row.appendChild(box); row.appendChild(next);'
+    + '}'
+    + 'document.body.classList.toggle("jv-weekonly", ' + (weekOnly ? 'true' : 'false') + ');'
+    + 'return "ok";}catch(e){return "err "+e.message;}})()';
+}
 function dashGo(screen) {
   if (!dashView) return;
   const v = DASH_SCREENS[screen] || 'plan';
   dashView.webContents.executeJavaScript(
     '(function(){var b=document.querySelector(\'[data-view="' + v + '"]\');'
-    + 'if(b){ b.click(); return true; } return false; })()', true)
+    + 'if(b){ b.click(); } var r=' + dashWeekPrepJs(screen === 'week') + '; return (b?"btn":"nobtn")+"/"+r;})()', true)
+    .then((r) => { debugLog('수업진도 화면 «' + screen + '» 준비: ' + r); if (screen === 'week') dashApplyWeekMode(0); })
     .catch(() => { /* 아직 안 떴으면 다 뜬 뒤에 다시 부른다 */ });
 }
+/* 고른 «몇 주 보기» 를 웹앱의 펼치기 단추에 반영하는 스크립트 */
+function dashWeekModeJs(m) {
+  const wantPrev = (m === 'pn' || m === 'three'), wantNext = (m === 'nn' || m === 'three');
+  const n = (wantPrev ? 1 : 0) + (wantNext ? 1 : 0) + 1;     // 나란히 보는 주 수 — 2주·3주는 표를 줄여 한눈에 들어오게(CSS)
+  return '(function(){try{'
+    + 'document.body.classList.remove("jv-n1","jv-n2","jv-n3"); document.body.classList.add("jv-n' + n + '");'
+    + 'var P=document.getElementById("wkStackPrev"), N=document.getElementById("wkStackNext");'
+    + 'if(!P||!N||!window.__weekSync||!window.__widgetData) return "wait";'
+    + 'var d=window.__widgetData(); if(!d||!d.ready) return "wait";'
+    + 'var on=function(b){return b.getAttribute("data-active")==="1";};'
+    + 'if(on(P)!==' + wantPrev + ') P.click();'
+    + 'if(on(N)!==' + wantNext + ') N.click();'
+    + 'return "ok";}catch(e){return "err";}})()';
+}
+/* 자료가 다 오기 전이면 잠시 뒤 다시 한다 */
+function dashApplyWeekMode(tries) {
+  if (!dashView || dashView.webContents.isDestroyed() || dashScreen !== 'week') return;
+  const m = DASH_WEEK_MODES.includes(loadState().dashWeekMode) ? loadState().dashWeekMode : 'one';
+  dashView.webContents.executeJavaScript(dashWeekModeJs(m), true)
+    .then((r) => { if (r === 'wait' && tries < 14) setTimeout(() => dashApplyWeekMode(tries + 1), 1500); else debugLog('수업진도 몇 주 보기 «' + m + '»: ' + r + ' (시도 ' + (tries + 1) + ')'); })
+    .catch(() => { if (tries < 14) setTimeout(() => dashApplyWeekMode(tries + 1), 1500); });
+}
+ipcMain.on('dash-week-mode', (_e, m) => {
+  const mode = DASH_WEEK_MODES.includes(m) ? m : 'one';
+  saveState({ dashWeekMode: mode });
+  dashApplyWeekMode(0);
+});
 /* 로그인이 필요하면 숨은 창과 같은 방법으로 이어 붙인다 */
 /* 얹은 화면 로그인 — 한 번 해 보고 마는 것이 아니라 관문이 걷힐 때까지 지켜본다.
    ★ 이 창(?widgetworker=1)의 auth 는 디스크에 아무것도 안 남기려고
@@ -2275,7 +2390,15 @@ function dashSkin(c) {
     + (fg ? 'body{color:' + fg + '}' : '')
     + (line ? '::-webkit-scrollbar-thumb{background:' + line + '!important}' : '')
     + '::-webkit-scrollbar{width:10px;height:10px}'
-    + 'body{padding-top:6px!important}';
+    + 'body{padding-top:6px!important}'
+    /* 이번주 화면 — 주간표만 남기고, 표들은 가로로 나란히(세로로 긴 창이면 위아래로) */
+    + 'body.jv-weekonly #viewPlan>section.card:not(.weekcard):not(.jv-keep){display:none!important}'
+    + 'body.jv-weekonly #wkStackPrev,body.jv-weekonly #wkStackNext{display:none!important}'
+    + 'body.jv-weekonly #jvRow{display:flex;flex-direction:row;gap:14px;align-items:flex-start}'
+    + 'body.jv-weekonly #jvRow>*{flex:1 1 0;min-width:0}'
+    + 'body.jv-weekonly #jvRow .wkblock{margin:0}'
+    + '@media (min-aspect-ratio:101/100) and (min-width:821px){body.jv-weekonly.jv-n3 #jvRow .ttwrap{zoom:.62}body.jv-weekonly.jv-n2 #jvRow .ttwrap{zoom:.8}}'
+    + '@media (max-aspect-ratio:1/1),(max-width:820px){body.jv-weekonly #jvRow{flex-direction:column}body.jv-weekonly #jvRow>*{flex:none;width:100%}}';
   if (css === dashSkinNow) return;
   dashSkinNow = css;
   dashView.webContents.insertCSS(css).catch(() => { /* 아직 안 떴으면 다 뜬 뒤에 */ });
@@ -3679,6 +3802,116 @@ ipcMain.handle('tb-qr-copy', (_e, o) => {
     return { ok: true, msg: '복사했습니다 — 한글·워드·카톡에 붙여넣기(Ctrl+V)' };
   } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
 });
+/* ── 사진 줄이기(일괄) — 폴더나 사진을 고르거나 끌어다 놓으면 «그 폴더 안의 새 폴더» 에 줄여 저장한다 ──
+   ★ 원본은 건드리지 않는다. 읽는 것은 «고르거나 끌어다 놓은» 사진만, 쓰는 것은 «이번에 우리가 만든» 폴더만. */
+const TB_IMG_EXT = /\.(jpe?g|png|webp|bmp)$/i;
+const tbImAllowed = new Set();     // 읽어도 되는 사진 경로
+const tbImOutDirs = new Set();     // 써도 되는 «줄인사진_…» 폴더
+function tbImScan(paths) {
+  const files = []; const seen = new Set(); let base = '', skipped = 0;
+  const add = (fp) => {
+    if (seen.has(fp)) return; seen.add(fp);
+    try { const st = fs.statSync(fp); files.push({ path: fp, name: path.basename(fp), size: st.size }); tbImAllowed.add(fp); } catch (err) { /* 못 읽는 것은 뺀다 */ }
+  };
+  (Array.isArray(paths) ? paths : []).slice(0, 3000).forEach((p0) => {
+    const p = String(p0 || '');
+    try {
+      const st = fs.statSync(p);
+      if (st.isDirectory()) {
+        if (!base) base = p;
+        fs.readdirSync(p, { withFileTypes: true }).forEach((d) => {
+          if (d.isFile() && TB_IMG_EXT.test(d.name)) add(path.join(p, d.name)); else if (d.isFile()) skipped++;
+        });
+      } else if (st.isFile() && TB_IMG_EXT.test(p)) { if (!base) base = path.dirname(p); add(p); }
+      else skipped++;
+    } catch (err) { skipped++; }
+  });
+  files.sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }));
+  return { ok: true, base, files: files.slice(0, 2000), skipped, cut: files.length > 2000 };
+}
+ipcMain.handle('tb-img-pick', async (e, kind) => {
+  try {
+    const dir = kind === 'dir';
+    const r = await dialog.showOpenDialog(tbWin(e), {
+      title: dir ? '줄일 사진이 든 폴더 고르기' : '줄일 사진 고르기 (여러 장 가능)',
+      properties: dir ? ['openDirectory'] : ['openFile', 'multiSelections'],
+      filters: dir ? undefined : [{ name: '사진', extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp'] }]
+    });
+    if (r.canceled || !r.filePaths.length) return { ok: true, base: '', files: [], skipped: 0 };
+    return tbImScan(r.filePaths);
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err), files: [] }; }
+});
+ipcMain.handle('tb-img-scan', (_e, paths) => {
+  try { return tbImScan(paths); } catch (err) { return { ok: false, msg: (err && err.message) || String(err), files: [] }; }
+});
+ipcMain.handle('tb-img-read', (_e, p) => {
+  try {
+    p = String(p || '');
+    if (!tbImAllowed.has(p)) return { ok: false, msg: '고르지 않은 파일은 읽지 않습니다' };
+    const st = fs.statSync(p);
+    if (st.size > 120 * 1024 * 1024) return { ok: false, msg: '파일이 너무 큽니다(120MB 초과)' };
+    return { ok: true, bytes: fs.readFileSync(p) };
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
+/* ★ 화질을 지키는 길(imgshrink.js) — ① 그대로 복사 ② 화소 그대로 «무손실 정리» ③ 압축기·크기 줄이기는 tb-img-fit */
+const imgshrink = require('./imgshrink.js');
+ipcMain.handle('tb-img-lossless', (_e, o) => {
+  try {
+    o = o || {};
+    const p = String(o.path || '');
+    if (!tbImAllowed.has(p)) return { ok: false, msg: '고르지 않은 파일은 읽지 않습니다' };
+    const buf = fs.readFileSync(p);
+    const info = imgshrink.isJpeg(buf) ? imgshrink.scanJpeg(buf) : null;
+    if (!info || !info.w) return { ok: true, mode: 'encode' };                    // JPEG 가 아니면 화소부터 새로 만든다
+    const limit = Number(o.limit) || 0, side = Number(o.side) || 0;
+    const within = !side || Math.max(info.w, info.h) <= side;
+    if (!within) return { ok: true, mode: 'encode', w: info.w, h: info.h };
+    if (!limit || buf.length <= limit) return { ok: true, mode: 'copy', w: info.w, h: info.h };
+    const lo = imgshrink.losslessOptimize(buf);
+    if (lo && lo.bytes.length <= limit) return { ok: true, mode: 'lossless', bytes: lo.bytes, how: lo.how, w: info.w, h: info.h };
+    return { ok: true, mode: 'encode', w: info.w, h: info.h, orient: info.orient };
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
+ipcMain.handle('tb-img-fit', async (_e, o) => {
+  try {
+    o = o || {};
+    const r = await imgshrink.fit(o.rgba, Number(o.w), Number(o.h), Number(o.limit) || 0, Number(o.side) || 0);
+    return { ok: true, st: r.st, bytes: r.bytes, w: r.w, h: r.h, q: r.q };
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
+ipcMain.handle('tb-img-mkout', (_e, o) => {
+  try {
+    const base = String((o && o.base) || '');
+    if (!base || !fs.statSync(base).isDirectory()) return { ok: false, msg: '저장할 폴더를 찾지 못했습니다' };
+    const label = String((o && o.label) || '').replace(/[<>:"/\|?*\x00-\x1f]/g, '_').slice(0, 40);
+    const stem = '줄인사진' + (label ? '_' + label : '');
+    let dir = path.join(base, stem), n = 1;
+    while (fs.existsSync(dir)) { n++; dir = path.join(base, stem + '_' + n); }   // 이미 있으면 번호를 붙여 새로 — 옛 결과를 덮지 않는다
+    fs.mkdirSync(dir);
+    tbImOutDirs.add(dir);
+    return { ok: true, dir, name: path.basename(dir) };
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
+ipcMain.handle('tb-img-save', (_e, o) => {
+  try {
+    const dir = String((o && o.dir) || '');
+    if (!tbImOutDirs.has(dir)) return { ok: false, msg: '허락된 저장 폴더가 아닙니다' };
+    const clean = path.basename(String((o && o.name) || '')).replace(/[<>:"/\|?*\x00-\x1f]/g, '_');
+    if (!clean) return { ok: false, msg: '파일 이름이 없습니다' };
+    const ext = path.extname(clean), stem = clean.slice(0, clean.length - ext.length);
+    let target = path.join(dir, clean), n = 1;
+    while (fs.existsSync(target)) { n++; target = path.join(dir, stem + '_' + n + ext); }   // 이름이 겹치면(a.png·a.jpg) 번호를 붙인다
+    if (o.copyFrom) {
+      const from = String(o.copyFrom);
+      if (!tbImAllowed.has(from)) return { ok: false, msg: '고르지 않은 파일은 복사하지 않습니다' };
+      fs.copyFileSync(from, target);
+    } else {
+      if (!o.bytes) return { ok: false, msg: '저장할 내용이 없습니다' };
+      fs.writeFileSync(target, Buffer.from(o.bytes));
+    }
+    return { ok: true, name: path.basename(target), size: fs.statSync(target).size };
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
 ipcMain.on('tb-reveal', (_e, p) => { try { if (p) shell.showItemInFolder(String(p)); } catch (err) { /* 못 열어도 그만 */ } });
 
 /* ── 학생이름외우기 사진(v2.10.8) ──
@@ -3896,6 +4129,177 @@ ipcMain.handle('att-add', async (_e, p) => {
   });
   if (r.ok) debugLog('출결 — ' + (o.cls || '') + ' ' + o.id + ' ' + o.date + ' ' + o.type + ' 넣음 (' + r.how + ')');
   return r;
+});
+/* ── 출결 → 노션 («출결 입력 트리거» 를 앱이 대신) ───────────────────────────
+   ★ 먼저 «읽기만» 해서 보낼 것·건너뛸 것·못 보낼 것을 보여 주고(send 없음), 확인 단추를 눌러야 만든다(send:true).
+   ★ 기존 노션 기록은 고치거나 지우지 않는다. 학생 INFO 에서 못 찾은 줄은 만들지 않는다. */
+let attNotionBusy = false;
+ipcMain.handle('att-notion', async (e, p) => {
+  if (!HAS_TT) return { ok: false, msg: '지비스에서만 쓸 수 있습니다' };
+  if (attNotionBusy) return { ok: false, msg: '지금 노션과 주고받는 중입니다 — 끝나면 다시 눌러 주세요' };
+  const o = p || {};
+  const store = attFileStore();
+  const rows = (Array.isArray(o.rows) ? o.rows : []).slice(0, 1500).map((x) => {
+    const r = { id: String(x.id || ''), name: String(x.name || ''), start: String(x.start || ''), type: String(x.type || ''),
+      reason: String(x.reason || ''), seq: String(x.seq || ''), gubun: String(x.gubun || ''), time: String(x.time || '') };
+    r.fileKey = attfiles.keyOf(r.id, r.start, r.type);                 // 증빙은 보관함이 직접 찾는다 — 화면이 보낸 경로는 믿지 않는다
+    r.files = store.filesOf(r.fileKey);
+    return r;
+  });
+  attNotionBusy = true;
+  try {
+    const send = !!o.send;
+    const r = await notionatt.run(getNotionKey(), rows, { dry: !send,
+      progress: (pg) => { try { e.sender.send('att-notion-progress', pg); } catch (err) { /* 창이 닫힘 */ } } });
+    if (send) {
+      saveState({ attNotionAt: stampKST() });
+      (r.uploaded || []).forEach((u) => store.markSent(u.key, u.id, { page: u.page, at: stampKST() }));     // «노션에 보냄» 표시
+      debugLog('출결 → 노션 — 만듦 ' + r.made + ' · 증빙 ' + (r.filesSent || 0) + ' · 이미 있어 건너뜀 ' + r.dup + ' · 못 보냄 ' + r.bad + ' · 실패 ' + r.failed.length + ' · 증빙실패 ' + (r.fileFail || []).length);
+    }
+    return Object.assign({ at: String(loadState().attNotionAt || '') }, r);
+  } catch (err) {
+    debugLog('출결 → 노션 실패: ' + ((err && err.message) || err));
+    return { ok: false, msg: (err && err.message) || String(err) };
+  } finally { attNotionBusy = false; }
+});
+/* ── 증빙서류 보관함 — 이미지·영상·PDF 무엇이든 줄마다 붙여 둔다(이 PC 의 앱 폴더) ── */
+let _attFileStore = null;
+function attFileStore() { return _attFileStore || (_attFileStore = attfiles.open(app.getPath('userData'))); }
+const attFileKeyOk = (k) => /^\d{4}\|\d{4}-\d{2}-\d{2}\|.+$/.test(String(k || ''));
+ipcMain.handle('att-file-list', () => { if (HAS_TT) setTimeout(() => { attDriveRun().catch(() => {}); }, 2000); return HAS_TT ? { ok: true, list: attFileStore().list() } : { ok: false, list: {} }; });
+/* ── 드라이브 보관 — 붙인 증빙을 학교 계정(luckyday929) 드라이브 «지비스 출결 증빙서류» 폴더에도 올린다 ──
+   주소·열쇠는 OneDrive 설정(shared.json 의 photoRelay)에만 있다. 없거나 인터넷이 막히면 이 PC 에만 두고 다음에 다시 시도한다.
+   이름을 바꾸면 새 이름으로 다시 올리고 옛것은 휴지통으로 보낸다. 지우면 드라이브 것도 휴지통으로 보낸다. */
+const drivebox = require('./drivebox');
+function attDriveCfg() { return HAS_TT ? drivebox.cfgOf(readShared()) : null; }
+let attDriveBusy = false, attDriveAgain = false;
+function attFilesChanged() { BrowserWindow.getAllWindows().forEach((w) => { try { if (!w.isDestroyed()) w.webContents.send('att-files-changed'); } catch (err) { /* 무시 */ } }); }
+async function attDriveRun() {
+  const cfg = attDriveCfg(); if (!cfg) return;
+  if (attDriveBusy) { attDriveAgain = true; return; }
+  attDriveBusy = true;
+  try {
+    do {
+      attDriveAgain = false;
+      const store = attFileStore();
+      for (const t of store.pending()) {
+        const f = store.entry(t.key, t.id);
+        if (!f || !f.path || !fs.existsSync(f.path)) continue;
+        const old = f.drive && f.drive.id;
+        try {
+          /* 큰 사진은 줄여서 올린다 — 원본은 이 PC 에 그대로 둔다(폰에서 바로 열리고 드라이브도 덜 찬다) */
+          const up = drivebox.forUpload({ buf: fs.readFileSync(f.path), mime: f.mime, name: f.name });
+          if (up.buf.length > drivebox.MAX_BYTES) {
+            store.setDrive(t.key, t.id, { err: '20MB 가 넘어 드라이브에는 올리지 않았습니다(이 PC 에만 있음)', name: f.name, src: f.name });
+          } else {
+            const r = await drivebox.upload(cfg, { name: up.name, mime: up.mime, buf: up.buf });
+            store.setDrive(t.key, t.id, { id: r.id, url: r.url, name: up.name, src: f.name, shrunk: up.shrunk, at: new Date().toISOString() });
+            if (up.shrunk) debugLog('증빙 드라이브 — 줄여서 올림: ' + f.name + ' ' + Math.round(f.size / 1024) + 'KB → ' + Math.round(up.buf.length / 1024) + 'KB');
+            if (old) drivebox.trash(cfg, [old]).catch(() => {});
+          }
+        } catch (err) {
+          const msg = (err && err.message) || String(err);
+          store.setDrive(t.key, t.id, { err: msg, name: f.name, src: f.name, retry: true, id: old || undefined, url: (f.drive && f.drive.url) || undefined });
+          debugLog('증빙 드라이브 올리기 실패: ' + msg);
+        }
+        attFilesChanged();
+      }
+    } while (attDriveAgain);
+  } finally { attDriveBusy = false; }
+}
+function attFileAdded(key, added, errors) {
+  setTimeout(() => { attDriveRun().catch(() => {}); }, 50);   // 붙인 것은 곧 드라이브에도
+  return { ok: true, key, list: attFileStore().list()[key] || [], added, errors };
+}
+/* 새로 붙은 파일에 «학번이름_날짜_(교시)유형_증빙서류» 이름을 붙인다(화면이 만든 base). 한 줄에 여럿이면 두 번째부터 _2, _3 … */
+function attFileAutoName(key, base, news) {
+  const b = String(base || '').trim(); if (!b) return;
+  const store = attFileStore();
+  news.forEach((x) => {
+    const list = store.list()[key] || [], idx = list.findIndex((f) => f.id === x.id);
+    if (idx < 0) return;
+    try { store.rename(key, x.id, idx > 0 ? b + '_' + (idx + 1) : b); } catch (err) { /* 이름을 못 바꿔도 붙은 것은 그대로 */ }
+  });
+}
+ipcMain.handle('att-file-pick', async (e, key, base) => {
+  if (!HAS_TT || !attFileKeyOk(key)) return { ok: false, msg: '붙일 줄을 알 수 없습니다' };
+  try {
+    const r = await dialog.showOpenDialog(tbWin(e), { title: '증빙서류 고르기 (이미지·영상·PDF 무엇이든)', properties: ['openFile', 'multiSelections'] });
+    if (r.canceled || !r.filePaths.length) return attFileAdded(key, 0, []);
+    let n = 0; const errors = [];
+    const news = [];
+    r.filePaths.forEach((p) => { try { const x = attFileStore().addPath(key, p); if (!x.dup) { n++; news.push(x); } } catch (err) { errors.push((err && err.message) || String(err)); } });
+    attFileAutoName(key, base, news);
+    return attFileAdded(key, n, errors);
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
+/* 끌어다 놓은 파일(paths)·붙여넣은 내용(items: [{name, bytes}]) */
+ipcMain.handle('att-file-add', (_e, o) => {
+  o = o || {};
+  if (!HAS_TT || !attFileKeyOk(o.key)) return { ok: false, msg: '붙일 줄을 알 수 없습니다' };
+  let n = 0; const errors = []; const news = [];
+  (Array.isArray(o.paths) ? o.paths : []).slice(0, 50).forEach((p) => { try { const x = attFileStore().addPath(o.key, String(p)); if (!x.dup) { n++; news.push(x); } } catch (err) { errors.push((err && err.message) || String(err)); } });
+  (Array.isArray(o.items) ? o.items : []).slice(0, 50).forEach((it) => { try { const x = attFileStore().addBytes(o.key, String(it.name || '붙여넣기'), it.bytes); if (!x.dup) { n++; news.push(x); } } catch (err) { errors.push((err && err.message) || String(err)); } });
+  attFileAutoName(o.key, o.base, news);
+  return attFileAdded(o.key, n, errors);
+});
+ipcMain.handle('att-file-del', (_e, o) => {
+  o = o || {};
+  if (!HAS_TT || !attFileKeyOk(o.key)) return { ok: false };
+  const gone = attFileStore().entry(o.key, String(o.id || ''));
+  attFileStore().del(o.key, String(o.id || ''));
+  const cfg = attDriveCfg();
+  if (cfg && gone && gone.drive && gone.drive.id) drivebox.trash(cfg, [gone.drive.id]).catch((err) => debugLog('증빙 드라이브 휴지통 실패: ' + ((err && err.message) || err)));
+  return attFileAdded(o.key, 0, []);
+});
+ipcMain.handle('att-file-open', async (_e, o) => {
+  o = o || {};
+  if (!HAS_TT || !attFileKeyOk(o.key)) return { ok: false };
+  const p = attFileStore().pathOf(o.key, String(o.id || ''));
+  if (!p) return { ok: false, msg: '파일을 찾지 못했습니다' };
+  const err = await shell.openPath(p);
+  return err ? { ok: false, msg: err } : { ok: true };
+});
+/* 미리보기용 주소(file://) — 앱 안 창이 이미지·영상·PDF 를 바로 보여 준다 */
+ipcMain.handle('att-file-url', (_e, o) => {
+  o = o || {};
+  if (!HAS_TT || !attFileKeyOk(o.key)) return { ok: false };
+  const f = attFileStore().filesOf(o.key).filter((x) => x.id === String(o.id || ''))[0];
+  if (!f || !f.path || !fs.existsSync(f.path)) return { ok: false, msg: '파일을 찾지 못했습니다 (이 PC 에 없습니다)' };
+  return { ok: true, url: require('url').pathToFileURL(f.path).href, name: f.name, size: f.size, kind: f.kind, mime: f.mime };
+});
+ipcMain.handle('att-file-rename', (_e, o) => {
+  o = o || {};
+  if (!HAS_TT || !attFileKeyOk(o.key)) return { ok: false, msg: '줄을 알 수 없습니다' };
+  try { const f = attFileStore().rename(o.key, String(o.id || ''), String(o.name == null ? '' : o.name)); setTimeout(() => { attDriveRun().catch(() => {}); }, 50); return { ok: true, key: o.key, file: f, list: attFileStore().list()[o.key] || [] }; }
+  catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
+ipcMain.handle('att-drive-open', async (_e, o) => {
+  o = o || {};
+  if (!HAS_TT || !attFileKeyOk(o.key)) return { ok: false };
+  const f = attFileStore().entry(o.key, String(o.id || ''));
+  const u = f && f.drive && f.drive.url;
+  if (!u || !/^https:\/\/(drive|docs)\.google\.com\//.test(u)) return { ok: false, msg: '드라이브에 올라간 주소가 없습니다' };
+  await shell.openExternal(u);
+  return { ok: true };
+});
+ipcMain.handle('att-drive-status', async () => {
+  const cfg = attDriveCfg();
+  if (!cfg) return { ok: true, on: false, msg: 'OneDrive 설정(shared.json)에 photoRelay 가 없어 드라이브에는 올리지 않습니다' };
+  try { const p = await drivebox.ping(cfg); attDriveRun().catch(() => {}); return { ok: true, on: true, user: p.user, folder: drivebox.FOLDER }; }
+  catch (err) { return { ok: false, on: true, msg: (err && err.message) || String(err) }; }
+});
+ipcMain.handle('att-file-move', (_e, o) => {
+  o = o || {};
+  if (!HAS_TT || !attFileKeyOk(o.from) || !attFileKeyOk(o.to)) return { ok: false };
+  attFileStore().move(o.from, o.to);
+  return { ok: true, list: attFileStore().list() };
+});
+/* 노션 출결 DB 에 «증빙서류» 칸(파일)을 만든다 — 미리보기에서 사용자가 단추를 눌렀을 때만 */
+ipcMain.handle('att-notion-prop', async () => {
+  if (!HAS_TT) return { ok: false, msg: '지비스에서만 쓸 수 있습니다' };
+  try { const r = await notionatt.addFileProp(getNotionKey()); debugLog('출결 → 노션 — «증빙서류» 칸 ' + (r.already ? '이미 있음' : '만듦')); return r; }
+  catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
 });
 ipcMain.handle('att-undo', async (_e, p) => {
   const o = p || {};
@@ -4304,6 +4708,12 @@ ipcMain.handle('work-print', async (e, p) => {
 
 /* ── AI 사용량 ── */
 ipcMain.on('usage-login', (_e, key) => aiusage.openLogin(String(key || '')));
+/* 계정 바꾸기 — 그 서비스만 로그아웃하고 로그인 창을 다시 띄운다(클로드·제미나이는 서로 다른 계정이어도 된다) */
+ipcMain.handle('usage-snapshot', () => (HAS_TT ? aiusage.snapshot() : {}));   // 설정 창이 «지금 어느 계정이냐» 를 다시 받는다
+ipcMain.handle('usage-switch', async (_e, key) => {
+  if (!HAS_TT) return { ok: false, msg: '지비스에서만 됩니다' };
+  try { return await aiusage.switchAccount(String(key || '')); } catch (e) { return { ok: false, msg: (e && e.message) || String(e) }; }
+});
 ipcMain.on('usage-refresh', () => pollUsageEnabled());
 ipcMain.on('usage-style', (_e, style) => {
   saveState({ usageStyle: style === 'bar' ? 'bar' : 'ring' });
@@ -4738,6 +5148,7 @@ if (!gotLock) {
     // AI 사용량 — 값이 들어오면 그때그때 위젯에 밀어 준다.
     // 숨은 창으로 claude.ai · gemini.google.com 을 열어 읽는 것이라 시작 직후는 피한다.
 aiusage.setLogger(debugLog);
+aiusage.setSavedAccounts(loadState().usageAccounts, (o) => saveState({ usageAccounts: o }));   // 한 번 읽은 계정은 다음에 켜도 바로 보인다
     aiusage.onUpdate(() => { sendToWidget(); if (HAS_TT) phonesync.publishAi(); });
     if (HAS_TT) phonesync.start({ getCfg: getPhoneCfg, getAi: () => aiusage.snapshot(), log: debugLog });
     /* ★ «켜 둔 것만» 읽는다. 전에는 설정과 무관하게 셋 다 읽어서,

@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.4.14
-   수정요약: v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+/* 파일명: views.js | @version 2.7.1
+   수정요약: v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
      목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
      그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
    v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
@@ -692,6 +692,7 @@ function moveHit(step) {
 var CM = null, cmBusy = false, cmErr = '', cmMode = '', cmGrade = 1, cmCls = 1, cmPicked = false;
 // 교사표와 학급표를 나란히 볼 것인가(가로) 위아래로 볼 것인가(세로)
 var cmSide = 'col';   // col = 세로(교사표 밑에 학급표) · row = 가로(나란히)
+var cmWeek = 0;       // 0 = 이번 주 · 1 = 다음 주 · 2 = 함께(두 주를 위아래로)
 
 function loadComci() {
   if (cmBusy) return;
@@ -701,11 +702,36 @@ function loadComci() {
   }).catch(function () { cmBusy = false; CM = { empty: true }; render(); });
 }
 
-function cmTable(days, cell) {
+/* 월요일 «2026-10-05» 에서 i 번째 날(0=월) → «10/5» */
+function cmDate(start, i) {
+  var m = String(start || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '';
+  var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + i);
+  return (d.getMonth() + 1) + '/' + d.getDate();
+}
+/* 이 자료가 지금 기준 몇 주째인가 — 0 이번 주 · 1 다음 주 (월요일끼리 견준다) */
+function cmWeekGap(start) {
+  var m = String(start || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  var t = new Date(); t.setHours(0, 0, 0, 0);
+  t.setDate(t.getDate() - ((t.getDay() + 6) % 7));            // 이번 주 월요일
+  var s = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return Math.round((s - t) / (7 * 86400000));
+}
+function cmWeekName(src) {
+  var g = cmWeekGap(src && src.start);
+  if (g === 0) return '이번 주';
+  if (g === 1) return '다음 주';
+  return src && src.start ? cmDate(src.start, 0) + ' 주' : '이번 주';
+}
+function cmTable(days, cell, start) {
   var maxP = 1;
   days.forEach(function (d) { maxP = Math.max(maxP, (d.periods || []).length); });
   var h = '<table class="gr"><thead><tr><th class="pc"></th>'
-    + days.map(function (d) { return '<th>' + esc(d.dow) + '</th>'; }).join('') + '</tr></thead><tbody>';
+    + days.map(function (d, i) {
+        var dt = cmDate(start, i);
+        return '<th>' + esc(d.dow) + (dt ? '<small>' + dt + '</small>' : '') + '</th>';
+      }).join('') + '</tr></thead><tbody>';
   for (var p = 0; p < maxP; p++) {
     h += '<tr><td class="pc">' + (p + 1) + '</td>';
     days.forEach(function (d) {
@@ -745,6 +771,16 @@ function viewComci() {
     + '<button class="wkb" id="cmGet" title="설정에서 다시 불러오기">⚙</button></div>'
     + (cmErr ? '<div class="empty" style="padding:6px 0">컴시간 받기 실패 — ' + esc(cmErr) + '</div>' : '');
 
+  // ★ 다음 주 자료가 있으면 «이번 주 / 다음 주 / 함께» 를 고른다
+  var hasN = !!(d.next && ((d.next.byTeacher && d.next.byTeacher.length) || (d.next.classes && d.next.classes.length)));
+  var wk = hasN ? cmWeek : 0;
+  var weeks = wk === 2 ? [d, d.next] : (wk === 1 ? [d.next] : [d]);
+  if (hasN) {
+    h += '<div class="wknav"><span class="slab">주</span>'
+      + '<button class="wkb' + (wk === 0 ? ' now' : '') + '" data-cw="0" title="' + esc((d.range || '')) + '">' + esc(cmWeekName(d)) + '</button>'
+      + '<button class="wkb' + (wk === 1 ? ' now' : '') + '" data-cw="1" title="' + esc((d.next.range || '')) + '">' + esc(cmWeekName(d.next)) + '</button>'
+      + '<button class="wkb' + (wk === 2 ? ' now' : '') + '" data-cw="2" title="두 주를 위아래로 함께 봅니다">함께</button></div>';
+  }
   // 둘 다 있으면 나란히(가로) / 위아래(세로) 를 고를 수 있다
   if (hasT && hasC) {
     h += '<div class="wknav"><span class="slab">보기</span>'
@@ -765,12 +801,17 @@ function viewComci() {
     h += '<div class="cmh">' + me.i + ' ' + esc(me.name) + ' 선생님'
       + (hasC ? '' : '<small>설정에서 내 이름을 바꿀 수 있어요</small>') + '</div>';
     // 표 아래 손잡이 — 교사·학급 표가 함께 커진다(kind comci)
-    h += grzWrap('comci', cmTable(me.days, function (x) {
-      // ★ 바뀐 수업(보강·교체)은 컴시간 사이트처럼 눈에 띄게 표시한다
-      return '<td class="c u1' + (x.changed ? ' chg' : '') + '" title="'
-        + esc(x.grade + '-' + x.cls + ' ' + x.subject + (x.changed ? ' (바뀐 수업)' : '')) + '">'
-        + '<b>' + x.grade + '-' + x.cls + '</b><u>' + esc(x.subject) + '</u></td>';
-    }));
+    weeks.forEach(function (src) {
+      var mine = (src.byTeacher || []).filter(function (t) { return t.i === me.i; })[0];
+      if (!mine) return;
+      if (wk === 2) h += '<div class="cmwk">' + esc(cmWeekName(src)) + '<small>' + esc(cmDate(src.start, 0) + ' ~ ' + cmDate(src.start, 4)) + '</small></div>';
+      h += grzWrap('comci', cmTable(mine.days, function (x) {
+        // ★ 바뀐 수업(보강·교체)은 컴시간 사이트처럼 눈에 띄게 표시한다
+        return '<td class="c u1' + (x.changed ? ' chg' : '') + '" title="'
+          + esc(x.grade + '-' + x.cls + ' ' + x.subject + (x.changed ? ' (바뀐 수업)' : '')) + '">'
+          + '<b>' + x.grade + '-' + x.cls + '</b><u>' + esc(x.subject) + '</u></td>';
+      }, src.start));
+    });
     h += '</div>';
   }
 
@@ -791,11 +832,17 @@ function viewComci() {
         }).join('') + '</div>';
     var cl = gsel.classes.filter(function (c) { return c.cls === cmCls; })[0] || gsel.classes[0];
     cmCls = cl.cls;
-    h += grzWrap('comci', cmTable(cl.days, function (x) {
-      return '<td class="c u0' + (x.changed ? ' chg' : '') + '" title="'
-        + esc(x.subject + ' / ' + x.teacher + (x.changed ? ' (바뀐 수업)' : '')) + '">'
-        + '<b>' + esc(x.subject) + '</b><u>' + esc(x.teacher) + '</u></td>';
-    }));
+    weeks.forEach(function (src) {
+      var sg = (src.classes || []).filter(function (g) { return g.grade === cl.grade; })[0];
+      var sc = sg && sg.classes.filter(function (c) { return c.cls === cl.cls; })[0];
+      if (!sc) return;
+      if (wk === 2) h += '<div class="cmwk">' + esc(cmWeekName(src)) + '<small>' + esc(cmDate(src.start, 0) + ' ~ ' + cmDate(src.start, 4)) + '</small></div>';
+      h += grzWrap('comci', cmTable(sc.days, function (x) {
+        return '<td class="c u0' + (x.changed ? ' chg' : '') + '" title="'
+          + esc(x.subject + ' / ' + x.teacher + (x.changed ? ' (바뀐 수업)' : '')) + '">'
+          + '<b>' + esc(x.subject) + '</b><u>' + esc(x.teacher) + '</u></td>';
+      }, src.start));
+    });
     h += '</div>';
   }
   return h + '</div>';
@@ -927,6 +974,17 @@ function tickRun(promise) {
    ★ 위젯 화면으로 옮겨 적지 않고 «그 앱을 그대로» 이 자리에 얹는다.
      여기서는 «자리»만 잡아 두고, 실제 화면은 메인이 그 자리에 붙여 준다. */
 var DASHV = { plan: 'plan', daily: 'daily', dgrid: 'grid' };
+/* ★ 지비스의 «이번주»(VIEW 'today')는 이제 수업진도 웹앱의 «시간표계획 주간표» 를 얹어 보여 준다(v2.10.27).
+   혜원이지는 시간표가 없어 해당 없음. 화면 값은 그대로 'today' 라 저장된 «마지막 화면» 도 이어진다. */
+function dashScreenOf(v) { return (v === 'today' && HAS_TT) ? 'week' : DASHV[v]; }
+var DASHWEEKMODE = 'one';   // one · pn(지난+이번) · nn(이번+다음) · three(지난+이번+다음)
+function weekModeBtns() {
+  var items = [['one', '1주'], ['pn', '지난+이번'], ['nn', '이번+다음'], ['three', '3주']];
+  return '<span class="wfs wkmodes">' + items.map(function (it) {
+    return '<button class="wkb' + (DASHWEEKMODE === it[0] ? ' go' : '') + '" data-wm="' + it[0] + '" title="'
+      + ({ one: '이번주 한 주만', pn: '지난주와 이번주를 나란히', nn: '이번주와 다음주를 나란히', three: '지난주·이번주·다음주를 나란히' })[it[0]] + '">' + it[1] + '</button>';
+  }).join('') + '</span>';
+}
 /* «진호 시간표» 탭 안의 화면들 — 클릭 배선에서도 봐야 해서 전역에 둔다 */
 var TT_SUB = ['today', 'week', 'progress', 'plan', 'daily', 'dgrid'];
 function viewDash() {
@@ -940,7 +998,7 @@ window.addEventListener('resize', function () { setTimeout(dashPlace, 0); });
 window.addEventListener('scroll', function () { dashPlace(); }, true);
 function dashPlace() {
   var host = document.getElementById('dashHost');
-  if (!DASHV[VIEW] || !host) { widgetAPI.dashHide(); return; }
+  if (!dashScreenOf(VIEW) || !host) { widgetAPI.dashHide(); return; }
   var r = host.getBoundingClientRect();
   if (r.width < 40 || r.height < 40) return;
   /* 지금 테마 색을 함께 보낸다 — 얹은 화면 바탕을 여기에 맞춘다 */
@@ -950,7 +1008,7 @@ function dashPlace() {
     fg: cs.getPropertyValue('--fg').trim(),
     line: cs.getPropertyValue('--line').trim()
   };
-  widgetAPI.dashShow(DASHV[VIEW], { x: r.left, y: r.top, w: r.width, h: r.height }, col, grZoom('dash'));
+  widgetAPI.dashShow(dashScreenOf(VIEW), { x: r.left, y: r.top, w: r.width, h: r.height }, col, grZoom('dash'));
 }
 
 /* 오른쪽 단 — 틱틱만 쓴다.
@@ -1997,6 +2055,7 @@ function attLoad() {
       if (!attMon) attMon = attThisMon();
       attApplyPendGubun();          // 새 줄에 골라 둔 구분을 반 탭에
       attSeqSync();
+      attFilesLoad();               // 증빙 목록(지비스)
     } else {
       attErr = (r && r.msg) || '출결 목록을 읽지 못했습니다';
       if (!ATT) ATT = { rows: [], failed: true };
@@ -2174,7 +2233,7 @@ function viewAtt() {
   var folded = attFolded(attMon);
   var nPend = list.filter(attPending).length;
   var nLocal = list.filter(function (x) { return x.local; }).length;
-  var h = attBar() + attNotes();
+  var h = attBar() + attNotes() + attNotionPanel();
   h += '<div class="atsum"><b>' + esc(attCls()) + '</b> · ' + Number(attMon.slice(5)) + '월 · '
     + list.length + '건'
     + (nLocal ? ' <span class="atlocal">앱에만 ' + nLocal + '</span>' : '')
@@ -2192,6 +2251,353 @@ function viewAtt() {
   return h;
 }
 
+/* ── 출결 → 노션 (지비스) ─────────────────────────────────────────
+   «노션으로» 를 누르면 먼저 «읽기만» 한다 → 보낼 것·건너뛸 것·못 보낼 것을 보여 주고 → «N건 만들기» 를 눌러야 만든다. */
+/* ── 출결 증빙서류(지비스) ─────────────────────────────────────────
+   줄마다 이미지·영상·PDF 무엇이든 붙인다 — ＋ 로 고르기 · 칸 위에 끌어다 놓기 · 칸을 누르고 Ctrl+V.
+   ★ 파일은 이 PC 의 앱 폴더에만 있고, «노션으로» 를 누를 때 노션 «증빙서류» 칸에 함께 올라간다.
+   열쇠 = 학번|날짜|유형 (노션 겹침 검사와 같다) */
+var ATTFILES = {};          // { 열쇠: [ {id,name,size,kind,sent} ] }
+var ATTFSEL = '';           // 붙여넣기를 받을 줄의 열쇠(칸을 누르면 정해진다)
+var attFDelAsk = '';        // 지우기는 두 번 — 처음 누른 파일 "열쇠§id"
+var attFMsg = '', attFHooked = false;
+function attFileKey(x) { return String(x.id || '') + '|' + String(x.start || '') + '|' + String(x.type || ''); }
+function attFileSize(n) { n = Number(n) || 0; return n >= 1048576 ? (n / 1048576).toFixed(n >= 10485760 ? 0 : 1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB'; }
+var ATTDRIVE = false;        // 구글 드라이브(학교 계정)에 올리는 설정이 켜져 있는지
+var ATTDRVHOOK = false;
+/* 드라이브 상태 글 — 올림 / 올리는 중 / 못 올림 */
+function attDriveTxt(f) {
+  if (!f) return '';
+  var d = f.drive;
+  if (d && d.err) return '드라이브: 아직 못 올림 — ' + d.err;
+  if (d && d.id) return '드라이브 저장됨' + (d.shrunk ? '(줄여서)' : '');
+  return ATTDRIVE ? '드라이브에 올리는 중…' : '';
+}
+function attFilesLoad() {
+  if (!HAS_TT || !widgetAPI.attFileList) return;
+  widgetAPI.attFileList().then(function (r) {
+    if (r && r.ok) {
+      ATTFILES = r.list || {}; render();
+      if (ATTP) { var f = attPrevFile(), s = document.getElementById('atfpDrv'); if (f && s) { s.textContent = attDriveTxt(f); var b = document.getElementById('atfpDrvOpen'); if (b) b.hidden = !(f.drive && f.drive.id && f.drive.url && !f.drive.err); } }
+    }
+  });
+  if (!ATTDRVHOOK) {
+    ATTDRVHOOK = true;
+    if (widgetAPI.attDriveStatus) widgetAPI.attDriveStatus().then(function (r) { ATTDRIVE = !!(r && r.on && r.ok); }).catch(function () {});
+    if (widgetAPI.onAttFilesChanged) widgetAPI.onAttFilesChanged(function () { attFilesLoad(); });
+  }
+}
+/* 선 아이콘 — 종류마다 */
+function attFileIcon(kind) {
+  var d = { image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+    video: '<rect x="2" y="5" width="14" height="14" rx="2"/><path d="m22 8-6 4 6 4z"/>',
+    pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h2.5a1.5 1.5 0 0 1 0 3H8zM8 13v6"/>',
+    file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>' }[kind] || '';
+  return '<svg class="atfi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+}
+function attFileCell(x) {
+  var key = attFileKey(x), list = ATTFILES[key] || [];
+  var h = '<td class="atfl' + (ATTFSEL === key ? ' sel' : '') + '" data-atdrop="' + esc(key) + '" title="파일을 끌어다 놓거나, 이 칸을 누른 뒤 Ctrl+V 로 붙여넣으세요">';
+  h += list.map(function (f) {
+    var ask = attFDelAsk === key + '§' + f.id; ATTFINFO[key] = { name: x.name, reason: x.reason };
+    return '<span class="atfc ' + esc(f.kind) + (f.sent ? ' sent' : '') + '"><button class="atfo" data-atfopen="' + esc(key) + '§' + esc(f.id) + '" title="'
+      + esc(f.name) + ' · ' + attFileSize(f.size) + (f.sent ? ' · 노션에 보냄' : ' · 아직 노션에 안 보냄') + (attDriveTxt(f) ? ' · ' + attDriveTxt(f) : '') + ' — 누르면 미리보기">'
+      + attFileIcon(f.kind) + '<em>' + esc(f.name) + '</em>' + (f.sent ? '<b class="atfs">✓</b>' : '') + '</button>'
+      + '<button class="atfx' + (ask ? ' ask' : '') + '" data-atfdel="' + esc(key) + '§' + esc(f.id) + '" title="' + (ask ? '한 번 더 누르면 이 PC 에서 지웁니다' : '이 증빙 지우기') + '">' + (ask ? '지우기?' : '✕') + '</button></span>';
+  }).join('');
+  h += '<button class="atfadd" data-atfadd="' + esc(key) + '" title="증빙 첨부(이미지·영상·PDF 무엇이든)">'
+    + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>'
+    + (list.length ? '' : '<span> 첨부</span>') + '</button>';
+  return h + '</td>';
+}
+/* 파일 목록이 바뀌었다는 답을 받아 반영한다 */
+function attFileApply(r, key) {
+  if (r && r.ok) {
+    if (r.list && r.key) { if (r.list.length) ATTFILES[r.key] = r.list; else delete ATTFILES[r.key]; }
+    else if (r.list && !r.key) ATTFILES = r.list;
+    var bits = [];
+    if (r.added) bits.push('증빙 ' + r.added + '개를 붙였습니다');
+    if (r.errors && r.errors.length) bits.push(r.errors.slice(0, 2).join(' / '));
+    attFMsg = bits.join(' · ');
+  } else attFMsg = (r && r.msg) || '증빙을 붙이지 못했습니다';
+  render();
+}
+function attFileMove(from, to) {
+  if (!HAS_TT || !widgetAPI.attFileMove || from === to || !ATTFILES[from]) return;
+  widgetAPI.attFileMove({ from: from, to: to }).then(function (r) { if (r && r.ok) { ATTFILES = r.list || {}; render(); } });
+}
+/* 끌어다 놓거나 붙여넣은 File 들을 보관함에 — 경로가 있으면 경로(큰 영상도 메모리에 안 올림), 없으면(붙여넣은 그림) 내용을 */
+function attFileAddFiles(key, files) {
+  var list = Array.prototype.slice.call(files || []);
+  if (!list.length) return;
+  var paths = [], loose = [];
+  list.forEach(function (f) { var p = widgetAPI.tbImPathOf ? widgetAPI.tbImPathOf(f) : ''; if (p) paths.push(p); else loose.push(f); });
+  var stamp = (function () { var d = new Date(), z = function (n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '-' + z(d.getHours()) + z(d.getMinutes()) + z(d.getSeconds()); })();
+  Promise.all(loose.map(function (f, i) {
+    return f.arrayBuffer().then(function (ab) {
+      var nm = f.name && !/^image\.(png|jpe?g|gif|webp)$/i.test(f.name) ? f.name : ('붙여넣기-' + stamp + (loose.length > 1 ? '-' + (i + 1) : '') + '.' + String((f.type || 'image/png').split('/')[1] || 'png').replace('jpeg', 'jpg'));
+      return { name: nm, bytes: new Uint8Array(ab) };
+    });
+  })).then(function (items) {
+    return widgetAPI.attFileAdd({ key: key, paths: paths, items: items, base: attAutoBase(key) });
+  }).then(function (r) { attFileApply(r, key); }).catch(function (e) { attFMsg = String((e && e.message) || e); render(); });
+}
+/* ── 증빙 미리보기 ── 칩을 누르면 앱 안에서 바로 본다(이미지·영상·PDF). 창 안에서 이름 바꾸기·기본 앱으로 열기·이전/다음 파일.
+   파일은 이 PC 의 앱 폴더(att-files)에 있고, 여기서 바꾸는 것은 목록의 이름뿐이다(확장자는 그대로). */
+var ATTFINFO = {};          // 줄 열쇠 → { name } — «줄 정보로 이름 짓기» 에 쓴다
+var ATTP = null;            // 미리보기 중: { key, id, msg }
+function attPrevList() { return ATTP ? (ATTFILES[ATTP.key] || []) : []; }
+function attPrevIdx() { var l = attPrevList(), i = 0; l.forEach(function (f, k) { if (ATTP && f.id === ATTP.id) i = k; }); return i; }
+function attPrevFile() { var l = attPrevList(); for (var i = 0; i < l.length; i++) if (l[i].id === ATTP.id) return l[i]; return null; }
+function attNameBase(n) { var m = String(n || '').match(/^(.*)\.([A-Za-z0-9]{1,5})$/); return m ? m[1] : String(n || ''); }
+function attNameExt(n) { var m = String(n || '').match(/\.([A-Za-z0-9]{1,5})$/); return m ? '.' + m[1] : ''; }
+/* 자동 이름 — 학번이름_YYMMDD_(5교시~)유형_증빙서류   예) 3221허가은_261014_(5교시~)인정조퇴_증빙서류 */
+function attAutoBase(key) {
+  var p = String(key).split('|'), info = ATTFINFO[key] || {};
+  var d = String(p[1] || '').replace(/^\d{2}(\d{2})-(\d{2})-(\d{2})$/, '$1$2$3');
+  var m = String(info.reason || '').match(/^\s*(\([^)]*교시[^)]*\))/);
+  return (p[0] + (info.name || '') + '_' + d + '_' + (m ? m[1] : '') + (p[2] || '') + '_증빙서류').replace(/[<>:"\/\\|?*]/g, '_');
+}
+function attAutoName(key, f) {
+  var b = attAutoBase(key), idx = attPrevIdx();
+  return idx > 0 ? b + '_' + (idx + 1) : b;
+}
+function attPrevClose() {
+  var m = document.getElementById('atfPrev'); if (m && m.parentNode) m.parentNode.removeChild(m);
+  ATTP = null; document.removeEventListener('keydown', attPrevKey, true);
+}
+function attPrevKey(e) {
+  if (!ATTP) return;
+  if (e.key === 'Escape') { e.preventDefault(); attPrevClose(); return; }
+  var tag = ((document.activeElement || {}).tagName || '');
+  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && tag !== 'INPUT') attPrevStep(e.key === 'ArrowLeft' ? -1 : 1);
+}
+function attPrevStep(d) {
+  var l = attPrevList(); if (l.length < 2) return;
+  ATTP.id = l[(attPrevIdx() + d + l.length) % l.length].id; ATTP.msg = ''; attPrevDraw();
+}
+function attPrevOpen(key, id) {
+  if (!HAS_TT || !widgetAPI.attFileUrl) return;
+  ATTP = { key: key, id: id, msg: '' };
+  document.removeEventListener('keydown', attPrevKey, true); document.addEventListener('keydown', attPrevKey, true);
+  attPrevDraw();
+}
+function attPrevDraw() {
+  var f = attPrevFile(); if (!f) { attPrevClose(); return; }
+  var m = document.getElementById('atfPrev');
+  if (!m) {
+    m = document.createElement('div'); m.id = 'atfPrev'; m.className = 'atfprev';
+    m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', '증빙 미리보기');
+    m.addEventListener('mousedown', function (e) { if (e.target === m) attPrevClose(); });
+    document.body.appendChild(m);
+  }
+  var l = attPrevList(), multi = l.length > 1, key = ATTP.key, id = f.id;
+  m.innerHTML = '<div class="atfp-card">'
+    + '<div class="atfp-head"><div class="atfp-name"><input id="atfpName" type="text" maxlength="110" value="' + esc(attNameBase(f.name)) + '" aria-label="파일 이름"><span class="atfp-ext">' + esc(attNameExt(f.name)) + '</span></div>'
+    + '<button class="atfp-b go" id="atfpSave" type="button">이름 저장</button><button class="atfp-b" id="atfpAuto" type="button" title="학번_이름_날짜_유형 으로 이름을 짓습니다">줄 정보로 이름 짓기</button></div>'
+    + '<div class="atfp-msg" id="atfpMsg" role="status">' + esc(ATTP.msg || '') + '</div>'
+    + '<div class="atfp-body" id="atfpBody"><div class="atfp-wait">불러오는 중…</div></div>'
+    + '<div class="atfp-foot"><span class="atfp-info">' + esc(attFileSize(f.size)) + (f.sent ? ' · 노션에 보냄' : ' · 아직 노션에 안 보냄') + (multi ? ' · ' + (attPrevIdx() + 1) + ' / ' + l.length : '') + ' · <span id="atfpDrv">' + esc(attDriveTxt(f)) + '</span></span>'
+    + (multi ? '<button class="atfp-b" id="atfpPrevB" type="button">‹ 이전</button><button class="atfp-b" id="atfpNextB" type="button">다음 ›</button>' : '')
+    + '<button class="atfp-b" id="atfpDrvOpen" type="button"' + (f.drive && f.drive.id && f.drive.url && !f.drive.err ? '' : ' hidden') + ' title="학교 계정(luckyday929) 드라이브의 «지비스 출결 증빙서류» 폴더에 있는 파일을 브라우저로 엽니다">드라이브에서 열기</button><button class="atfp-b" id="atfpOpen" type="button">기본 앱으로 열기</button><button class="atfp-b go" id="atfpClose" type="button">닫기</button></div></div>';
+  var $ = function (i) { return document.getElementById(i); };
+  var save = function () {
+    var v = $('atfpName').value;
+    widgetAPI.attFileRename({ key: key, id: id, name: v + attNameExt(f.name) }).then(function (r) {
+      if (!ATTP || ATTP.id !== id) return;
+      if (r && r.ok) {
+        if (r.list && r.list.length) ATTFILES[key] = r.list; var z = function (n) { return (n < 10 ? '0' : '') + n; }, d = new Date();
+        ATTP.msg = '✓ 이름을 바꿨습니다 · ' + z(d.getHours()) + ':' + z(d.getMinutes()) + ':' + z(d.getSeconds()); render(); attPrevDraw();
+      } else { ATTP.msg = (r && r.msg) || '이름을 바꾸지 못했습니다'; $('atfpMsg').textContent = ATTP.msg; $('atfpMsg').className = 'atfp-msg bad'; }
+    });
+  };
+  $('atfpSave').addEventListener('click', save);
+  $('atfpName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); save(); } });
+  $('atfpAuto').addEventListener('click', function () { var i = $('atfpName'); i.value = attAutoName(key, f); i.focus(); i.select(); });
+  $('atfpClose').addEventListener('click', attPrevClose);
+  $('atfpDrvOpen').addEventListener('click', function () { widgetAPI.attDriveOpen({ key: key, id: id }).then(function (r) { if (r && !r.ok) { ATTP.msg = r.msg || '열지 못했습니다'; $('atfpMsg').textContent = ATTP.msg; $('atfpMsg').className = 'atfp-msg bad'; } }); });
+  $('atfpOpen').addEventListener('click', function () { widgetAPI.attFileOpen({ key: key, id: id }).then(function (r) { if (r && !r.ok) { ATTP.msg = r.msg || '열지 못했습니다'; $('atfpMsg').textContent = ATTP.msg; $('atfpMsg').className = 'atfp-msg bad'; } }); });
+  if (multi) { $('atfpPrevB').addEventListener('click', function () { attPrevStep(-1); }); $('atfpNextB').addEventListener('click', function () { attPrevStep(1); }); }
+  if (ATTP.msg && /^✓/.test(ATTP.msg)) $('atfpMsg').className = 'atfp-msg ok';
+  widgetAPI.attFileUrl({ key: key, id: id }).then(function (r) {
+    if (!ATTP || ATTP.id !== id) return;
+    var body = $('atfpBody'); if (!body) return;
+    var fallback = function (why) { body.innerHTML = '<div class="atfp-none">' + attFileIcon(f.kind) + '<b>' + esc(f.name) + '</b><span>' + esc(why) + '</span></div>'; };
+    if (!r || !r.ok) { fallback((r && r.msg) || '미리볼 수 없습니다'); return; }
+    if (f.kind === 'image') { body.innerHTML = '<img class="atfp-img" alt="' + esc(f.name) + '" src="' + esc(r.url) + '">'; body.firstChild.addEventListener('error', function () { fallback('이 그림은 앱 안에서 못 보여 드립니다 — «기본 앱으로 열기» 를 눌러 주세요'); }); }
+    else if (f.kind === 'video') { body.innerHTML = '<video class="atfp-vid" controls preload="metadata" src="' + esc(r.url) + '"></video>'; body.firstChild.addEventListener('error', function () { fallback('이 영상은 앱 안에서 재생되지 않습니다 — «기본 앱으로 열기» 를 눌러 주세요'); }); }
+    else if (f.kind === 'pdf') { body.innerHTML = '<iframe class="atfp-pdf" title="' + esc(f.name) + '" src="' + esc(r.url) + '"></iframe>'; }
+    else fallback('이 종류(' + (attNameExt(f.name) || '파일') + ')는 앱 안에서 못 보여 드립니다 — «기본 앱으로 열기» 를 눌러 주세요');
+  });
+}
+function attFileWire(app) {
+  if (!HAS_TT) return;
+  var on = function (sel, fn) { app.querySelectorAll(sel).forEach(function (b) { b.addEventListener('click', function (ev) { fn(b, ev); }); }); };
+  on('[data-atfadd]', function (b, ev) {
+    ev.stopPropagation(); ATTFSEL = b.dataset.atfadd;
+    widgetAPI.attFilePick(b.dataset.atfadd, attAutoBase(b.dataset.atfadd)).then(function (r) { attFileApply(r, b.dataset.atfadd); });
+  });
+  on('[data-atfopen]', function (b, ev) {
+    ev.stopPropagation();
+    var p = b.dataset.atfopen.split('§');
+    attPrevOpen(p[0], p[1]);            // v2.10.32 — 눌러서 «바로 미리보기» (기본 앱으로 여는 것은 창 안의 단추)
+  });
+  on('[data-atfdel]', function (b, ev) {
+    ev.stopPropagation();
+    var k = b.dataset.atfdel;
+    if (attFDelAsk !== k) { attFDelAsk = k; render(); return; }          // 첫 번째 누름 — «지우기?» 로 바뀐다
+    attFDelAsk = '';
+    var p = k.split('§');
+    widgetAPI.attFileDel({ key: p[0], id: p[1] }).then(function (r) { attFileApply(r, p[0]); });
+  });
+  /* 칸을 누르면 «붙여넣기 받을 칸» 이 된다(굵은 테두리) — 다시 그리지 않고 표시만 옮긴다 */
+  app.querySelectorAll('[data-atdrop]').forEach(function (td) {
+    td.addEventListener('click', function (ev) {
+      if (ev.target.closest && ev.target.closest('button')) return;
+      ATTFSEL = td.dataset.atdrop;
+      app.querySelectorAll('.atfl.sel').forEach(function (e) { e.classList.remove('sel'); });
+      td.classList.add('sel');
+    });
+    td.addEventListener('dragover', function (ev) {
+      if (!ev.dataTransfer || Array.prototype.indexOf.call(ev.dataTransfer.types || [], 'Files') < 0) return;
+      ev.preventDefault(); ev.stopPropagation(); ev.dataTransfer.dropEffect = 'copy'; td.classList.add('over');
+    });
+    td.addEventListener('dragleave', function () { td.classList.remove('over'); });
+    td.addEventListener('drop', function (ev) {
+      if (!ev.dataTransfer || !ev.dataTransfer.files || !ev.dataTransfer.files.length) return;
+      ev.preventDefault(); ev.stopPropagation(); td.classList.remove('over');
+      ATTFSEL = td.dataset.atdrop;
+      attFileAddFiles(td.dataset.atdrop, ev.dataTransfer.files);
+    });
+  });
+  if (!attFHooked) {
+    attFHooked = true;
+    /* Ctrl+V — 출결 화면에서 증빙 칸을 눌러 둔 상태이고, 입력칸에 글을 쓰는 중이 아닐 때만 */
+    document.addEventListener('paste', function (ev) {
+      if (VIEW !== 'att' || !ATTFSEL) return;
+      var t = ev.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      var files = ev.clipboardData && ev.clipboardData.files;
+      if (!files || !files.length) return;
+      ev.preventDefault();
+      attFileAddFiles(ATTFSEL, files);
+    });
+  }
+}
+function attNotionMakeProp() {
+  if (!ATTNOT || ATTNOT.phase !== 'ready') return;
+  ATTNOT = Object.assign({}, ATTNOT, { phase: 'reading' }); render();
+  widgetAPI.attNotionProp().then(function (r) {
+    if (r && r.ok) attNotionRead(); else { ATTNOT = { phase: 'err', msg: (r && r.msg) || '칸을 만들지 못했습니다' }; render(); }
+  });
+}
+
+/* 노션 모양 아이콘(한 가지 색 — 글자색을 따른다). Simple Icons 의 노션 마크(CC0) */
+function notionMark(px) {
+  return '<svg class="ntmark" width="' + px + '" height="' + px + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="vertical-align:-2px">'
+    + '<path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.7.513.934.653.934 1.213v16.378c0 1.026-.373 1.634-1.68 1.726l-15.458.934c-.98.047-1.448-.093-1.962-.747l-3.129-4.06c-.56-.747-.793-1.306-.793-1.96V2.667c0-.839.374-1.54 1.447-1.632z"/></svg>';
+}
+var ATTNOT = null;      // { phase: reading|ready|sending|done|err, plan, res, msg, prog }
+var ATTNOTAT = '';      // 마지막으로 보낸 시각(KST)
+var attNotionHooked = false;
+function attNotionRows() {
+  return attRows().map(function (x) {
+    return { id: x.id, name: x.name, start: x.start, type: x.type, reason: x.reason, seq: x.seq, gubun: x.gubun, time: x.time || '' };
+  });
+}
+function attNotionHook() {
+  if (attNotionHooked || !widgetAPI.onAttNotionProgress) return;
+  attNotionHooked = true;
+  widgetAPI.onAttNotionProgress(function (d) {
+    if (!ATTNOT || ATTNOT.phase !== 'sending') return;
+    ATTNOT.prog = d;
+    var el = document.getElementById('atNotProg');          // 화면을 통째로 다시 그리지 않고 글자만
+    if (el) el.textContent = d.done + ' / ' + d.total + '건';
+  });
+}
+function attNotionRead() {
+  attNotionHook();
+  ATTNOT = { phase: 'reading' }; render();
+  widgetAPI.attNotion({ rows: attNotionRows() }).then(function (r) {
+    ATTNOT = (r && r.ok) ? { phase: 'ready', plan: r } : { phase: 'err', msg: (r && r.msg) || '노션과 연결하지 못했습니다' };
+    render();
+  }).catch(function (e) { ATTNOT = { phase: 'err', msg: String((e && e.message) || e) }; render(); });
+}
+function attNotionSend() {
+  if (!ATTNOT || ATTNOT.phase !== 'ready' || !(ATTNOT.plan.send || (ATTNOT.plan.files && ATTNOT.plan.files.addOnly))) return;
+  var total = ATTNOT.plan.send + ((ATTNOT.plan.files && ATTNOT.plan.files.addOnly) || 0);
+  ATTNOT = { phase: 'sending', plan: ATTNOT.plan, prog: { done: 0, total: total } }; render();
+  widgetAPI.attNotion({ rows: attNotionRows(), send: true }).then(function (r) {
+    if (r && r.ok) { ATTNOT = { phase: 'done', res: r }; if (r.at) ATTNOTAT = r.at; attFilesLoad(); }
+    else ATTNOT = { phase: 'err', msg: (r && r.msg) || '노션에 만들지 못했습니다' };
+    render();
+  }).catch(function (e) { ATTNOT = { phase: 'err', msg: String((e && e.message) || e) }; render(); });
+}
+function attNotionChips(list, cls, max) {
+  var n = list.length, shown = list.slice(0, max || 14);
+  return '<div class="atnotl">' + shown.map(function (l) { return '<span class="' + cls + '">' + esc(l) + '</span>'; }).join('')
+    + (n > shown.length ? '<span class="atnotmore">… 외 ' + (n - shown.length) + '건</span>' : '') + '</div>';
+}
+function attNotionPanel() {
+  if (!ATTNOT) return '';
+  var P = ATTNOT, h = '<div class="atnot"><div class="atnoth">' + notionMark(16) + '<b>노션 [DB]’26 3-2 출결 로 보내기</b>'
+    + (ATTNOTAT ? '<small>마지막 전송 · ' + esc(ATTNOTAT) + '</small>' : '')
+    + '<span class="spacer"></span><button class="wkb" id="atNotX"' + (P.phase === 'sending' ? ' disabled' : '') + '>닫기</button></div>';
+  if (P.phase === 'reading') {
+    h += '<div class="rhint">노션에서 학생 목록과 지금까지 올라간 출결을 읽는 중… (아직 아무것도 만들지 않습니다)</div>';
+  } else if (P.phase === 'err') {
+    h += '<div class="atwarn">' + esc(P.msg) + '</div>'
+      + '<div class="rhint"><b>노션에서 한 번만 해 주세요</b> — ‘26 3-2 학생 출결 페이지를 열어 오른쪽 위 <b>•••</b> → <b>연결</b> → <b>진호알리미</b> 를 추가합니다(그 안의 [DB]’26 3-2 출결 에도 적용돼요). 학생 INFO 는 학생기록에서 이미 연결돼 있으면 따로 안 해도 됩니다. 노션 열쇠는 설정의 «업무관리» 에 넣은 것을 씁니다.</div>'
+      + '<div class="atnotb"><button class="wkb go" id="atNotRe">다시 해 보기</button></div>';
+  } else if (P.phase === 'ready') {
+    var p = P.plan;
+    var F = p.files || {};
+    h += '<div class="atnots">보낼 새 기록 <b>' + p.send + '</b>건 · 이미 노션에 있어 건너뜀 <b>' + p.dup + '</b>건'
+      + (p.bad ? ' · <b class="atbadt">보낼 수 없음 ' + p.bad + '건</b>' : '') + '<small> (노션에 지금 ' + p.existing + '건)</small></div>';
+    if (p.send) h += '<div class="rhint"><b>새로 만들 것</b></div>' + attNotionChips(p.sendList, 'atnotc');
+    if (p.bad) {
+      h += '<div class="rhint atbadt"><b>보낼 수 없는 줄 — 만들지 않습니다(확인이 필요해요)</b></div><div class="atnotbad">'
+        + p.badList.map(function (b) { return '<div><b>' + esc(b.label) + '</b> — ' + esc(b.why) + '</div>'; }).join('') + '</div>';
+    }
+    if (F.count) {
+      h += '<div class="atnots atnotf">증빙 파일 <b>' + F.count + '</b>개(' + attFileSize(F.bytes) + ')를 함께 올립니다'
+        + (F.addOnly ? ' · 이미 있는 기록 <b>' + F.addOnly + '</b>건에는 증빙만 더합니다' : '') + '</div>';
+      if (F.addOnly) h += attNotionChips(F.addOnlyList, 'atnotc atnotcf', 8);
+    }
+    if (F.addSkip) h += '<div class="rhint">노션 쪽에 이미 첨부가 있는 기록 ' + F.addSkip + '건은 덮어쓰지 않고 건너뜁니다.</div>';
+    if (F.tooBig && F.tooBig.length) {
+      h += '<div class="rhint atbadt"><b>노션 한도를 넘어 올리지 않는 파일</b></div><div class="atnotbad">'
+        + F.tooBig.map(function (t) { return '<div>' + esc(t) + '</div>'; }).join('') + '</div>';
+    }
+    if (F.needProp) {
+      h += '<div class="atwarn">노션 출결 DB 에 <b>«증빙서류»</b> 칸(파일)이 아직 없습니다. 증빙을 올리려면 먼저 만들어야 해요 — 기존 칸·기록은 그대로 두고 칸 하나만 더합니다.'
+        + '<div class="atnotb"><button class="wkb go" id="atNotProp">노션에 «증빙서류» 칸 만들기</button></div></div>';
+    }
+    h += '<div class="rhint">노션에 이미 있는 기록은 고치거나 지우지 않고, 같은 학생·날짜·유형이 있으면 건너뜁니다. 출석부·NEIS 는 미체크로 만들어집니다.</div>'
+      + '<div class="atnotb"><button class="wkb go" id="atNotGo"' + ((p.send || F.addOnly) && !F.needProp ? '' : ' disabled') + '>노션에 ' + p.send + '건 만들기'
+      + (F.addOnly ? ' + 증빙 ' + F.addOnly + '건' : '') + '</button>'
+      + '<button class="wkb" id="atNotRe">다시 읽기</button></div>';
+  } else if (P.phase === 'sending') {
+    h += '<div class="atnots">노션에 만드는 중… <b id="atNotProg">' + (P.prog ? P.prog.done + ' / ' + P.prog.total + '건' : '') + '</b></div>'
+      + '<div class="rhint">창을 닫지 말고 잠시 기다려 주세요 (노션 속도 제한 때문에 한 건에 0.3초쯤 걸립니다).</div>';
+  } else if (P.phase === 'done') {
+    var r = P.res;
+    h += '<div class="atnots">✅ 노션에 <b>' + r.made + '</b>건을 만들었습니다 · ' + esc(r.at || '')
+      + (r.dup ? ' · 이미 있어 건너뜀 ' + r.dup + '건' : '') + (r.bad ? ' · 못 보냄 ' + r.bad + '건' : '') + '</div>';
+    if (r.failed && r.failed.length) {
+      h += '<div class="rhint atbadt"><b>만들지 못한 것 ' + r.failed.length + '건</b></div><div class="atnotbad">'
+        + r.failed.map(function (b) { return '<div><b>' + esc(b.label) + '</b> — ' + esc(b.why) + '</div>'; }).join('') + '</div>';
+    }
+    if (r.filesSent) h += '<div class="atnots">증빙 파일 <b>' + r.filesSent + '</b>개를 노션에 올렸습니다</div>';
+    if (r.fileFail && r.fileFail.length) {
+      h += '<div class="rhint atbadt"><b>올리지 못한 증빙 ' + r.fileFail.length + '개 — 기록은 만들어졌고, 다음에 «노션으로» 를 누르면 다시 시도합니다</b></div><div class="atnotbad">'
+        + r.fileFail.map(function (b) { return '<div><b>' + esc(b.label) + '</b> — ' + esc(b.why) + '</div>'; }).join('') + '</div>';
+    }
+    if (r.bad) h += '<div class="rhint atbadt">보내지 못한 ' + r.bad + '건(학생 INFO 에서 못 찾음 등)은 «다시 읽기» 로 까닭을 볼 수 있어요.</div>';
+    h += '<div class="atnotb"><button class="wkb" id="atNotRe">다시 읽기</button></div>';
+  }
+  return h + '</div>';
+}
 function attBar() {
   var mons = ATT ? attMonths() : [attThisMon()];
   var chips = mons.map(function (m) {
@@ -2221,6 +2627,9 @@ function attBar() {
     + (has && attCanWrite() ? '<button class="wkb" id="atFold"' + (attFoldBusy ? ' disabled' : '') + ' title="'
       + (f ? '이 달 줄을 시트에서 다시 보이게' : '검토 끝난 달 — 시트에서 이 달 줄을 숨깁니다') + '">'
       + (attFoldBusy ? (f ? '펴는 중…' : '접는 중…') : (f ? '펴기' : '접기')) + '</button>' : '')
+    + (HAS_TT && ATT && attCls() === '3-2' ? '<button class="wkb' + (ATTNOT ? ' go' : '') + '" id="atNot" title="현재까지의 출결을 노션 [DB]’26 3-2 출결 로 보냅니다'
+      + (ATTNOTAT ? ' · 마지막 전송 ' + esc(ATTNOTAT) : '') + '">'
+      + notionMark(14) + ' 노션으로</button>' : '')
     + '<button class="wkb" id="atGet" title="시트에서 다시 읽기">⟳</button>'
     + fontBtns('att') + '</div></div>';
 }
@@ -2330,7 +2739,9 @@ var ATT_COLS = ['연번', '구분', '학번', '이름', '시작일', '종료일'
 /* 반 탭에 수정요청사항·수정여부 칸이 있으면 신청사유 옆에 시트처럼 붙인다 (인쇄에는 안 나온다) */
 function attHasReq() { return !!(ATT && ATT.has && ATT.has.req); }
 function attHasFix() { return !!(ATT && ATT.has && ATT.has.fix); }
-function attNCols() { return 8 + (attChkOn ? ATT_CHK.length : 0) + (attHasReq() ? 1 : 0) + (attHasFix() ? 1 : 0); }
+/* 증빙 열 — 지비스만(학생 서류는 이 PC 에 보관하고 «노션으로» 때만 나간다) */
+function attHasFiles() { return !!HAS_TT; }
+function attNCols() { return 8 + (attChkOn ? ATT_CHK.length : 0) + (attHasReq() ? 1 : 0) + (attHasFix() ? 1 : 0) + (attHasFiles() ? 1 : 0); }
 
 /* ── 점검하기 (앱에서만 · 2026-09-12) ─────────────────────────────
    스위치를 켜면 신청사유와 수정요청사항 사이에 서류·출석부·NEIS 체크 칸이 끼어든다.
@@ -2365,10 +2776,10 @@ function attChkMove(oldSig, newSig) {
 /* ── 칸 너비 — 시트처럼 머리글 오른쪽 끝을 끌어서 바꾼다. 두 번 누르면 처음대로 ──
    ★ 글자 크기(A−A+)를 바꿔도 비율이 맞게 «배율 1 기준 px» 로 적어 둔다(ATTCOLW). 이 PC 에 남는다. */
 var ATTCOLW = {};
-var ATT_COLW0 = { c0: 24, c1: 56, c2: 38, c3: 46, c4: 70, c5: 54, c6: 60, c7: 0, c8: 150, c9: 120, k1: 42, k2: 48, k3: 42 };
+var ATT_COLW0 = { c0: 24, c1: 56, c2: 38, c3: 46, c4: 70, c5: 54, c6: 60, c7: 0, c8: 150, c9: 120, c10: 200, k1: 42, k2: 48, k3: 42 };
 function attColKeys() {
   return ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7'].concat(attChkOn ? ['k1', 'k2', 'k3'] : [])
-    .concat(attHasReq() ? ['c8'] : []).concat(attHasFix() ? ['c9'] : []);
+    .concat(attHasReq() ? ['c8'] : []).concat(attHasFix() ? ['c9'] : []).concat(attHasFiles() ? ['c10'] : []);
 }
 function attColW(k) { return ATTCOLW[k] || ATT_COLW0[k] || 0; }
 /* 두 표(목록·새로 적는 줄)가 같은 너비를 쓴다 — 칸이 위아래로 맞게 */
@@ -2385,6 +2796,7 @@ function attTableMin() {
 function attTable(list, folded) {
   var extra = (attChkOn ? ATT_CHK.map(function (k) { return k[1]; }) : [])
     .concat(attHasReq() ? ['수정요청사항'] : []).concat(attHasFix() ? [ATT && ATT.has && ATT.has.fixApp ? '수정여부<small title="시트에 칸이 없어 앱에만 둡니다">앱</small>' : '수정여부'] : []);
+  if (attHasFiles()) extra = extra.concat(['증빙<small title="이미지·영상·PDF 무엇이든 — 칸을 누르고 Ctrl+V · 끌어다 놓기 · ＋ 첨부">첨부</small>']);
   var keys = attColKeys();
   var h = '<div class="attw"><table class="attt" style="' + attTableMin() + '">' + attColgroup()
     + '<thead><tr>' + ATT_COLS.concat(extra).map(function (c, i) {
@@ -2498,6 +2910,7 @@ function attRowHtml(x, folded, 보일연번) {
       + (attChkOn ? attChkCells(x) : '')
       + (attHasReq() ? attReqCell(x, lock) : '')
       + (attHasFix() ? attFixCell(x, lock) : '')
+      + (attHasFiles() ? attFileCell(x) : '')
       + '</tr>';
   return h;
 }
@@ -2798,6 +3211,7 @@ function attEditSave(보냄) {
       attAddAt = r.savedAt || 지금시각();
       attAddMsg = (r.how || '고쳤습니다') + ' — ' + 보냄.name + ' ' + attMd(보냄.date) + ' ' + 보냄.type;
       attChkMove(E.sig, E.local ? E.sig : [보냄.id, 보냄.name, 보냄.date, 보냄.type].join('|'));   // 점검 체크도 새 sig 로
+      if (E.old) attFileMove([E.old.id, E.old.date, E.old.type].join('|'), [보냄.id, 보냄.date, 보냄.type].join('|'));   // 붙인 증빙도 따라간다
       if (!E.local && 쓰던것.gubun !== E.gubun) {
         /* 구분이 바뀌었으면 — 줄이 새로 읽힌 뒤 반 탭에 적는다 (sig 는 바뀔 수 있으니 새 값으로) */
         attPendGubun[[보냄.id, 보냄.name, 보냄.date, 보냄.type].join('|')] = 쓰던것.gubun || '';
@@ -2964,6 +3378,12 @@ function wireAtt(app) {
   };
   on('[data-atm]', function (b) { attMon = b.dataset.atm; attPop = null; render(); });
   on('#atGet', function () { attSeqTried = ''; attMsg = ''; attLoad(); render(); });
+  attFileWire(app);                               // 증빙 칸 — 첨부·열기·지우기·끌어다 놓기
+  on('#atNot', function () { if (ATTNOT) { ATTNOT = null; render(); } else attNotionRead(); });
+  on('#atNotRe', function () { attNotionRead(); });
+  on('#atNotX', function () { if (!ATTNOT || ATTNOT.phase !== 'sending') { ATTNOT = null; render(); } });
+  on('#atNotGo', function () { attNotionSend(); });
+  on('#atNotProp', function () { attNotionMakeProp(); });
   /* 점검하기 — 켜고 끄기, 칸 누르면 체크 켜고 끄기(누를 때마다 저장) */
   on('#atChk', function () { attChkOn = !attChkOn; attChkJust = false; attPop = null; render(); });
   on('#atInclLocal', function () { attInclLocal = !attInclLocal; render(); });
@@ -3674,13 +4094,29 @@ function usgMetrics(u) {
   if (u.fable && pctOf(u.fable) !== null) list.push({ lb: 'Fable', m: u.fable });
   return list;
 }
+/* 계정 줄 — «어느 계정으로 읽고 있나» 와 «계정 바꾸기».
+   ★ 바꾸기는 두 번 눌러야 한다(로그인이 풀리므로). 서비스마다 따로라 클로드와 제미나이를 다른 계정으로 쓸 수 있다. */
+var USGASK = '', USGMSG = '';
+function usgAcct(key, u) {
+  if (FLAVOR !== 'jinho') return '';
+  var ask = USGASK === key;
+  var err = USGMSG ? '<div class="uerr">' + esc(USGMSG) + '</div>' : '';
+  var who = u.account
+    ? '<span class="uacc" title="이 앱이 사용량을 읽는 ' + esc(u.label || key) + ' 계정입니다">' + esc(u.account) + '</span>'
+    : '<span class="uacc none">계정을 아직 못 읽었습니다</span>';
+  if (u.loggingIn) return '<div class="usgacc">' + who + '<span class="uask">로그인 창이 떠 있습니다 — 그 창에서 로그인해 주세요</span></div>' + err;
+  if (!ask) return '<div class="usgacc">' + who + '<button class="lg mini" data-usgask="' + key + '">계정 바꾸기</button></div>' + err;
+  return '<div class="usgacc ask">' + who
+    + '<span class="uask">' + esc(u.label || key) + ' 로그인이 풀리고, 다른 계정으로 다시 로그인합니다. (다른 서비스와 브라우저는 그대로)</span>'
+    + '<span class="uasb"><button class="lg mini go" data-usgsw="' + key + '">바꾸기</button>'
+    + '<button class="lg mini" data-usgno="1">취소</button></span></div>';
+}
 function usgBox(key, u) {
-  var h = '<div class="box"><div class="nm">' + esc(u.label || key)
-    + (u.account ? '<i>' + esc(u.account) + '</i>' : '') + '</div>';
+  var h = '<div class="box"><div class="nm">' + esc(u.label || key) + '</div>';
   if (u.needsLogin || (!u.ok && !usgMetrics(u).length)) {
     h += '<button class="lg" data-usglogin="' + key + '">'
       + (u.needsLogin ? '로그인하기' : '불러오는 중… 다시 시도') + '</button>';
-    return h + '</div>';
+    return h + (u.needsLogin ? '' : usgAcct(key, u)) + '</div>';
   }
   var ms = usgMetrics(u);
   if (USGSTYLE === 'ring') {
@@ -3700,7 +4136,7 @@ function usgBox(key, u) {
     }).join('') + '</div>';
   }
   h += usgBillLine(u.billing);
-  return h + '</div>';
+  return h + usgAcct(key, u) + '</div>';
 }
 /* 결제 줄 — «맥스 · 구독 9월 4일 취소 예정 (D-1) · 크레딧 US$77.14» */
 function usgBillLine(b) {
@@ -3727,10 +4163,11 @@ function usgBillLine(b) {
    ★ 아래에 따로 띠를 두면 두 줄을 통째로 먹는다. 이름 옆 빈 자리가 늘 비어 있으니
      타일을 그리로 옮겼다(2026-09-04). 제목 줄 높이(로고 68px) 안에 들어가도록
      원형은 작게, 초기화 시각 같은 잔글씨는 «올리면 뜨는 풀이» 로 돌렸다. */
-function usgTile(name, ms, tip) {
+function usgTile(name, ms, tip, acct) {
   if (!ms.length) return '';
   var h = '<span class="ut"' + (tip ? ' title="' + esc(tip) + '"' : '') + '>'
-    + '<i class="utn">' + esc(name) + '</i>';
+    + '<span class="utl"><i class="utn">' + esc(name) + '</i>'
+    + (acct ? '<small class="uta" title="' + esc(acct) + '">' + esc(String(acct).split('@')[0]) + '</small>' : '') + '</span>';
   h += ms.map(function (x) {
     var p = pctOf(x.m !== undefined ? x.m : x);
     var lb = x.lb, sub = x.m ? atOf(x.m) + ' 초기화' : (x.sub || '');
@@ -3764,7 +4201,8 @@ function usgInline() {
       tip = [b.plan, b.date ? (b.kind === '취소' ? '구독 ' + b.date + ' 취소 예정' : '다음 결제 ' + b.date) : '',
         b.credit ? '크레딧 ' + b.credit : ''].filter(Boolean).join(' · ');
     }
-    out.push(usgTile(u.label || k, usgMetrics(u), tip));
+    if (u.account) tip = (tip ? tip + ' · ' : '') + u.account;
+    out.push(usgTile(u.label || k, usgMetrics(u), tip, u.account));
   });
   out.push(usgTile('내 PC', sysMetrics(), ''));
   out = out.filter(Boolean);
@@ -6680,12 +7118,14 @@ function render() {
        굴려도 늘 보인다. 열쇠는 tt 하나라 오늘·이번주·진도표가 함께 커지고 작아진다. */
     /* ★ 뒤 셋(계획·날짜별·진도표)은 수업진도 웹앱을 «그대로» 얹어 보여 준다 */
     html += '<div class="chips sub">'
-      + ['today,오늘', 'progress,주간진도', 'plan,시간표계획', 'daily,날짜별', 'dgrid,진도표']
+      + ['today,이번주', 'progress,주간진도', 'plan,시간표계획', 'daily,날짜별', 'dgrid,진도표']
         .map(function (s) {
           var p = s.split(',');
           return '<button class="chip' + (VIEW === p[0] ? ' on' : '') + '" data-v="' + p[0] + '">'
             + p[1] + '</button>';
         }).join('')
+      /* 이번주 화면에서만 — 몇 주를 나란히 볼지 */
+      + (VIEW === 'today' && HAS_TT ? weekModeBtns() : '')
       /* 얹은 수업진도 웹앱의 판 — 지비스 제 판(제목 줄)과 헷갈리지 않게 이름을 붙인다 */
       + (DASHVER && DASHVER.ver
         ? '<span class="ttver" title="진호 시간표(수업진도 웹앱) 판'
@@ -6698,7 +7138,7 @@ function render() {
 
   html += '</div>';   // 머리 끝 — 여기부터는 스크롤된다
   /* 19번 — 제 손잡이가 없는 화면은 본문을 통째로 감싸 아래 손잡이로 키우고 줄인다(grzBody) */
-  html += grzBody(VIEW, DASHV[VIEW] ? viewDash()
+  html += grzBody(VIEW, dashScreenOf(VIEW) ? viewDash()
     : VIEW === 'week' ? viewWeek(d)
     : VIEW === 'progress' ? viewProgress(d)
     : VIEW === 'work' ? viewWork()
@@ -7046,6 +7486,8 @@ widgetAPI.onData(function (p) {
   VER = p.version || '';
   UPD = p.update || null;
   if (p.dashVer !== undefined) DASHVER = p.dashVer;
+  if (p.dashWeekMode) DASHWEEKMODE = p.dashWeekMode;
+  if (p.attNotionAt !== undefined) ATTNOTAT = p.attNotionAt;
   LINKS = p.links || [];
   if (p.linksAt !== undefined) LINKSAT = p.linksAt || '';
   TERMSTART = p.termStart || '';
@@ -7705,6 +8147,15 @@ function wireViews(app) {
         if (gk >= 0) gpCat.splice(gk, 1); else gpCat.push(b.dataset.gc);
         render(); return;
       }
+      if (b.dataset.cw) {
+        cmWeek = Number(b.dataset.cw) || 0;
+        render(); return;
+      }
+      if (b.dataset.wm) {                       // 이번주 화면 — 몇 주를 나란히 볼지(웹앱에 넘겨 펼침 단추를 맞춘다)
+        DASHWEEKMODE = b.dataset.wm;
+        widgetAPI.dashWeekMode(DASHWEEKMODE);
+        render(); return;
+      }
       if (b.dataset.cs) {
         cmSide = b.dataset.cs === 'row' ? 'row' : 'col';
         widgetAPI.setUi({ comciSide: cmSide });
@@ -7770,7 +8221,7 @@ function wireViews(app) {
       if (v === 'tt') v = (TT_SUB.indexOf(LASTTT) >= 0) ? LASTTT : 'today';
       if (TT_SUB.indexOf(v) >= 0) LASTTT = v;
       /* 얹어 둔 수업진도 화면은 다른 데로 가면 반드시 걷는다 — 안 걷으면 위에 남는다 */
-      if (!DASHV[v]) widgetAPI.dashHide();
+      if (!dashScreenOf(v)) widgetAPI.dashHide();
       VIEW = v;
       widgetAPI.setView(VIEW);
       render();
@@ -8006,6 +8457,20 @@ function wireViews(app) {
   if (acT) acT.addEventListener('click', goToday);
 
   // AI 사용량 — 로그인·모양 고르기·다시 읽기
+  app.querySelectorAll('[data-usgask]').forEach(function (b) {
+    b.addEventListener('click', function (ev) { ev.stopPropagation(); USGASK = b.dataset.usgask; USGMSG = ''; render(); });
+  });
+  app.querySelectorAll('[data-usgno]').forEach(function (b) {
+    b.addEventListener('click', function (ev) { ev.stopPropagation(); USGASK = ''; render(); });
+  });
+  app.querySelectorAll('[data-usgsw]').forEach(function (b) {
+    b.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      var k = b.dataset.usgsw; USGASK = '';
+      if (widgetAPI.usageSwitch) widgetAPI.usageSwitch(k).then(function (r) { if (r && r.ok === false) { USGMSG = (r.msg || '계정을 바꾸지 못했습니다'); render(); } });
+      render();
+    });
+  });
   app.querySelectorAll('[data-usglogin]').forEach(function (b) {
     b.addEventListener('click', function () { widgetAPI.usageLogin(b.dataset.usglogin); });
   });

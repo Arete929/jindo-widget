@@ -1,4 +1,4 @@
-// 파일명: comcigan.js | @version 1.1.0 — 학급 시간표를 자료147(이번 주 변경 반영본)로, 없으면 옛 옮겨 붙이기
+// 파일명: comcigan.js | @version 1.2.0 — v1.2.0 다음 주 시간표도 받는다(키 맨 끝 숫자 r=2 가 일자자료의 둘째 주) · 시작일·기간 보관 / v1.1.0 학급 시간표를 자료147(이번 주 변경 반영본)로, 없으면 옛 옮겨 붙이기
 // 컴시간알리미(http://comci.net:4082) 에서 학교 시간표를 받아온다.
 //
 // ★ 왜 위젯(메인 프로세스)에서 하나:
@@ -150,6 +150,7 @@ function shape(j, want) {
     school: j['학교명'] || '', region: j['지역명'] || '',
     year: j['학년도'] || '', updatedAt: j['자료244'] || '',
     times: periodTimes(j),
+    start: String(j['시작일'] || '').slice(0, 10),   // 이 자료가 시작하는 월요일 «2026-10-05»
     teachers: teachers.map((t, i) => ({ i, name: t })).filter((t) => t.i > 0 && t.name),
     classes: null, byTeacher: null
   };
@@ -283,7 +284,23 @@ function applyTeacherChanges(j, out, sep, teachers, subName) {
      («무엇을 볼지» 는 위젯에서 고르면 되고, 그때 다시 받을 필요가 없다) */
 async function fetchTimetable(schoolCode) {
   const j = await fetchRaw(schoolCode, 1);
-  return shape(j, { teacher: true, classes: true });
+  const out = shape(j, { teacher: true, classes: true });
+  /* ★ 다음 주도 받아 둔다 — 컴시간은 «일자자료» 에 두 주(이번·다음)를 올려 두고,
+       요청 키 맨 끝 숫자(r)가 그 번호다 (r=2 → 다음 주, 2026-10-07 실측: 시작일·자료147·자료542 가 달라짐).
+       다음 주가 아직 안 올라왔거나 받기에 실패해도 이번 주는 그대로 쓴다 */
+  try {
+    const wk = Array.isArray(j['일자자료']) ? j['일자자료'] : [];
+    if (wk.length > 1) {
+      const j2 = await fetchRaw(schoolCode, 2);
+      const n = shape(j2, { teacher: true, classes: true });
+      if (n.start && n.start !== out.start) {
+        out.range = String((wk[0] || [])[1] || '');
+        out.next = { start: n.start, range: String((wk[1] || [])[1] || ''), updatedAt: n.updatedAt,
+          classes: n.classes, byTeacher: n.byTeacher, classSource: n.classSource };
+      }
+    }
+  } catch (e) { /* 다음 주 없이 이번 주만 */ }
+  return out;
 }
 
 module.exports = { searchSchool, fetchTimetable, readProtocol, fetchRaw , shape };

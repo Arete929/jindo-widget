@@ -40,6 +40,16 @@
   button.go:hover { background: var(--energy2); }
   button:disabled { opacity: .45; cursor: default; }
   .hint { font-size: 11.5px; color: var(--sub); line-height: 1.5; margin-top: 6px; }
+  /* 사용량 — 어느 계정으로 읽는지 · 계정 바꾸기 */
+  .usgaccs { flex: 1 1 100%; display: flex; flex-direction: column; gap: 6px; }
+  .acr { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 7px 10px;
+         border: 1px solid var(--border); border-radius: 10px; background: #fbfbff; }
+  .acr .acn { min-width: 62px; font-size: 12.5px; font-weight: 800; color: var(--energy1); }
+  .acr .acm { flex: 1 1 140px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+              font-size: 12.5px; font-weight: 700; color: var(--ink); }
+  .acr .acm.none { color: var(--sub); font-weight: 600; }
+  .acr .acq { flex: 1 1 100%; font-size: 11.5px; color: var(--sub); line-height: 1.5; }
+  .acr .acb { padding: 4px 11px; }
   .ok { color: var(--ok); font-weight: 700; }
   .warn { color: var(--warn); font-weight: 700; }
   .list { max-height: 150px; overflow-y: auto; border: 1px solid var(--border);
@@ -401,6 +411,11 @@
       <span class="hint" style="margin:0 0 0 8px">위젯에서만 갈립니다 — 넓게 보기는 늘 막대입니다</span>
     </div>
   </div>
+  <div class="row" id="usgAccRow" data-only="jinho">
+    <label class="lb">계정</label>
+    <div class="usgaccs" id="usgAcc"></div>
+  </div>
+  <div class="hint" data-only="jinho">서비스마다 로그인이 따로라 <b>Claude 와 Gemini 를 서로 다른 계정</b>으로 쓸 수 있습니다. «계정 바꾸기» 는 그 서비스만 로그아웃하고 다시 로그인하게 하며, 브라우저에 로그인해 둔 계정은 건드리지 않습니다.</div>
   <div class="hint" id="usgHint">
     켠 것만 <b>위젯 제목 줄 아래 띠</b>와 <b>넓게 보기 사이드바</b>에 나옵니다.<br>
     <b>AI 는 처음 한 번</b> «로그인하기» 를 눌러 각각 로그인해야 합니다.<br>
@@ -952,6 +967,7 @@ function __paint() {
     b.className = 'sw' + (on.indexOf(b.dataset.uk) >= 0 ? ' on' : '');
   });
   $('sysSw').className = 'sw' + ((UI.sys && UI.sys.show) ? ' on' : '');
+  paintUsgAcc();
   $('fontRow').querySelectorAll('button').forEach(function (b) {
     b.className = (b.dataset.fo === (UI.font || 'pretendard')) ? 'on' : '';
   });
@@ -2080,6 +2096,64 @@ window.addEventListener("scroll", function () {
 }, { passive: true });
 buildSetToc();
 fitToc(curToc());
+
+/* ── 사용량 계정 줄 ──
+   «지금 어느 계정으로 읽고 있나» 와 «계정 바꾸기». 바꾸기는 두 번 눌러야 한다(그 서비스 로그인이 풀리므로). */
+var USGASK = '', usgAccSig = '';
+function paintUsgAcc() {
+  var box = $('usgAcc'); if (!box || UI.flavor !== 'jinho') return;
+  var on = (UI.usage && UI.usage.on) || [], data = (UI.usage && UI.usage.data) || {};
+  var names = { claude: 'Claude', gemini: 'Gemini', gpt: 'ChatGPT' };
+  var keys = ['claude', 'gemini', 'gpt'].filter(function (k) { return on.indexOf(k) >= 0; });
+  if (!keys.length) { box.innerHTML = '<span class="hint" style="margin:0">위에서 Claude·Gemini 를 켜면 로그인한 계정이 여기 보입니다</span>'; return; }
+  box.innerHTML = keys.map(function (k) {
+    var u = data[k] || {}, nm = names[k], who, btn;
+    if (u.loggingIn) {
+      who = '<span class="acm none">로그인 창이 떠 있습니다 — 그 창에서 로그인해 주세요</span>'; btn = '';
+    } else if (u.needsLogin) {
+      who = '<span class="acm none">로그인 안 됨</span>';
+      btn = '<button class="acb go" data-aclogin="' + k + '">로그인하기</button>';
+    } else if (u.account) {
+      who = '<span class="acm" title="이 앱이 사용량을 읽는 ' + nm + ' 계정입니다">' + esc(u.account) + '</span>';
+      btn = '<button class="acb" data-acask="' + k + '">계정 바꾸기</button>';
+    } else if (u.ok) {
+      who = '<span class="acm none">로그인됨 · 계정은 아직 못 읽었습니다</span>';
+      btn = '<button class="acb" data-acask="' + k + '">계정 바꾸기</button>';
+    } else {
+      who = '<span class="acm none">확인 중…</span>';
+      btn = '<button class="acb" data-acask="' + k + '">계정 바꾸기</button>';
+    }
+    var ask = USGASK === k && !u.loggingIn;
+    if (ask) {
+      btn = '<button class="acb go" data-acsw="' + k + '">바꾸기</button><button class="acb" data-acno="1">취소</button>';
+    }
+    return '<div class="acr"><b class="acn">' + nm + '</b>' + who + btn
+      + (ask ? '<span class="acq">' + nm + ' 로그인이 풀리고 로그인 창이 뜹니다 — 다른 계정으로 로그인하세요. (다른 서비스와 브라우저는 그대로)</span>' : '')
+      + '</div>';
+  }).join('');
+  box.querySelectorAll('[data-acask]').forEach(function (b) { b.onclick = function () { USGASK = b.dataset.acask; paintUsgAcc(); }; });
+  box.querySelectorAll('[data-acno]').forEach(function (b) { b.onclick = function () { USGASK = ''; paintUsgAcc(); }; });
+  box.querySelectorAll('[data-aclogin]').forEach(function (b) { b.onclick = function () { widgetAPI.usageLogin(b.dataset.aclogin); }; });
+  box.querySelectorAll('[data-acsw]').forEach(function (b) {
+    b.onclick = function () {
+      var k = b.dataset.acsw; USGASK = '';
+      if (widgetAPI.usageSwitch) widgetAPI.usageSwitch(k).then(function () { usgRefresh(true); });
+      paintUsgAcc();
+    };
+  });
+}
+/* 설정 창은 한 번만 읽어 오므로, 로그인이 끝나거나 계정이 읽히면 보이도록 사용량 현황만 가끔 다시 받는다 */
+function usgRefresh(force) {
+  if (!widgetAPI.usageSnapshot) return;
+  widgetAPI.usageSnapshot().then(function (d) {
+    var sig = JSON.stringify(Object.keys(d || {}).map(function (k) { var u = d[k] || {}; return [k, u.account || '', !!u.needsLogin, !!u.loggingIn, !!u.ok]; }));
+    if (!force && sig === usgAccSig) return;
+    usgAccSig = sig;
+    UI.usage = Object.assign({}, UI.usage, { data: d });
+    paintUsgAcc();
+  }).catch(function () { /* 다음에 다시 */ });
+}
+setInterval(function () { if (!document.hidden && UI.flavor === 'jinho') usgRefresh(false); }, 2500);
 
 function load() {
   widgetAPI.getSettings().then(function (s) {

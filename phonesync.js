@@ -93,6 +93,9 @@ function slimAi(snap) {
     const u = snap && snap[k]; if (!u) return;
     const w = (m) => (m && m.pct != null ? { pct: m.pct, resetAt: m.resetAt || null, resetRel: m.resetRel || null } : null);
     const o = { label: u.label || k, needsLogin: !!u.needsLogin, session: w(u.session), weekly: w(u.weekly), fable: w(u.fable) };
+    /* 로그인한 계정 — 이메일 꼴일 때만, 로그아웃 상태면 안 보낸다. 전체 주소는 «개인 열쇠» 로 올리는 이 길로만 가고,
+       폰이 공개 읽기 열쇠로 읽을 때는 중계가 가려서 내려 준다(usage-relay 1.2.0). */
+    if (!o.needsLogin && u.account && /^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,120}\.[A-Za-z]{2,}$/.test(String(u.account))) o.account = String(u.account);
     if (o.needsLogin || o.session || o.weekly || o.fable) { out[k] = o; any = true; }
   });
   return any ? out : null;

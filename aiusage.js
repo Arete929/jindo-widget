@@ -1,4 +1,6 @@
-// 파일명: aiusage.js | @version 1.105.1
+// 파일명: aiusage.js | @version 1.106.0
+// v1.106.0 계정 보이기·바꾸기 — 서비스마다 «어느 계정으로 로그인했는지» 를 보여 주고(못 읽으면 보조 길로 다시 읽고, 한 번 읽은 것은 기억),
+//   switchAccount(key): 그 서비스의 로그인 칸(partition)만 비우고 로그인 창을 다시 띄운다 — 클로드와 제미나이는 서로 다른 계정으로 로그인할 수 있다.
 // v1.105.1 clockAt — «목요일 오후 11:00» 처럼 요일·날짜가 붙은 초기화 문구를 «오늘 23:00» 으로 읽어 주간 초기화가 «46분 남음» 으로 보이던 것 고침(2026-10-06). relMs 는 «10월 8일» 을 «8일 뒤» 로 읽지 않게.
 // 클로드·제미나이 사용량을 위젯이 «직접» 읽어 온다.
 //
@@ -14,7 +16,7 @@
 //   우리는 남은 시간과 초기화 시각을 둘 다 보여야 해서 원래 문구를 resetRel 로 남긴다.
 //   저쪽 스크립트가 바뀌면 여기도 같이 맞춰 주는 편이 좋다.
 
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, session } = require('electron');
 
 const POLL_TIMEOUT_MS = 25 * 1000;
 
@@ -247,6 +249,13 @@ function claudeBillingExtract() {
 }
 const CLAUDE_BILLING_SCRIPT = '(' + claudeBillingExtract.toString() + ')()';
 
+/* 계정(이메일)을 «따로» 읽는 길 — 사용량 화면에는 계정 버튼이 안 보일 때가 있어서, 그때 쓴다.
+   ★ 로그인한 사람의 정보를 그 서비스 자기 주소로만 묻는다(밖으로 나가지 않는다). 못 읽으면 null 이다. */
+const CLAUDE_ACCOUNT_PROBE = `(async function(){try{var r=await fetch('/api/account',{credentials:'include'});if(!r.ok)return null;var j=await r.json();return (j&&(j.email_address||j.email||(j.account&&(j.account.email_address||j.account.email))))||null}catch(e){return null}})()`;
+const GEMINI_ACCOUNT_PROBE = `(function(){try{var g=window.WIZ_global_data||{};var e=g.oPEP7c||'';if(e&&String(e).indexOf('@')>0)return String(e);var a=document.querySelector('a[href*="SignOutOptions"],a[aria-label*="@"],button[aria-label*="@"]');if(a){var t=a.getAttribute('aria-label')||'';var i=t.indexOf('(');var j=t.lastIndexOf(')');if(i>=0&&j>i)return t.slice(i+1,j);}return null}catch(e){return null}})()`;
+const GPT_ACCOUNT_PROBE = `(async function(){try{var r=await fetch('/api/auth/session',{credentials:'include'});if(!r.ok)return null;var j=await r.json();return (j&&j.user&&j.user.email)||null}catch(e){return null}})()`;
+const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
 const PROVIDERS = {
   claude: {
     key: 'claude',
@@ -255,6 +264,7 @@ const PROVIDERS = {
     loginUrl: 'https://claude.ai/login',
     usageUrl: () => `https://claude.ai/new?_w=${Date.now()}#settings/usage`,
     extract: CLAUDE_EXTRACT_SCRIPT,
+    accountProbe: CLAUDE_ACCOUNT_PROBE,
     loginCheck: CLAUDE_LOGIN_CHECK_SCRIPT,
     settle: 2600,
     // 결제일·크레딧 — 하루 한 번 «설정 → 결제» 를 따로 읽는다
@@ -269,6 +279,7 @@ const PROVIDERS = {
     loginUrl: 'https://gemini.google.com/app',
     usageUrl: () => `https://gemini.google.com/usage?_w=${Date.now()}`,
     extract: GEMINI_EXTRACT_SCRIPT,
+    accountProbe: GEMINI_ACCOUNT_PROBE,
     loginCheck: GEMINI_LOGIN_CHECK_SCRIPT,
     settle: 2600
   },
@@ -281,6 +292,7 @@ const PROVIDERS = {
     loginUrl: 'https://chatgpt.com/auth/login',
     usageUrl: () => `https://chatgpt.com/#settings/Usage?_w=${Date.now()}`,
     extract: GPT_EXTRACT_SCRIPT,
+    accountProbe: GPT_ACCOUNT_PROBE,
     loginCheck: GPT_LOGIN_CHECK_SCRIPT,
     settle: 3200
   }
@@ -292,11 +304,33 @@ const last = {};        // 마지막으로 «성공한» 값 — 잠깐 실패�
 const busy = {};        // 지금 읽는 중인가
 const loggingIn = {};   // 로그인 창을 띄워 둔 동안은 일꾼 창을 건드리지 않는다
 let onChange = () => {};
+let savedAcc = {};      // 한 번 읽은 계정 — 다음에 앱을 켜도 바로 보이게(main 이 파일에 적어 둔다)
+let onAcc = () => {};
 
 function log() { /* main 에서 갈아끼운다 */ }
 let debug = log;
 function setLogger(fn) { debug = fn || log; }
 function onUpdate(fn) { onChange = fn || (() => {}); }
+/* 기억해 둔 계정을 받고, 바뀔 때 알릴 곳을 정한다 */
+function setSavedAccounts(o, cb) {
+  savedAcc = {};
+  Object.keys(o || {}).forEach((k) => { if (PROVIDERS[k] && EMAIL_RE.test(String(o[k]))) savedAcc[k] = String(o[k]); });
+  onAcc = cb || (() => {});
+}
+function rememberAccount(key, email) {
+  const e = email && EMAIL_RE.test(String(email)) ? String(email) : '';
+  if (e && savedAcc[key] !== e) { savedAcc[key] = e; try { onAcc(Object.assign({}, savedAcc)); } catch (_) { /* 무시 */ } }
+  if (!e && email === '' && savedAcc[key]) { delete savedAcc[key]; try { onAcc(Object.assign({}, savedAcc)); } catch (_) { /* 무시 */ } }
+}
+/* 사용량 화면에서 계정이 안 읽혔을 때 — 그 서비스 자기 화면에 한 번 더 묻는다 */
+async function probeAccount(key, w) {
+  const p = PROVIDERS[key];
+  if (!p || !p.accountProbe || !w || w.isDestroyed()) return '';
+  try {
+    const v = await withTimeout(w.webContents.executeJavaScript(p.accountProbe), 5000, p.label + ' 계정');
+    return v && EMAIL_RE.test(String(v)) ? String(v) : '';
+  } catch (_) { return ''; }
+}
 
 function worker(key) {
   const p = PROVIDERS[key];
@@ -431,6 +465,11 @@ async function poll(key) {
       }
       if (got && (got.ok || got.needsLogin)) {
         got.at = Date.now();
+        if (got.needsLogin) { got.account = ''; rememberAccount(key, ''); }          // 로그아웃 상태 — 기억한 계정도 지운다
+        else {
+          if (!got.account || !EMAIL_RE.test(String(got.account))) got.account = await probeAccount(key, w);
+          if (got.account) rememberAccount(key, got.account);
+        }
         enrich(got.session); enrich(got.weekly); enrich(got.fable);
         got.billing = (last[key] && last[key].billing) || null;   // 결제 정보는 이어받는다
         last[key] = got;
@@ -483,11 +522,42 @@ function openLogin(key) {
   w.once('closed', () => { clearInterval(timer); loggingIn[key] = false; });
 }
 
+/* 계정 바꾸기 — 그 서비스의 로그인 칸(쿠키·저장소)만 비우고 로그인 창을 다시 띄운다.
+   ★ 서비스마다 로그인 칸이 따로다(persist:claudeusage · persist:geminiusage · persist:gptusage).
+     그래서 클로드는 A 계정, 제미나이는 B 계정으로 로그인해 둘 수 있고, 하나를 바꿔도 다른 쪽은 그대로다.
+   ★ 이 앱의 일꾼 창에서만 로그아웃된다 — 브라우저에 로그인해 둔 계정은 건드리지 않는다. */
+async function switchAccount(key) {
+  const p = PROVIDERS[key];
+  if (!p) return { ok: false, msg: '알 수 없는 서비스입니다' };
+  if (loggingIn[key] && wins[key] && !wins[key].isDestroyed()) {      // 이미 로그인 창이 떠 있으면 그 창을 앞으로
+    try { wins[key].show(); wins[key].focus(); } catch (_) { /* 무시 */ }
+    return { ok: true, already: true };
+  }
+  try { if (wins[key] && !wins[key].isDestroyed()) wins[key].destroy(); } catch (_) { /* 무시 */ }
+  wins[key] = null;
+  try {
+    const ses = session.fromPartition(p.partition);
+    await ses.clearStorageData();
+    await ses.clearCache();
+  } catch (e) {
+    debug('[사용량:' + key + '] 로그인 칸을 비우지 못함 — ' + ((e && e.message) || e));
+    return { ok: false, msg: '로그인 정보를 지우지 못했습니다' };
+  }
+  rememberAccount(key, '');
+  last[key] = { ok: false, needsLogin: true, switched: true, at: Date.now(), billing: null };
+  debug('[사용량:' + key + '] 계정 바꾸기 — 로그인 칸을 비우고 로그인 창을 엽니다');
+  onChange(snapshot());
+  openLogin(key);
+  return { ok: true };
+}
+
 function snapshot() {
   const out = {};
   KEYS.forEach((k) => {
     out[k] = last[k] ? Object.assign({ label: PROVIDERS[k].label }, last[k])
       : { label: PROVIDERS[k].label, ok: false, needsLogin: false, loading: !!busy[k] };
+    if (!out[k].needsLogin && !out[k].account && savedAcc[k]) out[k].account = savedAcc[k];   // 이번엔 못 읽었어도 마지막으로 읽은 계정
+    out[k].loggingIn = !!loggingIn[k];
   });
   return out;
 }
@@ -514,4 +584,4 @@ function prune(keep) {
   });
 }
 
-module.exports = { KEYS, PROVIDERS, poll, pollAll, openLogin, snapshot, stop, prune, setLogger, onUpdate };
+module.exports = { KEYS, PROVIDERS, poll, pollAll, openLogin, switchAccount, setSavedAccounts, snapshot, stop, prune, setLogger, onUpdate, _t: { EMAIL_RE } };

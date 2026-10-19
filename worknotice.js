@@ -1,5 +1,5 @@
-// 파일명: worknotice.js | @version 1.115.1
-// 수정요약: v1.115.1 부서 머리 끝의 마침표 허용(DEPT_RE·DEPT_CELL_RE) — «3. 생활상담부.» 가 부서로 안 잡혀 앞 부서
+// 파일명: worknotice.js | @version 1.115.2
+// 수정요약: v1.115.2 부서 제목 바로 아래의 «데이터 표»(교육명·대상·일시… 여러 칸짜리)를 칸마다 한 줄로 풀어헤치던 것 — 표 그대로 둔다(2026-10-17 생활상담부). PARSE_VER 4. / v1.115.1 부서 머리 끝의 마침표 허용(DEPT_RE·DEPT_CELL_RE) — «3. 생활상담부.» 가 부서로 안 잡혀 앞 부서
 //   안쪽 글로 묻히고 보라 머리도 없던 것. PARSE_VER 3(저장된 옛 해석본을 버리고 다시 받음).
 // 주간업무계획 구글 문서를 위젯이 직접 받아 «원문 모양 그대로» 정리한다.
 //
@@ -326,6 +326,19 @@ function parseWork(html) {
 
     // 그 뒤의 표는 «부서» 표 — 첫 칸이 부서 이름이면 새 부서를 연다
     const rows = b.rows || [];
+    /* ★ 부서 제목(«3. 생활상담부») 바로 아래에 놓인 «데이터 표»(교육명·대상·일시·장소·비고 같은 여러 칸짜리)는
+         부서를 감싼 표가 아니라 내용이다. 아래 «칸을 풀어 한 줄씩» 하는 길로 보내면 표가 사라지고
+         칸마다 한 줄로 늘어선다(2026-10-17 신고 — 생활상담부). 부서 이름이 첫 칸에 없고, 부서가 이미 열려 있고,
+         한 줄에 칸이 둘 이상이면 표 그대로 그 부서의 내용으로 붙인다.
+         (한 칸짜리 «글상자» 표는 전처럼 풀어서 문단으로 둔다.) */
+    const isDeptRow = (row) => {
+      const f0 = cellText(row[0]);
+      return !!(f0.match(DEPT_RE) || f0.match(DEPT_CELL_RE) || ETC_RE.test(f0));
+    };
+    if (dept && rows.length && !rows.some(isDeptRow) && rows.some((r) => r.length >= 2) && blockInk(b)) {
+      dept.blocks.push(b);
+      continue;
+    }
     let usedAsDept = false;
     rows.forEach((row) => {
       const first = cellText(row[0]);
@@ -388,6 +401,6 @@ async function fetchWork(ids) {
 /* 해석기 판 — 규칙을 고치면 이 숫자를 올린다. 그러면 저장해 둔 옛 해석본을 버리고
    다시 받는다(main.js workIsOld). 2 = 제 번호 단 줄에 목록 점을 안 붙이는 규칙.
    3 = 부서 머리 끝의 마침표 허용(«3. 생활상담부.»). */
-const PARSE_VER = 3;
+const PARSE_VER = 4;
 
 module.exports = { fetchWork, parseWork, DOCS, PARSE_VER };

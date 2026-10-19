@@ -24,6 +24,7 @@ files:
   - widget.html
   - ui.css        # 색·모양 (위젯과 혜원이지가 함께 쓴다)
   - views.js      # 화면을 만드는 코드 (마찬가지)
+  - imgshrink.js  # 사진 줄이기 — 무손실 정리(jpegtran)·mozjpeg·Lanczos (메인 프로세스)
   - toolbox.js    # 도구상자 — 바로가기 탭 안의 PDF·QR·타이머 등(지비스·혜원이지 공통)
   - easy.html     # «넓게 보기» 창 (왼쪽 메뉴 + 대시보드)
   - easy.js
@@ -47,6 +48,9 @@ files:
   # ★ 업무관리는 지비스 전용 기능이지만, main.js 가 맨 위에서 부르므로
   #   이 파일이 없으면 혜원이지도 «모듈을 못 찾음» 으로 아예 안 켜진다.
   - notion.js
+  - attfiles.js  # 출결 증빙서류 보관함 (지비스 전용)
+  - drivebox.js  # 증빙 → 구글 드라이브(학교 계정) 올리기 (지비스 전용 — 다만 main.js 가 불러오므로 두 판 모두 포함)
+  - notionatt.js  # 출결 → 노션 (지비스 전용)
   - notionrec.js  # 학생기록 ↔ 노션
   - ticktick.js
   - backup.js     # 열쇠·설정 백업(암호 잠금)
@@ -56,6 +60,10 @@ files:
   - paperload.js   # 인쇄 미리보기 창의 다리(닫기·PDF·인쇄). 빠지면 단추가 전부 먹통 — v1.125.1
   - assets/**
   - node_modules/**/*
+# ★ 실행 파일(jpegtran.exe)과 WASM 압축기는 asar 안에서는 못 쓴다 — 밖으로 풀어 둔다
+asarUnpack:
+  - assets/jpegtran/**
+  - node_modules/@jsquash/**
 win:
   target:
     - target: nsis

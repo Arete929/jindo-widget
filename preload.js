@@ -1,5 +1,5 @@
-// 파일명: preload.js | @version 2.0.0 — attList(cls)·attMeGet·attMeSet (혜원이지 출결)
-const { contextBridge, ipcRenderer, webFrame } = require('electron');
+// 파일명: preload.js | @version 2.1.0 — tbIm*(사진 줄이기) / v2.0.0 — attList(cls)·attMeGet·attMeSet (혜원이지 출결)
+const { contextBridge, ipcRenderer, webFrame, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
   onData: (cb) => ipcRenderer.on('jindo-data', (_e, payload) => cb(payload)),
@@ -42,7 +42,31 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   tbQr: (o) => ipcRenderer.invoke('tb-qr', o),
   tbQrSave: (o) => ipcRenderer.invoke('tb-qr-save', o),
   tbQrCopy: (o) => ipcRenderer.invoke('tb-qr-copy', o),
+  dashWeekMode: (m) => ipcRenderer.send('dash-week-mode', m),
+  attNotion: (o) => ipcRenderer.invoke('att-notion', o),
+  attNotionProp: () => ipcRenderer.invoke('att-notion-prop'),
+  attFileList: () => ipcRenderer.invoke('att-file-list'),
+  attFilePick: (key, base) => ipcRenderer.invoke('att-file-pick', key, base),
+  attFileAdd: (o) => ipcRenderer.invoke('att-file-add', o),
+  attFileDel: (o) => ipcRenderer.invoke('att-file-del', o),
+  attFileOpen: (o) => ipcRenderer.invoke('att-file-open', o),
+  attFileUrl: (o) => ipcRenderer.invoke('att-file-url', o),
+  attFileRename: (o) => ipcRenderer.invoke('att-file-rename', o),
+  attFileMove: (o) => ipcRenderer.invoke('att-file-move', o),
+  attDriveOpen: (o) => ipcRenderer.invoke('att-drive-open', o),
+  attDriveStatus: () => ipcRenderer.invoke('att-drive-status'),
+  onAttFilesChanged: (cb) => ipcRenderer.on('att-files-changed', () => cb()),
+  onAttNotionProgress: (cb) => ipcRenderer.on('att-notion-progress', (_e, d) => cb(d)),
   tbReveal: (p) => ipcRenderer.send('tb-reveal', p),
+  /* 사진 줄이기(일괄) — 끌어다 놓은 파일의 진짜 경로는 webUtils 로만 알 수 있다(Electron 32+) */
+  tbImPathOf: (file) => { try { return webUtils.getPathForFile(file) || ''; } catch (e) { return ''; } },
+  tbImPick: (kind) => ipcRenderer.invoke('tb-img-pick', kind),
+  tbImScan: (paths) => ipcRenderer.invoke('tb-img-scan', paths),
+  tbImRead: (p) => ipcRenderer.invoke('tb-img-read', p),
+  tbImLossless: (o) => ipcRenderer.invoke('tb-img-lossless', o),
+  tbImFit: (o) => ipcRenderer.invoke('tb-img-fit', o),
+  tbImMkout: (o) => ipcRenderer.invoke('tb-img-mkout', o),
+  tbImSave: (o) => ipcRenderer.invoke('tb-img-save', o),
   tbPhotoPick: (multi) => ipcRenderer.invoke('tb-photo-pick', !!multi),
   tbPhotoRead: (p) => ipcRenderer.invoke('tb-photo-read', p),
   tbPhotoSave: (o) => ipcRenderer.invoke('tb-photo-save', o),
@@ -96,6 +120,8 @@ contextBridge.exposeInMainWorld('widgetAPI', {
 
   /* AI 사용량 (클로드·제미나이) */
   usageLogin: (key) => ipcRenderer.send('usage-login', key),
+  usageSwitch: (key) => ipcRenderer.invoke('usage-switch', key),
+  usageSnapshot: () => ipcRenderer.invoke('usage-snapshot'),
   usageRefresh: () => ipcRenderer.send('usage-refresh'),
   setUsageStyle: (style) => ipcRenderer.send('usage-style', style),
 

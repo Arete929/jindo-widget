@@ -1,4 +1,4 @@
-/* 파일명: toolbox.js | @version 1.4.0 — v1.5.0 이름외우기 퀴즈는 «한 바퀴» 방식(같은 학생이 두 번 나오지 않음) + 끝나면 틀린 학생만 다시 · v1.4.2 사진은 «3201 강재은» (학번 이름) 꼴로 보관 — 동명이인도 저절로 갈림 · v1.4.0 학생이름외우기는 지비스 전용(혜원이지에서 뺌) + 노션 학생 INFO 사진 가져오기 · v1.3.1 뽑기 자동/수동·v1.3.0 스쿨보드 모양(PDF 메뉴·계산기·등급표·이름외우기 학급 카드)
+/* 파일명: toolbox.js | @version 1.7.0 — v1.7.0 도구마다 크게·작게(A− 100% A+, 도구별로 기억) · v1.6.1 사진 줄이기 본문이 좁은 칸에 갇히던 틀 수정 · v1.6.0 «사진 줄이기» 일괄(폴더·사진 고르기/끌어다 놓기 → 새 폴더에 저장, 나이스 고입 200KB · 화소 그대로 «무손실 정리» → mozjpeg → Lanczos 순서, 도움말 포함) · v1.5.0 이름외우기 퀴즈는 «한 바퀴» 방식(같은 학생이 두 번 나오지 않음) + 끝나면 틀린 학생만 다시 · v1.4.2 사진은 «3201 강재은» (학번 이름) 꼴로 보관 — 동명이인도 저절로 갈림 · v1.4.0 학생이름외우기는 지비스 전용(혜원이지에서 뺌) + 노션 학생 INFO 사진 가져오기 · v1.3.1 뽑기 자동/수동·v1.3.0 스쿨보드 모양(PDF 메뉴·계산기·등급표·이름외우기 학급 카드)
    도구상자 — «바로가기» 탭 안의 타일로 들어간다. 지비스·혜원이지 공통(views.js 다음에 읽힌다).
    스쿨보드(제작 호똑쌤)의 도구상자를 본떠 «선으로 그린 아이콘» 카드 여덟 개:
    PDF 편집기 · 랜덤 뽑기·모둠 편성 · QR 생성기 · 수업 타이머 · 학생이름외우기 · 계산기 ·
@@ -15,7 +15,8 @@ var TB = {
   nm: { rd: null, src: '', mode: 'card', idx: 0, flip: false, order: [], score: 0, tried: 0, q: null, picked: '', pairs: null, selL: -1, selR: -1, fails: 0, msg: '', photos: {}, photoSig: '', show: 'photo', manage: false, busy: false, cls: '', have: {}, haveSig: '', typed: '', typedOk: false },
   cal: { tab: 'hist', mem: null, fresh: false, expr: '', hist: [], res: '', err: '', d1: '', d2: '', dn: 30, dres: '', unitCat: 'len', unitVal: '1', unitFrom: 'm' },
   sc: { total: 100, n: 20, nSub: 4, step: 0.5, diffs: [], res: null, msg: '' },
-  gr: { total: 200, scheme: '9', round: 'round', res: null }
+  gr: { total: 200, scheme: '9', round: 'round', res: null },
+  im: { help: false, base: '', files: [], skipped: 0, preset: 'neis', kb: '300', side: 0, busy: false, cancel: false, done: 0, total: 0, results: [], outDir: '', outName: '', at: '', msg: '', ok: true }
 };
 
 /* ── 선 아이콘(스쿨보드 모양) — 24×24 · 선 굵기 1.8 ── */
@@ -29,6 +30,7 @@ var TB_SVG = {
   m_rotate: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
   m_image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',
   m_imgpdf: '<path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><rect width="9" height="7" x="2" y="12" rx="1"/>',
+  m_imgdown: '<path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"/><path d="m14 19 3 3v-5.5"/><path d="m17 22 3-3"/><circle cx="9" cy="9" r="2"/>',
   m_doc: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M10 13h4"/><path d="M10 17h4"/>',
   wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
   pdf: '<path d="M4 6V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2H4"/><path d="M14 2v6h6"/><circle cx="6" cy="14" r="3"/><path d="M6 10v1"/><path d="M6 17v1"/><path d="M10 14H9"/><path d="M3 14H2"/>',
@@ -47,6 +49,7 @@ function tbIcon(k, sz) {
 
 var TB_TOOLS = [
   { k: 'pdf', ic: 'pdf', t: 'PDF 편집기', badge: 'NEW', d: 'PDF 합치기·나누기·쪽 뽑기·쪽 지우기·돌리기, 그림을 PDF 로 만들기를 내 컴퓨터에서 처리합니다.' },
+  { k: 'im', ic: 'm_imgdown', t: '사진 줄이기', badge: 'NEW', d: '사진·폴더를 올리면 화질을 지키며 용량을 줄여 새 폴더에 저장합니다. 나이스 고입 사진(200KB 이하)도 한 번에.' },
   { k: 'rnd', ic: 'dice', t: '랜덤 뽑기·모둠 편성', d: '학급 명단이나 직접 적은 이름으로 발표자를 뽑고 모둠을 자동으로 편성합니다.' },
   { k: 'qr', ic: 'qr', t: 'QR 생성기', d: '주소나 글을 QR 코드로 만들어 그림으로 저장하거나 복사합니다.' },
   { k: 'tm', ic: 'alarm', t: '수업 타이머', badge: 'NEW', d: '안내 글과 함께 큰 화면 타이머를 띄우고 끝나면 소리로 알려 줍니다.' },
@@ -70,11 +73,21 @@ function tbEntryTile() {
       }).join('') + '</div>';
 }
 
+/* ── 도구마다 «크게·작게» — 도구별로 따로 기억(껐다 켜도 그대로). CSS zoom 이라 표·글자·단추가 함께 커진다 ── */
+function tbZoom(k) { var z = Number((typeof FS !== 'undefined' && FS['tbz_' + k]) || 1); return z >= 0.7 && z <= 2 ? z : 1; }
+function tbZoomBtns(k) {
+  var z = tbZoom(k);
+  return '<span class="wfs tbzoom">'
+    + '<button class="wkb" data-tbact="tbz" data-tbv="-1" title="이 도구를 작게">A−</button>'
+    + '<button class="wkb" data-tbact="tbz" data-tbv="0" title="원래 크기로">' + Math.round(z * 100) + '%</button>'
+    + '<button class="wkb" data-tbact="tbz" data-tbv="1" title="이 도구를 크게">A+</button></span>';
+}
 function viewToolbox() {
   var tool = tbTools().filter(function (x) { return x.k === TB.tool; })[0];
   var h = '<div class="top2"><div class="wknav">'
     + '<button class="wkb" data-tbact="back">← ' + (tool && !TB.direct ? '도구상자' : '바로가기') + '</button>'
-    + '<span class="wklab">' + (tool ? tbIcon(tool.ic, 18) + ' ' + esc(tool.t) : tbIcon('wrench', 18) + ' 도구상자') + '</span></div></div>';
+    + '<span class="wklab">' + (tool ? tbIcon(tool.ic, 18) + ' ' + esc(tool.t) : tbIcon('wrench', 18) + ' 도구상자') + '</span>'
+    + (tool ? tbZoomBtns(tool.k) : '') + '</div></div>';
   if (!tool) {
     h += '<div class="tbsub">필요한 도구를 고르세요. 각 도구는 별도의 화면으로 열립니다.</div><div class="tbgrid">'
       + tbTools().map(function (x) {
@@ -84,8 +97,8 @@ function viewToolbox() {
         }).join('') + '</div>';
     return h + tbBigTimer();
   }
-  var body = { pdf: tbPdfHtml, rnd: tbRndHtml, qr: tbQrHtml, tm: tbTmHtml, nm: tbNmHtml, cal: tbCalHtml, sc: tbScHtml, gr: tbGrHtml }[tool.k];
-  return h + '<div class="tbbody">' + body() + '</div>' + tbBigTimer();
+  var body = { pdf: tbPdfHtml, im: tbImHtml, rnd: tbRndHtml, qr: tbQrHtml, tm: tbTmHtml, nm: tbNmHtml, cal: tbCalHtml, sc: tbScHtml, gr: tbGrHtml }[tool.k];
+  return h + '<div class="tbbody" style="zoom:' + tbZoom(tool.k) + '">' + body() + '</div>' + tbBigTimer();
 }
 
 /* ── 작은 부품 ── */
@@ -202,6 +215,210 @@ function tbPdfHtml() {
   return '<div class="tbpdf">' + menu + '<section class="tbpanel">' + body + '</section></div>'
     + '<div class="tbfoot">파일은 내 컴퓨터 안에서만 처리하고 어디로도 보내지 않습니다.</div>';
 }
+
+
+/* ═══════════ 사진 줄이기(일괄) ═══════════
+   ★ 폴더나 사진을 고르거나 «끌어다 놓으면» 그 폴더 안에 새 폴더(줄인사진_…)를 만들어 줄여 저장한다. 원본은 그대로.
+   ★ 화질 순서: ① 이미 한도 이하인 JPEG 는 «그대로 복사»(손실 0) ② 가로·세로는 그대로 두고 품질만 95→85% 안에서 맞춤
+     ③ 그래도 크면 품질 90% 로 두고 가로·세로를 줄여 «한도에 들어가는 가장 큰 크기» 로. 크기를 줄인 사진은 목록에서 알려 준다.
+   ★ 한도는 안전하게 «바이트 수 = KB × 1000» 으로 센다(윈도우 탐색기 표시보다 조금 작게) — 나이스 200KB 는 200,000바이트 이하. */
+var TB_IM_Q = { max: 0.95, min: 0.85, fix: 0.90 };
+function tbImLimit() {
+  var s = TB.im;
+  if (s.preset === 'neis') return 200000;
+  if (s.preset === '500') return 500000;
+  if (s.preset === '1000') return 1000000;
+  var kb = Number(s.kb); return kb > 0 ? Math.round(kb * 1000) : 0;
+}
+function tbImLabel() {
+  var s = TB.im, lim = tbImLimit(), a = '';
+  if (lim) a = s.preset === 'neis' ? '나이스200KB' : (lim >= 1000000 && lim % 1000000 === 0 ? (lim / 1000000) + 'MB' : Math.round(lim / 1000) + 'KB');
+  if (s.side) a += (a ? '_' : '') + '긴변' + s.side;
+  return a;
+}
+function tbImKB(n) { return (n >= 1024 * 1024 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)).toLocaleString() + ' KB'); }
+function tbImHtml() {
+  var s = TB.im, lim = tbImLimit();
+  var tot = s.files.reduce(function (a, f) { return a + (f.size || 0); }, 0);
+  var h = '<div class="tbph2"><span class="tbphi">' + tbIcon('m_imgdown', 22) + '</span><div><b>사진 용량 줄이기</b>'
+    + '<small>사진이나 폴더를 올리면 그 폴더 안에 «줄인사진_…» 폴더를 새로 만들어 저장합니다. 원본은 그대로 둡니다.</small></div></div>';
+  /* 1) 올리기 */
+  h += '<div class="tbc2 tbimdrop" id="tbImDrop"><span class="tbc2i">' + tbIcon('m_image', 22) + '</span><div class="tbc2t"><b>'
+    + (s.files.length ? '사진 ' + s.files.length.toLocaleString() + '장 · 합계 ' + tbImKB(tot) : '여기로 사진이나 폴더를 끌어다 놓으세요')
+    + '</b><small>' + (s.files.length ? (s.base ? '저장 위치: ' + esc(s.base) + '\\줄인사진_' + esc(tbImLabel() || '…') : '')
+      + (s.skipped ? ' · 사진이 아닌 파일 ' + s.skipped + '개는 건너뜀' : '') : 'jpg · png · webp · bmp — 폴더를 놓으면 그 폴더 안의 사진을 모두 줄입니다(하위 폴더는 제외).') + '</small></div>'
+    + '<button class="wkb go" data-tbact="impick" data-tbv="dir"' + (s.busy ? ' disabled' : '') + '>폴더 선택</button>'
+    + '<button class="wkb" data-tbact="impick" data-tbv="files"' + (s.busy ? ' disabled' : '') + '>사진 첨부</button>'
+    + (s.files.length ? '<button class="wkb" data-tbact="imclear"' + (s.busy ? ' disabled' : '') + '>비우기</button>' : '') + '</div>';
+  /* 2) 설정 */
+  h += '<div class="tbc2"><div class="tbc2h"><b>설정</b></div>'
+    + '<div class="tbrow"><label class="tbl">목표 용량</label>' + tbPal('im.preset', s.preset, [['neis', '나이스 고입 · 200KB 이하'], ['500', '500KB 이하'], ['1000', '1MB 이하'], ['custom', '직접']])
+    + (s.preset === 'custom' ? '<span class="tbstep"><input class="gpai" style="width:84px" type="number" min="10" step="10" data-tbin="im.kb" value="' + esc(s.kb) + '"> KB 이하</span>' : '') + '</div>'
+    + '<div class="tbrow"><label class="tbl">긴 변</label>' + tbPal('im.side', s.side, [[0, '그대로'], [2000, '2000px'], [1600, '1600px'], [1200, '1200px'], [800, '800px']]) + '</div>'
+    + '<div class="tbhint">화소를 건드리지 않는 방법부터 차례로 시도해, <b>화질이 가장 덜 변하는 방법</b>으로 한도에 맞춥니다. 한도는 «KB × 1000 바이트» 이하로 맞춰 윈도우 표시보다 조금 작아요. 결과는 모두 JPG 입니다.'
+    + ' <button class="wkb" data-tbact="imhelp">' + (s.help ? '▲ 도움말 접기' : '❓ 어떻게 줄이나요?') + '</button></div></div>'
+    + (s.help ? tbImHelp() : '');
+  /* 3) 실행 */
+  var pct = s.total ? Math.round(s.done / s.total * 100) : 0;
+  h += '<div class="tbact"><span class="tbactm">' + (s.busy ? '<div class="rhint">' + s.done + ' / ' + s.total + '장 처리 중… (' + pct + '%)</div>' : tbMsg(s.msg, s.ok)) + '</span>'
+    + (s.outDir && !s.busy ? '<button class="wkb" data-tbact="reveal" data-tbv="' + esc(s.outDir) + '">📁 저장된 곳 열기</button>' : '')
+    + (s.busy ? '<button class="wkb" data-tbact="imstop">중지</button>'
+      : '<button class="wkb go tbgo" data-tbact="imgo"' + (s.files.length ? '' : ' disabled') + '>▷ ' + (s.preset === 'neis' ? '200KB 이하로 ' : '') + '줄이기 시작</button>') + '</div>';
+  /* 결과 */
+  if (s.results.length) {
+    var bad = s.results.filter(function (r) { return r.st === 'fail'; }).length, chg = s.results.filter(function (r) { return r.st === 'shrink'; }).length, lsl = s.results.filter(function (r) { return r.st === 'lossless' || r.st === 'copy'; }).length;
+    h += '<div class="tbhint" style="margin-top:8px"><b>결과</b> — 저장 ' + s.results.filter(function (r) { return r.st !== 'fail'; }).length + '장'
+      + (lsl ? ' · 화질 손실 없이 처리 ' + lsl + '장' : '') + (chg ? ' · 크기를 줄인 사진 ' + chg + '장' : '') + (bad ? ' · <b style="color:#d0473d">한도에 못 맞춘 사진 ' + bad + '장(저장 안 함)</b>' : '') + '</div>'
+      + '<div class="tbfiles tbimres">' + s.results.map(function (r) {
+          var tag = { copy: '그대로 복사', lossless: '화소 그대로(무손실 정리)', keep: '화질 그대로', quality: '품질만 조금 낮춤', shrink: '크기 줄임', fail: '못 줄임' }[r.st] || '';
+          return '<div class="tbf' + (r.st === 'fail' ? ' bad' : '') + '"><span class="tbfn"><b>' + esc(r.name) + '</b><i>' + tbImKB(r.before) + (r.after ? ' → ' + tbImKB(r.after) : '')
+            + (r.dim ? ' · ' + esc(r.dim) : '') + ' · ' + tag + (r.err ? ' — ' + esc(r.err) : '') + '</i></span></div>';
+        }).join('') + '</div>'
+      + (s.at ? '<div class="rhint" style="margin-top:6px">✅ 저장됨 · ' + esc(s.at) + '</div>' : '');
+  }
+  /* ★ .tbpdf 는 «왼쪽 220px 메뉴 + 본문» 2단 틀이라, 메뉴 없이 본문만 넣으면 본문이 220px 칸에 갇힌다(v2.10.24 실수) — 한 단짜리 틀을 쓴다 */
+  return '<div class="tbimwrap"><section class="tbpanel">' + h + '</section></div><div class="tbfoot">사진은 내 컴퓨터 안에서만 처리하고 어디로도 보내지 않습니다.</div>';
+}
+
+function tbImHelp() {
+  return '<div class="tbc2 tbimhelp"><div class="tbc2h"><b>❓ 사진을 어떻게 줄이나요?</b></div>'
+    + '<p class="tbhint"><b>먼저 알아 둘 것</b> — 원본이 한도를 크게 넘는 사진은, 화소를 하나도 안 바꾸고는 한도 안에 넣을 수 없습니다(정보를 일부 덜어야 해요). 그래서 <b>화질이 덜 변하는 방법부터 차례로</b> 시도하고, 처음으로 한도에 들어가는 방법에서 멈춥니다.</p>'
+    + '<ol class="tbimol">'
+    + '<li><b>① 그대로 복사</b> — 이미 한도 이하인 JPEG 는 손대지 않고 복사합니다. 화질 손실 0.</li>'
+    + '<li><b>② 무손실 정리</b> — 화소는 한 점도 바꾸지 않고, 사진에 붙은 <i>부가정보</i>(촬영 정보·위치(GPS)·미리보기 그림·메모)를 지우고 JPEG 압축표를 다시 짭니다. 화질은 그대로이고 용량만 보통 5~25% 줄어요. 한도를 조금 넘는 사진은 이것만으로 들어옵니다. 색 정보(색 프로파일)는 남깁니다.</li>'
+    + '<li><b>③ 고화질 압축</b> — 가로·세로는 두고 mozjpeg(같은 용량에서 화질이 더 좋은 압축기)로 품질만 95→85% 안에서 낮춰 맞춥니다. 눈으로는 거의 구별되지 않는 범위예요.</li>'
+    + '<li><b>④ 크기 줄이기</b> — 그래도 크면 품질 90% 를 지키며 Lanczos 방식(윤곽·글씨가 선명하게 남는 축소)으로 가로·세로를 줄여, <b>한도에 들어가는 가장 큰 크기</b>로 저장합니다. 큰 폰 사진은 대개 여기까지 옵니다. 사진을 크게 줄여도 증명사진·서류 용도로는 충분히 선명해요.</li>'
+    + '</ol>'
+    + '<p class="tbhint"><b>알아 두면 좋은 점</b></p><ul class="tbimol">'
+    + '<li>결과 목록에서 사진마다 어떤 방법으로 줄었는지 볼 수 있고, <b>한도에 못 맞춘 사진은 저장하지 않고</b> «못 줄임»으로 알려 줍니다.</li>'
+    + '<li>②·③·④로 만든 사진에는 촬영 위치·기기 정보가 남지 않습니다. 단, ①로 그대로 복사된 사진은 원본과 같아 부가정보가 남아 있어요.</li>'
+    + '<li>사진에 «회전 정보»가 있는 폰 사진은 ②를 건너뛰고 ③부터 합니다(지우면 옆으로 누울 수 있어서).</li>'
+    + '<li>한도는 윈도우 탐색기의 KB 표시보다 조금 작게(KB × 1000 바이트) 맞춥니다. 나이스 200KB 는 <b>200,000바이트 이하</b>입니다.</li>'
+    + '<li>원본은 건드리지 않고, 올린 폴더 안에 «줄인사진_…» 폴더를 새로 만들어 저장합니다. 모든 처리는 이 컴퓨터 안에서만 합니다.</li>'
+    + '<li>PNG·WebP·BMP 는 JPG 로 바꿔 저장합니다. 나이스 등에서 사진 가로·세로 규격이 정해져 있다면 «긴 변»으로 맞추면 가장 깨끗합니다.</li></ul></div>';
+}
+function tbImEnc(bmp, k, q) {
+  return new Promise(function (res) {
+    var w = Math.max(1, Math.round(bmp.width * k)), hh = Math.max(1, Math.round(bmp.height * k));
+    var c = document.createElement('canvas'); c.width = w; c.height = hh;
+    var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, hh);
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(bmp, 0, 0, w, hh);
+    c.toBlob(function (b) { c.width = c.height = 0; res({ blob: b, w: w, h: hh, q: q, k: k }); }, 'image/jpeg', q);
+  });
+}
+/* 한도 안에 드는 «가장 화질 좋은» 결과 — { st: keep|quality|shrink|fail, r } */
+async function tbImFitCanvas(bmp, limit, side) {   // 메인의 mozjpeg 를 못 쓸 때(부품이 막힘) 물러서는 길 — 크롬 기본 압축기
+  var k0 = side ? Math.min(1, side / Math.max(bmp.width, bmp.height)) : 1;
+  var r = await tbImEnc(bmp, k0, TB_IM_Q.max);
+  if (!limit || r.blob.size <= limit) return { st: k0 < 1 ? 'shrink' : 'keep', r: r };
+  var lo = await tbImEnc(bmp, k0, TB_IM_Q.min);
+  if (lo.blob.size <= limit) {
+    var a = TB_IM_Q.min, b = TB_IM_Q.max, best = lo;
+    for (var i = 0; i < 6; i++) { var m = (a + b) / 2, t = await tbImEnc(bmp, k0, m); if (t.blob.size <= limit) { best = t; a = m; } else b = m; }
+    return { st: k0 < 1 ? 'shrink' : 'quality', r: best };
+  }
+  var kLow = k0 * 0.12, tl = await tbImEnc(bmp, kLow, TB_IM_Q.fix);
+  if (tl.blob.size > limit) return { st: 'fail', r: tl };
+  var ka = kLow, kb = k0, bestS = tl;
+  for (var j = 0; j < 9; j++) { var km = (ka + kb) / 2, tt = await tbImEnc(bmp, km, TB_IM_Q.fix); if (tt.blob.size <= limit) { bestS = tt; ka = km; } else kb = km; }
+  return { st: 'shrink', r: bestS };
+}
+async function tbImRun() {
+  var s = TB.im, lim = tbImLimit();
+  if (!s.files.length) { s.msg = '먼저 사진이나 폴더를 올려 주세요'; s.ok = false; render(); return; }
+  if (!lim && !s.side) { s.msg = '목표 용량을 고르거나 긴 변 크기를 정해 주세요'; s.ok = false; render(); return; }
+  if (s.preset === 'custom' && String(s.kb).trim() !== '' && !(Number(s.kb) > 0)) { s.msg = '목표 용량(KB)을 숫자로 적어 주세요'; s.ok = false; render(); return; }
+  s.busy = true; s.cancel = false; s.done = 0; s.total = s.files.length; s.results = []; s.msg = ''; s.ok = true; s.at = ''; s.outDir = ''; render();
+  try {
+    var mk = await widgetAPI.tbImMkout({ base: s.base, label: tbImLabel() });
+    if (!mk || !mk.ok) throw new Error((mk && mk.msg) || '저장 폴더를 만들지 못했습니다');
+    s.outDir = mk.dir; s.outName = mk.name;
+    for (var i = 0; i < s.files.length; i++) {
+      if (s.cancel) break;
+      var f = s.files[i], row = { name: f.name, before: f.size, after: 0, st: 'fail', dim: '', err: '' };
+      try {
+        var outName = f.name.replace(/\.[^.]*$/, '') + '.jpg';
+        /* ①② 화소를 건드리지 않는 길 — 메인이 «그대로 복사 / 무손실 정리 / 새로 만들기» 중 하나를 알려 준다 */
+        var lo = await widgetAPI.tbImLossless({ path: f.path, limit: lim, side: s.side });
+        if (!lo || !lo.ok) throw new Error((lo && lo.msg) || '읽지 못했습니다');
+        if (lo.mode === 'copy') {
+          var cp = await widgetAPI.tbImSave({ dir: mk.dir, name: outName, copyFrom: f.path });
+          if (!cp || !cp.ok) throw new Error((cp && cp.msg) || '복사하지 못했습니다');
+          row.st = 'copy'; row.after = cp.size; row.dim = lo.w + '×' + lo.h;
+        } else if (lo.mode === 'lossless') {
+          var sv0 = await widgetAPI.tbImSave({ dir: mk.dir, name: outName, bytes: lo.bytes });
+          if (!sv0 || !sv0.ok) throw new Error((sv0 && sv0.msg) || '저장하지 못했습니다');
+          row.st = 'lossless'; row.after = sv0.size; row.dim = lo.w + '×' + lo.h + ' · 화소 그대로';
+        } else {
+          /* ③④ 새로 압축 — 크롬이 «회전 정보까지 반영해» 그린 화소를 메인의 mozjpeg·Lanczos 에 넘긴다 */
+          var rd = await widgetAPI.tbImRead(f.path);
+          if (!rd || !rd.ok) throw new Error((rd && rd.msg) || '읽지 못했습니다');
+          var bmp = await createImageBitmap(new Blob([rd.bytes]), { imageOrientation: 'from-image' });
+          var fit = null;
+          try {
+            var cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height;
+            var cg = cv.getContext('2d'); cg.fillStyle = '#fff'; cg.fillRect(0, 0, cv.width, cv.height); cg.drawImage(bmp, 0, 0);
+            var img = cg.getImageData(0, 0, cv.width, cv.height);
+            var ft = await widgetAPI.tbImFit({ rgba: img.data, w: cv.width, h: cv.height, limit: lim, side: s.side });
+            cv.width = cv.height = 0;
+            if (ft && ft.ok) fit = { st: ft.st, bytes: ft.bytes ? new Uint8Array(ft.bytes) : null, w: ft.w, h: ft.h, q: ft.q };
+          } catch (e1) { fit = null; }
+          if (!fit) {                                             // 메인의 압축기를 못 쓰면 크롬 기본 압축기로 물러선다
+            var fc = await tbImFitCanvas(bmp, lim, s.side);
+            fit = { st: fc.st, bytes: fc.r && fc.st !== 'fail' ? new Uint8Array(await fc.r.blob.arrayBuffer()) : null, w: fc.r && fc.r.w, h: fc.r && fc.r.h, q: fc.r ? Math.round(fc.r.q * 100) : 0 };
+          }
+          if (fit.st === 'fail' || !fit.bytes) { row.st = 'fail'; row.err = '가로·세로를 많이 줄여도 한도에 안 들어갑니다'; }
+          else {
+            var sv = await widgetAPI.tbImSave({ dir: mk.dir, name: outName, bytes: fit.bytes });
+            if (!sv || !sv.ok) throw new Error((sv && sv.msg) || '저장하지 못했습니다');
+            row.st = fit.st; row.after = sv.size; row.dim = fit.w + '×' + fit.h + (fit.st === 'quality' ? ' · 품질 ' + fit.q + '%' : (fit.st === 'shrink' ? ' · 원본 ' + bmp.width + '×' + bmp.height : ''));
+          }
+        }
+        if (typeof bmp !== 'undefined' && bmp && bmp.close) { bmp.close(); bmp = null; }
+      } catch (e) { row.st = 'fail'; row.err = String((e && e.message) || e); }
+      s.results.push(row); s.done = i + 1; render();
+      await new Promise(function (r) { setTimeout(r, 0); });
+    }
+    var okN = s.results.filter(function (r) { return r.st !== 'fail'; }).length, badN = s.results.length - okN;
+    s.at = 지금시각();
+    s.msg = (s.cancel ? '중지했습니다 — ' : '') + okN + '장을 «' + s.outName + '» 폴더에 저장했습니다.' + (badN ? ' 못 줄인 사진 ' + badN + '장은 저장하지 않았습니다.' : '');
+    s.ok = !badN;
+  } catch (e) { s.msg = String((e && e.message) || e); s.ok = false; }
+  s.busy = false; render();
+}
+function tbImLoad(r) {
+  var s = TB.im;
+  if (!r || r.ok === false) { s.msg = (r && r.msg) || '사진을 읽지 못했습니다'; s.ok = false; render(); return; }
+  if (!r.files || !r.files.length) { if (r.base !== '' || (r.skipped || 0) > 0) { s.msg = '사진 파일(jpg·png·webp·bmp)을 찾지 못했습니다'; s.ok = false; render(); } return; }
+  s.base = r.base; s.files = r.files; s.skipped = r.skipped || 0; s.results = []; s.outDir = ''; s.at = '';
+  s.msg = r.cut ? '사진이 많아 앞의 2,000장만 올렸습니다' : ''; s.ok = !r.cut; render();
+}
+/* 끌어다 놓기 — 사진 줄이기 화면이 열려 있으면 거기로, 다른 화면이면 사진 줄이기를 열어 준다 */
+function tbImDropFiles(e) {
+  return !!(e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0);
+}
+/* 출결 «증빙» 칸(data-atdrop) 위에 놓는 것은 그 칸이 받는다 — 여기서 가로채지 않는다 */
+function tbImOnAtt(e) { return !!(e.target && e.target.closest && e.target.closest('[data-atdrop]')); }
+document.addEventListener('dragover', function (e) {
+  if (!tbImDropFiles(e) || TB.im.busy || tbImOnAtt(e)) return;
+  e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  var z = document.getElementById('tbImDrop'); if (z) z.classList.add('over');
+});
+document.addEventListener('dragleave', function (e) {
+  if (e.relatedTarget === null) { var z = document.getElementById('tbImDrop'); if (z) z.classList.remove('over'); }
+});
+document.addEventListener('drop', function (e) {
+  if (!tbImDropFiles(e) || tbImOnAtt(e)) return;
+  e.preventDefault();
+  var z = document.getElementById('tbImDrop'); if (z) z.classList.remove('over');
+  if (TB.im.busy) return;
+  var paths = Array.prototype.map.call(e.dataTransfer.files || [], function (f) { return widgetAPI.tbImPathOf(f); }).filter(Boolean);
+  if (!paths.length) return;
+  widgetAPI.tbImScan(paths).then(function (r) {
+    if (r && r.files && r.files.length && !(TB.open && TB.tool === 'im')) { TB.open = true; TB.tool = 'im'; TB.direct = true; }
+    tbImLoad(r);
+  });
+});
 
 /* ═══════════ ② 랜덤 뽑기·모둠 편성 ═══════════ */
 function tbRndNames() { return tbNames(TB.rnd.names); }
@@ -923,6 +1140,23 @@ function tbAct(act, v, b) {
         render();
       }).catch(function (e) { s.msg = String((e && e.message) || e); s.ok = false; render(); });
       return;
+    }
+    case 'impick': {
+      if (TB.im.busy) return;
+      widgetAPI.tbImPick(v === 'dir' ? 'dir' : 'files').then(tbImLoad).catch(function (e) { TB.im.msg = String((e && e.message) || e); TB.im.ok = false; render(); });
+      return;
+    }
+    case 'imclear': TB.im.files = []; TB.im.base = ''; TB.im.skipped = 0; TB.im.results = []; TB.im.msg = ''; TB.im.outDir = ''; TB.im.at = ''; break;
+    case 'imgo': tbImRun(); return;
+    case 'imstop': TB.im.cancel = true; break;
+    case 'imhelp': TB.im.help = !TB.im.help; break;
+    case 'tbz': {
+      var zk = 'tbz_' + TB.tool, dir = Number(v), zv = 1;
+      if (dir !== 0) zv = Math.round(Math.min(1.6, Math.max(0.8, tbZoom(TB.tool) + dir * 0.1)) * 100) / 100;
+      FS[zk] = zv;
+      var zp = {}; zp[zk] = zv;
+      try { widgetAPI.setUi({ fontScale: zp }); } catch (e) { /* 저장 못 해도 이번엔 적용된다 */ }
+      break;
     }
     case 'pdfclear': TB.pdf.files = []; TB.pdf.msg = ''; TB.pdf.saved = []; break;
     case 'pdfx': TB.pdf.files.splice(Number(v), 1); break;
