@@ -7165,6 +7165,7 @@ function render() {
     + '<button class="ico img" title="넓게 보기 — 사이드바가 있는 큰 창" onclick="widgetAPI.openEasy()">'
     + '<img src="assets/wide.png" alt="넓게 보기"></button>'
     + (HAS_TT ? '<button class="ico" title="주간 시간표 크게 보기" onclick="widgetAPI.openTimetable()">⤢</button>' : '')
+    + (HAS_TT ? '<button class="ico" title="Claude 채팅 — 이 PC 의 Claude 와 대화하고 파일을 붙입니다" onclick="widgetAPI.openClaudeChat()">🤖</button>' : '')
     // ★ 혜원 데스크·혜원이지는 수업진도를 안 쓴다. 예전에는 여기서도 refreshNow() 를
     //   불러서 위젯이 통째로 「수업진도에 로그인해 주세요」로 덮였다.
     + (HAS_TT

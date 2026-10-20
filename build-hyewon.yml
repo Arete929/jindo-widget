@@ -26,6 +26,9 @@ files:
   - views.js      # 화면을 만드는 코드 (마찬가지)
   - imgshrink.js  # 사진 줄이기 — 무손실 정리(jpegtran)·mozjpeg·Lanczos (메인 프로세스)
   - neisphoto.js  # NEIS 사진명렬표(zip·PDF) → 반별 사진 (지비스 전용 기능, 파일은 같이 담는다)
+  - claudechat.js  # Claude 채팅 뒤쪽(지비스 전용)
+  - chat.html       # Claude 채팅 창(지비스 전용)
+  - chat.js
   - toolbox.js    # 도구상자 — 바로가기 탭 안의 PDF·QR·타이머 등(지비스·혜원이지 공통)
   - easy.html     # «넓게 보기» 창 (왼쪽 메뉴 + 대시보드)
   - easy.js
