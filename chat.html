@@ -100,6 +100,10 @@
   .dlgc .r { display: flex; gap: 7px; justify-content: flex-end; flex-wrap: wrap; margin-top: 10px; }
   .dlgc .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-size: 13px; font-weight: 700; z-index: 30; max-width: 90%; box-shadow: 0 4px 16px rgba(0, 0, 0, .3); }
+  .ulink { border: 0; background: transparent; padding: 0 2px; font-size: 11px; color: var(--fg2); font-weight: 700; text-decoration: underline dotted; }
+  .ub { margin: 10px 0 4px; } .uh { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; margin-bottom: 4px; } .uh span { color: var(--fg2); text-align: right; }
+  .ut { height: 10px; border-radius: 999px; background: var(--card2); overflow: hidden; } .ut i { display: block; height: 100%; background: var(--now); border-radius: 999px; }
+  .ut i.warm { background: #e0a020; } .ut i.hot { background: var(--warnfg); }
   .hide { display: none !important; }
   /* ── 좁은 창: 목록과 대화를 한 화면씩 ── */
   @media (max-width: 760px) {

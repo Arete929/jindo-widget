@@ -3,7 +3,7 @@
    ★ alert·confirm·prompt·<select> 를 쓰지 않는다 — 확인은 화면 안 대화상자로. */
 (function () {
   var API = window.widgetAPI;
-  var S = { sessions: [], running: [], workDir: '', q: '', folder: '', convs: [], cur: null, view: 'list', dlg: null, toast: '', seq: 0, loaded: false, err: '' };
+  var S = { usage: null, sessions: [], running: [], workDir: '', q: '', folder: '', convs: [], cur: null, view: 'list', dlg: null, toast: '', seq: 0, loaded: false, err: '' };
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function base(p) { return String(p || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop() || String(p || ''); }
@@ -214,6 +214,29 @@
       });
     });
   }
+  /* 사용량 — 계정(5시간·주간)은 지비스 사용량 띠가 읽어 둔 것, 대화 컨텍스트는 claude 가 알려 준 것 */
+  function claudeUsage() { var u = S.usage && S.usage.claude; return u && u.ok !== false && (u.session || u.weekly) ? u : null; }
+  function pct(x) { return x && x.pct != null ? Math.round(x.pct) : null; }
+  function ctxPct(c) { return c && c.ctx && c.ctx.total ? Math.min(100, Math.round(100 * c.ctx.used / c.ctx.total)) : null; }
+  function usageLine(c) {
+    var u = claudeUsage(), p5 = u && pct(u.session), pw = u && pct(u.weekly), cx = ctxPct(c), a = [];
+    if (cx != null) a.push('컨텍스트 ' + cx + '%');
+    if (p5 != null) a.push('5시간 ' + p5 + '%'); if (pw != null) a.push('주간 ' + pw + '%');
+    return a.join(' · ');
+  }
+  function bar(label, p, note) {
+    if (p == null) return '';
+    return '<div class="ub"><div class="uh"><b>' + esc(label) + '</b><span>' + p + '%' + (note ? ' · ' + esc(note) : '') + '</span></div><div class="ut"><i style="width:' + Math.max(2, p) + '%" class="' + (p >= 90 ? 'hot' : p >= 70 ? 'warm' : '') + '"></i></div></div>';
+  }
+  function usageDlg() {
+    var u = claudeUsage(), c = curConv(), cx = ctxPct(c), h = '<div class="dlg"><div class="dlgc"><b class="t">📊 Claude 사용량</b>';
+    if (u) h += bar('5시간 한도', pct(u.session), u.session && u.session.reset ? '초기화 ' + u.session.reset : '') + bar('주간 한도', pct(u.weekly), u.weekly && u.weekly.reset ? '초기화 ' + u.weekly.reset : '')
+      + (u.account ? '<p style="font-size:12px;color:var(--dim)">계정 · ' + esc(u.account) + '</p>' : '');
+    else h += '<p>계정 사용량을 아직 못 읽었어요 — 지비스 설정의 «사용량» 에서 Claude 를 켜고 로그인해 두면 여기에도 나와요.</p>';
+    if (c) h += '<div style="margin-top:8px"></div>' + (cx != null ? bar('이 대화의 컨텍스트', cx, c.ctx.used.toLocaleString('ko-KR') + ' / ' + c.ctx.total.toLocaleString('ko-KR') + ' 토큰') + '<p style="font-size:12px;color:var(--dim)">컨텍스트가 가득 차면 Claude 가 앞부분을 자동으로 줄여요.</p>' : '<p style="font-size:12px;color:var(--dim)">이 대화의 컨텍스트는 첫 답이 오면 보여요.</p>');
+    h += '<p style="font-size:12px;color:var(--dim)">지비스 채팅에서 쓴 것도 Claude 앱과 <b>같은 한도</b>를 나눠 써요.</p><div class="r"><button class="ok2" data-d="x">닫기</button></div></div></div>';
+    return h;
+  }
   function renderComposer() {
     var el = $('cin'), c = curConv(); if (!el) return;
     if (!c) { el.innerHTML = ''; return; }
@@ -223,7 +246,7 @@
       + '<div class="row"><button class="pin" data-act="pick" title="파일 붙이기" aria-label="파일 붙이기">📎</button>'
       + '<textarea class="ta" id="ta" rows="1" placeholder="메시지를 쓰세요 …  (Enter 보내기 · Shift+Enter 줄바꿈 · Ctrl+V 로 사진 붙이기)">' + esc(c.draft) + '</textarea>'
       + (c.busy ? '<button class="send stop" data-act="stop">■ 멈추기</button>' : '<button class="send" data-act="send">보내기</button>') + '</div>'
-      + '<div class="foot"><span>이 PC · ' + esc(c.cwd) + (run ? '' : ' · 보내면 시작해요') + '</span><span>' + esc((c.model || '') + (c.mode ? ' · ' + c.mode : '')) + '</span></div>';
+      + '<div class="foot"><span>이 PC · ' + esc(c.cwd) + (run ? '' : ' · 보내면 시작해요') + '</span><span><button class="ulink" data-act="usage" title="사용량 자세히">📊 ' + esc(usageLine(c) || '사용량') + '</button> ' + esc(c.model ? c.model.replace(/^claude-/, '').replace(/-\d{8}$/, '') : '') + '</span></div>';
     var ta = $('ta');
     var fit = function () { ta.style.height = 'auto'; ta.style.height = Math.min(180, ta.scrollHeight) + 'px'; };
     ta.addEventListener('input', function () { c.draft = ta.value; fit(); });
@@ -232,6 +255,7 @@
     fit();
     el.querySelectorAll('[data-rm]').forEach(function (b) { b.addEventListener('click', function () { c.atts.splice(Number(b.dataset.rm), 1); renderComposer(); }); });
     el.querySelector('[data-act="pick"]').addEventListener('click', function () { API.ccPickFiles().then(function (r) { (r.files || []).forEach(function (p) { c.atts.push({ path: p, name: base(p) }); }); renderComposer(); }); });
+    var ub = el.querySelector('[data-act="usage"]'); if (ub) ub.addEventListener('click', function () { dlg({ t: 'usage' }); });
     var sb = el.querySelector('[data-act="send"]'); if (sb) sb.addEventListener('click', function () { send(c); });
     var st = el.querySelector('[data-act="stop"]'); if (st) st.addEventListener('click', function () { API.ccInterrupt(c.key); });
   }
@@ -325,6 +349,7 @@
   function renderLayer() {
     var el = $('layer'), d = S.dlg, h = '';
     if (d && d.t === 'remote') h = '<div class="dlg"><div class="dlgc"><b class="t">📡 이 대화의 원격 제어를 켤까요?</b><p>폰의 Claude 앱·claude.ai/code 에서 이 대화를 보고 이어서 쓸 수 있게 됩니다.</p><ul><li>이 PC 가 <b>켜져 있고 절전이 아닐 때</b>만 폰에서 이어져요</li><li>파일 수정·명령 실행 <b>승인은 이 PC 지비스에서만</b> 해요</li><li>이 창을 닫아도 지비스가 켜져 있으면 이어져요</li></ul><div class="r"><button class="no2" data-d="x">취소</button><button class="ok2" data-d="ok">켜기</button></div></div></div>';
+    else if (d && d.t === 'usage') h = usageDlg();
     else if (d && d.t === 'busy') h = '<div class="dlg"><div class="dlgc"><b class="t">이 대화는 다른 곳에서 쓰는 중이에요</b><p>Claude 앱 같은 다른 곳에서 방금까지 이 대화를 썼어요. 같은 대화를 두 곳에서 이어가면 기록이 갈라질 수 있어요.</p><div class="r"><button class="no2" data-d="x">취소</button><button class="no2" data-d="same">그래도 이어하기</button><button class="ok2" data-d="fork">복사해서 이어가기</button></div></div></div>';
     else if (d && d.t === 'new') h = '<div class="dlg"><div class="dlgc"><b class="t">＋ 새 대화 — 어느 폴더에서 시작할까요?</b><p>Claude 는 이 폴더의 파일을 읽고 고칠 수 있어요.</p><div class="chips">' + d.dirs.map(function (x, i) { return '<button class="chip2' + (x === d.dir ? ' on' : '') + '" data-dd="' + i + '" title="' + esc(x) + '">' + esc(base(x)) + '</button>'; }).join('') + '<button class="chip2" data-d="pick">다른 폴더 고르기…</button></div><p style="font-size:12px;color:var(--dim)">' + esc(d.dir) + '</p><div class="r"><button class="no2" data-d="x">취소</button><button class="ok2" data-d="start"' + (d.dir ? '' : ' disabled') + '>시작</button></div></div></div>';
     el.innerHTML = h + (S.toast ? '<div class="toast">' + esc(S.toast) + '</div>' : '');
@@ -346,7 +371,7 @@
   /* ── 뒤쪽에서 오는 이벤트 ── */
   var raf = 0; function later() { if (raf) return; raf = requestAnimationFrame(function () { raf = 0; renderMsgs(); }); }
   function onStream(c, e) {
-    if (e.type === 'message_start') c.blocks = {};
+    if (e.type === 'message_start') { c.blocks = {}; var mu0 = e.message && e.message.usage; if (mu0) { c.ctxUsed = (mu0.input_tokens || 0) + (mu0.cache_read_input_tokens || 0) + (mu0.cache_creation_input_tokens || 0); } }
     else if (e.type === 'content_block_start') {
       var b = e.content_block || {};
       if (b.type === 'text') { var m = { t: 'a', text: '', live: true }; c.msgs.push(m); c.blocks[e.index] = m; }
@@ -375,6 +400,8 @@
       later();
     } else if (j.type === 'result') {
       c.busy = false;
+      var mus = j.modelUsage ? Object.keys(j.modelUsage).map(function (k) { return j.modelUsage[k]; }) : [], cw = 0; mus.forEach(function (x) { cw = Math.max(cw, x.contextWindow || 0); });
+      if (c.ctxUsed && cw) c.ctx = { used: c.ctxUsed, total: cw };
       if (j.is_error) c.msgs.push({ t: 'info', err: 1, text: String(j.result || j.subtype || '오류가 났어요').slice(0, 300) });
       renderMsgs(); renderComposer(); refreshSoon();
     }
@@ -391,7 +418,7 @@
   setInterval(function () { if (!S.dlg && !document.hidden) refresh(); }, 20000);
 
   $('cc').innerHTML = '<div class="cl" id="cl"></div><div class="cm"><div class="ch" id="chd"></div><div id="note"></div><div class="msgs" id="msgs"></div><div class="cin" id="cin"></div></div>';
-  if (API.onData) API.onData(function (p) { if (p && p.theme) document.documentElement.dataset.theme = p.theme; else if (p) delete document.documentElement.dataset.theme; });
+  if (API.onData) API.onData(function (p) { if (p && p.usage && p.usage.data) { S.usage = p.usage.data; renderComposer(); if (S.dlg && S.dlg.t === 'usage') renderLayer(); } if (p && p.theme) document.documentElement.dataset.theme = p.theme; else if (p) delete document.documentElement.dataset.theme; });
   API.onCcEvent(onEvent);
   window.CC = { S: S, refresh: refresh, onEvent: onEvent, send: send, selectRow: selectRow, newConv: newConv, renderAll: renderAll, toggleRemote: toggleRemote };
   renderAll();
