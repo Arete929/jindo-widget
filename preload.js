@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   gradeAdd: (o) => ipcRenderer.invoke('grade-add', o),
   gradeUndo: (o) => ipcRenderer.invoke('grade-undo', o),
   gradeDel: (o) => ipcRenderer.invoke('grade-del', o),
+  gradeEdit: (o) => ipcRenderer.invoke('grade-edit', o),
   tbPdfPick: (kind) => ipcRenderer.invoke('tb-pdf-pick', kind),
   tbPdfRun: (o) => ipcRenderer.invoke('tb-pdf-run', o),
   tbQr: (o) => ipcRenderer.invoke('tb-qr', o),

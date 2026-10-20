@@ -1818,6 +1818,7 @@ function viewAcademic() {
     h += gpAddBox();
     /* 지운 결과 — 항목이 사라지면 그 자리의 알림도 같이 사라지므로 위쪽에 남긴다 */
     if (HAS_TT && !gpAdd && gpDelDone) h += '<div class="rsaved">✅ ' + esc(gpDelDone) + '</div>';
+    if (HAS_TT && !gpAdd && gpEdDone) h += '<div class="rsaved">✅ ' + esc(gpEdDone) + '</div>';
   }
 
   h += ms.map(function (m) {
@@ -1946,14 +1947,38 @@ function gpToday() {
    화면 항목은 시트 줄 번호를 모른다 — 같은 내용 중 몇 번째인지(nth/total)를 같이 보내
    main 이 시트에 직접 물어 줄을 정한다(개수가 어긋나면 아무것도 안 지움). */
 var gpDelAsk = '', gpDelBusy = false, gpDelMsg = '', gpDelDone = '';
+/* 일정 고치기 — 펼친 항목 아래에 입력칸이 열린다. 구분은 칩(드롭다운 아님)으로, 저장하면 저장시각을 알린다. */
+var gpEd = null, gpEdDone = '';   // gpEd = { k, g, idx, old, cat, own, title, detail, busy, msg }
 function gpDelKey(it) {
   var items = (GPD[it.g] || {}).items || [];
   return it.g + '|' + items.indexOf(it.x);
 }
+function gpEditBox(it) {
+  var e = gpEd; if (!e) return '';
+  var 목록 = gpAddCats[e.g] || [];
+  var 직접 = e.own || (e.cat && 목록.indexOf(e.cat) < 0);
+  return '<div class="gpadd gped">'
+    + '<div class="gparow"><b>' + e.g + '학년 일정 고치기</b><span class="rhint">' + esc(e.md || '') + ' «' + esc(e.old.length > 22 ? e.old.slice(0, 22) + '…' : e.old) + '»</span><span class="spacer"></span><button class="wkb" id="gpeX">닫기</button></div>'
+    + '<div class="gparow wrap"><label class="gpal">구분</label>'
+    + 목록.map(function (c) {
+        return '<button class="wkb gpac' + (e.cat === c && !e.own ? ' on' : '') + ' h' + gpHue(c) + '" data-gpec="' + esc(c) + '">' + esc(c) + '</button>';
+      }).join('')
+    + '<button class="wkb gpac' + (직접 ? ' on' : '') + '" data-gpec="*">직접</button>'
+    + (직접 || !목록.length ? '<input id="gpeCat" class="gpai" placeholder="구분" value="' + esc(e.cat || '') + '">' : '')
+    + '</div>'
+    + '<div class="gparow"><label class="gpal">내용</label><input id="gpeTitle" class="gpai wide" placeholder="무엇을 하는지 한 줄로" value="' + esc(e.title || '') + '"></div>'
+    + '<div class="gparow"><label class="gpal">세부사항</label><textarea id="gpeDetail" class="gpai wide" rows="3" placeholder="없으면 비워 두셔도 됩니다">' + esc(e.detail || '') + '</textarea></div>'
+    + '<div class="gparow"><button class="wkb go" id="gpeSave"' + (e.busy ? ' disabled' : '') + '>' + (e.busy ? '고치는 중…' : '저장') + '</button>'
+    + '<span class="rhint">날짜는 그대로이고 구분·내용·세부사항만 바뀝니다</span></div>'
+    + (e.msg ? '<div class="rhint">' + esc(e.msg) + '</div>' : '')
+    + '</div>';
+}
 function gpDelBar(it) {
   if (!HAS_TT) return '';
   var k = gpDelKey(it), ask = gpDelAsk === k;
-  return '<div class="gpb gpact"><button class="wkb gpdel' + (ask ? ' ask' : '') + '" data-gpdel="' + esc(k) + '"'
+  var editing = gpEd && gpEd.k === k;
+  return '<div class="gpb gpact">' + (editing ? '' : '<button class="wkb gpedit" data-gpedit="' + esc(k) + '"' + (gpDelBusy ? ' disabled' : '') + ' title="구분·내용·세부사항을 고칩니다">✏️ 이 일정 수정</button>')
+    + '<button class="wkb gpdel' + (ask ? ' ask' : '') + '" data-gpdel="' + esc(k) + '"'
     + (gpDelBusy ? ' disabled' : '') + ' title="시트의 이 줄을 지웁니다(날짜 줄이면 내용만 비웁니다)">'
     + (gpDelBusy ? '지우는 중…' : (ask ? '한 번 더 눌러 삭제' : '🗑 이 일정 삭제')) + '</button>'
     + (gpDelMsg ? '<span class="rhint">' + esc(gpDelMsg) + '</span>' : '') + '</div>';
@@ -1975,7 +2000,7 @@ function gpRows(month, day) {
       + '</button>'
       /* ★ 시트의 «세부사항» 은 여러 줄인 채로 온다 — 줄바꿈을 그대로 살린다 */
       + (x.detail ? '<div class="gpb">' + gpLines(x.detail) + '</div>' : '')
-      + (open ? gpDelBar(it) : '')
+      + (open ? ((gpEd && gpEd.k === gpDelKey(it)) ? gpEditBox(it) : '') + gpDelBar(it) : '')
       + '</div>';
   }).join('') + '</div>';
 }
@@ -8519,6 +8544,52 @@ function wireViews(app) {
         render();
       }).catch(function (e) {
         gpAddBusy = false; gpAddMsg = String((e && e.message) || e); render();
+      });
+  });
+  /* 일정 고치기 — 열기 · 입력 담기 · 구분 칩 · 저장 · 닫기 */
+  app.querySelectorAll('[data-gpedit]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var k = b.dataset.gpedit, p = k.split('|'), g = Number(p[0]), idx = Number(p[1]);
+      var x = ((GPD[g] || {}).items || [])[idx];
+      if (!x) { gpDelMsg = '화면 목록이 바뀌었습니다 — ⟳ 로 다시 받아 주세요'; render(); return; }
+      gpEd = { k: k, g: g, idx: idx, md: x.month + '/' + x.day, old: String(x.title || '').trim(), cat: x.cat || '', own: false, title: x.title || '', detail: x.detail || '', busy: false, msg: '' };
+      gpEdDone = ''; gpDelDone = ''; gpDelMsg = ''; gpCatsLoad(g); render();
+      var ti = app.querySelector('#gpeTitle'); if (ti) ti.focus();
+    });
+  });
+  [['gpeCat', 'cat'], ['gpeTitle', 'title'], ['gpeDetail', 'detail']].forEach(function (p) {
+    var el = app.querySelector('#' + p[0]); if (!el) return;
+    el.addEventListener('input', function () { if (gpEd) gpEd[p[1]] = el.value; });
+  });
+  app.querySelectorAll('[data-gpec]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (!gpEd) return;
+      var c = b.dataset.gpec;
+      if (c === '*') { gpEd.own = true; } else { gpEd.own = false; gpEd.cat = c; }
+      render();
+      if (c === '*') { var i = app.querySelector('#gpeCat'); if (i) i.focus(); }
+    });
+  });
+  var gpex = app.querySelector('#gpeX');
+  if (gpex) gpex.addEventListener('click', function () { gpEd = null; render(); });
+  var gpes = app.querySelector('#gpeSave');
+  if (gpes) gpes.addEventListener('click', function () {
+    var e = gpEd; if (!e || e.busy) return;
+    var t = String(e.title || '').trim();
+    if (!t) { e.msg = '내용을 적어 주세요 (내용을 없애려면 «삭제» 를 쓰세요)'; render(); return; }
+    var items = (GPD[e.g] || {}).items || [], x = items[e.idx];
+    if (!x || String(x.title || '').trim() !== e.old) { e.msg = '화면 목록이 바뀌었습니다 — ⟳ 로 다시 받아 주세요'; render(); return; }
+    var same = items.filter(function (y) { return String(y.title || '').trim() === e.old; });
+    e.busy = true; e.msg = ''; render();
+    widgetAPI.gradeEdit({ grade: e.g, oldTitle: e.old, nth: same.indexOf(x), total: same.length, cat: String(e.cat || '').trim(), title: t, detail: e.detail })
+      .then(function (r) {
+        if (r && r.ok) {
+          gpEdDone = (r.how || '고쳤습니다') + ' — ' + (t.length > 24 ? t.slice(0, 24) + '…' : t) + ' · ' + 지금시각();
+          var g2 = e.g; gpEd = null; GPD[g2] = null; gpLoad(g2, true);
+        } else { e.busy = false; e.msg = (r && r.msg) || '고치지 못했습니다'; }
+        render();
+      }).catch(function (err) {
+        e.busy = false; e.msg = String((err && err.message) || err).replace(/^Error invoking remote method .[^.]*.:\s*/, ''); render();
       });
   });
   /* 일정 지우기 — 두 번 눌러야 지운다 */
