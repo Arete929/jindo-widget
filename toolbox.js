@@ -1,4 +1,4 @@
-/* 파일명: toolbox.js | @version 1.7.0 — v1.7.0 도구마다 크게·작게(A− 100% A+, 도구별로 기억) · v1.6.1 사진 줄이기 본문이 좁은 칸에 갇히던 틀 수정 · v1.6.0 «사진 줄이기» 일괄(폴더·사진 고르기/끌어다 놓기 → 새 폴더에 저장, 나이스 고입 200KB · 화소 그대로 «무손실 정리» → mozjpeg → Lanczos 순서, 도움말 포함) · v1.5.0 이름외우기 퀴즈는 «한 바퀴» 방식(같은 학생이 두 번 나오지 않음) + 끝나면 틀린 학생만 다시 · v1.4.2 사진은 «3201 강재은» (학번 이름) 꼴로 보관 — 동명이인도 저절로 갈림 · v1.4.0 학생이름외우기는 지비스 전용(혜원이지에서 뺌) + 노션 학생 INFO 사진 가져오기 · v1.3.1 뽑기 자동/수동·v1.3.0 스쿨보드 모양(PDF 메뉴·계산기·등급표·이름외우기 학급 카드)
+/* 파일명: toolbox.js | @version 1.8.0 — v1.8.0 학생이름외우기 «NEIS 사진 일괄 등록»(zip·PDF·폴더, 학년 통째로 — 지비스 전용) · v1.7.0 도구마다 크게·작게(A− 100% A+, 도구별로 기억) · v1.6.1 사진 줄이기 본문이 좁은 칸에 갇히던 틀 수정 · v1.6.0 «사진 줄이기» 일괄(폴더·사진 고르기/끌어다 놓기 → 새 폴더에 저장, 나이스 고입 200KB · 화소 그대로 «무손실 정리» → mozjpeg → Lanczos 순서, 도움말 포함) · v1.5.0 이름외우기 퀴즈는 «한 바퀴» 방식(같은 학생이 두 번 나오지 않음) + 끝나면 틀린 학생만 다시 · v1.4.2 사진은 «3201 강재은» (학번 이름) 꼴로 보관 — 동명이인도 저절로 갈림 · v1.4.0 학생이름외우기는 지비스 전용(혜원이지에서 뺌) + 노션 학생 INFO 사진 가져오기 · v1.3.1 뽑기 자동/수동·v1.3.0 스쿨보드 모양(PDF 메뉴·계산기·등급표·이름외우기 학급 카드)
    도구상자 — «바로가기» 탭 안의 타일로 들어간다. 지비스·혜원이지 공통(views.js 다음에 읽힌다).
    스쿨보드(제작 호똑쌤)의 도구상자를 본떠 «선으로 그린 아이콘» 카드 여덟 개:
    PDF 편집기 · 랜덤 뽑기·모둠 편성 · QR 생성기 · 수업 타이머 · 학생이름외우기 · 계산기 ·
@@ -722,6 +722,91 @@ function tbNmNotion() {
     });
   }).catch(function (e) { s.busy = false; s.msg = String((e && e.message) || e); render(); });
 }
+/* ★ NEIS «사진명렬표»(압축파일·PDF·폴더) 일괄 등록 — 지비스 전용
+   고르면 PDF 의 사진을 반별로 읽어 «사진 + 명단 이름» 미리보기를 먼저 보여 주고, 눌러서 등록한다.
+   짝짓기: NEIS 명렬표는 번호 순서로 놓여 있으므로, 반(파일 이름 2-1.pdf)의 i 번째 사진 = 명단(번호순)의 i 번째 학생.
+   ★ 사진 수와 명단 인원이 다르면 어긋나기 쉬우니 그 반은 등록하지 않고 알린다. */
+function tbNmNeisRows(c) {                          // 한 반 → { key, students(번호순), photos, state: ok | nostu | count | nokey }
+  var key = c.key, ros = tbRoster().filter(function (r) { return r.key === key; })[0];
+  var st = ros ? ros.students.slice().sort(function (a, b) { return (Number(a.no) || 0) - (Number(b.no) || 0); }) : [];
+  var state = !key ? 'nokey' : (!ros ? 'nostu' : (st.length === c.photos.length ? 'ok' : 'count'));
+  return { key: key, label: c.label, students: st, photos: c.photos, state: state };
+}
+function tbNmNeisScan(mode) {
+  var s = TB.nm;
+  if (!HAS_TT || s.busy) return;
+  if (!tbRoster().length) { s.msg = '학급 명단이 아직 없습니다 — «학생기록» 탭을 한 번 열어 명단을 받은 뒤 다시 눌러 주세요'; render(); return; }
+  s.busy = true; s.msg = 'NEIS 사진명렬표를 읽는 중…'; render();
+  widgetAPI.tbNeisScan(mode).then(function (r) {
+    s.busy = false;
+    if (!r || !r.ok) { s.msg = (r && r.msg) || '읽지 못했습니다'; render(); return; }
+    if (r.canceled || !(r.classes || []).length) { s.msg = (r.notes || []).join(' / ') || (r.canceled ? '' : 'NEIS 사진명렬표(PDF)를 찾지 못했습니다'); s.neis = null; render(); return; }
+    s.neis = { classes: r.classes, notes: r.notes || [], over: false };
+    s.msg = ''; render();
+  }).catch(function (e) { s.busy = false; s.msg = String((e && e.message) || e); render(); });
+}
+function tbNmNeisApply() {
+  var s = TB.nm, N = s.neis;
+  if (!N || s.busy) return;
+  var jobs = [], skipHave = 0;
+  N.classes.map(tbNmNeisRows).forEach(function (r) {
+    if (r.state !== 'ok') return;
+    r.students.forEach(function (st, i) {
+      var key = tbNmKey(st.id, st.name);
+      if (s.have[key] && !N.over) { skipHave++; return; }
+      jobs.push({ key: key, cls: r.key, name: st.name, url: r.photos[i] });
+    });
+  });
+  if (!jobs.length) { s.msg = '새로 등록할 사진이 없습니다' + (skipHave ? ' — ' + skipHave + '명은 이미 사진이 있어 건너뜁니다(«이미 있는 사진도 바꾸기» 를 켜면 바꿉니다)' : ''); render(); return; }
+  s.busy = true; var done = 0, fail = [], chain = Promise.resolve();
+  jobs.forEach(function (x, i) {
+    chain = chain.then(function () {
+      s.msg = '사진 등록 중… ' + (i + 1) + ' / ' + jobs.length + '  (' + x.cls + ' ' + x.name + ')';
+      if (i % 5 === 0) render();
+      return tbNmShrink(x.url).then(function (small) {
+        return widgetAPI.tbPhotoSave({ name: x.key, dataUrl: small }).then(function (sv) {
+          if (!sv || !sv.ok) throw new Error((sv && sv.msg) || '저장하지 못했습니다');
+          s.photos[x.key] = small; s.have[x.key] = true; done++;
+        });
+      }).catch(function (e) { fail.push(x.cls + ' ' + x.name + ' — ' + ((e && e.message) || e)); });
+    });
+  });
+  chain.then(function () {
+    s.busy = false; s.order = []; s.q = null; s.rd = null; s.pairs = null; s.photoSig = ''; s.neis = null;
+    s.msg = '✅ NEIS 사진 ' + done + '장을 등록했습니다 · ' + 지금시각Short() + (skipHave ? ' (이미 있던 ' + skipHave + '명은 건너뜀)' : '')
+      + (fail.length ? ' 실패 ' + fail.length + '건: ' + fail.slice(0, 3).join(', ') + (fail.length > 3 ? ' …' : '') : '')
+      + ' 폰에서도 쓰려면 «📱 폰용 사진 묶음 내보내기» 를 누르세요.';
+    render();
+  });
+}
+function 지금시각Short() { var d = new Date(), z = function (n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + '.' + z(d.getMonth() + 1) + '.' + z(d.getDate()) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()) + ':' + z(d.getSeconds()); }
+function tbNmNeisHtml() {
+  var s = TB.nm, N = s.neis;
+  var h = '<div class="tbc2 neis"><div class="tbc2h"><b>📄 NEIS 사진 일괄 등록</b></div>'
+    + '<div class="tbhint">NEIS 에서 받은 <b>사진명렬표</b>(반마다 PDF 한 개)를 <b>압축파일(zip) 그대로</b>, 또는 PDF·폴더로 고르면 학생 명단에 맞춰 사진이 들어갑니다. 학년별 zip 을 한꺼번에 골라도 됩니다. 사진은 이 PC 에만 저장됩니다.</div>'
+    + '<div class="tbrow"><button class="wkb go" data-tbact="neiszip"' + (s.busy ? ' disabled' : '') + '>🗜 압축파일·PDF 고르기</button>'
+    + '<button class="wkb" data-tbact="neisdir"' + (s.busy ? ' disabled' : '') + '>📁 폴더로 고르기</button></div>';
+  if (N) {
+    var rows = N.classes.map(tbNmNeisRows), okN = 0, people = 0;
+    rows.forEach(function (r) { if (r.state === 'ok') { okN++; people += r.students.length; } });
+    h += '<div class="neisl">' + rows.map(function (r) {
+      var msg = r.state === 'ok' ? '✓ 사진 ' + r.photos.length + '장 = 명단 ' + r.students.length + '명'
+        : r.state === 'nokey' ? '⚠ 반을 알 수 없어요 — 파일 이름을 «2-1.pdf» 꼴로 바꿔 주세요(' + esc(r.label) + ')'
+        : r.state === 'nostu' ? '⚠ 학급 명단에 ' + esc(r.key) + ' 반이 없어요(학생기록 탭에서 명단을 받아 주세요)'
+        : '⚠ 사진 ' + r.photos.length + '장 ≠ 명단 ' + r.students.length + '명 — 어긋나기 쉬워 등록하지 않습니다';
+      var grid = r.state === 'ok' ? '<div class="neisg">' + r.students.map(function (st, i) {
+        return '<div class="neisc"><img src="' + r.photos[i] + '" alt=""><span>' + esc(st.no) + ' ' + esc(st.name) + '</span></div>';
+      }).join('') + '</div>' : '';
+      return '<div class="neisk ' + r.state + '"><div class="neish"><b>' + esc(r.key || '반 미확인') + '</b><span>' + msg + '</span></div>' + grid + '</div>';
+    }).join('') + '</div>';
+    if (N.notes.length) h += '<div class="atwarn">' + N.notes.map(esc).join('<br>') + '</div>';
+    h += '<div class="tbrow"><button class="wkb go" data-tbact="neisgo"' + (!okN || s.busy ? ' disabled' : '') + '>✅ 등록하기 (' + okN + '개 반 · ' + people + '명)</button>'
+      + '<button class="wkb' + (N.over ? ' go' : '') + '" data-tbact="neisover" aria-pressed="' + (!!N.over) + '">이미 있는 사진도 바꾸기</button>'
+      + '<button class="wkb" data-tbact="neiscancel">닫기</button></div>'
+      + '<div class="tbhint">위 사진과 이름이 맞는지 눈으로 한번 확인하고 «등록하기» 를 누르세요. 이름이 어긋나 보이면 등록하지 마세요.</div>';
+  }
+  return h + '</div>';
+}
 /* 폰으로 옮길 «사진 묶음» 파일 한 개를 만든다(지비스 전용) — 지비스 모바일(jivis_mobile)이 불러간다 */
 function tbNmExport() {
   var s = TB.nm;
@@ -775,6 +860,7 @@ function tbNmHtml() {
           + '<small>👥 ' + c.students.length + '명 &nbsp; 📷 사진 ' + pc + '명</small></button>';
       }).join('')
     + '<button class="tbclsk' + (s.cls === '__manual' ? ' on' : '') + '" data-tbact="nmmanualsel"><b>직접 입력</b><small>번호와 이름을 적어서 연습</small></button></div>';
+  if (HAS_TT) h += tbNmNeisHtml();
   if (s.cls === '__manual' || (!cs.length && !s.cls)) {
     h += '<textarea class="gpai wide tbta" rows="4" data-tbin="nm.src" placeholder="한 줄에 «번호 이름» (예: 3201 강재은)">' + esc(s.src) + '</textarea>'
       + '<div class="tbrow"><button class="wkb go" data-tbact="nmapply">명단 적용</button></div>';
@@ -1237,6 +1323,11 @@ function tbAct(act, v, b) {
     case 'nmprev': TB.nm.idx = (TB.nm.idx - 1 + TB.nm.order.length) % Math.max(1, TB.nm.order.length); TB.nm.flip = false; break;
     case 'nmphotos': tbNmPhotosBulk(); return;
     case 'nmnotion': tbNmNotion(); return;
+    case 'neiszip': tbNmNeisScan('files'); return;
+    case 'neisdir': tbNmNeisScan('dir'); return;
+    case 'neisgo': tbNmNeisApply(); return;
+    case 'neisover': if (TB.nm.neis) TB.nm.neis.over = !TB.nm.neis.over; break;
+    case 'neiscancel': TB.nm.neis = null; TB.nm.msg = ''; break;
     case 'nmexport': tbNmExport(); return;
     case 'nmphoto1': tbNmPhotoOne(v); return;
     case 'nmphotodel': {

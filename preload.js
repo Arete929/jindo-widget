@@ -74,6 +74,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   tbPhotoDel: (names) => ipcRenderer.invoke('tb-photo-del', names),
   tbPhotoHas: (names) => ipcRenderer.invoke('tb-photo-has', names),
   tbPhotoExport: (o) => ipcRenderer.invoke('tb-photo-export', o),
+  tbNeisScan: (mode) => ipcRenderer.invoke('tb-neis-scan', mode),
   tbPhotoNotionList: () => ipcRenderer.invoke('tb-photo-notion-list'),
   tbPhotoNotionGet: (url) => ipcRenderer.invoke('tb-photo-notion-get', url),
   gradeCats: (g) => ipcRenderer.invoke('grade-cats', g),

@@ -2576,6 +2576,19 @@
   .tbcn.sm { font-size: calc(22px * var(--wf)); }
   .tbmb.hasph { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; }
   .tbthumb { width: calc(84px * var(--wf)); height: calc(104px * var(--wf)); object-fit: cover; object-position: center top; border-radius: 8px; }
+  /* NEIS 사진명렬표 일괄 등록 — 반마다 «사진 + 명단 이름» 미리보기 */
+  .neisl { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+  .neisk { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--card); }
+  .neisk.ok { border-color: color-mix(in srgb, var(--now) 45%, var(--line)); }
+  .neisk.count, .neisk.nostu, .neisk.nokey { border-color: var(--warnfg); }
+  .neish { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: calc(11px * var(--wf)); }
+  .neish b { font-size: calc(13px * var(--wf)); }
+  .neisk.ok .neish span { color: var(--fg2); }
+  .neisk:not(.ok) .neish span { color: var(--warnfg); font-weight: 700; }
+  .neisg { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(54px * var(--wf)), 1fr)); gap: 6px; margin-top: 8px; max-height: calc(260px * var(--wf)); overflow-y: auto; }
+  .neisc { text-align: center; }
+  .neisc img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 6px; background: var(--card2); display: block; }
+  .neisc span { display: block; margin-top: 2px; font-size: calc(9.5px * var(--wf)); font-weight: 700; word-break: keep-all; }
   .tbpgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(78px * var(--wf)), 1fr)); gap: 8px; margin: 8px 0; max-height: calc(300px * var(--wf)); overflow-y: auto; }
   .tbpcell { position: relative; text-align: center; }
   .tbpbtn { width: 100%; aspect-ratio: 3 / 4; padding: 0; border-radius: 10px; border: 1.5px dashed var(--line); background: var(--card); color: var(--dim); cursor: pointer; overflow: hidden; display: flex; align-items: center; justify-content: center; }
