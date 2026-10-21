@@ -1959,6 +1959,7 @@ function gpEditBox(it) {
   var 직접 = e.own || (e.cat && 목록.indexOf(e.cat) < 0);
   return '<div class="gpadd gped">'
     + '<div class="gparow"><b>' + e.g + '학년 일정 고치기</b><span class="rhint">' + esc(e.md || '') + ' «' + esc(e.old.length > 22 ? e.old.slice(0, 22) + '…' : e.old) + '»</span><span class="spacer"></span><button class="wkb" id="gpeX">닫기</button></div>'
+    + '<div class="gparow"><label class="gpal">날짜</label><input type="date" id="gpeDate" value="' + esc(e.date || '') + '"><span class="rhint">바꾸면 그 날짜로 옮겨요</span></div>'
     + '<div class="gparow wrap"><label class="gpal">구분</label>'
     + 목록.map(function (c) {
         return '<button class="wkb gpac' + (e.cat === c && !e.own ? ' on' : '') + ' h' + gpHue(c) + '" data-gpec="' + esc(c) + '">' + esc(c) + '</button>';
@@ -1969,7 +1970,7 @@ function gpEditBox(it) {
     + '<div class="gparow"><label class="gpal">내용</label><input id="gpeTitle" class="gpai wide" placeholder="무엇을 하는지 한 줄로" value="' + esc(e.title || '') + '"></div>'
     + '<div class="gparow"><label class="gpal">세부사항</label><textarea id="gpeDetail" class="gpai wide" rows="3" placeholder="없으면 비워 두셔도 됩니다">' + esc(e.detail || '') + '</textarea></div>'
     + '<div class="gparow"><button class="wkb go" id="gpeSave"' + (e.busy ? ' disabled' : '') + '>' + (e.busy ? '고치는 중…' : '저장') + '</button>'
-    + '<span class="rhint">날짜는 그대로이고 구분·내용·세부사항만 바뀝니다</span></div>'
+    + '<span class="rhint">날짜를 바꾸면 확인 체크와 함께 그 날짜로 옮겨집니다</span></div>'
     + (e.msg ? '<div class="rhint">' + esc(e.msg) + '</div>' : '')
     + '</div>';
 }
@@ -8552,12 +8553,13 @@ function wireViews(app) {
       var k = b.dataset.gpedit, p = k.split('|'), g = Number(p[0]), idx = Number(p[1]);
       var x = ((GPD[g] || {}).items || [])[idx];
       if (!x) { gpDelMsg = '화면 목록이 바뀌었습니다 — ⟳ 로 다시 받아 주세요'; render(); return; }
-      gpEd = { k: k, g: g, idx: idx, md: x.month + '/' + x.day, old: String(x.title || '').trim(), cat: x.cat || '', own: false, title: x.title || '', detail: x.detail || '', busy: false, msg: '' };
+      var d0 = acYear(x.month) + '-' + (x.month < 10 ? '0' : '') + x.month + '-' + (x.day < 10 ? '0' : '') + x.day;
+      gpEd = { k: k, g: g, idx: idx, md: x.month + '/' + x.day, date: d0, date0: d0, old: String(x.title || '').trim(), cat: x.cat || '', own: false, title: x.title || '', detail: x.detail || '', busy: false, msg: '' };
       gpEdDone = ''; gpDelDone = ''; gpDelMsg = ''; gpCatsLoad(g); render();
       var ti = app.querySelector('#gpeTitle'); if (ti) ti.focus();
     });
   });
-  [['gpeCat', 'cat'], ['gpeTitle', 'title'], ['gpeDetail', 'detail']].forEach(function (p) {
+  [['gpeDate', 'date'], ['gpeCat', 'cat'], ['gpeTitle', 'title'], ['gpeDetail', 'detail']].forEach(function (p) {
     var el = app.querySelector('#' + p[0]); if (!el) return;
     el.addEventListener('input', function () { if (gpEd) gpEd[p[1]] = el.value; });
   });
@@ -8581,11 +8583,12 @@ function wireViews(app) {
     if (!x || String(x.title || '').trim() !== e.old) { e.msg = '화면 목록이 바뀌었습니다 — ⟳ 로 다시 받아 주세요'; render(); return; }
     var same = items.filter(function (y) { return String(y.title || '').trim() === e.old; });
     e.busy = true; e.msg = ''; render();
-    widgetAPI.gradeEdit({ grade: e.g, oldTitle: e.old, nth: same.indexOf(x), total: same.length, cat: String(e.cat || '').trim(), title: t, detail: e.detail })
+    widgetAPI.gradeEdit({ grade: e.g, oldTitle: e.old, nth: same.indexOf(x), total: same.length, cat: String(e.cat || '').trim(), title: t, detail: e.detail,
+      date: (e.date && e.date !== e.date0) ? e.date : '' })
       .then(function (r) {
         if (r && r.ok) {
           gpEdDone = (r.how || '고쳤습니다') + ' — ' + (t.length > 24 ? t.slice(0, 24) + '…' : t) + ' · ' + 지금시각();
-          var g2 = e.g; gpEd = null; GPD[g2] = null; gpLoad(g2, true);
+          var g2 = e.g; gpEd = null; gpOpen = ''; GPD[g2] = null; gpLoad(g2, true);
         } else { e.busy = false; e.msg = (r && r.msg) || '고치지 못했습니다'; }
         render();
       }).catch(function (err) {
