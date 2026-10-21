@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.7.1
-   수정요약: v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+/* 파일명: views.js | @version 2.7.2
+   수정요약: v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
      목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
      그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
    v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
@@ -1594,6 +1594,9 @@ var gpAddCats = {};          // 학년별 구분 목록 (시트에서 받아 온
 var gpAddBusy = false, gpAddMsg = '', gpAddAt = '';
 var gpLast = null;           // 방금 넣은 것 { g, row, title } — 되돌리기에 쓴다
 var acAllYears = false;   // «다른 해» 탭까지 펼쳐 볼 것인가
+/* 어제까지의 날은 달마다 «지난 일정» 한 줄로 접어 둔다 — 기본은 접힘, 누르면 펼친다(2026-10-22 지시).
+   펼친 달은 이 창이 떠 있는 동안만 기억한다. 검색 중에는 찾은 글이 숨지 않게 모두 펼쳐 보인다. */
+var acPastOpen = {};
 
 /* 학년부 일지를 받아 온다. 받아 둔 것이 있으면 그것부터 쓰고, 없으면 시트에서 */
 function gpLoad(g, force) {
@@ -1821,8 +1824,9 @@ function viewAcademic() {
     if (HAS_TT && !gpAdd && gpEdDone) h += '<div class="rsaved">✅ ' + esc(gpEdDone) + '</div>';
   }
 
+  var today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   h += ms.map(function (m) {
-    var year = acYear(m.month);
+    var year = (m.ok === false && m.year) ? Number(m.year) : acYear(m.month);
     var rowObjs = m.days.map(function (d) {
       var isToday = (m.month === todayM && d.day === todayD);
       var weekend = (d.dow === '토' || d.dow === '일');
@@ -1843,6 +1847,8 @@ function viewAcademic() {
       //   id 는 달마다 다르게 주고, 어디로 갈지는 goToday() 가 고른다.
       return {
         inWeek: inWeek,
+        past: dt < today0,
+        label: Number(m.month) + '/' + d.day,
         html: '<div class="acr' + (isToday ? ' tdy' : '') + (weekend ? ' wknd' : '') + '"'
           + (isToday ? ' data-today="1" id="actoday-' + esc(m.tab) + '"' : '') + '>'
           + '<span class="acd">' + d.day + '<small>' + esc(d.dow) + '</small></span>'
@@ -1859,13 +1865,27 @@ function viewAcademic() {
       pack.push('<div class="acweek">' + run.join('') + '</div>');
       run = [];
     };
+    /* 어제까지 — 검색 중이 아니면 한 줄로 접는다 */
+    var fold = !acQ;
+    var past = fold ? rowObjs.filter(function (r) { return r.past; }) : [];
+    var pastHtml = '';
+    if (past.length) {
+      var open = !!acPastOpen[m.tab];
+      pastHtml = '<button class="acpast' + (open ? ' on' : '') + '" data-acpast="' + esc(m.tab) + '"'
+        + ' aria-expanded="' + open + '" title="' + (open ? '지난 일정 접기' : '지난 일정 펼치기') + '">'
+        + '<i class="acpi">' + (open ? '▾' : '▸') + '</i>지난 일정 · ' + past.length + '일'
+        + '<small>' + esc(past[0].label) + (past.length > 1 ? ' ~ ' + esc(past[past.length - 1].label) : '') + '</small>'
+        + '<span class="acpx">' + (open ? '접기' : '펼치기') + '</span></button>'
+        + (open ? '<div class="acpastl">' + past.map(function (r) { return r.html; }).join('') + '</div>' : '');
+    }
     rowObjs.forEach(function (r) {
+      if (fold && r.past) return;
       if (r.inWeek) { run.push(r.html); return; }
       flush();
       pack.push(r.html);
     });
     flush();
-    var rows = pack.join('');
+    var rows = pastHtml + pack.join('');
     return '<div class="acmon" id="acm-' + esc(m.tab) + '" data-mon="' + esc(m.tab) + '">'
       + esc(m.month) + '월' + (/-/.test(m.tab) ? ' (' + esc(m.tab) + ')' : '') + '</div>'
       + '<div class="acl">' + rows + '</div>';
@@ -8640,6 +8660,15 @@ function wireViews(app) {
   });
   var acT = app.querySelector('#acToday');
   if (acT) acT.addEventListener('click', goToday);
+  /* 지난 일정 접기·펼치기 — 펼쳐도 그 달 머리 자리를 지킨다(위로 밀려 올라가지 않게) */
+  app.querySelectorAll('[data-acpast]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var tab = b.dataset.acpast, y0 = b.getBoundingClientRect().top;
+      acPastOpen[tab] = !acPastOpen[tab]; acScrolled = true; render();
+      var nb = appEl().querySelector('[data-acpast="' + tab.replace(/"/g, '\\"') + '"]');
+      if (nb) appEl().scrollTop += nb.getBoundingClientRect().top - y0;
+    });
+  });
 
   // AI 사용량 — 로그인·모양 고르기·다시 읽기
   app.querySelectorAll('[data-usgask]').forEach(function (b) {

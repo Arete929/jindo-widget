@@ -1210,6 +1210,20 @@
     padding: 8px 0 4px; letter-spacing: -.2px;
   }
   .acl { display: flex; flex-direction: column; gap: 2px; }
+  /* 어제까지 — 달마다 한 줄로 접힌 «지난 일정». 누르면 펼친다(기본 접힘) */
+  .acpast {
+    -webkit-app-region: no-drag;
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    padding: 5px 8px; border: 1px dashed var(--line); border-radius: 7px;
+    background: none; color: var(--dim); cursor: pointer; text-align: left;
+    font-family: inherit; font-size: calc(11px * var(--wf)); font-weight: 700;
+  }
+  .acpast:hover { background: var(--card2); color: var(--fg2); }
+  .acpast.on { border-style: solid; color: var(--fg2); }
+  .acpast .acpi { font-style: normal; width: 12px; text-align: center; }
+  .acpast small { font-weight: 600; font-size: calc(10px * var(--wf)); opacity: .85; }
+  .acpast .acpx { margin-left: auto; font-size: calc(10px * var(--wf)); color: var(--accent); }
+  .acpastl { display: flex; flex-direction: column; gap: 2px; opacity: .72; margin-bottom: 2px; }
   /* ★ 창을 좁히면 «일정 글자»가 한 자씩 끊겨 세로로 늘어서던 문제.
      원인은 오른쪽 교시 칸이 폭을 다 가져가고 글자 칸이 0 가까이 눌린 것이다.
      줄을 통째로 넘길 수 있게 하고(flex-wrap), 글자 칸에 최소 폭을 준다. */
