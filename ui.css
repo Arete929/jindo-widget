@@ -1733,6 +1733,15 @@
   .rta:focus { border-color: var(--accent); }
   .rbyte { font-size: 10px; font-weight: 700; color: var(--dim); font-variant-numeric: tabular-nums; }
   .rsaved { font-size: 10.5px; font-weight: 700; color: var(--now); margin-top: -2px; }
+  /* 학년 일지 넣기 — 진행 게이지 · 넣은 뒤 알림 줄 */
+  .gpprog { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 10.5px; font-weight: 700; color: var(--fg2); }
+  .gpprog .gpbar0 { flex: 1; height: 8px; border-radius: 6px; background: var(--card2); overflow: hidden; }
+  .gpprog .gpbar0 i { display: block; height: 100%; width: 0; border-radius: 6px; background: var(--accent); transition: width .25s ease-out; }
+  .gpprog.fail .gpbar0 i { background: var(--warn, #c0392b); }
+  .gpprog .gppn { min-width: 32px; text-align: right; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .gpdone { display: flex; align-items: center; gap: 8px; margin: 4px 0 6px; }
+  .gpdone .rsaved { margin-top: 0; }
+  .gpdone .wkb { -webkit-app-region: no-drag; }
   /* 학생기록 — 기록 내용과 행발 누가기록을 갈라 보여 준다 */
   .rlab { font-size: calc(10px * var(--wf)); font-weight: 800; color: var(--fg2);
           margin: 7px 0 3px; display: flex; align-items: center; gap: 6px; }

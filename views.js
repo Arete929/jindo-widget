@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.7.2
-   수정요약: v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+/* 파일명: views.js | @version 2.7.3
+   수정요약: v2.7.3 학년 일지 넣기 — 진행 게이지, 넣으면 칸 닫고 알림 줄(되돌리기 포함). / v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
      목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
      그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
    v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
@@ -1592,6 +1592,9 @@ var gpTouched = false;       // 화면에서 스위치를 건드렸는가 (메�
 var gpAdd = null;            // 열어 놓은 입력칸 { g, date, cat, title, detail }
 var gpAddCats = {};          // 학년별 구분 목록 (시트에서 받아 온다)
 var gpAddBusy = false, gpAddMsg = '', gpAddAt = '';
+/* 넣는 동안의 게이지 — 다리는 한 번에 답하므로 «걸린 시간» 으로 단계를 짐작해 보여 주고,
+   답이 오면 100% 로 채운 뒤 칸을 닫는다(2026-10-22 지시). 결과는 칸 위 알림 줄에 남긴다. */
+var gpAddProg = null, gpAddDone = '';
 var gpLast = null;           // 방금 넣은 것 { g, row, title } — 되돌리기에 쓴다
 var acAllYears = false;   // «다른 해» 탭까지 펼쳐 볼 것인가
 /* 어제까지의 날은 달마다 «지난 일정» 한 줄로 접어 둔다 — 기본은 접힘, 누르면 펼친다(2026-10-22 지시).
@@ -1820,6 +1823,11 @@ function viewAcademic() {
       + '<button class="wkb" id="gpGet" title="학년부 일지 다시 받기">⟳</button></div>';
     h += gpAddBox();
     /* 지운 결과 — 항목이 사라지면 그 자리의 알림도 같이 사라지므로 위쪽에 남긴다 */
+    if (HAS_TT && !gpAdd && gpAddDone) {
+      h += '<div class="gpdone"><span class="rsaved">' + esc(gpAddDone) + '</span>'
+        + (gpLast ? '<button class="wkb" id="gpaUndo"' + (gpAddBusy ? ' disabled' : '') + '>'
+          + (gpAddBusy ? '되돌리는 중…' : '되돌리기') + '</button>' : '') + '</div>';
+    }
     if (HAS_TT && !gpAdd && gpDelDone) h += '<div class="rsaved">✅ ' + esc(gpDelDone) + '</div>';
     if (HAS_TT && !gpAdd && gpEdDone) h += '<div class="rsaved">✅ ' + esc(gpEdDone) + '</div>';
   }
@@ -1906,6 +1914,30 @@ function gpLines(v) {
    ★ 드롭다운은 쓰지 않는다(전역 규칙) — 구분은 칩 팔레트로 고르고,
      없는 구분은 «직접» 을 눌러 글로 적는다.
    ★ 날짜는 달력(input date). 시트에 그 날짜 줄이 있어야 들어간다. */
+/* 게이지 — 걸린 시간으로 단계를 짐작한다. 답이 오기 전에는 92% 를 넘지 않는다 */
+function gpProgState() {
+  var p = gpAddProg; if (!p) return { pct: 0, label: '' };
+  if (p.done) return { pct: 100, label: p.fail ? '넣지 못했습니다' : '다 됐습니다' };
+  var t = (Date.now() - p.t0) / 1000;
+  var pct = Math.min(92, Math.round(92 * (1 - Math.exp(-t / 4))));
+  var label = t < 1.5 ? '보내는 중…' : t < 6 ? '일지 시트에 쓰는 중…' : t < 15 ? '확인하는 중…' : '구글 응답을 기다리는 중… (조금 느립니다)';
+  return { pct: pct, label: label };
+}
+function gpProgHtml() {
+  var s = gpProgState();
+  return '<div class="gpprog' + (gpAddProg && gpAddProg.fail ? ' fail' : '') + '" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + s.pct + '">'
+    + '<div class="gpbar0"><i style="width:' + s.pct + '%"></i></div>'
+    + '<span class="gppl">' + esc(s.label) + '</span><span class="gppn">' + s.pct + '%</span></div>';
+}
+/* 게이지만 고친다 — 칸 전체를 다시 그리면 입력칸 포커스가 흔들린다 */
+function gpProgTick() {
+  var el = document.querySelector('.gpprog'); if (!el || !gpAddProg) return;
+  var s = gpProgState();
+  el.setAttribute('aria-valuenow', String(s.pct));
+  var bar = el.querySelector('.gpbar0 i'); if (bar) bar.style.width = s.pct + '%';
+  var l = el.querySelector('.gppl'); if (l) l.textContent = s.label;
+  var n = el.querySelector('.gppn'); if (n) n.textContent = s.pct + '%';
+}
 function gpAddBox() {
   if (!HAS_TT || !gpAdd) return '';
   var 목록 = gpAddCats[gpAdd.g] || [];
@@ -1942,10 +1974,9 @@ function gpAddBox() {
     + '<div class="gparow">'
     + '<button class="wkb go" id="gpaSave"' + (gpAddBusy ? ' disabled' : '') + '>'
     + (gpAddBusy ? '넣는 중…' : '저장') + '</button>'
-    + (gpLast ? '<button class="wkb" id="gpaUndo">되돌리기</button>' : '')
     + '<span class="spacer"></span>'
-    + (gpAddAt ? '<span class="rsaved">✅ 저장됨 · ' + esc(gpAddAt) + '</span>' : '')
     + '</div>'
+    + (gpAddProg ? gpProgHtml() : '')
     + (gpAddMsg ? '<div class="rhint">' + esc(gpAddMsg) + '</div>' : '')
     + '</div>';
 }
@@ -8492,7 +8523,7 @@ function wireViews(app) {
     gpAdd = gpAdd && gpAdd.g === g
       ? null
       : { g: g, date: gpToday(), cat: '', title: '', detail: '' };
-    gpAddMsg = ''; gpLast = null;
+    gpAddMsg = ''; gpLast = null; gpAddDone = '';
     if (gpAdd) gpCatsLoad(g);
     render();
     if (gpAdd) {
@@ -8529,26 +8560,44 @@ function wireViews(app) {
     var t = String(gpAdd.title || "").trim();
     if (!t) { gpAddMsg = '내용을 적어 주세요'; render(); return; }
     if (!gpAdd.date) { gpAddMsg = '날짜를 골라 주세요'; render(); return; }
-    gpAddBusy = true; gpAddMsg = ''; render();
+    gpAddBusy = true; gpAddMsg = ''; gpAddDone = '';
+    gpAddProg = { t0: Date.now(), done: false, fail: false, timer: 0 };
+    render();
+    gpAddProg.timer = setInterval(gpProgTick, 200);
+    var 넣은것 = { g: gpAdd.g, date: gpAdd.date };
+    var 끝 = function (ok, msg) {
+      if (!gpAddProg) return;
+      clearInterval(gpAddProg.timer);
+      gpAddProg.done = true; gpAddProg.fail = !ok; gpAddBusy = false;
+      if (!ok) {
+        /* 실패 — 칸은 그대로 두고(적은 글이 남게) 까닭을 보인다 */
+        gpAddMsg = msg; render();
+        setTimeout(function () { if (gpAddProg && gpAddProg.fail) { gpAddProg = null; render(); } }, 1500);
+        return;
+      }
+      gpProgTick();
+      /* 100% 를 잠깐 보여 준 뒤 칸을 닫는다 */
+      setTimeout(function () {
+        gpAddProg = null; gpAdd = null; gpAddMsg = '';
+        gpAddDone = '✅ ' + 넣은것.g + '학년 ' + String(넣은것.date).slice(5).replace('-', '/')
+          + ' «' + (t.length > 24 ? t.slice(0, 24) + '…' : t) + '» ' + msg + ' · 저장됨 ' + gpAddAt;
+        render();
+      }, 600);
+    };
     widgetAPI.gradeAdd({
       grade: gpAdd.g, date: gpAdd.date, cat: gpAdd.cat, title: t, detail: gpAdd.detail
     }).then(function (r) {
-      gpAddBusy = false;
       if (r && r.ok) {
-        gpLast = { g: gpAdd.g, row: r.row, title: t };
+        gpLast = { g: 넣은것.g, row: r.row, title: t };
         gpAddAt = 지금시각();
-        gpAddMsg = r.how || '넣었습니다';
-        gpAdd.title = ''; gpAdd.detail = '';
-        GPD[gpAdd.g] = null; gpLoad(gpAdd.g, true);
+        GPD[넣은것.g] = null; gpLoad(넣은것.g, true);
+        끝(true, r.how || '넣었습니다');
       } else {
-        gpAddMsg = (r && r.msg) || '넣지 못했습니다';
+        끝(false, (r && r.msg) || '넣지 못했습니다');
       }
-      render();
     }).catch(function (e) {
-      gpAddBusy = false;
-      gpAddMsg = String((e && e.message) || e)
-        .replace(/^Error invoking remote method .[^.]*.:\s*/, "");
-      render();
+      끝(false, String((e && e.message) || e)
+        .replace(/^Error invoking remote method .[^.]*.:\s*/, ""));
     });
   });
   /* 되돌리기 */
@@ -8556,15 +8605,20 @@ function wireViews(app) {
   if (gpu) gpu.addEventListener("click", function () {
     if (!gpLast) return;
     var 것 = gpLast;
-    gpAddBusy = true; gpAddMsg = '되돌리는 중…'; render();
+    gpAddBusy = true; render();
+    /* 넣기 칸은 저장 뒤 닫혀 있다 — 결과는 칸 위 알림 줄(gpAddDone)에 남긴다 */
     widgetAPI.gradeUndo({ grade: 것.g, row: 것.row, expect: 것.title })
       .then(function (r) {
         gpAddBusy = false;
-        gpAddMsg = (r && r.ok) ? (r.how || '되돌렸습니다') : ((r && r.msg) || '되돌리지 못했습니다');
-        if (r && r.ok) { gpLast = null; gpAddAt = ""; GPD[것.g] = null; gpLoad(것.g, true); }
+        if (r && r.ok) {
+          gpLast = null; gpAddAt = ""; GPD[것.g] = null; gpLoad(것.g, true);
+          gpAddDone = '↩ ' + (r.how || '되돌렸습니다') + ' · ' + 지금시각();
+        } else {
+          gpAddDone = '⚠ ' + ((r && r.msg) || '되돌리지 못했습니다');
+        }
         render();
       }).catch(function (e) {
-        gpAddBusy = false; gpAddMsg = String((e && e.message) || e); render();
+        gpAddBusy = false; gpAddDone = '⚠ ' + String((e && e.message) || e); render();
       });
   });
   /* 일정 고치기 — 열기 · 입력 담기 · 구분 칩 · 저장 · 닫기 */
