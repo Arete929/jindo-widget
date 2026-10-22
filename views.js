@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.7.3
-   수정요약: v2.7.3 학년 일지 넣기 — 진행 게이지, 넣으면 칸 닫고 알림 줄(되돌리기 포함). / v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+/* 파일명: views.js | @version 2.7.4
+   수정요약: v2.7.4 오늘 기준 — 급식 지난 날 접기(mlPastOpen), 주간업무 표 오늘 세로 줄(wTodayCols), 출결 오늘 줄(attIsToday). / v2.7.3 학년 일지 넣기 — 진행 게이지, 넣으면 칸 닫고 알림 줄(되돌리기 포함). / v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
      목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
      그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
    v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
@@ -514,12 +514,14 @@ function wblock(b) {
       + '">' + withLinks(mk(t), b.links) + '</div>';
   }
   var eff = wRowspans(b.rows || []);
+  var tcol = wTodayCols(b.rows || [], eff);
   return '<div class="wtbw"><table class="wtb">'
     + (b.rows || []).map(function (r, ri) {
         return '<tr' + (wDateHead(r) ? ' class="wth"' : '') + '>' + r.map(function (c, ci) {
           var rs = eff[ri][ci];
           return '<td' + (c.cs > 1 ? ' colspan="' + c.cs + '"' : '')
-            + (rs > 1 ? ' rowspan="' + rs + '"' : '') + '>'
+            + (rs > 1 ? ' rowspan="' + rs + '"' : '')
+            + (tcol[ri + ':' + ci] ? ' class="' + tcol[ri + ':' + ci] + '"' : '') + '>'
             + wblocks(c.blocks) + '</td>';
         }).join('') + '</tr>';
       }).join('')
@@ -528,6 +530,37 @@ function wblock(b) {
 /* «9월28일(월) · 9월29일(화) …» 처럼 칸이 전부 날짜인 줄 = 날짜 머리 줄. 첫 줄만 머리로 꾸미던 것을
    둘째 주 이후 날짜 줄에도 똑같이 적용한다(급식지도 안내표가 여러 주치일 때 — 2026-09-26). */
 var W_DATE_RE = /^\s*(?:\d{1,2}\s*월\s*\d{1,2}\s*일|\d{1,2}\s*[./]\s*\d{1,2}\s*\.?)\s*\(\s*[월화수목금토일]\s*\)\s*$/;
+/* 주간업무 표에서 «오늘» 칸 — 날짜 머리 줄의 오늘 칸과, 그 아래 다음 날짜 머리 줄 전까지 같은 세로 줄의 칸.
+   rowspan 이 끼어 있으면 세로 자리가 어긋날 수 있어 «머리 칸» 만 칠한다. 인쇄할 때는 칠하지 않는다(wNoToday).
+   → { '줄:칸': 'wtdy' | 'wtdy h' } */
+var wNoToday = false;
+function wCellText(c) { return (c.blocks || []).map(function (b) { return b.k === 'p' ? b.t : ''; }).join(''); }
+function wIsToday(t) {
+  var m = String(t).match(/(\d{1,2})\s*(?:월|[./])\s*(\d{1,2})/);
+  if (!m) return false;
+  var d = new Date();
+  return Number(m[1]) === d.getMonth() + 1 && Number(m[2]) === d.getDate();
+}
+function wTodayCols(rows, eff) {
+  var out = {};
+  if (wNoToday) return out;
+  var spanFree = eff.every(function (r) { return r.every(function (s) { return s <= 1; }); });
+  var col = -1;                                     // 지금 칠하는 세로 자리(칸 너비를 더한 위치)
+  rows.forEach(function (r, ri) {
+    if (wDateHead(r)) {
+      col = -1; var x = 0;
+      r.forEach(function (c, ci) {
+        if (wIsToday(wCellText(c))) { col = x; out[ri + ':' + ci] = 'wtdy h'; }
+        x += c.cs || 1;
+      });
+      return;
+    }
+    if (col < 0 || !spanFree) return;
+    var x2 = 0;
+    r.forEach(function (c, ci) { if (x2 === col && (c.cs || 1) === 1) out[ri + ':' + ci] = 'wtdy'; x2 += c.cs || 1; });
+  });
+  return out;
+}
 function wDateHead(r) {
   return !!r.length && r.every(function (c) {
     var t = (c.blocks || []).map(function (b) { return b.k === 'p' ? b.t : ''; }).join('');
@@ -650,7 +683,7 @@ function workPrintHtml() {
 
   // 찾기 표시가 섞이지 않게 잠시 꺼 두고 그린다
   var keepQ = workQ, keepN = HITN;
-  workQ = ''; HITN = 0;
+  workQ = ''; HITN = 0; wNoToday = true;
   var body = '';
   try {
     if (w.cal) body += wblock(w.cal);
@@ -662,7 +695,7 @@ function workPrintHtml() {
       return '<section class="dept"><h2>' + mk(p.name) + '</h2>' + inner + '</section>';
     }).join('');
   } finally {
-    workQ = keepQ; HITN = keepN;
+    workQ = keepQ; HITN = keepN; wNoToday = false;
   }
   // 링크는 인쇄물에서 누를 수 없으니 밑줄만 남기고 글씨로 둔다
   body = body.replace(/<a class="wlink"[^>]*>/g, '<u>').replace(/<\/a>/g, '</u>');
@@ -3057,12 +3090,19 @@ function attStPop(key, cur) {
         + '<i>' + esc(s.id) + '</i>' + esc(s.name) + '</button>';
     }).join('') + '</div>' : '<input id="atNewId" class="gpai" placeholder="학번" style="width:5em"> <input id="atNewName" class="gpai" placeholder="이름" style="width:6em">'));
 }
+/* 오늘 걸려 있는 출결인가 — 시작일이 오늘이거나, 기간(시작~끝)에 오늘이 들어 있으면 */
+function attIsToday(x) {
+  var t = todayYmd(), s = String(x.start || '').slice(0, 10), e = String(x.end || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  return s === t || (/^\d{4}-\d{2}-\d{2}$/.test(e) && s <= t && t <= e);
+}
 function attRowHtml(x, folded, 보일연번) {
   var busy = !!attRowBusy[x.sig];
   var lock = folded || x.hidden || x.saving || !attCanWrite();   // 저장 중·남의 반(보기만)은 손대지 않게
   var tone = attRowTone(x.type), ht = attTypeTone(x.type);
   var cls = 'atr' + (tone ? ' ' + tone : '') + (attPending(x) ? ' pend' : '') + (x.hidden ? ' hid' : '') + (x.local ? ' local' : '')
-    + (x.saving ? ' saving' : '') + (attChkOn && attChkDone(x) ? ' chkdone' : '');
+    + (x.saving ? ' saving' : '') + (attChkOn && attChkDone(x) ? ' chkdone' : '')
+    + (attIsToday(x) ? ' tdyr' : '');
   var dateCell = esc(x.startTxt || x.start) + (x.time ? '<small>' + esc(x.time) + '</small>' : '');
   var h = '<tr class="' + cls + '">'
     + '<td class="c">' + (x.local ? '<i class="atapp" title="앱에만 있음 — 시트엔 없음">앱</i>' : esc(보일연번 || '')) + '</td>'
@@ -3947,7 +3987,24 @@ function viewMeals() {
   var todayStr = todayYmd();
   head += dutyMineBar();
   // ★ 오늘 것은 학사일정의 «오늘» 처럼 크게 키워 눈에 먼저 들어오게 한다
-  function days(rows) {
+  /* ★ 이번 주를 볼 때는 어제까지의 급식을 «지난 급식» 한 줄로 접는다(기본 접힘, 눌러서 펼침).
+       다른 주로 넘겨 봤거나 검색으로 찾아간 날이 있으면 접지 않는다. */
+  function days(rows, key) {
+    rows = rows || [];
+    var fold = off === 0 && !mlFocus;
+    var past = fold ? rows.filter(function (x) { return x.date < todayStr; }) : [];
+    var top = '';
+    if (past.length) {
+      var open = !!mlPastOpen[key];
+      top = '<button class="acpast' + (open ? ' on' : '') + '" data-mlpast="' + esc(key) + '" aria-expanded="' + open + '">'
+        + '<i class="acpi">' + (open ? '▾' : '▸') + '</i>지난 급식 · ' + past.length + '일'
+        + '<small>' + esc(mdDow(past[0].date)) + (past.length > 1 ? ' ~ ' + esc(mdDow(past[past.length - 1].date)) : '') + '</small>'
+        + '<span class="acpx">' + (open ? '접기' : '펼치기') + '</span></button>'
+        + (open ? '<div class="acpastl">' + dayRows(past) + '</div>' : '');
+    }
+    return top + dayRows(past.length ? rows.filter(function (x) { return x.date >= todayStr; }) : rows);
+  }
+  function dayRows(rows) {
     return (rows || []).map(function (x) {
       var on = (x.date === todayStr);
       /* ★ 메뉴 아래에 그날 급식지도 — 내 차례면 색을 채워 눈에 먼저 들어오게 */
@@ -3971,12 +4028,13 @@ function viewMeals() {
     return head + ML.schools.map(function (s) {
       return '<div class="mlsch">' + esc(s.name) + '</div>'
         + (s.error ? '<div class="empty">' + esc(s.error) + '</div>'
-          : (s.meals && s.meals.length ? days(s.meals)
+          : (s.meals && s.meals.length ? days(s.meals, s.name || 'sch')
             : '<div class="empty">이 주에는 급식이 없습니다.</div>'));
     }).join('');
   }
-  return head + days(list);
+  return head + days(list, 'one');
 }
+var mlPastOpen = {};   // 학교마다 «지난 급식» 을 펼쳤는가 — 창이 떠 있는 동안만 기억
 /* 내 급식지도 — 앞으로 남은 것을 «n월 n일 · D-n» 으로.
    ★ 순서표에 이름이 없는 분께는 «대상이 아니다» 라고 분명히 말한다. */
 function dutyMineBar() {
@@ -8714,6 +8772,15 @@ function wireViews(app) {
   });
   var acT = app.querySelector('#acToday');
   if (acT) acT.addEventListener('click', goToday);
+  /* 지난 급식 접기·펼치기 */
+  app.querySelectorAll('[data-mlpast]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var k = b.dataset.mlpast, y0 = b.getBoundingClientRect().top;
+      mlPastOpen[k] = !mlPastOpen[k]; render();
+      var nb = appEl().querySelector('[data-mlpast="' + k.replace(/"/g, '\\"') + '"]');
+      if (nb) appEl().scrollTop += nb.getBoundingClientRect().top - y0;
+    });
+  });
   /* 지난 일정 접기·펼치기 — 펼쳐도 그 달 머리 자리를 지킨다(위로 밀려 올라가지 않게) */
   app.querySelectorAll('[data-acpast]').forEach(function (b) {
     b.addEventListener('click', function () {
