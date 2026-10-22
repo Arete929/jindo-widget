@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.7.4
-   수정요약: v2.7.4 오늘 기준 — 급식 지난 날 접기(mlPastOpen), 주간업무 표 오늘 세로 줄(wTodayCols), 출결 오늘 줄(attIsToday). / v2.7.3 학년 일지 넣기 — 진행 게이지, 넣으면 칸 닫고 알림 줄(되돌리기 포함). / v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+/* 파일명: views.js | @version 2.7.5
+   수정요약: v2.7.5 점검하기 체크(서류·출석부·NEIS)를 반 탭 칸에도 적고, 목록을 받을 때 어긋난 줄을 맞춤(attChkSync · 다리 att-chk). / v2.7.4 오늘 기준 — 급식 지난 날 접기(mlPastOpen), 주간업무 표 오늘 세로 줄(wTodayCols), 출결 오늘 줄(attIsToday). / v2.7.3 학년 일지 넣기 — 진행 게이지, 넣으면 칸 닫고 알림 줄(되돌리기 포함). / v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
      목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
      그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
    v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
@@ -2261,6 +2261,7 @@ function attLoad() {
       if (!attMon) attMon = attThisMon();
       attApplyPendGubun();          // 새 줄에 골라 둔 구분을 반 탭에
       attSeqSync();
+      attChkSync();                 // 점검하기 체크를 반 탭 칸과 맞춘다(칸이 있는 반만)
       attFilesLoad();               // 증빙 목록(지비스)
     } else {
       attErr = (r && r.msg) || '출결 목록을 읽지 못했습니다';
@@ -2819,7 +2820,9 @@ function attBar() {
   return '<div class="top2">' + attClsBar() + '<div class="wknav atbar">' + chips
     + '<span class="spacer"></span>'
     /* 점검하기 스위치 — 켜면 체크 칸·저장 시각이 보인다 */
-    + (ATT ? (attChkOn && ATTCHKAT ? '<span class="atchkat">' + (attChkJust ? '✅ 저장됨 · ' : '마지막 저장 · ') + esc(ATTCHKAT) + '</span>' : '')
+    + (ATT ? (attChkOn && ATTCHKAT ? '<span class="atchkat">' + (attChkJust ? '✅ 저장됨 · ' : '마지막 저장 · ') + esc(ATTCHKAT)
+        + (attChkSheet() ? ' · 시트에도 적음' : '') + '</span>' : '')
+      + (attChkOn && attChkErr ? '<span class="atchkat warnfg">' + esc(attChkErr) + '</span>' : '')
       + '<button class="wkb atsw' + (attChkOn ? ' on' : '') + '" id="atChk" title="'
       + (attChkOn ? '점검 끝내기 — 원래 모습으로' : '서류·출석부·NEIS 를 줄마다 체크합니다 (앱에서만 · 시트엔 안 씀)') + '">'
       + '<span class="sw"></span>' + (attChkOn ? '점검 중' : '점검하기') + '</button>' : '')
@@ -2952,7 +2955,11 @@ function attNCols() { return 8 + (attChkOn ? ATT_CHK.length : 0) + (attHasReq() 
 /* ── 점검하기 (앱에서만 · 2026-09-12) ─────────────────────────────
    스위치를 켜면 신청사유와 수정요청사항 사이에 서류·출석부·NEIS 체크 칸이 끼어든다.
    셋 다 체크된 줄은 흐린 회색 + 취소선. 끄면 칸도 취소선도 사라져 원래 모습.
-   ★ 시트엔 절대 안 쓴다 — 체크는 줄 sig(학번|이름|일자|유형)로 앱 설정 + OneDrive 에만.
+   ★ 체크는 줄 sig(학번|이름|일자|유형)로 앱 설정 + OneDrive 에 둔다(두 PC 가 함께 본다).
+   ★ v2.10.48 — 반 탭에 «서류»·«출석부»·«NEIS» 칸이 있으면(지금은 3-2) 그 칸에도 적는다(다리 att-chk).
+     시트는 C~I 가 FILTER 수식이라 앞 날짜 줄이 끼면 학생 줄이 밀리고 체크 칸은 제자리에 남는다.
+     그래서 목록을 받을 때마다 «지비스가 기억한 값» 과 시트를 견주어 어긋난 줄을 다시 적는다(attChkSync).
+     지비스가 아직 모르는 줄에 시트에서 체크해 두었으면 그 값을 받아 온다.
    스위치 자체는 기억하지 않는다(켤 때마다 «점검하러 들어가는» 몸짓) */
 var ATT_CHK = [['doc', '서류'], ['att', '출석부'], ['neis', 'NEIS']];
 var ATTCHK = {}, ATTCHKAT = '', attChkOn = false, attChkJust = false;
@@ -2963,6 +2970,42 @@ function attChkDone(x) { var c = attChkOf(x); return attChkKeys(x).every(functio
 function attChkSave() {
   ATTCHKAT = 지금시각(); attChkJust = true;
   widgetAPI.setUi({ attChk: ATTCHK, attChkAt: ATTCHKAT });
+}
+/* 시트에 적을 수 있는 반인가 — 체크 칸 셋이 다 있고, 내가 쓸 수 있는 반 */
+function attChkSheet() { return !!(ATT && ATT.has && ATT.has.chk && attCanWrite() && !ATT.spillErr); }
+function attChkItem(x) {
+  var c = ATTCHK[x.sig] || {}, noDoc = x.gubun === '서류없음';
+  return { r: x.r, sig: x.sig, doc: noDoc ? false : !!c.doc, att: !!c.att, neis: !!c.neis };
+}
+var attChkTried = '', attChkErr = '';
+function attChkPush(items, why) {
+  if (!items.length || !attChkSheet()) return;
+  widgetAPI.attChk(items, attCls()).then(function (r) {
+    if (r && r.ok) { attChkErr = ''; if (r.skipped && why === 'click') attLoad(); }   // 그새 줄이 밀렸다 — 새로 읽어 맞춘다
+    else { attChkErr = '시트에 체크를 적지 못했습니다 — ' + ((r && r.msg) || ''); render(); }
+  }).catch(function (e) { attChkErr = '시트에 체크를 적지 못했습니다 — ' + attErrText(e); render(); });
+}
+/* 목록을 받은 뒤 — 시트와 견주어 맞춘다 */
+function attChkSync() {
+  if (!attChkSheet()) return;
+  var put = [], took = 0;
+  attSheetRows().forEach(function (x) {
+    if (!x.chk || x.local) return;
+    var mine = ATTCHK[x.sig];
+    if (!mine) {
+      /* 지비스는 모르는 줄 — 시트에 체크가 있으면 받아 온다 */
+      if (x.chk.doc || x.chk.att || x.chk.neis) { ATTCHK[x.sig] = { doc: !!x.chk.doc, att: !!x.chk.att, neis: !!x.chk.neis }; took++; }
+      return;
+    }
+    var want = attChkItem(x);
+    if (want.doc !== !!x.chk.doc || want.att !== !!x.chk.att || want.neis !== !!x.chk.neis) put.push(want);
+  });
+  if (took) { attChkSave(); attChkJust = false; }
+  if (!put.length) return;
+  var key = JSON.stringify(put);
+  if (key === attChkTried) return;                // 같은 것을 되풀이해 적지 않는다
+  attChkTried = key;
+  attChkPush(put, 'sync');
 }
 function attChkCells(x) {
   var c = attChkOf(x), off = !!x.saving, noDoc = x.gubun === '서류없음';
@@ -3604,8 +3647,11 @@ function wireAtt(app) {
     var p = b.dataset.atck.split('§');            // sig 에는 | 가 들어 있어 § 로 가른다
     var c = Object.assign({}, ATTCHK[p[0]] || {});
     c[p[1]] = !c[p[1]];
-    if (c.doc || c.att || c.neis) ATTCHK[p[0]] = c; else delete ATTCHK[p[0]];
+    /* ★ 다 꺼도 지우지 않는다 — «지비스가 아는 줄» 로 남아야 시트의 옛 체크를 도로 받아 오지 않는다 */
+    ATTCHK[p[0]] = c;
     attChkSave(); render();
+    var x = attSheetRows().filter(function (y) { return y.sig === p[0] && !y.local; })[0];
+    if (x) attChkPush([attChkItem(x)], 'click');
   });
   /* 셀을 누르면 칩 팝업 — 같은 셀을 다시 누르면 닫힘. 팝업 안을 누른 것은 셀 누름으로 안 친다 */
   on('[data-atpop]', function (b, ev) {

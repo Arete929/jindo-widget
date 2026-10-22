@@ -100,6 +100,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   attUndo: (o) => ipcRenderer.invoke('att-undo', o),
   attSet: (o) => ipcRenderer.invoke('att-set', o),
   attSeq: (items, cls) => ipcRenderer.invoke('att-seq', items, cls),
+  attChk: (items, cls) => ipcRenderer.invoke('att-chk', items, cls),
   attFold: (o) => ipcRenderer.invoke('att-fold', o),
   attUnblock: (cls) => ipcRenderer.invoke('att-unblock', cls),
   attLocalAdd: (o) => ipcRenderer.invoke('att-local-add', o),
