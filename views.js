@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.7.7
-   수정요약: v2.7.7 점검하기 시트 쓰기는 지비스(HAS_TT)에서만. / v2.7.6 전광판 흐름이 다시 그릴 때마다 처음부터 시작하던 것(지비스 3초 갱신) — 흐름 위치를 시계로 이어 감. / v2.7.5 점검하기 체크(서류·출석부·NEIS)를 반 탭 칸에도 적고, 목록을 받을 때 어긋난 줄을 맞춤(attChkSync · 다리 att-chk). / v2.7.4 오늘 기준 — 급식 지난 날 접기(mlPastOpen), 주간업무 표 오늘 세로 줄(wTodayCols), 출결 오늘 줄(attIsToday). / v2.7.3 학년 일지 넣기 — 진행 게이지, 넣으면 칸 닫고 알림 줄(되돌리기 포함). / v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+/* 파일명: views.js | @version 2.7.8
+   수정요약: v2.7.8 런처보드 — 카드를 «함께 쓰는 중 ↔ 나만 보기» 구역으로 끌어 옮길 수 있게(구역·묶음 상자·다른 카드 위 어디에 떨궈도). / v2.7.7 점검하기 시트 쓰기는 지비스(HAS_TT)에서만. / v2.7.6 전광판 흐름이 다시 그릴 때마다 처음부터 시작하던 것(지비스 3초 갱신) — 흐름 위치를 시계로 이어 감. / v2.7.5 점검하기 체크(서류·출석부·NEIS)를 반 탭 칸에도 적고, 목록을 받을 때 어긋난 줄을 맞춤(attChkSync · 다리 att-chk). / v2.7.4 오늘 기준 — 급식 지난 날 접기(mlPastOpen), 주간업무 표 오늘 세로 줄(wTodayCols), 출결 오늘 줄(attIsToday). / v2.7.3 학년 일지 넣기 — 진행 게이지, 넣으면 칸 닫고 알림 줄(되돌리기 포함). / v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
      목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
      그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
    v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
@@ -5857,6 +5857,19 @@ function lbMoveCat(x, to) {
     kind: lbKindOf(x), visibility: x.shared ? '공유' : '나만'
   } }, '옮기는 중');
 }
+/* ★ 끌어서 «함께 쓰는 중 ↔ 나만 보기» 로 옮기기(2026-10-23).
+   받는 자리가 «묶음 상자» 뿐이라 구역(함께/나만)에 떨구면 아무 일이 없었다. 이제 구역·상자·다른 카드 위 어디에 떨궈도 된다.
+   · 구역이 다르면 공유 상태를 바꾼다(lbToggleShare) · 묶음 이름이 다르면 묶음도 옮긴다(lbMoveCat).
+   · 둘 다일 때는 공유를 먼저 뒤집고 묶음을 옮긴다 — 묶음 «edit» 가 새 공유 상태(visibility)를 함께 싣는다. */
+function lbDropTo(x, wantShared, cat) {
+  if (!x) return false;
+  var shareDiff = !!x.shared !== !!wantShared;
+  var catDiff = !!cat && (x.tab || '기타') !== cat;
+  if (!shareDiff && !catDiff) return false;
+  if (shareDiff) lbToggleShare(x);
+  if (catDiff) lbMoveCat(x, cat);
+  return true;
+}
 /* 같은 묶음 안에서 한 칸 앞뒤로. 끌기보다 이쪽이 확실하다. */
 function lbNudge(x, dir) {
   var mine = (FEED.apps || []).filter(function (a) {
@@ -6171,9 +6184,17 @@ function lbListHtml() {
   [{ k: 'y', t: '함께 쓰는 중', d: '혜원이지에 보입니다' },
    { k: 'n', t: '나만 보기', d: '나에게만 보입니다' }].forEach(function (band) {
     var mine = rest.filter(function (x) { return (band.k === 'y') === !!x.shared; });
-    if (!mine.length) return;
+    if (!mine.length) {
+      /* ★ 고치는 중에는 빈 구역도 «받는 자리» 로 남긴다 — 마지막 한 개를 옮기고 나면 되돌릴 곳이 사라지던 것 */
+      if (lbEdit && lbAdmin()) {
+        h += '<section class="lbpanel ' + band.k + ' empty" data-lbpband="' + band.k + '">'
+          + '<div class="lbband"><b>' + esc(band.t) + '</b><small>0</small><i>' + esc(band.d) + '</i></div>'
+          + '<div class="lbdrophint">여기로 끌어 오면 «' + esc(band.t) + '» 로 바뀝니다</div></section>';
+      }
+      return;
+    }
     /* ★ 선이 아니라 «상자» 로 감싼다 — 어디까지가 그 갈래인지 한눈에 보이게 */
-    h += '<section class="lbpanel ' + band.k + '">'
+    h += '<section class="lbpanel ' + band.k + '"' + (lbAdmin() ? ' data-lbpband="' + band.k + '"' : '') + '>'
       + '<div class="lbband"><b>' + esc(band.t) + '</b>'
       + '<small>' + mine.length + '</small><i>' + esc(band.d) + '</i></div>';
     /* ★ 함께 쓰는 것은 묶음으로 가르지 않는다.
@@ -6305,7 +6326,7 @@ function lbGroup(title, list, all, key, showCat) {
   /* ★ 묶음 하나가 «작은 상자» 다. 받는 자리도 상자 전체 —
      머리 줄만 받으면 겨냥하기가 어렵다. */
   var h = '<section class="lbcat' + (folded ? ' folded' : '') + '"'
-    + (lbAdmin() && cat ? ' data-lbdrop="' + esc(cat) + '"' : '') + '>'
+    + (lbAdmin() && cat ? ' data-lbdrop="' + esc(cat) + '" data-lbdband="' + esc(key.split('/')[0]) + '"' : '') + '>'
     + '<div class="lgrp lgh' + (folded ? ' folded' : '') + '"'
     + (canFold ? ' data-lbfold="' + esc(key) + '"' : '') + '>';
   if (editing && cat && lbCatEdit === cat) {
@@ -6740,7 +6761,7 @@ function wireBoardList(root) {
     });
     r.addEventListener('dragend', function () {
       dragIdx = -1; r.classList.remove('dragging');
-      root.querySelectorAll('.lgh.over').forEach(function (g) { g.classList.remove('over'); });
+      root.querySelectorAll('.lgh.over, .lbpanel.over, .lbcat.over').forEach(function (g) { g.classList.remove('over'); });
     });
   });
   /* 타일·줄 위에 떨구면 «그 앞» 으로 끼워 넣는다(차례 바꾸기).
@@ -6761,7 +6782,8 @@ function wireBoardList(root) {
       var a = apps[from], b = apps[Number(t.dataset.lbord)];
       if (!a || !b || a === b) return;
       var ca = a.tab || '기타', cb = b.tab || '기타';
-      if (ca !== cb) { lbMoveCat(a, cb); return; }   // 묶음이 다르면 옮기기가 먼저다
+      /* 구역(함께↔나만)이 다르면 공유 상태도 옮긴다 — 묶음 이름이 같아도 «차례만 바뀌고 끝» 이던 것(2026-10-23) */
+      if (!!a.shared !== !!b.shared || ca !== cb) { lbDropTo(a, !!b.shared, cb); return; }
       lbReorder(a, b);
     });
   });
@@ -6780,7 +6802,26 @@ function wireBoardList(root) {
       var x = apps[i];
       var to = g.dataset.lbdrop;
       if (!x || !to) return;
-      lbMoveCat(x, to);
+      e.stopPropagation();                         // 구역 상자(아래 lbpband)에서 한 번 더 처리하지 않게
+      var bd = g.dataset.lbdband;
+      lbDropTo(x, bd === 'y' ? true : bd === 'n' ? false : !!x.shared, to);
+    });
+  });
+  /* 구역(함께 쓰는 중 · 나만 보기) 전체가 받는 자리 — 머리 줄·빈 자리에 떨궈도 된다 */
+  root.querySelectorAll('[data-lbpband]').forEach(function (g) {
+    g.addEventListener('dragover', function (e) {
+      if (dragIdx < 0) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      g.classList.add('over');
+    });
+    g.addEventListener('dragleave', function (e) { if (!g.contains(e.relatedTarget)) g.classList.remove('over'); });
+    g.addEventListener('drop', function (e) {
+      e.preventDefault();
+      g.classList.remove('over');
+      var i = dragIdx;
+      if (i < 0 && e.dataTransfer) i = Number(e.dataTransfer.getData('text/plain'));
+      lbDropTo(apps[i], g.dataset.lbpband === 'y', '');
     });
   });
   root.querySelectorAll('[data-lbgo]').forEach(function (b) {
