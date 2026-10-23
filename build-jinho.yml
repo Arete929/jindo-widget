@@ -23,6 +23,7 @@ files:
   - claudechat.js  # Claude 채팅 뒤쪽(지비스 전용)
   - chat.html       # Claude 채팅 창(지비스 전용)
   - chat.js
+  - ytdl.js       # 영상 내려받기 뒤쪽(yt-dlp·ffmpeg 를 부른다) — 도구상자
   - toolbox.js    # 도구상자 — 바로가기 탭 안의 PDF·QR·타이머 등(지비스·혜원이지 공통)
   - easy.html     # «넓게 보기» 창 (왼쪽 메뉴 + 대시보드)
   - easy.js
@@ -57,6 +58,13 @@ files:
   - assets/**
   - node_modules/**/*
 # ★ 실행 파일(jpegtran.exe)과 WASM 압축기는 asar 안에서는 못 쓴다 — 밖으로 풀어 둔다
+# ★ 영상 내려받기 — 실행 파일은 asar 밖(resources/vendor)에 둔다. node tools/fetch-vendor.js 로 vendor/ 를 먼저 채울 것
+extraResources:
+  - from: vendor
+    to: vendor
+    filter:
+      - yt-dlp.exe
+      - ffmpeg/**
 asarUnpack:
   - assets/jpegtran/**
   - node_modules/@jsquash/**

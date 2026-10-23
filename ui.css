@@ -2878,3 +2878,26 @@
 .ut .utl { display: inline-flex; flex-direction: column; align-items: flex-start; min-width: 0; line-height: 1.15; }
 .ut .uta { max-width: calc(64px * var(--uf, 1)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: calc(7.5px * var(--uf, 1)); font-weight: 600; color: var(--dim); }
+
+  /* ── 도구상자: 영상 내려받기 ── */
+  .tbyt { background: var(--card); border-radius: 10px; padding: calc(9px * var(--wf)) calc(11px * var(--wf)); margin: 0 0 8px; }
+  .tbytlab { font-size: calc(10.5px * var(--wf)); font-weight: 800; color: var(--dim); margin-bottom: 4px; }
+  .tbytinfo { display: flex; gap: 10px; align-items: center; }
+  .tbytthumb { width: calc(96px * var(--wf)); height: calc(54px * var(--wf)); flex: 0 0 auto; border-radius: 7px; background: var(--card2); object-fit: cover; }
+  .tbytmeta { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .tbytmeta b { font-size: calc(12.5px * var(--wf)); line-height: 1.3; }
+  .tbytmeta span { font-size: calc(10.5px * var(--wf)); color: var(--dim); }
+  .tbytmeta .tbytlic { color: var(--now); font-weight: 700; }
+  .tbytg { height: 9px; border-radius: 6px; background: var(--card2); overflow: hidden; margin-top: 10px; }
+  .tbytg i { display: block; height: 100%; width: 0; border-radius: 6px; background: var(--accent); transition: width .2s ease-out; }
+  .tbytgl { display: flex; justify-content: space-between; gap: 8px; font-size: calc(10.5px * var(--wf)); font-weight: 700; color: var(--fg2); margin: 4px 0 6px; }
+  .tbytdone .tbytfile { font-size: calc(11px * var(--wf)); color: var(--fg2); margin: 2px 0 4px; word-break: break-all; }
+  .tbytdir { flex: 1; min-width: 0; font-size: calc(11px * var(--wf)); word-break: break-all; color: var(--fg2); }
+  .tbythist { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); font-size: calc(11px * var(--wf)); }
+  .tbythist:first-of-type { border-top: 0; }
+  .tbythist span { flex: 1; min-width: 0; }
+  .tbythist small { display: block; color: var(--dim); font-size: calc(9.5px * var(--wf)); }
+  .tbytwarn { margin: 6px 2px; }
+  .tbyteng { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: calc(10px * var(--wf)); color: var(--dim); margin: 4px 2px 10px; }
+  .tbyteng small { margin-left: auto; font-size: calc(9px * var(--wf)); }
+

@@ -1,4 +1,4 @@
-/* 파일명: toolbox.js | @version 1.8.0 — v1.8.0 학생이름외우기 «NEIS 사진 일괄 등록»(zip·PDF·폴더, 학년 통째로 — 지비스 전용) · v1.7.0 도구마다 크게·작게(A− 100% A+, 도구별로 기억) · v1.6.1 사진 줄이기 본문이 좁은 칸에 갇히던 틀 수정 · v1.6.0 «사진 줄이기» 일괄(폴더·사진 고르기/끌어다 놓기 → 새 폴더에 저장, 나이스 고입 200KB · 화소 그대로 «무손실 정리» → mozjpeg → Lanczos 순서, 도움말 포함) · v1.5.0 이름외우기 퀴즈는 «한 바퀴» 방식(같은 학생이 두 번 나오지 않음) + 끝나면 틀린 학생만 다시 · v1.4.2 사진은 «3201 강재은» (학번 이름) 꼴로 보관 — 동명이인도 저절로 갈림 · v1.4.0 학생이름외우기는 지비스 전용(혜원이지에서 뺌) + 노션 학생 INFO 사진 가져오기 · v1.3.1 뽑기 자동/수동·v1.3.0 스쿨보드 모양(PDF 메뉴·계산기·등급표·이름외우기 학급 카드)
+/* 파일명: toolbox.js | @version 1.9.0 — v1.9.0 «영상 내려받기»(주소 → 확인 → 화질 → 받기, 유튜브·1080p 까지·로그인 영상 제외) · v1.8.0 학생이름외우기 «NEIS 사진 일괄 등록»(zip·PDF·폴더, 학년 통째로 — 지비스 전용) · v1.7.0 도구마다 크게·작게(A− 100% A+, 도구별로 기억) · v1.6.1 사진 줄이기 본문이 좁은 칸에 갇히던 틀 수정 · v1.6.0 «사진 줄이기» 일괄(폴더·사진 고르기/끌어다 놓기 → 새 폴더에 저장, 나이스 고입 200KB · 화소 그대로 «무손실 정리» → mozjpeg → Lanczos 순서, 도움말 포함) · v1.5.0 이름외우기 퀴즈는 «한 바퀴» 방식(같은 학생이 두 번 나오지 않음) + 끝나면 틀린 학생만 다시 · v1.4.2 사진은 «3201 강재은» (학번 이름) 꼴로 보관 — 동명이인도 저절로 갈림 · v1.4.0 학생이름외우기는 지비스 전용(혜원이지에서 뺌) + 노션 학생 INFO 사진 가져오기 · v1.3.1 뽑기 자동/수동·v1.3.0 스쿨보드 모양(PDF 메뉴·계산기·등급표·이름외우기 학급 카드)
    도구상자 — «바로가기» 탭 안의 타일로 들어간다. 지비스·혜원이지 공통(views.js 다음에 읽힌다).
    스쿨보드(제작 호똑쌤)의 도구상자를 본떠 «선으로 그린 아이콘» 카드 여덟 개:
    PDF 편집기 · 랜덤 뽑기·모둠 편성 · QR 생성기 · 수업 타이머 · 학생이름외우기 · 계산기 ·
@@ -12,6 +12,7 @@ var TB = {
   rnd: { names: '', src: 'class', cls: '', mode: 'pick', n: 1, noRepeat: true, picked: [], left: null, hist: [], spin: false, auto: true, phase: '', stopAt: 0, gBy: 'count', gNum: 4, groups: [], msg: '' },
   qr: { text: '', size: 512, level: 'M', dark: '#000000', dataUrl: '', msg: '', ok: true, busy: false },
   tm: { mins: 10, left: 600, run: false, end: 0, msg: '', big: false, done: false },
+  yt: { url: '', phase: 'idle', info: null, q: '1080', stage: '', pct: 0, speed: '', eta: '', msg: '', ok: true, savedAt: '', file: '', dir: '', hist: [], engine: null, loaded: false, engBusy: false },
   nm: { rd: null, src: '', mode: 'card', idx: 0, flip: false, order: [], score: 0, tried: 0, q: null, picked: '', pairs: null, selL: -1, selR: -1, fails: 0, msg: '', photos: {}, photoSig: '', show: 'photo', manage: false, busy: false, cls: '', have: {}, haveSig: '', typed: '', typedOk: false },
   cal: { tab: 'hist', mem: null, fresh: false, expr: '', hist: [], res: '', err: '', d1: '', d2: '', dn: 30, dres: '', unitCat: 'len', unitVal: '1', unitFrom: 'm' },
   sc: { total: 100, n: 20, nSub: 4, step: 0.5, diffs: [], res: null, msg: '' },
@@ -30,6 +31,7 @@ var TB_SVG = {
   m_rotate: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
   m_image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',
   m_imgpdf: '<path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><rect width="9" height="7" x="2" y="12" rx="1"/>',
+  m_video: '<rect x="2" y="4" width="20" height="16" rx="3"/><path d="m10 9 5 3-5 3z"/>',
   m_imgdown: '<path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"/><path d="m14 19 3 3v-5.5"/><path d="m17 22 3-3"/><circle cx="9" cy="9" r="2"/>',
   m_doc: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M10 13h4"/><path d="M10 17h4"/>',
   wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
@@ -51,6 +53,7 @@ var TB_TOOLS = [
   { k: 'pdf', ic: 'pdf', t: 'PDF 편집기', badge: 'NEW', d: 'PDF 합치기·나누기·쪽 뽑기·쪽 지우기·돌리기, 그림을 PDF 로 만들기를 내 컴퓨터에서 처리합니다.' },
   { k: 'im', ic: 'm_imgdown', t: '사진 줄이기', badge: 'NEW', d: '사진·폴더를 올리면 화질을 지키며 용량을 줄여 새 폴더에 저장합니다. 나이스 고입 사진(200KB 이하)도 한 번에.' },
   { k: 'rnd', ic: 'dice', t: '랜덤 뽑기·모둠 편성', d: '학급 명단이나 직접 적은 이름으로 발표자를 뽑고 모둠을 자동으로 편성합니다.' },
+  { k: 'yt', ic: 'm_video', t: '영상 내려받기', badge: 'NEW', d: '유튜브 영상 주소를 붙여 넣으면 영상(최대 1080p MP4)이나 소리만(M4A)으로 내 컴퓨터에 저장합니다.' },
   { k: 'qr', ic: 'qr', t: 'QR 생성기', d: '주소나 글을 QR 코드로 만들어 그림으로 저장하거나 복사합니다.' },
   { k: 'tm', ic: 'alarm', t: '수업 타이머', badge: 'NEW', d: '안내 글과 함께 큰 화면 타이머를 띄우고 끝나면 소리로 알려 줍니다.' },
   { k: 'nm', ic: 'game', t: '학생이름외우기', d: '번호를 보고 이름 떠올리기: 카드 연습 · 퀴즈 · 짝맞추기로 새 학기 이름을 빠르게 외웁니다.' },
@@ -97,7 +100,7 @@ function viewToolbox() {
         }).join('') + '</div>';
     return h + tbBigTimer();
   }
-  var body = { pdf: tbPdfHtml, im: tbImHtml, rnd: tbRndHtml, qr: tbQrHtml, tm: tbTmHtml, nm: tbNmHtml, cal: tbCalHtml, sc: tbScHtml, gr: tbGrHtml }[tool.k];
+  var body = { pdf: tbPdfHtml, im: tbImHtml, rnd: tbRndHtml, yt: tbYtHtml, qr: tbQrHtml, tm: tbTmHtml, nm: tbNmHtml, cal: tbCalHtml, sc: tbScHtml, gr: tbGrHtml }[tool.k];
   return h + '<div class="tbbody" style="zoom:' + tbZoom(tool.k) + '">' + body() + '</div>' + tbBigTimer();
 }
 
@@ -524,6 +527,110 @@ function tbQrHtml() {
       + '<div class="tbrow"><button class="wkb go" data-tbact="qrsave">💾 그림으로 저장</button><button class="wkb" data-tbact="qrcopy">⧉ 복사</button></div>';
   }
   return h + tbMsg(s.msg, s.ok);
+}
+
+/* ═══════════ 영상 내려받기 ═══════════
+   ★ 받는 일은 메인 프로세스(ytdl.js)가 한다 — 여기서는 주소 → 확인 → 화질 → 받기 → 저장됨 을 보여 줄 뿐이다.
+   ★ 진행 게이지는 «값만 고쳐» 그린다(전체를 다시 그리지 않아 입력칸·단추가 흔들리지 않는다).
+   ★ 로그인이 필요한 영상은 받지 않는다. 내가 만들었거나 이용을 허락받은 영상만 받도록 안내를 늘 보인다. */
+var TB_YT_Q = [['1080', '1080p'], ['720', '720p'], ['480', '480p'], ['audio', '소리만(M4A)']];
+function tbYtFmtDur(sec) { sec = Math.max(0, Math.round(sec || 0)); var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), r = sec % 60; return (h ? h + ':' + (m < 10 ? '0' : '') : '') + m + ':' + (r < 10 ? '0' : '') + r; }
+function tbYtFmtSize(n) { return n >= 1073741824 ? (n / 1073741824).toFixed(1) + 'GB' : Math.max(1, Math.round(n / 1048576)) + 'MB'; }
+function tbYtLoad(force) {
+  var y = TB.yt;
+  if (y.loaded && !force) return;
+  widgetAPI.ytState().then(function (r) {
+    if (!r) return;
+    y.loaded = true; y.dir = r.dir || ''; y.hist = r.hist || []; y.engine = r.engine || null;
+    render();
+  }).catch(function () { /* 다음에 다시 */ });
+}
+if (typeof widgetAPI !== 'undefined' && widgetAPI.onYtProgress) {
+  widgetAPI.onYtProgress(function (p) {
+    var y = TB.yt; if (!p) return;
+    y.stage = p.stage || y.stage; y.pct = Number(p.pct) || 0; y.speed = p.speed || ''; y.eta = p.eta || '';
+    tbYtPatch();
+  });
+}
+function tbYtPatch() {
+  var y = TB.yt, bar = document.querySelector('#tbYtBar'); if (!bar) return;
+  bar.style.width = Math.max(0, Math.min(100, y.pct)) + '%';
+  var g = document.querySelector('#tbYtG'); if (g) g.setAttribute('aria-valuenow', String(y.pct));
+  var a = document.querySelector('#tbYtL'); if (a) a.textContent = y.stage + ' ' + (y.pct ? y.pct + '%' : '');
+  var b = document.querySelector('#tbYtS'); if (b) b.textContent = (y.speed || '') + (y.eta ? ' · 남은 ' + y.eta : '');
+}
+function tbYtCheck() {
+  var y = TB.yt;
+  if (y.phase === 'check' || y.phase === 'run') return;
+  y.phase = 'check'; y.msg = ''; y.ok = true; y.info = null; render();
+  widgetAPI.ytInfo(y.url).then(function (r) {
+    if (r && r.ok) {
+      y.phase = 'ready'; y.info = r;
+      var hs = r.heights || [], want = Number(y.q);
+      /* 고른 화질이 이 영상에 없으면(예: 480p 가 가장 높은 영상) 있는 것 중 가장 높은 화질로 */
+      if (y.q !== 'audio' && hs.length && !hs.some(function (h) { return h <= want; })) y.q = '480';
+      if (y.q !== 'audio' && hs.length && hs[0] < want) y.q = hs[0] >= 720 ? '720' : '480';
+    } else { y.phase = 'idle'; y.ok = false; y.msg = (r && r.msg) || '영상 정보를 읽지 못했습니다'; }
+    render();
+  }).catch(function (e) { y.phase = 'idle'; y.ok = false; y.msg = String((e && e.message) || e); render(); });
+}
+function tbYtGet() {
+  var y = TB.yt; if (!y.info || y.phase === 'run') return;
+  y.phase = 'run'; y.msg = ''; y.ok = true; y.pct = 0; y.stage = '준비하는 중…'; y.speed = ''; y.eta = ''; render();
+  widgetAPI.ytGet({ url: y.info.url, q: y.q, title: y.info.title }).then(function (r) {
+    if (r && r.ok) {
+      y.phase = 'done'; y.file = r.file; y.savedAt = r.at; y.hist = r.hist || y.hist; y.msg = '';
+      y.doneInfo = { name: r.name, size: r.size };
+    } else if (r && r.canceled) { y.phase = 'ready'; y.ok = true; y.msg = '취소했습니다.'; }
+    else { y.phase = 'ready'; y.ok = false; y.msg = (r && r.msg) || '받지 못했습니다'; }
+    render();
+  }).catch(function (e) { y.phase = 'ready'; y.ok = false; y.msg = String((e && e.message) || e).replace(/^Error invoking remote method .[^.]*.:\s*/, ''); render(); });
+}
+function tbYtHtml() {
+  var y = TB.yt, h = '';
+  var busy = y.phase === 'check' || y.phase === 'run';
+  h += '<div class="tbyt"><div class="tbytlab">영상 주소</div>'
+    + '<div class="tbrow"><input class="gpai wide" data-tbin="yt.url" placeholder="https://www.youtube.com/watch?v=…  또는  https://youtu.be/…" value="' + esc(y.url) + '"' + (busy ? ' disabled' : '') + '>'
+    + '<button class="wkb go tbgo" data-tbact="ytcheck"' + (busy ? ' disabled' : '') + '>' + (y.phase === 'check' ? '확인하는 중…' : '확인') + '</button></div>'
+    + '<div class="rhint">주소를 붙여 넣고 Enter 를 누르면 제목과 길이를 먼저 보여 드립니다.</div></div>';
+  if (y.info && (y.phase === 'ready' || y.phase === 'run' || y.phase === 'done')) {
+    var i = y.info;
+    h += '<div class="tbyt"><div class="tbytinfo">'
+      + (i.thumb ? '<img class="tbytthumb" src="' + esc(i.thumb) + '" alt="">' : '<div class="tbytthumb"></div>')
+      + '<div class="tbytmeta"><b>' + esc(i.title) + '</b><span>' + esc(i.channel) + (i.duration ? ' · ' + tbYtFmtDur(i.duration) : '') + '</span>'
+      + (i.license ? '<span class="tbytlic">' + esc(i.license) + '</span>' : '') + '</div></div></div>';
+    h += '<div class="tbyt"><div class="tbytlab">무엇으로 받을까요</div><div class="tbrow">' + tbPal('yt.q', y.q, TB_YT_Q) + '</div>'
+      + '<div class="rhint">' + (y.q === 'audio' ? '소리만 M4A 로 저장합니다.' : 'H.264 MP4 로 저장합니다 — 거의 모든 PC·전자칠판에서 바로 재생됩니다.') + '</div>';
+    if (y.phase === 'run') {
+      h += '<div class="tbytg" id="tbYtG" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + y.pct + '"><i id="tbYtBar" style="width:' + y.pct + '%"></i></div>'
+        + '<div class="tbytgl"><span id="tbYtL">' + esc(y.stage) + ' ' + (y.pct ? y.pct + '%' : '') + '</span><span id="tbYtS">' + esc((y.speed || '') + (y.eta ? ' · 남은 ' + y.eta : '')) + '</span></div>'
+        + '<div class="tbrow"><button class="wkb" data-tbact="ytcancel">취소</button></div>';
+    } else {
+      h += '<div class="tbrow"><button class="wkb go tbgo" data-tbact="ytget">' + (y.phase === 'done' ? '다시 받기' : '내려받기') + '</button></div>';
+    }
+    h += '</div>';
+  }
+  if (y.phase === 'done' && y.file) {
+    h += '<div class="tbyt tbytdone"><div class="rsaved">✅ 저장됨 · ' + esc(y.savedAt) + '</div>'
+      + '<div class="tbytfile">' + esc(y.doneInfo ? y.doneInfo.name : '') + (y.doneInfo && y.doneInfo.size ? ' · ' + tbYtFmtSize(y.doneInfo.size) : '') + '</div>'
+      + '<div class="tbrow"><button class="wkb go" data-tbact="ytplay" data-tbv="' + esc(y.file) + '">▶ 열기</button>'
+      + '<button class="wkb" data-tbact="ytshow" data-tbv="' + esc(y.file) + '">폴더에서 보기</button>'
+      + '<button class="wkb" data-tbact="ytnext">다음 영상</button></div></div>';
+  }
+  h += tbMsg(y.msg, y.ok);
+  h += '<div class="tbyt"><div class="tbytlab">저장할 폴더</div><div class="tbrow"><span class="tbytdir">' + esc(y.dir || '…') + '</span>'
+    + '<button class="wkb" data-tbact="ytdir"' + (busy ? ' disabled' : '') + '>바꾸기</button><button class="wkb" data-tbact="ytopendir">열기</button></div></div>';
+  if ((y.hist || []).length) {
+    h += '<div class="tbyt"><div class="tbytlab">내려받은 기록</div>' + y.hist.slice(0, 8).map(function (x) {
+      return '<div class="tbythist"><span>' + esc(String(x.title || '').slice(0, 60)) + '<small>' + esc(String(x.at || '').slice(0, 16)) + ' · ' + esc(x.q === 'audio' ? 'M4A' : x.q + 'p') + '</small></span>'
+        + '<button class="wkb" data-tbact="ytshow" data-tbv="' + esc(x.file) + '">폴더에서 보기</button></div>';
+    }).join('') + '</div>';
+  }
+  h += '<div class="rhint tbytwarn">※ 내가 만들었거나 이용을 허락받은 영상만 받아 주세요. 학교 수업 자료라도 저작권을 지켜야 합니다. 로그인이 필요한 영상(나이 제한·비공개·멤버십)은 받을 수 없습니다.</div>'
+    + '<div class="tbyteng"><span>엔진 ' + esc((y.engine && y.engine.version) || (y.loaded ? '없음' : '…')) + (y.engine && y.engine.updated ? ' (새로 받음)' : '') + (y.engine && !y.engine.ffmpeg ? ' · ⚠ 합치기 프로그램 없음' : '') + '</span>'
+    + '<button class="wkb" data-tbact="ytengine"' + (y.engBusy || busy ? ' disabled' : '') + ' title="받기가 갑자기 안 될 때 — 유튜브가 바뀌었을 수 있습니다">' + (y.engBusy ? '받는 중…' : '엔진 새로 받기') + '</button>'
+    + '<small>yt-dlp(Unlicense) · FFmpeg(LGPL) 를 사용합니다.</small></div>';
+  return h;
 }
 
 /* ═══════════ ④ 수업 타이머 ═══════════ */
@@ -1183,9 +1290,9 @@ function tbAct(act, v, b) {
   var s;
   switch (act) {
     case 'open': TB.open = true; TB.tool = ''; TB.direct = false; break;
-    case 'opentool': TB.open = true; TB.tool = v; TB.direct = true; break;
+    case 'opentool': TB.open = true; TB.tool = v; TB.direct = true; if (v === 'yt') tbYtLoad(); break;
     case 'back': if (TB.tool && !TB.direct) TB.tool = ''; else { TB.open = false; TB.tool = ''; TB.direct = false; } break;
-    case 'tool': TB.tool = v; break;
+    case 'tool': TB.tool = v; if (v === 'yt') tbYtLoad(); break;
     case 'set': {
       var pp = tbPath(b.dataset.tbp), cur = pp[0][pp[1]];
       pp[0][pp[1]] = (typeof cur === 'number') ? Number(v) : (typeof cur === 'boolean') ? (v === '1' || v === 'true') : v;
@@ -1301,6 +1408,24 @@ function tbAct(act, v, b) {
       }).catch(function (e) { s.busy = false; s.ok = false; s.msg = String((e && e.message) || e); render(); });
       return;
     }
+    /* 영상 내려받기 */
+    case 'ytcheck': tbYtCheck(); return;
+    case 'ytget': tbYtGet(); return;
+    case 'ytcancel': widgetAPI.ytCancel(); TB.yt.stage = '취소하는 중…'; tbYtPatch(); return;
+    case 'ytdir': widgetAPI.ytPickDir().then(function (r) { if (r && r.dir) TB.yt.dir = r.dir; render(); }); return;
+    case 'ytopendir': widgetAPI.ytOpen({ what: 'dir' }); return;
+    case 'ytshow': widgetAPI.ytOpen({ what: 'file', file: v || TB.yt.file }); return;
+    case 'ytplay': widgetAPI.ytOpen({ what: 'open', file: v || TB.yt.file }); return;
+    case 'ytnext': TB.yt.phase = 'idle'; TB.yt.url = ''; TB.yt.info = null; TB.yt.msg = ''; TB.yt.file = ''; break;
+    case 'ytengine':
+      if (TB.yt.engBusy) return;
+      TB.yt.engBusy = true; TB.yt.msg = '엔진을 새로 받는 중…'; TB.yt.ok = true; render();
+      widgetAPI.ytEngineUpdate().then(function (r) {
+        TB.yt.engBusy = false; TB.yt.ok = !!(r && r.ok);
+        TB.yt.msg = r && r.ok ? '엔진을 새로 받았습니다 · ' + r.version + ' · ' + r.at : ((r && r.msg) || '엔진을 받지 못했습니다');
+        tbYtLoad(true);
+      }).catch(function (e) { TB.yt.engBusy = false; TB.yt.ok = false; TB.yt.msg = String((e && e.message) || e); render(); });
+      return;
     case 'qrsave':
       widgetAPI.tbQrSave({ dataUrl: TB.qr.dataUrl, name: 'QR' }).then(function (r) { TB.qr.ok = !!(r && (r.ok || r.canceled)); TB.qr.msg = (r && r.msg) || ''; render(); });
       return;
@@ -1436,6 +1561,7 @@ function wireToolbox(app) {
       if (path === 'cal.expr') { TB.cal.expr = el.value; tbAct('eq', '', el); }
       else if (path === 'cal.unitVal') { TB.cal.unitVal = el.value; tbAct('ucalc', '', el); }
       else if (path === 'qr.text') { TB.qr.text = el.value; tbAct('qrmake', '', el); }
+      else if (path === 'yt.url') { TB.yt.url = el.value; tbAct('ytcheck', '', el); }
       else if (path === 'nm.typed') { TB.nm.typed = el.value; tbAct('nmsubmit', '', el); }
       else if (el.dataset.tbenter) { var pe = tbPath(path); pe[0][pe[1]] = el.value; tbAct('grcalc', '', el); }
     });

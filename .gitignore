@@ -7,3 +7,6 @@ gclient.json
 
 # 수업진도 내보내기 파일 — 저장소에 넣지 않는다(공유 시트 링크가 들어 있다)
 jindo-export-*.json
+
+# 영상 내려받기용 외부 프로그램(yt-dlp·ffmpeg) — 큰 파일이라 올리지 않는다. node tools/fetch-vendor.js 로 받는다
+vendor/
