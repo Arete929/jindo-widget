@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.7.8
-   수정요약: v2.7.8 런처보드 — 카드를 «함께 쓰는 중 ↔ 나만 보기» 구역으로 끌어 옮길 수 있게(구역·묶음 상자·다른 카드 위 어디에 떨궈도). / v2.7.7 점검하기 시트 쓰기는 지비스(HAS_TT)에서만. / v2.7.6 전광판 흐름이 다시 그릴 때마다 처음부터 시작하던 것(지비스 3초 갱신) — 흐름 위치를 시계로 이어 감. / v2.7.5 점검하기 체크(서류·출석부·NEIS)를 반 탭 칸에도 적고, 목록을 받을 때 어긋난 줄을 맞춤(attChkSync · 다리 att-chk). / v2.7.4 오늘 기준 — 급식 지난 날 접기(mlPastOpen), 주간업무 표 오늘 세로 줄(wTodayCols), 출결 오늘 줄(attIsToday). / v2.7.3 학년 일지 넣기 — 진행 게이지, 넣으면 칸 닫고 알림 줄(되돌리기 포함). / v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+/* 파일명: views.js | @version 2.7.9
+   수정요약: v2.7.9 혜원이지 런처보드(함께 쓰는 앱) 맨 앞에 «혜원이지 폰» QR 타일 — 누르면 QR·주소·설치 방법 창(복사·그림 저장·크게 보기). / v2.7.8 런처보드 — 카드를 «함께 쓰는 중 ↔ 나만 보기» 구역으로 끌어 옮길 수 있게(구역·묶음 상자·다른 카드 위 어디에 떨궈도). / v2.7.7 점검하기 시트 쓰기는 지비스(HAS_TT)에서만. / v2.7.6 전광판 흐름이 다시 그릴 때마다 처음부터 시작하던 것(지비스 3초 갱신) — 흐름 위치를 시계로 이어 감. / v2.7.5 점검하기 체크(서류·출석부·NEIS)를 반 탭 칸에도 적고, 목록을 받을 때 어긋난 줄을 맞춤(attChkSync · 다리 att-chk). / v2.7.4 오늘 기준 — 급식 지난 날 접기(mlPastOpen), 주간업무 표 오늘 세로 줄(wTodayCols), 출결 오늘 줄(attIsToday). / v2.7.3 학년 일지 넣기 — 진행 게이지, 넣으면 칸 닫고 알림 줄(되돌리기 포함). / v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
      목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
      그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
    v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
@@ -6007,6 +6007,81 @@ function linkTiles() {
     return linkTile(x, 'lnk="' + i);
   }).join('');
 }
+/* ══ 혜원이지 폰 QR (혜원이지 전용 · 2026-10-23) ══════════════════════════
+   혜원이지 «함께 쓰는 앱» 맨 앞에 «혜원이지 폰» 타일 하나를 둔다. 누르면 QR 을 크게 보여 준다 —
+   선생님이 폰 카메라로 비추면 폰 앱(홈 화면에 추가해서 쓰는 웹앱) 주소가 열린다.
+   ★ QR 은 이 PC 에서 만든다(main 의 tb-qr). 주소는 공개 웹앱 주소이고 열쇠·연결 코드는 들어 있지 않다.
+   ★ 팝업(alert 등) 없이 화면 안 창으로 보인다. Esc·바깥 누르기·✕ 로 닫는다. */
+var HY_PHONE_URL = 'https://arete929.github.io/hyewon_mobile/';
+var hyQr = { open: false, size: 'm', cache: {}, busy: false, msg: '', ok: true };
+function hyQrOn() { return !HAS_TT; }
+function hyQrTile() {
+  if (!hyQrOn()) return '';
+  return '<button class="lnk" data-hyqr="1" title="폰 카메라로 비추면 혜원이지 폰 앱이 열립니다">'
+    + '<span class="lico" style="--ic:#C1121F">' + (typeof tbIcon === 'function' ? tbIcon('qr', 20) : '') + '</span>'
+    + '<span class="ltx"><b>혜원이지 폰</b><i>QR 코드로 폰에 설치</i></span></button>';
+}
+function hyQrPx() { return hyQr.size === 'l' ? 560 : 300; }
+function hyQrHtml() {
+  if (!hyQrOn() || !hyQr.open) return '';
+  var px = hyQrPx(), img = hyQr.cache[px];
+  return '<div class="hyqrbg" data-hyqrx="1"></div><div class="hyqr" role="dialog" aria-modal="true" aria-label="혜원이지 폰 QR">'
+    + '<div class="hyqrh"><b>혜원이지 폰</b><button class="wkb" data-hyqrx="1" aria-label="닫기">✕</button></div>'
+    + '<div class="hyqrimg" style="width:' + px + 'px;height:' + px + 'px">'
+    + (img ? '<img src="' + img + '" alt="혜원이지 폰 QR 코드" width="' + px + '" height="' + px + '">' : '<span class="rhint">QR 을 만드는 중…</span>') + '</div>'
+    + '<div class="hyqrurl">' + esc(HY_PHONE_URL) + '</div>'
+    + '<ol class="hyqrhow"><li>폰 카메라(또는 QR 앱)로 위 QR 을 비춥니다.</li>'
+    + '<li>열린 페이지에서 브라우저 메뉴의 <b>«홈 화면에 추가»</b> 를 누릅니다.</li>'
+    + '<li>처음 열 때 <b>연결 코드</b> 를 넣으라고 나오면, 안내받은 코드를 넣습니다.</li></ol>'
+    + '<div class="tbrow"><span class="tbpal"><button class="wkb' + (hyQr.size === 'm' ? ' go' : '') + '" data-hyqrs="m">보통</button>'
+    + '<button class="wkb' + (hyQr.size === 'l' ? ' go' : '') + '" data-hyqrs="l">크게(화면에 띄울 때)</button></span></div>'
+    + '<div class="tbrow"><button class="wkb go" data-hyqrcopy="1">주소 복사</button>'
+    + '<button class="wkb" data-hyqrsave="1">QR 그림 저장</button>'
+    + '<button class="wkb" data-hyqropen="1">주소 열기</button></div>'
+    + (hyQr.msg ? '<div class="' + (hyQr.ok ? 'rhint' : 'atwarn') + '">' + esc(hyQr.msg) + '</div>' : '')
+    + '</div>';
+}
+function hyQrLoad() {
+  var px = hyQrPx();
+  if (hyQr.cache[px] || hyQr.busy) return;
+  hyQr.busy = true;
+  widgetAPI.tbQr({ text: HY_PHONE_URL, size: px * 2, level: 'M', dark: '#000000' }).then(function (r) {
+    hyQr.busy = false;
+    if (r && r.ok) hyQr.cache[px] = r.dataUrl; else { hyQr.ok = false; hyQr.msg = (r && r.msg) || 'QR 을 만들지 못했습니다'; }
+    render();
+  }).catch(function (e) { hyQr.busy = false; hyQr.ok = false; hyQr.msg = String((e && e.message) || e); render(); });
+}
+function hyQrWire(app) {
+  app.querySelectorAll('[data-hyqr]').forEach(function (b) {
+    b.addEventListener('click', function () { hyQr.open = true; hyQr.msg = ''; hyQr.ok = true; hyQrLoad(); render(); });
+  });
+  app.querySelectorAll('[data-hyqrx]').forEach(function (b) {
+    b.addEventListener('click', function () { hyQr.open = false; render(); });
+  });
+  app.querySelectorAll('[data-hyqrs]').forEach(function (b) {
+    b.addEventListener('click', function () { hyQr.size = b.dataset.hyqrs; hyQrLoad(); render(); });
+  });
+  app.querySelectorAll('[data-hyqrcopy]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var done = function (ok) { hyQr.ok = ok; hyQr.msg = ok ? '주소를 복사했습니다 · ' + 지금시각() : '복사하지 못했습니다 — 위 주소를 직접 선택해 복사해 주세요'; render(); };
+      try { navigator.clipboard.writeText(HY_PHONE_URL).then(function () { done(true); }, function () { done(false); }); } catch (e) { done(false); }
+    });
+  });
+  app.querySelectorAll('[data-hyqrsave]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var img = hyQr.cache[hyQrPx()]; if (!img) return;
+      widgetAPI.tbQrSave({ dataUrl: img, name: '혜원이지 폰 QR' }).then(function (r) {
+        hyQr.ok = !!(r && (r.ok || r.canceled)); hyQr.msg = (r && r.msg) || ''; render();
+      });
+    });
+  });
+  app.querySelectorAll('[data-hyqropen]').forEach(function (b) {
+    b.addEventListener('click', function () { widgetAPI.openUrl(HY_PHONE_URL); });
+  });
+}
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && hyQr.open) { hyQr.open = false; if (typeof render === 'function') render(); }
+});
 /* 런처에서 온 것 — 내가 만든 것과 섞지 않고 따로 묶는다 */
 function feedTiles() {
   if (!FEED || !FEED.apps || !FEED.apps.length) return '';
@@ -6129,15 +6204,16 @@ function viewLinks() {
   }
 
   if (lbOn()) { h += viewBoardApps(); }
-  else if (feed) {
+  else if (feed || hyQrOn()) {
     h += '<div class="lgrp">' + esc(feedName())
-      + (FEED.at ? '<small>' + esc(FEED.at) + '</small>' : '') + '</div>'
-      + '<div class="lnks">' + feed + '</div>';
+      + (FEED && FEED.at ? '<small>' + esc(FEED.at) + '</small>' : '') + '</div>'
+      + '<div class="lnks">' + hyQrTile() + feed + '</div>';
+    if (!feed && FEED && FEED.error) h += '<div class="empty">' + esc(FEED.error) + '</div>';
   } else if (FEED && FEED.error) {
     h += '<div class="lgrp">' + esc(feedName()) + '</div>'
       + '<div class="empty">' + esc(FEED.error) + '</div>';
   }
-  return h;
+  return h + hyQrHtml();
 }
 
 /* ── 런처보드 본문 ─────────────────────────────────────────
@@ -8021,6 +8097,7 @@ function wireViews(app) {
       if (x && x.u) widgetAPI.openUrl(x.u);
     });
   });
+  hyQrWire(app);                       // 혜원이지 폰 QR (혜원이지 전용)
   // 바로가기 손보기
   var lke = app.querySelector('#lkEd');
   if (lke) lke.addEventListener('click', function () { lkEdit = !lkEdit; render(); });

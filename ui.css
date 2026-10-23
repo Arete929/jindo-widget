@@ -2905,3 +2905,14 @@
   .lbpanel.over { outline: 2px dashed var(--accent); outline-offset: -3px; }
   .lbcat.over { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 10px; }
   .lbdrophint { padding: 14px; text-align: center; font-size: calc(11px * var(--wf)); color: var(--dim); border: 1px dashed var(--line); border-radius: 9px; margin: 6px 0 4px; }
+
+  /* ── 혜원이지 폰 QR 창 ── */
+  .hyqrbg { position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,.45); -webkit-app-region: no-drag; }
+  .hyqr { position: fixed; z-index: 71; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); overflow: auto;
+          background: var(--card); color: var(--fg); border-radius: 14px; padding: 12px 16px 14px; box-shadow: 0 12px 40px rgba(0,0,0,.35); -webkit-app-region: no-drag; }
+  .hyqrh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: calc(14px * var(--wf, 1)); }
+  .hyqrimg { margin: 0 auto 6px; background: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; max-width: 100%; }
+  .hyqrimg img { display: block; max-width: 100%; height: auto; }
+  .hyqrurl { text-align: center; font-size: calc(11px * var(--wf, 1)); font-weight: 700; color: var(--accent); word-break: break-all; user-select: text; margin: 4px 0 6px; }
+  .hyqrhow { margin: 4px 0 8px 18px; font-size: calc(11px * var(--wf, 1)); line-height: 1.6; color: var(--fg2); }
+
