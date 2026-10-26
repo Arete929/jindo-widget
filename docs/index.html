@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>혜원이지 — 내려받기</title>
+<meta name="robots" content="noindex, nofollow" />
 <meta name="description" content="혜원여자중학교 선생님을 위한 바탕화면 도우미. 주간업무·시간표·학사일정·급식·학생기록을 한 창에." />
 <link rel="icon" href="logo.png" type="image/png" />
 <link rel="apple-touch-icon" href="logo.png" />
@@ -62,6 +63,17 @@
   .phone .txt { flex: 1 1 260px; min-width: 0; }
   .phone .url { font-weight: 800; word-break: break-all; font-size: 14px; }
   .phone .url a { color: var(--accent); }
+  /* 비번 잠금 — 열 때마다 비번을 넣어야 보인다(저장하지 않는다) */
+  body.locked .wrap { display: none; }
+  #lock { display: none; }
+  body.locked #lock { display: flex; min-height: 100vh; min-height: 100dvh; align-items: center; justify-content: center; padding: 24px; }
+  #lock .box { width: 100%; max-width: 360px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 26px 22px; text-align: center; }
+  #lock img { width: 72px; height: 72px; border-radius: 16px; }
+  #lock h1 { font-size: 22px; margin: 10px 0 4px; }
+  #lock p { color: var(--dim); font-size: 14px; margin-bottom: 14px; }
+  #lock input { width: 100%; font: inherit; font-size: 17px; padding: 12px 14px; border-radius: 11px; border: 1px solid var(--line); background: #fff; color: var(--fg); text-align: center; }
+  #lock button { width: 100%; margin-top: 10px; border: 0; border-radius: 11px; padding: 13px; font: inherit; font-weight: 800; font-size: 16px; background: var(--fg); color: #fff; cursor: pointer; }
+  #lock .err { min-height: 20px; margin-top: 8px; color: #c22222; font-size: 13px; }
   /* 버전 탭(PC / 모바일) */
   .vtabs { display: flex; gap: 8px; margin: 16px 0 14px; }
   .vtab { flex: 1 1 0; min-width: 0; border: 1px solid var(--line); background: var(--card); color: var(--dim); border-radius: 12px; padding: 12px 10px; font: inherit; font-weight: 800; font-size: 15px; cursor: pointer; }
@@ -140,7 +152,17 @@
   .tab a { display: block; }
 </style>
 </head>
-<body>
+<body class="locked">
+<div id="lock" role="dialog" aria-label="비번 입력">
+  <div class="box">
+    <img src="logo.png" alt="혜원이지 로고" width="72" height="72">
+    <h1>혜원이지</h1>
+    <p>선생님용 안내 페이지입니다.<br>비번을 넣고 들어오세요.</p>
+    <input id="lockpw" type="password" autocomplete="off" placeholder="비번" aria-label="비번">
+    <div class="err" id="lockerr" role="alert"></div>
+    <button type="button" id="lockgo">들어가기</button>
+  </div>
+</div>
 <div class="wrap">
   <div class="brand">
     <img src="logo.png" alt="혜원이지 로고" width="56" height="56">
@@ -426,7 +448,7 @@
   <div class="card">
     <h2>처음 열면</h2>
     <ol>
-      <li><b>암호 입력</b> — 처음 한 번 암호를 넣으라는 화면이 나옵니다. 암호는 <b>김진호 선생님께 메신저로 받으세요</b>. 한 번 넣으면 그 폰이 기억합니다.</li>
+      <li><b>암호 입력</b> — 처음 한 번 암호를 넣으라는 화면이 나옵니다. 암호는 <b>김진호 선생님께 메신저로 받으세요</b>. 앱을 열 때마다 넣고 들어옵니다.</li>
       <li><b>내 이름 고르기</b> — «시간표» 화면에서 내 이름을 한 번 고르면 오늘 수업과 내 시간표가 보입니다.</li>
     </ol>
   </div>
@@ -548,6 +570,27 @@
   var 폰 = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
   show(h === 'phone' ? 'mobile' : (h === 'pc' || h === 'mobile') ? h : (폰 ? 'mobile' : 'pc'), false);
   window.addEventListener('hashchange', function () { var x = (location.hash || '').replace('#', ''); if (x === 'pc' || x === 'mobile') show(x, false); });
+})();
+/* 비번 잠금 — 비번 글자는 코드에 두지 않고 해시만 둔다. 저장하지 않으므로 페이지를 열 때마다 묻는다.
+   ★ 가벼운 문 하나일 뿐이다(페이지 코드가 공개라 마음먹으면 뚫린다). 설치 파일 자체는 GitHub 릴리스가 공개다. */
+(function () {
+  var HASH = "c7a10288292245d8e82525edf82ed55e7140a16a8f5a3d622b78b73f340066d6";
+  var pw = document.getElementById('lockpw'), err = document.getElementById('lockerr'), go = document.getElementById('lockgo');
+  function hex(buf) { return Array.prototype.slice.call(new Uint8Array(buf)).map(function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
+  function open() { document.body.classList.remove('locked'); pw.value = ''; }
+  function check() {
+    var v = pw.value;
+    if (!v) { err.textContent = '비번을 넣어 주세요'; return; }
+    if (!(window.crypto && crypto.subtle)) { err.textContent = '이 브라우저에서는 열 수 없습니다 — 크롬으로 열어 주세요'; return; }
+    crypto.subtle.digest('SHA-256', new TextEncoder().encode('hyewon-page:' + v)).then(function (d) {
+      if (hex(d) === HASH) { open(); }
+      else { err.textContent = '비번이 맞지 않습니다'; pw.select(); }
+    });
+  }
+  go.addEventListener('click', check);
+  pw.addEventListener('keydown', function (e) { if (e.key === 'Enter') check(); });
+  pw.addEventListener('input', function () { err.textContent = ''; });
+  try { pw.focus(); } catch (e) { /* 무시 */ }
 })();
 </script>
 </body>
