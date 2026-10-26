@@ -81,6 +81,10 @@
   .vtab[aria-selected="true"] { background: var(--fg); color: #fff; border-color: var(--fg); }
   .vpane[hidden] { display: none; }
   .galaxy { background: #FFF4E5; border: 2px solid #E8A33D; color: #7A4A00; border-radius: 14px; padding: 14px 18px; margin: 0 0 14px; font-size: 14px; line-height: 1.6; }
+  .opens { margin-top: 10px; display: grid; gap: 8px; }
+  .opens[hidden] { display: none; }
+  .openbtn { display: block; text-align: center; text-decoration: none; background: var(--fg); color: #fff; border-radius: 11px; padding: 13px 14px; font-weight: 800; font-size: 15px; }
+  .openbtn.sec { background: #fff; color: var(--fg); border: 1px solid var(--line); font-weight: 700; font-size: 14px; }
   .galaxy strong { display: block; font-size: 16px; margin-bottom: 4px; }
   .galaxy ol { margin: 6px 0 0 20px; color: #7A4A00; }
   .galaxy li { margin-bottom: 2px; }
@@ -415,6 +419,12 @@
       <li><b>삼성 인터넷</b>(또는 크롬) <b>브라우저 앱을 직접 열고</b> 주소창에 <b>붙여 넣어</b> 이동합니다.</li>
       <li>그 상태에서 메뉴 → <b>홈 화면에 추가</b> 를 눌러야 <b>앱으로 설치</b>됩니다.</li>
     </ol>
+    <div class="opens" id="opens" hidden>
+      <a class="openbtn" href="intent://arete929.github.io/hyewon_mobile/#Intent;scheme=https;package=com.sec.android.app.sbrowser;S.browser_fallback_url=https%3A%2F%2Farete929.github.io%2Fhyewon_mobile%2F;end">삼성 인터넷으로 바로 열기</a>
+      <a class="openbtn sec" href="intent://arete929.github.io/hyewon_mobile/#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=https%3A%2F%2Farete929.github.io%2Fhyewon_mobile%2F;end">크롬으로 바로 열기</a>
+      <a class="openbtn sec" href="kakaotalk://web/openExternal?url=https%3A%2F%2Farete929.github.io%2Fhyewon_mobile%2F">카카오톡에서 열었다면: 기본 브라우저로 열기</a>
+      <p class="meta">눌러서 브라우저가 열리면 메뉴 → <b>홈 화면에 추가</b> 를 누르세요. 버튼이 안 먹으면 위 방법대로 주소를 복사해서 붙여 넣으세요.</p>
+    </div>
   </div>
 
   <div class="card">
@@ -634,6 +644,11 @@
       } catch (e) { pick(); }
     }
   });
+})();
+/* 안드로이드(갤럭시)일 때만 «브라우저 바로 열기» 단추를 보여 준다 — intent 주소로 삼성 인터넷·크롬 앱을 곧바로 연다 */
+(function () {
+  var o = document.getElementById('opens');
+  if (o && /Android/i.test(navigator.userAgent || '')) o.hidden = false;
 })();
 </script>
 </body>
