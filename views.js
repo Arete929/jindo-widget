@@ -7504,7 +7504,7 @@ function render() {
         // ★ 지비스의 «바로가기» 는 런처보드다 — 이름만 다르고 화면 값(link)은 같다
         // ★ «업무관리»(노션)는 지비스에만 있다 — 시간표와 주간업무 사이
         HAS_TT ? ['tt,진호 시간표', 'task,업무관리', 'work,주간업무', 'comci,컴시간', 'cal,학사일정', 'att,출결', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,런처보드']
-               : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'att,출결', 'meal,급식', 'rec,학생기록', 'office,교무실', 'link,바로가기'],   // 출결 — 혜원이지도(v1.130.0)
+               : ['work,주간업무', 'comci,컴시간', 'grid,진도표', 'cal,학사일정', 'att,출결', 'meal,급식', 'rec,학생기록', 'link,바로가기'],   // 출결 — 혜원이지도(v1.130.0)
         TABORDER, function (s) { return s.split(',')[0]; }).map(function (s, i) {
         var p = s.split(',');
         return '<button class="chip nav' + NAVSTYLE + (tab === p[0] ? ' on' : '')

@@ -406,7 +406,7 @@ function helpParts(flavor, appName) {
       + '시트에 올리는 것은 그 뒤에 조용히 합니다 — 시트가 막혀도 적은 것은 안 잃습니다.</div>' });
   }
 
-  P.push({ id: 'portal', t: '업무포털', body:
+  P.push({ id: 'portal', t: '업무포털', only: 'jinho', body:
       '<p>교무실 화면 맨 위에 <b>업무포털</b> 줄이 있습니다. '
     + '<b>나이스</b>·<b>에듀파인</b>을 <b>크롬</b>이나 <b>엣지</b>로 한 번에 엽니다.</p>'
     + '<ul>'
@@ -422,7 +422,7 @@ function helpParts(flavor, appName) {
     + '로그인이 멈춥니다(<code>SessionNotCreated</code>). 그럴 때는 도우미를 새로 받으시거나 '
     + '<b>그냥 열기</b> 로 들어가세요.</p>' });
 
-  P.push({ id: 'office', t: '교무실', body:
+  P.push({ id: 'office', t: '교무실', only: 'jinho', body:
       shot('교무실 타일', '<div class="shotrow">'
         + hTile({ icon: 'folder', color: '#c9a227', t: '2학기 수행평가 서식', sub: 'drive.google.com' })
         + hTile({ icon: 'sheet', color: '#3fa07a', t: '방과후 신청 현황', sub: 'docs.google.com' })
