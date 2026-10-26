@@ -55,6 +55,15 @@
     border: 1px solid var(--line); border-bottom-width: 2px; background: #fbfbff;
     font-weight: 800; font-size: 13px; color: var(--fg);
   }
+  /* 혜원이지 폰 안내 */
+  .phone { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+  .phone .qrbox { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px; width: 168px; height: 168px; flex: 0 0 auto; }
+  .phone .qrsvg { display: block; width: 100%; height: 100%; }
+  .phone .txt { flex: 1 1 260px; min-width: 0; }
+  .phone .url { font-weight: 800; word-break: break-all; font-size: 14px; }
+  .phone .url a { color: var(--accent); }
+  .newlist li { margin-bottom: 4px; }
+  .newlist .tag { display: inline-block; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 99px; background: var(--fg); color: #fff; margin-right: 4px; vertical-align: 1px; }
   .card p { color: var(--dim); font-size: 14px; }
   .card p + p { margin-top: 8px; }
   ol { margin: 8px 0 0 20px; font-size: 14px; color: var(--dim); }
@@ -121,7 +130,7 @@
   <div class="brand">
     <img src="logo.png" alt="혜원여자중학교 교표" width="56" height="56">
     <h1>혜원이지</h1>
-    <span class="vbadge" id="vtop"><!--VER-->2.9.1<!--/VER--></span>
+    <span class="vbadge" id="vtop"><!--VER-->2.10.53<!--/VER--></span>
   </div>
   <div class="sub">주간업무 · 시간표 · 학사일정 · 출결 · 급식 · 학생기록을 바탕화면 한 창에서</div>
 
@@ -138,7 +147,7 @@
   <div class="hero">
     <a class="dl" id="dl"
        href="https://github.com/Arete929/jindo-widget/releases/latest">Windows 용 내려받기</a>
-    <span class="ver" id="ver">판 <b><!--VER-->2.9.1<!--/VER--></b> · <!--SIZE-->82MB<!--/SIZE--> · <!--DATE-->2026. 09. 25<!--/DATE--></span>
+    <span class="ver" id="ver">판 <b><!--VER-->2.10.53<!--/VER--></b> · <!--SIZE-->151MB<!--/SIZE--> · <!--DATE-->2026. 10. 23<!--/DATE--></span>
   </div>
 
   <div class="card">
@@ -310,6 +319,39 @@
     <p>안 쓰는 탭은 설정에서 꺼 두거나 순서를 바꿀 수 있습니다. 그러면 숫자도 그 순서를 따릅니다.</p>
   </div>
 
+  <div class="card" id="phone">
+    <h2>📱 혜원이지 폰 — 폰에서도 보세요</h2>
+    <div class="phone">
+      <div class="qrbox"><svg class="qrsvg" role="img" aria-label="혜원이지 폰 QR 코드" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 31 31" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h31v31H0z"/><path stroke="#000000" d="M1 1.5h7m5 0h1m3 0h1m1 0h3m1 0h7M1 2.5h1m5 0h1m2 0h1m3 0h1m1 0h4m1 0h1m1 0h1m5 0h1M1 3.5h1m1 0h3m1 0h1m1 0h2m6 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1M1 4.5h1m1 0h3m1 0h1m1 0h1m1 0h5m2 0h2m1 0h1m1 0h1m1 0h3m1 0h1M1 5.5h1m1 0h3m1 0h1m1 0h2m1 0h3m2 0h5m1 0h1m1 0h3m1 0h1M1 6.5h1m5 0h1m1 0h1m1 0h3m2 0h3m4 0h1m5 0h1M1 7.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 8.5h1m5 0h3m1 0h1M1 9.5h1m1 0h5m2 0h6m2 0h1m1 0h1m2 0h5M3 10.5h2m1 0h1m2 0h4m1 0h1m2 0h9m3 0h1M5 11.5h4m2 0h1m1 0h1m1 0h3m1 0h1m5 0h1M1 12.5h2m1 0h3m2 0h1m1 0h1m5 0h1m3 0h1m2 0h3m1 0h1M2 13.5h1m3 0h4m2 0h4m1 0h2m2 0h2m1 0h1m1 0h2M1 14.5h6m1 0h5m3 0h6m1 0h3m3 0h1M2 15.5h2m3 0h1m4 0h2m1 0h2m1 0h1m2 0h7M3 16.5h3m5 0h1m3 0h1m1 0h1m6 0h2m2 0h1M2 17.5h1m3 0h5m2 0h2m3 0h3m1 0h1m3 0h2M1 18.5h1m1 0h3m4 0h1m1 0h3m2 0h5m1 0h3m1 0h1m1 0h1M1 19.5h1m1 0h3m1 0h1m3 0h1m1 0h6m2 0h2m4 0h1M1 20.5h1m1 0h1m1 0h2m2 0h5m1 0h1m1 0h1m2 0h4m1 0h1m2 0h1M1 21.5h1m1 0h1m2 0h2m1 0h1m2 0h2m4 0h1m2 0h5m1 0h3M9 22.5h4m1 0h1m2 0h3m1 0h1m3 0h5M1 23.5h7m3 0h7m1 0h3m1 0h1m1 0h3M1 24.5h1m5 0h1m1 0h3m1 0h2m2 0h1m1 0h3m3 0h1M1 25.5h1m1 0h3m1 0h1m1 0h2m2 0h1m1 0h4m2 0h5m1 0h3M1 26.5h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m2 0h2m2 0h2m1 0h1m1 0h4M1 27.5h1m1 0h3m1 0h1m1 0h9m1 0h3m1 0h6M1 28.5h1m5 0h1m3 0h2m3 0h2m3 0h6m1 0h1M1 29.5h7m1 0h3m1 0h2m1 0h1m1 0h1m6 0h1m1 0h1"/></svg></div>
+      <div class="txt">
+        <p>폰으로 이 QR 을 비추면 폰용 혜원이지가 열립니다. 폰에서 직접 열 주소:</p>
+        <p class="url"><a href="https://arete929.github.io/hyewon_mobile/">arete929.github.io/hyewon_mobile</a></p>
+      </div>
+    </div>
+    <ol>
+      <li>폰 카메라로 QR 을 비추거나, 위 주소를 폰 브라우저에서 엽니다.</li>
+      <li>브라우저 메뉴에서 <b>«홈 화면에 추가»</b> 를 누르면 앱처럼 아이콘이 생깁니다.
+          (아이폰은 사파리에서 공유 단추 → «홈 화면에 추가»)</li>
+      <li>처음 열 때 화면에 나오는 안내를 따라 연결합니다.</li>
+    </ol>
+    <p>폰에서 볼 수 있는 것 — <b>홈 · 시간표 · 출결 · 급식 · 학사일정 · 주간업무 · 문자 문구 · 바로가기 · 설정</b>.
+       아래쪽 메뉴는 <b>홈·시간표·출결·급식</b> 네 칸과 <b>«더보기»</b> 로 되어 있고, 메뉴를 꾹 누르면(또는 더보기 → 하단 메뉴 편집) 내가 자주 쓰는 화면으로 바꿀 수 있습니다.</p>
+    <p>PC 의 혜원이지 안 «바로가기» 화면에도 <b>«혜원이지 폰»</b> 타일이 있어, 누르면 이 QR 을 크게 볼 수 있습니다.</p>
+  </div>
+
+  <div class="card">
+    <h2>최근 새로워진 것</h2>
+    <ul class="newlist">
+      <li><span class="tag">NEW</span><b>도구상자 «영상 내려받기»</b> — 유튜브 주소를 붙여 넣고 화질(1080p·720p·480p·소리만)을 골라 이 컴퓨터에 저장합니다.
+          수업·연수 자료처럼 이용 허락이 되는 영상에만 써 주세요</li>
+      <li><span class="tag">NEW</span><b>«혜원이지 폰» 타일</b> — 바로가기 화면 맨 앞. 누르면 폰 설치용 QR 이 크게 뜹니다</li>
+      <li><span class="tag">NEW</span><b>런처보드 정리</b> — 카드를 끌어서 «함께 쓰는 중» 과 «나만 보기» 사이로 옮길 수 있습니다</li>
+      <li><b>학사일정·급식은 «오늘» 기준</b> — 어제까지는 «지난 일정·지난 급식» 한 줄로 접혀 있고, 오늘이 눈에 띄게 강조됩니다. 필요하면 펼쳐 봅니다</li>
+      <li><b>창 옮기기</b> — 맨 위 머리 줄의 단추가 아닌 곳을 잡고 끌면 창이 부드럽게 옮겨집니다</li>
+      <li><b>도구상자</b> — PDF 편집기 · 사진 줄이기 · 랜덤 뽑기·모둠 편성 · QR 생성기 · 수업 타이머 · 계산기 · 배점 산출기 · 등급별 인원 예측</li>
+    </ul>
+  </div>
+
   <div class="card">
     <h2>2.0 에서 새로워진 것</h2>
     <ul>
@@ -351,8 +393,8 @@
     var url = location.href.split('#')[0];
     var 됨 = function () { b.textContent = '✅ 복사됨 — 크롬 주소창에 붙여 넣기'; };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(됨, function () { prompt('이 주소를 복사하세요', url); });
-    } else { prompt('이 주소를 복사하세요', url); }
+      navigator.clipboard.writeText(url).then(됨, function () { b.textContent = '복사 실패 — 주소창의 주소를 직접 복사해 크롬에 붙여 넣으세요'; });
+    } else { b.textContent = '주소창의 주소를 직접 복사해 크롬에 붙여 넣으세요'; }
   });
 })();
 
@@ -365,7 +407,7 @@
    ★ 못 물어봐도(망 차단·한도 초과) 단추는 마지막으로 확인된 설치본을 그대로 가리킨다. */
 (function () {
   var API = 'https://api.github.com/repos/Arete929/jindo-widget/releases?per_page=30';
-  var 대비주소 = 'https://github.com/Arete929/jindo-widget/releases/download/v1.113.0/HyewonDesk-Setup.exe';
+  var 대비주소 = 'https://github.com/Arete929/jindo-widget/releases/download/v2.10.53/HyewonDesk-Setup-2.10.53.exe';
   var dl = document.getElementById('dl');
   var ver = document.getElementById('ver');
   dl.href = 대비주소;                    // 먼저 걸어 둔다 — 물어보다 실패해도 눌리게
