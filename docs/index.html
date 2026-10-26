@@ -80,6 +80,12 @@
   .vtab small { display: block; font-weight: 600; font-size: 11.5px; opacity: .8; margin-top: 1px; }
   .vtab[aria-selected="true"] { background: var(--fg); color: #fff; border-color: var(--fg); }
   .vpane[hidden] { display: none; }
+  .galaxy { background: #FFF4E5; border: 2px solid #E8A33D; color: #7A4A00; border-radius: 14px; padding: 14px 18px; margin: 0 0 14px; font-size: 14px; line-height: 1.6; }
+  .galaxy strong { display: block; font-size: 16px; margin-bottom: 4px; }
+  .galaxy ol { margin: 6px 0 0 20px; color: #7A4A00; }
+  .galaxy li { margin-bottom: 2px; }
+  .copybtn { border: 1px solid var(--line); background: var(--fg); color: #fff; border-radius: 10px; padding: 10px 18px; font: inherit; font-weight: 800; font-size: 15px; cursor: pointer; }
+  .copybtn.done { background: #0E7C58; border-color: #0E7C58; }
   /* 모바일 안내 그림 */
   .pfigs { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin: 14px 0 6px; }
   .pfigs figure, .pshots figure { margin: 0; text-align: center; }
@@ -394,10 +400,21 @@
       <div class="qrbox"><svg class="qrsvg" role="img" aria-label="혜원이지 폰 QR 코드" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 31 31" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h31v31H0z"/><path stroke="#000000" d="M1 1.5h7m5 0h1m3 0h1m1 0h3m1 0h7M1 2.5h1m5 0h1m2 0h1m3 0h1m1 0h4m1 0h1m1 0h1m5 0h1M1 3.5h1m1 0h3m1 0h1m1 0h2m6 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1M1 4.5h1m1 0h3m1 0h1m1 0h1m1 0h5m2 0h2m1 0h1m1 0h1m1 0h3m1 0h1M1 5.5h1m1 0h3m1 0h1m1 0h2m1 0h3m2 0h5m1 0h1m1 0h3m1 0h1M1 6.5h1m5 0h1m1 0h1m1 0h3m2 0h3m4 0h1m5 0h1M1 7.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 8.5h1m5 0h3m1 0h1M1 9.5h1m1 0h5m2 0h6m2 0h1m1 0h1m2 0h5M3 10.5h2m1 0h1m2 0h4m1 0h1m2 0h9m3 0h1M5 11.5h4m2 0h1m1 0h1m1 0h3m1 0h1m5 0h1M1 12.5h2m1 0h3m2 0h1m1 0h1m5 0h1m3 0h1m2 0h3m1 0h1M2 13.5h1m3 0h4m2 0h4m1 0h2m2 0h2m1 0h1m1 0h2M1 14.5h6m1 0h5m3 0h6m1 0h3m3 0h1M2 15.5h2m3 0h1m4 0h2m1 0h2m1 0h1m2 0h7M3 16.5h3m5 0h1m3 0h1m1 0h1m6 0h2m2 0h1M2 17.5h1m3 0h5m2 0h2m3 0h3m1 0h1m3 0h2M1 18.5h1m1 0h3m4 0h1m1 0h3m2 0h5m1 0h3m1 0h1m1 0h1M1 19.5h1m1 0h3m1 0h1m3 0h1m1 0h6m2 0h2m4 0h1M1 20.5h1m1 0h1m1 0h2m2 0h5m1 0h1m1 0h1m2 0h4m1 0h1m2 0h1M1 21.5h1m1 0h1m2 0h2m1 0h1m2 0h2m4 0h1m2 0h5m1 0h3M9 22.5h4m1 0h1m2 0h3m1 0h1m3 0h5M1 23.5h7m3 0h7m1 0h3m1 0h1m1 0h3M1 24.5h1m5 0h1m1 0h3m1 0h2m2 0h1m1 0h3m3 0h1M1 25.5h1m1 0h3m1 0h1m1 0h2m2 0h1m1 0h4m2 0h5m1 0h3M1 26.5h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m2 0h2m2 0h2m1 0h1m1 0h4M1 27.5h1m1 0h3m1 0h1m1 0h9m1 0h3m1 0h6M1 28.5h1m5 0h1m3 0h2m3 0h2m3 0h6m1 0h1M1 29.5h7m1 0h3m1 0h2m1 0h1m1 0h1m6 0h1m1 0h1"/></svg></div>
       <div class="txt">
         <p>폰 카메라로 이 QR 을 비추면 폰용 혜원이지가 열립니다. 폰에서 직접 열 주소:</p>
-        <p class="url"><a href="https://arete929.github.io/hyewon_mobile/">arete929.github.io/hyewon_mobile</a></p>
+        <p class="url"><a href="https://arete929.github.io/hyewon_mobile/" id="phoneurl">arete929.github.io/hyewon_mobile</a></p>
+        <p><button type="button" class="copybtn" id="copyphone">📋 주소 복사</button></p>
         <p>설치 파일은 필요 없습니다. 브라우저에서 열고 «홈 화면에 추가» 만 하면 앱처럼 씁니다.</p>
       </div>
     </div>
+  </div>
+
+  <div class="galaxy" role="note">
+    <strong>⚠️ 갤럭시(삼성 폰)는 꼭 이렇게 하세요</strong>
+    카카오톡·문자 안에서 주소를 눌러 열면 «앱 설치» 가 안 되는 경우가 많습니다.
+    <ol>
+      <li>위 <b>«📋 주소 복사»</b> 로 주소를 복사합니다.</li>
+      <li><b>삼성 인터넷</b>(또는 크롬) <b>브라우저 앱을 직접 열고</b> 주소창에 <b>붙여 넣어</b> 이동합니다.</li>
+      <li>그 상태에서 메뉴 → <b>홈 화면에 추가</b> 를 눌러야 <b>앱으로 설치</b>됩니다.</li>
+    </ol>
   </div>
 
   <div class="card">
@@ -591,6 +608,32 @@
   pw.addEventListener('keydown', function (e) { if (e.key === 'Enter') check(); });
   pw.addEventListener('input', function () { err.textContent = ''; });
   try { pw.focus(); } catch (e) { /* 무시 */ }
+})();
+/* 모바일 탭 «주소 복사» — 폰 앱 주소를 클립보드에 담는다(메신저·문자로 붙여 넣어 보낼 때). 안 되면 주소를 선택해 준다. */
+(function () {
+  var b = document.getElementById('copyphone'), a = document.getElementById('phoneurl');
+  if (!b || !a) return;
+  var URL_ = 'https://arete929.github.io/hyewon_mobile/', t0 = b.textContent, timer = null;
+  function say(msg, done) {
+    b.textContent = msg; b.className = 'copybtn' + (done ? ' done' : '');
+    clearTimeout(timer); timer = setTimeout(function () { b.textContent = t0; b.className = 'copybtn'; }, 2600);
+  }
+  function pick() {
+    try { var r = document.createRange(); r.selectNodeContents(a); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) { /* 무시 */ }
+    say('복사가 안 돼요 — 위 주소를 길게 눌러 복사하세요', false);
+  }
+  b.addEventListener('click', function () {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(URL_).then(function () { say('✅ 복사했습니다', true); }, pick);
+    } else {
+      try {
+        var ta = document.createElement('textarea'); ta.value = URL_; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+        document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, 99);
+        var ok = document.execCommand('copy'); document.body.removeChild(ta);
+        if (ok) say('✅ 복사했습니다', true); else pick();
+      } catch (e) { pick(); }
+    }
+  });
 })();
 </script>
 </body>
