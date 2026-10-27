@@ -6129,6 +6129,8 @@ function gWire(app) {
     });
   });
   var gi = app.querySelector('#gmName');
+  /* ★ 적는 대로 기억한다 — 화면이 다시 그려져도 입력칸이 «원래 이름» 으로 되돌아가지 않게(저장을 누르면 옛 이름이 저장되던 문제) */
+  if (gi) gi.addEventListener('input', function () { gm.draft = gi.value; });
   if (gi) gi.addEventListener('keydown', function (e) { if (e.key === 'Enter') { var r = app.querySelector('[data-gm="rename"]'); if (r) r.click(); } });
 }
 
@@ -7565,6 +7567,7 @@ function updBar() {
 
 function render() {
   if (composing) return;   // 한글 조합 중에는 화면을 건드리지 않는다
+  if (gm.open && document.activeElement && document.activeElement.id === 'gmName') return;   // 시트 이름을 적는 중에는 다시 그리지 않는다
   var app = document.getElementById('app');
   if (!STATE) { app.innerHTML = titleBar() + updBar() + taskBar() + '<div class="empty">불러오는 중…</div>'; return report(); }
 
