@@ -2725,6 +2725,15 @@
   .tbimhelp .tbimol li { padding-left: 2px; }
   .tbimhelp .tbimol i { font-style: normal; color: var(--dim); }
   /* ★ 타일 배경 — 현재 테마의 강조색을 살짝 섞어, 바탕(--bg)과 한눈에 갈리게 한다(테마가 바뀌면 같이 바뀐다) */
+  /* 이름 외우기 — ① 왼쪽 · ② 오른쪽 */
+  .nmcols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .nmright { position: sticky; top: 8px; }
+  .nmleft .tbclsc { grid-template-columns: repeat(auto-fill, minmax(calc(130px * var(--wf, 1)), 1fr)); }
+  /* 타일 2단(넓은 창) — 머리는 가로 전체 */
+  .tb2c { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 14px; align-items: start; }
+  .tb2c > .tbhero { grid-column: 1 / -1; }
+  .tb2c > .tbc2 { margin: 0 0 12px; }
+  @media (max-width: 900px) { .nmcols, .tb2c { grid-template-columns: minmax(0, 1fr); } .nmright { position: static; } }
   .tbc2 { padding: 14px 16px; margin: 10px 0; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line)); background: color-mix(in srgb, var(--accent) 9%, var(--card)); box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 10%, transparent); }
   .tbc2.soon { text-align: center; padding: 34px 16px; }
   .tbc2.soon small { display: block; margin-top: 6px; color: var(--dim); }

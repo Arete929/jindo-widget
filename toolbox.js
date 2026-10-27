@@ -86,6 +86,7 @@ function tbZoomBtns(k) {
     + '<button class="wkb" data-tbact="tbz" data-tbv="1" title="이 도구를 크게">A+</button></span>';
 }
 /* ── 도구마다 같은 모양의 머리(아이콘 + 영문 소제목 + 제목 + 설명) — 랜덤뽑기·계산기·등급 예측처럼. 자기 머리가 있는 도구는 건너뛴다 ── */
+var TB_2COL = ['qr', 'tm', 'yt'];   /* 넓은 창에서 타일을 두 칸으로(세로 스크롤을 줄이려고) */
 var TB_HERO = {
   pdf: ['PDF TOOLKIT', '쪽을 합치고, 나누고, 돌려서 PDF 를 바로 고쳐요', '파일을 끌어다 놓고 원하는 작업을 고르세요. 파일은 내 컴퓨터 안에서만 처리합니다.'],
   im: ['PHOTO SHRINK', '사진 용량을 화질 걱정 없이 줄여요', '사진이나 폴더를 올리면 «줄인사진_…» 폴더를 새로 만들어 저장합니다. 원본은 그대로 둡니다.'],
@@ -115,7 +116,7 @@ function viewToolbox() {
     return h + tbBigTimer();
   }
   var body = { pdf: tbPdfHtml, im: tbImHtml, rnd: tbRndHtml, yt: tbYtHtml, qr: tbQrHtml, tm: tbTmHtml, nm: tbNmHtml, cal: tbCalHtml, gr: tbGrHtml, pm: tbPmHtml }[tool.k];
-  return h + '<div class="tbbody" style="zoom:' + tbZoom(tool.k) + '">' + tbHeroHtml(tool) + body() + '</div>' + tbBigTimer();
+  return h + '<div class="tbbody' + (TB_2COL.indexOf(tool.k) >= 0 ? ' tb2c' : '') + '" style="zoom:' + tbZoom(tool.k) + '">' + tbHeroHtml(tool) + body() + '</div>' + tbBigTimer();
 }
 
 /* ── 작은 부품 ── */
@@ -998,12 +999,13 @@ function tbNmHaveSync() {
     render();
   }).catch(function () { /* 숫자를 못 구해도 연습은 된다 */ });
 }
-function tbNmHtml() {
+function tbNmHtml0() {
   var s = TB.nm, list = tbNmList(), cs = tbRoster();
+  if (s.mode === 'typed') s.mode = 'quiz';   // 서답형은 없앴다
   tbNmPhotoSync(list); tbNmHaveSync();
   var nph = tbNmPhotoCount(list), pool = tbNmPool(list), photoMode = s.show === 'photo' && nph >= 2;
   var h = '<div class="tbhero"><span class="tbhi">' + tbIcon('game', 26) + '</span><div><b>우리 반 학생, 얼마나 알고 있나요?</b>'
-    + '<span>연습 카드, 선택형·서답형 퀴즈, 짝맞추기로 학생 이름을 반복해서 익혀보세요.</span></div></div>';
+    + '<span>연습 카드, 선택형 퀴즈, 짝맞추기로 학생 이름을 반복해서 익혀보세요.</span></div></div>';
   /* ① 학급 선택 */
   h += '<div class="tbstp"><span class="tbn">1</span> 학급 선택</div><div class="tbclsc">'
     + cs.map(function (c) {
@@ -1044,7 +1046,7 @@ function tbNmHtml() {
   }
   /* ② 연습 방식 */
   h += '<div class="tbstp"><span class="tbn">2</span> 연습 방식</div><div class="tbrow">'
-    + tbPal('nm.mode', s.mode, [['card', '🃏 연습 카드'], ['quiz', '❓ 도전 퀴즈 · 선택형'], ['typed', '⌨ 도전 퀴즈 · 서답형'], ['match', '🔗 짝맞추기']])
+    + tbPal('nm.mode', s.mode, [['card', '🃏 연습 카드'], ['quiz', '❓ 도전 퀴즈 · 선택형'], ['match', '🔗 짝맞추기']])
     + (nph >= 2 ? tbPal('nm.show', s.show, [['photo', '🖼 사진으로'], ['no', '# 번호로']]) : '') + '</div>';
   if (list.length < 2) return h + '<div class="empty">두 명 이상 적어 주세요.</div>' + tbMsg(s.msg, true);
   if (s.mode === 'card') {
@@ -1056,25 +1058,19 @@ function tbNmHtml() {
       + '<div class="tbcm">' + (s.flip ? esc(cur.name) : '눌러서 이름 보기') + '</div></div>'
       + '<div class="tbrow"><button class="wkb" data-tbact="nmprev">◀ 이전</button><button class="wkb go" data-tbact="nmnext">다음 ▶</button>'
       + '<button class="wkb" data-tbact="nmshuf">🔀 섞기</button></div>';
-  } else if (s.mode === 'quiz' || s.mode === 'typed') {
+  } else if (s.mode === 'quiz') {
     if (!s.rd) tbNmRoundStart(pool, false);
     if (!s.rd.finished && !s.q) { s.q = tbNmQuiz(pool, list); if (!s.q) s.rd.finished = true; }
     if (s.rd.finished) return h + tbNmResultHtml(photoMode) + tbMsg(s.msg, true);
-    var typed = s.mode === 'typed', ans = !!s.picked;
+    var ans = !!s.picked;
     h += '<div class="tbhint">' + (s.rd.retry ? '복습 · ' : '') + '문제 ' + (s.rd.total - s.rd.queue.length) + ' / ' + s.rd.total + ' · 맞힘 ' + s.score + '</div>'
       + '<div class="tbcardbig"><small>' + (photoMode ? '이 학생의 이름은?' : '이 번호의 이름은?') + '</small>'
       + (photoMode ? tbNmThumb(s.q.cur, 'tbph') : '')
       + '<div class="tbcn' + (photoMode && s.q.cur.ph ? ' sm' : '') + '">' + esc(s.q.cur.no || '·') + '</div></div>';
-    if (!typed) {
-      h += '<div class="tbchoices">' + s.q.choices.map(function (c) {
-          var cls = ans ? (c === s.q.cur.name ? ' ok' : (c === s.picked ? ' bad' : '')) : '';
-          return '<button class="wkb tbch' + cls + '" data-tbact="nmans" data-tbv="' + esc(c) + '"' + (ans ? ' disabled' : '') + '>' + esc(c) + '</button>';
-        }).join('') + '</div>';
-    } else {
-      h += '<div class="tbrow"><input class="gpai tbtyped' + (ans ? (s.typedOk ? ' ok' : ' bad') : '') + '" id="tbTyped" data-tbin="nm.typed" placeholder="이름을 입력하고 Enter" value="' + esc(s.typed) + '"' + (ans ? ' readonly' : '') + ' autocomplete="off">'
-        + (ans ? '' : '<button class="wkb go" data-tbact="nmsubmit">확인</button>') + '</div>'
-        + (ans ? '<div class="' + (s.typedOk ? 'rhint' : 'atwarn') + '">' + (s.typedOk ? '정답!' : '아쉬워요 — 정답은 «' + esc(s.q.cur.name) + '»') + '</div>' : '');
-    }
+    h += '<div class="tbchoices">' + s.q.choices.map(function (c) {
+        var cls = ans ? (c === s.q.cur.name ? ' ok' : (c === s.picked ? ' bad' : '')) : '';
+        return '<button class="wkb tbch' + cls + '" data-tbact="nmans" data-tbv="' + esc(c) + '"' + (ans ? ' disabled' : '') + '>' + esc(c) + '</button>';
+      }).join('') + '</div>';
     h += (ans ? '<div class="tbrow"><button class="wkb go" data-tbact="nmnextq">' + (s.rd.queue.length ? '다음 문제 ▶' : '결과 보기 ▶') + '</button></div>' : '');
   } else {
     if (!s.rd) tbNmRoundStart(pool, false);
@@ -1095,6 +1091,12 @@ function tbNmHtml() {
 /* ── 한 바퀴(라운드) ──
    ★ 같은 학생이 두 번 나오지 않는다 — 학생 모두를 섞어 한 번씩 낸다. 끝나면 결과가 뜨고, 틀린 학생만 다시 풀 수 있다.
    rd = { src:[이번 바퀴 학생], queue:[남은 학생], total, wrong:{열쇠:학생}, retry:복습인가, finished } */
+/* 2단 배치 — 왼쪽: ① 학급 선택·명단·사진 도구 / 오른쪽: ② 연습 방식과 연습 화면. 좁은 창에서는 위아래로 쌓인다 */
+function tbNmHtml() {
+  var html = tbNmHtml0(), mk = '<div class="tbstp"><span class="tbn">2</span>', i2 = html.indexOf(mk), i1 = html.indexOf('<div class="tbstp">');
+  if (i2 < 0 || i1 < 0) return html;
+  return html.slice(0, i1) + '<div class="nmcols"><div class="nmleft">' + html.slice(i1, i2) + '</div><div class="nmright">' + html.slice(i2) + '</div></div>';
+}
 function tbNmRoundStart(pool, onlyWrong) {
   var s = TB.nm, src = pool.slice();
   s.rd = { src: src, queue: tbShuffle(src), total: src.length, wrong: {}, retry: !!onlyWrong, finished: false };
@@ -1700,15 +1702,6 @@ function tbAct(act, v, b) {
     case 'nmmanage': TB.nm.manage = !TB.nm.manage; break;
     case 'nmmanualsel': TB.nm.cls = '__manual'; TB.nm.order = []; TB.nm.q = null; TB.nm.rd = null; TB.nm.pairs = null; TB.nm.photoSig = ''; break;
     case 'nmapply': TB.nm.order = []; TB.nm.q = null; TB.nm.rd = null; TB.nm.pairs = null; TB.nm.photoSig = ''; TB.nm.msg = ''; break;
-    case 'nmsubmit': {
-      s = TB.nm; if (s.picked || !s.q) break;
-      var tv = String(s.typed || '').replace(/\s+/g, '');
-      if (!tv) { s.msg = '이름을 먼저 적어 주세요'; break; }
-      s.msg = ''; s.picked = s.typed; s.tried++;
-      s.typedOk = tv === String(s.q.cur.name).replace(/\s+/g, '');
-      if (s.typedOk) s.score++; else tbNmMark(s.q.cur, false);
-      break;
-    }
     case 'nmshuf': TB.nm.order = tbShuffle(tbNmPool(tbNmList()).map(function (_, i) { return i; })); TB.nm.idx = 0; TB.nm.flip = false; break;
     case 'nmans': s = TB.nm; if (!s.picked) { s.picked = v; s.tried++; if (v === s.q.cur.name) s.score++; else tbNmMark(s.q.cur, false); } break;
     case 'nmnextq': s = TB.nm; s.q = tbNmQuiz(tbNmPool(tbNmList()), tbNmList()); if (!s.q) s.rd.finished = true; s.picked = ''; s.typed = ''; s.typedOk = false; break;
@@ -1842,7 +1835,6 @@ function wireToolbox(app) {
       else if (path === 'qr.text') { TB.qr.text = el.value; tbAct('qrmake', '', el); }
       else if (path === 'qr.title') { TB.qr.title = el.value; tbAct('qrmake', '', el); }
       else if (path === 'yt.url') { TB.yt.url = el.value; tbAct('ytcheck', '', el); }
-      else if (path === 'nm.typed') { TB.nm.typed = el.value; tbAct('nmsubmit', '', el); }
       else if (el.dataset.tbenter) { var pe = tbPath(path); pe[0][pe[1]] = el.value; tbAct('grcalc', '', el); }
     });
   });
