@@ -292,6 +292,67 @@
 </section>
 
 <section>
+  <h2>수업 알림</h2>
+  <div class="row">
+    <label class="lb">알림</label>
+    <div class="chips" id="alOnRow">
+      <button data-alon="1">켜기</button><button data-alon="0">끄기</button>
+    </div>
+  </div>
+  <div class="row">
+    <label class="lb">알리는 방법</label>
+    <div class="chips" id="alHowRow">
+      <button data-alhow="toast">작은 알림</button>
+      <button data-alhow="full">화면 전체</button>
+      <button data-alhow="both">둘 다</button>
+    </div>
+  </div>
+  <div class="row">
+    <label class="lb">몇 분 전</label>
+    <div class="chips" id="alBefRow">
+      <button data-albef="3">3분</button><button data-albef="5">5분</button>
+      <button data-albef="10">10분</button><button data-albef="15">15분</button>
+      <button data-albef="0">수업 시작할 때</button>
+    </div>
+  </div>
+  <div class="row" id="alFullRow">
+    <label class="lb">저절로 닫힘</label>
+    <div class="chips" id="alHoldRow">
+      <button data-alhold="5">5초</button><button data-alhold="15">15초</button>
+      <button data-alhold="30">30초</button><button data-alhold="0">안 닫힘</button>
+    </div>
+  </div>
+  <div class="row" id="alWhereRow2">
+    <label class="lb">어느 화면에</label>
+    <div class="chips" id="alWhereRow">
+      <button data-alwh="cursor">마우스 있는 화면</button>
+      <button data-alwh="all">모든 화면</button>
+    </div>
+  </div>
+  <div class="row" id="alQuietRow2">
+    <label class="lb">발표 중에는</label>
+    <div class="chips" id="alQuietRow">
+      <button data-alq="toast">작은 알림만</button>
+      <button data-alq="asis">그대로 띄움</button>
+    </div>
+  </div>
+  <div class="row">
+    <label class="lb">함께 알림</label>
+    <div class="chips" id="alMoreRow">
+      <button data-alm="changed">바뀐 수업</button>
+      <button data-alm="first">오늘 첫 수업</button>
+      <button data-alm="sound">소리</button>
+    </div>
+  </div>
+  <div class="row">
+    <label class="lb">시험해 보기</label>
+    <button id="alTest">지금 띄워 보기</button>
+    <span id="alAt" class="hint" style="margin:0"></span>
+  </div>
+  <div class="hint" id="alHint"></div>
+</section>
+
+<section>
   <h2>급식 (나이스)</h2>
   <div class="row">
     <label class="lb">학교</label>
@@ -923,6 +984,7 @@ function __paint() {
   }
 
   $('fetchBtn').disabled = !CFG.school || (!CFG.wantTeacher && !CFG.wantClasses);
+  paintAlarm();                          // 수업 알림 — 고른 교사 이름을 안내에 쓴다
   if (TIMETABLE && TIMETABLE.fetchedAt) {
     var d = new Date(TIMETABLE.fetchedAt);
     $('fetchMsg').innerHTML = '<span class="ok">마지막 · '
@@ -1283,6 +1345,89 @@ $('fetchBtn').onclick = function () {
     paint();
   });
 };
+
+/* ── 수업 알림 ──
+   고른 것만 main 으로 보내면 classalarm.setCfg 가 나머지는 지금 값으로 채운다.
+   저장시각(at)은 main 이 찍어 주므로, 보낸 뒤 다시 읽어서 보여 준다. */
+var ALARM = { on: true, before: 10, how: 'full', hold: 15, where: 'cursor', quiet: 'toast',
+              changed: true, first: false, sound: true, at: '' };
+function alSave(patch) {
+  ALARM = Object.assign(ALARM, patch);
+  widgetAPI.setUi({ alarm: ALARM });
+  paintAlarm();
+  setTimeout(function () {
+    widgetAPI.getSettings().then(function (s) {
+      if (s && s.alarm) { ALARM = Object.assign(ALARM, s.alarm); paintAlarm(); }
+    });
+  }, 150);
+}
+function paintAlarm() {
+  function mk(row, attr, val) {
+    $(row).querySelectorAll('[data-' + attr + ']').forEach(function (b) {
+      b.className = (String(b.dataset[attr]) === String(val)) ? 'on' : '';
+    });
+  }
+  mk('alOnRow', 'alon', ALARM.on ? '1' : '0');
+  mk('alHowRow', 'alhow', ALARM.how);
+  mk('alBefRow', 'albef', ALARM.before);
+  mk('alHoldRow', 'alhold', ALARM.hold);
+  mk('alWhereRow', 'alwh', ALARM.where);
+  mk('alQuietRow', 'alq', ALARM.quiet);
+  $('alMoreRow').querySelectorAll('[data-alm]').forEach(function (b) {
+    b.className = ALARM[b.dataset.alm] ? 'on' : '';
+  });
+  var full = (ALARM.how === 'full' || ALARM.how === 'both');
+  ['alFullRow', 'alWhereRow2', 'alQuietRow2'].forEach(function (id) {
+    $(id).style.display = (ALARM.on && full) ? '' : 'none';
+  });
+  $('alHowRow').parentNode.parentNode.style.display = ALARM.on ? '' : 'none';
+  $('alBefRow').parentNode.parentNode.style.display = ALARM.on ? '' : 'none';
+  $('alMoreRow').parentNode.parentNode.style.display = ALARM.on ? '' : 'none';
+  $('alTest').disabled = !ALARM.on;
+  $('alAt').innerHTML = ALARM.at
+    ? '<span class="ok">마지막 저장 · ' + esc(ALARM.at) + '</span>' : '';
+  var msg;
+  if (!CFG.teacherIdx) {
+    msg = '<span class="warn">위 「컴시간알리미」에서 <b>내 이름</b>을 먼저 골라 주세요.</span>'
+      + ' 내 시간표를 알아야 알릴 수 있습니다.';
+  } else {
+    msg = '컴시간에서 받아 둔 <b>' + esc(CFG.teacher || '내') + '</b> 시간표를 보고, 수업이 시작하기 전에'
+      + ' <b>한 번만</b> 알립니다. 같은 교시는 다시 알리지 않고, 주말에는 뜨지 않습니다.';
+  }
+  if (full) {
+    msg += '<br>수업 중에 PPT·영상을 <b>전체 화면</b>으로 띄워 두었으면 화면 전체 알림 대신 작은 알림만'
+      + ' 띄웁니다 — 학생들에게 보이지 않게. 큰 글자는 <b>학교안심 돋보기</b> 글꼴입니다.';
+  }
+  msg += '<br>윈도우 <b>집중 지원</b>이 켜져 있거나 알림이 꺼져 있으면 작은 알림은 안 뜹니다.'
+    + ' 「지금 띄워 보기」로 확인해 보세요.';
+  $('alHint').innerHTML = msg;
+}
+$('alOnRow').querySelectorAll('[data-alon]').forEach(function (b) {
+  b.onclick = function () { alSave({ on: b.dataset.alon === '1' }); };
+});
+$('alHowRow').querySelectorAll('[data-alhow]').forEach(function (b) {
+  b.onclick = function () { alSave({ how: b.dataset.alhow }); };
+});
+$('alBefRow').querySelectorAll('[data-albef]').forEach(function (b) {
+  b.onclick = function () { alSave({ before: Number(b.dataset.albef) }); };
+});
+$('alHoldRow').querySelectorAll('[data-alhold]').forEach(function (b) {
+  b.onclick = function () { alSave({ hold: Number(b.dataset.alhold) }); };
+});
+$('alWhereRow').querySelectorAll('[data-alwh]').forEach(function (b) {
+  b.onclick = function () { alSave({ where: b.dataset.alwh }); };
+});
+$('alQuietRow').querySelectorAll('[data-alq]').forEach(function (b) {
+  b.onclick = function () { alSave({ quiet: b.dataset.alq }); };
+});
+$('alMoreRow').querySelectorAll('[data-alm]').forEach(function (b) {
+  b.onclick = function () {
+    var k = b.dataset.alm, p = {};
+    p[k] = !ALARM[k];
+    alSave(p);
+  };
+});
+$('alTest').onclick = function () { widgetAPI.alarmTest(); };
 
 /* ── 모양 ── */
 $('sizeRow').querySelectorAll('button').forEach(function (b) {
@@ -2160,6 +2305,7 @@ function load() {
     if (!s) return;
     CFG = Object.assign(CFG, s.comci || {});
     UI = Object.assign(UI, s.ui || {});
+    ALARM = Object.assign(ALARM, s.alarm || {});
     TIMETABLE = s.timetable || null;
     paint();
     paintHot();

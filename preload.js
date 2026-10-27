@@ -1,4 +1,4 @@
-// 파일명: preload.js | @version 2.1.0 — tbIm*(사진 줄이기) / v2.0.0 — attList(cls)·attMeGet·attMeSet (혜원이지 출결)
+// 파일명: preload.js | @version 2.2.0 — alarmDone·alarmTest(수업 알림) / v2.1.0 — tbIm*(사진 줄이기) / v2.0.0 — attList(cls)·attMeGet·attMeSet (혜원이지 출결)
 const { contextBridge, ipcRenderer, webFrame, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
@@ -195,6 +195,10 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   // 열쇠·설정 백업
   backupExport: (opt) => ipcRenderer.invoke('backup-export', opt),
   backupImport: (opt) => ipcRenderer.invoke('backup-import', opt),
+
+  /* 수업 알림 — 화면 전체 창(alarm.html)이 닫히는 길 · 설정의 «지금 띄워 보기» */
+  alarmDone: (how, key) => ipcRenderer.send('alarm-done', how, key),
+  alarmTest: () => ipcRenderer.send('alarm-test'),
 
   comciSearch: (name) => ipcRenderer.invoke('comci-search', name),
   comciFetch: () => ipcRenderer.invoke('comci-fetch'),

@@ -1,0 +1,133 @@
+<!doctype html>
+<!-- 파일명: alarm.html | @version 1.0.0 — 수업 알림(화면 전체). 뒤쪽은 classalarm.js -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>수업 알림</title>
+<style>
+  /* 큰 글자는 학교안심 돋보기(KERIS, OFL) — 작은 글자는 읽기 쉬운 본문 글꼴 그대로 */
+  @font-face {
+    font-family: 'HsDotbogi';
+    src: url('assets/hakgyoansim-dotbogi.woff2') format('woff2');
+    font-display: block;
+  }
+  :root { --ink:#1a1636; --sub:#6b6a86; --energy1:#27187E; --energy2:#4433B0; --border:#e6e4f2; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: rgba(14, 12, 32, .72);
+    display: flex; align-items: center; justify-content: center; padding: 28px;
+    font-family: "Pretendard Variable", Pretendard, "Segoe UI", "Malgun Gothic", sans-serif;
+    color: var(--ink); cursor: default; user-select: none;
+  }
+  .card {
+    width: 100%; max-width: 480px; background: #fff; border-radius: 18px;
+    padding: 28px 30px 20px; text-align: center;
+  }
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px; background: #EEEDFE; color: #26215C;
+    border-radius: 999px; padding: 6px 15px; font-size: 13px; font-weight: 700; margin-bottom: 18px;
+  }
+  /* ★ font-family 목록에 inherit 은 못 쓴다 — 쓰면 줄 전체가 버려져 글꼴이 안 바뀐다 */
+  .when, .who { font-family: HsDotbogi, "Malgun Gothic", sans-serif; }
+  .when { font-size: 58px; color: var(--energy1); line-height: 1.05; }
+  .who  { font-size: 36px; color: var(--ink); margin-top: 4px; }
+  .sub  { font-size: 15.5px; color: var(--sub); margin-top: 10px; line-height: 1.6; }
+  .chg  { font-size: 13.5px; color: #b45815; font-weight: 700; margin-top: 8px; }
+  .btns { display: flex; gap: 8px; margin-top: 20px; }
+  .btns button {
+    flex: 1; border: 1px solid var(--border); background: #fff; color: var(--ink);
+    border-radius: 11px; padding: 13px 0; font-size: 14.5px; font-weight: 700;
+    font-family: inherit; cursor: pointer;
+  }
+  .btns button.go { background: var(--energy1); color: #fff; border-color: transparent; }
+  .btns button:hover { background: #f2f0ff; }
+  .btns button.go:hover { background: var(--energy2); }
+  .bar { height: 3px; background: var(--border); border-radius: 999px; margin-top: 18px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 100%; background: var(--energy2); border-radius: 999px; }
+  .foot { font-size: 11.5px; color: var(--sub); margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="tag">🔔 수업 알림</div>
+  <div class="when" id="when">10분 뒤</div>
+  <div class="who" id="who">3학년 2반</div>
+  <div class="sub" id="sub"></div>
+  <div class="chg" id="chg" hidden>컴시간에서 바뀐 수업입니다</div>
+  <div class="btns" id="btns">
+    <button class="go" id="ok">알겠어요</button>
+    <button id="later">5분 뒤 다시</button>
+    <button id="open">열어 보기</button>
+  </div>
+  <div class="bar" id="bar" hidden><i id="barI"></i></div>
+  <div class="foot" id="foot"></div>
+</div>
+<script>
+var D = {};
+try { D = JSON.parse(new URLSearchParams(location.search).get('d') || '{}'); } catch (e) { D = {}; }
+
+function done(how) {
+  try { widgetAPI.alarmDone(how, D.key || ''); } catch (e) { window.close(); }
+}
+
+document.getElementById('when').textContent = D.when || '곧';
+document.getElementById('who').textContent = D.who || '수업';
+document.getElementById('sub').innerHTML =
+  (D.p ? D.p + '교시 ' : '') + (D.subject || '') + '<br>' + (D.start || '') + ' 시작';
+if (D.changed) document.getElementById('chg').hidden = false;
+document.getElementById('open').textContent = (D.app || '앱') + ' 열기';
+
+/* 보조 모니터에 뜬 창은 안내만 — 단추는 마우스가 있는 화면 쪽에만 둔다 */
+if (!D.first) {
+  document.getElementById('btns').hidden = true;
+  document.getElementById('foot').textContent = '아무 곳이나 누르면 닫힙니다';
+}
+
+document.getElementById('ok').onclick = function () { done('ok'); };
+document.getElementById('later').onclick = function () { done('snooze'); };
+document.getElementById('open').onclick = function () { done('widget'); };
+
+/* 카드 밖(어두운 막)을 누르거나 Esc — 닫기 */
+document.body.addEventListener('mousedown', function (e) {
+  if (!D.first || !document.getElementById('card').contains(e.target)) done('ok');
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' || e.key === 'Enter') done('ok');
+});
+
+/* 저절로 닫힘 — 0 이면 안 닫는다 */
+var hold = Number(D.hold);
+if (hold > 0) {
+  var bar = document.getElementById('bar'), barI = document.getElementById('barI');
+  var foot = document.getElementById('foot');
+  bar.hidden = false;
+  var end = Date.now() + hold * 1000;
+  var t = setInterval(function () {
+    var left = end - Date.now();
+    if (left <= 0) { clearInterval(t); done('auto'); return; }
+    barI.style.width = Math.max(0, (left / (hold * 1000)) * 100) + '%';
+    if (D.first) foot.textContent = Math.ceil(left / 1000) + '초 뒤 저절로 닫힘 · 아무 곳이나 누르거나 Esc 로 닫기';
+  }, 200);
+}
+
+/* 소리 — 파일 없이 짧은 두 음 (전체 화면 알림은 윈도우 알림 소리가 안 난다) */
+if (D.sound && D.first) {
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    var ac = new AC();
+    [[880, 0], [1174, 0.18]].forEach(function (p) {
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.value = p[0];
+      var t0 = ac.currentTime + p[1];
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(0.18, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.22);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t0); o.stop(t0 + 0.24);
+    });
+  } catch (e) { /* 소리가 안 나도 알림은 그대로 */ }
+}
+</script>
+</body>
+</html>

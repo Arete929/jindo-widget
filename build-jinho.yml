@@ -32,6 +32,8 @@ files:
   - easy.js
   - timetable.html
   - comcigan.js
+  - classalarm.js  # 수업 알림(컴시간 내 시간표 → 수업 전 알림)
+  - alarm.html     # 수업 알림 — 화면 전체를 덮는 창
   - fetchtext.js
   - worknotice.js
   - neis.js
