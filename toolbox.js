@@ -1386,6 +1386,7 @@ function tbPmGroupHtml(g, gi) {
   if (isGrp) {
     h += '<div class="tbrow pmatt">' + g.attach.map(function (a, ai) {
       return '<span class="pmchip">' + (a.kind === 'img' ? '<img src="' + esc(a.dataUrl) + '" alt="">' : tbIcon('m_file', 16)) + '<em>' + esc(a.name) + '</em>'
+        + (a.kind === 'img' ? '<button class="wkb' + (a.read ? '' : ' go') + '" data-tbact="pmread" data-tbv="' + gi + '.' + ai + '"' + (s.busy ? ' disabled' : '') + ' title="캡처에서 품목·수량·단가·배송비를 읽어 줄로 넣습니다">' + (s.reading === gi + '.' + ai ? '읽는 중…' : a.read ? '다시 읽기' : '품목 읽기') + '</button>' : '')
         + '<button class="wkb" data-tbact="pmadel" data-tbv="' + gi + '.' + ai + '" title="빼기">✕</button></span>';
     }).join('') + '<button class="wkb" data-tbact="pmpick" data-tbv="' + gi + '">＋ 파일 첨부 (견적서 PDF·그림)</button></div>';
   }
@@ -1721,6 +1722,23 @@ function tbAct(act, v, b) {
       widgetAPI.tbPmPick().then(function (r) {
         if (r && r.ok && r.files && r.files.length) { r.files.forEach(function (f) { tg.attach.push(f); }); TB.pm.msg = r.files.length + '개를 첨부했습니다.'; TB.pm.ok = true; }
         else if (r && r.msg) { TB.pm.msg = r.msg; TB.pm.ok = false; }
+        render();
+      });
+      return;
+    }
+    case 'pmread': {
+      var ri = String(v).split('.'), rg = TB.pm.groups[Number(ri[0])], ra = rg && rg.attach[Number(ri[1])], rs = TB.pm;
+      if (!ra || ra.kind !== 'img' || rs.busy) return;
+      rs.busy = true; rs.reading = String(v); rs.msg = '캡처를 읽는 중입니다… 10~30초 걸립니다.'; rs.ok = true; render();
+      widgetAPI.tbPmRead(ra.dataUrl).then(function (r) {
+        rs.busy = false; rs.reading = '';
+        if (r && r.ok && r.items && r.items.length) {
+          rg.rows = rg.rows.filter(function (x) { return String(x.n || '').trim() || tbPmMoney(x.p); });
+          r.items.forEach(function (it) { rg.rows.push(tbPmRow(it.name + (it.option ? ' (' + it.option + ')' : ''), it.qty, it.p)); });
+          if (r.shipping > 0) rg.rows.push(tbPmRow('배송비 (' + r.items[r.items.length - 1].name + ')', 1, r.shipping));   /* 물건값 줄 · 배송비 줄 따로 */
+          ra.read = true;
+          rs.msg = '품목 ' + r.items.length + '줄' + (r.shipping > 0 ? ' + 배송비 ' + tbPmWon(r.shipping) + '원' : '') + '을 «' + TB_PM_KINDS[rg.kind][0] + '» 에 넣었습니다. 읽은 값이 맞는지 확인하고 고쳐 주세요.'; rs.ok = true; tbPmSave();
+        } else { rs.msg = (r && r.msg) || '캡처를 읽지 못했습니다'; rs.ok = false; }
         render();
       });
       return;

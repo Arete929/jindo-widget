@@ -3971,6 +3971,11 @@ ipcMain.handle('tb-pm-files', async (e, paths) => {
   try { return tbPmReadFiles((Array.isArray(paths) ? paths : []).filter((p) => typeof p === 'string' && p)); }
   catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
 });
+/* 캡처에서 품목·수량·단가·배송비 읽기 (pmread.js — 이 PC 의 claude 로그인 사용) */
+ipcMain.handle('tb-pm-read', async (e, dataUrl) => {
+  try { return await require('./pmread').readCapture(dataUrl); }
+  catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
 ipcMain.handle('tb-pm-make', async (e, model) => {
   try {
     const s = await dialog.showOpenDialog(tbWin(e), { title: '서류 묶음을 저장할 폴더 고르기', properties: ['openDirectory', 'createDirectory'], defaultPath: app.getPath('documents') });

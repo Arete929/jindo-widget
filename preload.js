@@ -70,6 +70,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   tbReveal: (p) => ipcRenderer.send('tb-reveal', p),
   tbPmPick: () => ipcRenderer.invoke('tb-pm-pick'),
   tbPmFiles: (paths) => ipcRenderer.invoke('tb-pm-files', paths),
+  tbPmRead: (dataUrl) => ipcRenderer.invoke('tb-pm-read', dataUrl),
   tbPmMake: (m) => ipcRenderer.invoke('tb-pm-make', m),
   /* 사진 줄이기(일괄) — 끌어다 놓은 파일의 진짜 경로는 webUtils 로만 알 수 있다(Electron 32+) */
   tbImPathOf: (file) => { try { return webUtils.getPathForFile(file) || ''; } catch (e) { return ''; } },

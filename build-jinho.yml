@@ -27,6 +27,7 @@ files:
   - toolbox.js    # 도구상자 — 바로가기 탭 안의 PDF·QR·타이머 등(지비스·혜원이지 공통)
   - xlsfill.js    # 품목내역 엑셀(.xls) — 학교 양식 틀 그대로 채우기 (도구상자 품의 도우미)
   - pmmake.js     # 품의 서류 묶음(견적서 PDF·품목내역·전자기안문) 만들기
+  - pmread.js     # 품의 도우미 — 장바구니 캡처에서 품목·수량·단가·배송비 읽기(이 PC 의 claude 로그인)
   - easy.html     # «넓게 보기» 창 (왼쪽 메뉴 + 대시보드)
   - easy.js
   - timetable.html
