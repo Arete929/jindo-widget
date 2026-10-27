@@ -403,7 +403,7 @@ function tbImDropFiles(e) {
   return !!(e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0);
 }
 /* 출결 «증빙» 칸(data-atdrop) 위에 놓는 것은 그 칸이 받는다 — 여기서 가로채지 않는다 */
-function tbImOnAtt(e) { return !!(e.target && e.target.closest && e.target.closest('[data-atdrop]')); }
+function tbImOnAtt(e) { return !!(e.target && e.target.closest && e.target.closest('[data-atdrop]')) || !!(TB.open && TB.tool === 'pm'); }   /* 품의 도우미가 열려 있으면 그쪽이 받는다 */
 document.addEventListener('dragover', function (e) {
   if (!tbImDropFiles(e) || TB.im.busy || tbImOnAtt(e)) return;
   e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
@@ -1367,7 +1367,7 @@ function tbPmModel() {
 }
 function tbPmGroupHtml(g, gi) {
   var s = TB.pm, k = TB_PM_KINDS[g.kind], sum = tbPmGroupSum(g), isGrp = g.kind === 'shop' || g.kind === 'vendor';
-  var h = '<div class="tbc2' + (s.target === gi ? ' pmtarget' : '') + '"><div class="tbc2h"><div class="tbc2t"><b>' + esc(k[0]) + '</b>'
+  var h = '<div class="tbc2' + (s.target === gi ? ' pmtarget' : '') + '" data-pmgrp="' + gi + '"><div class="tbc2h"><div class="tbc2t"><b>' + esc(k[0]) + '</b>'
     + (isGrp ? ' <input type="text" class="gpai" style="width:11em" data-tbin="pm.groups.' + gi + '.name" value="' + esc(g.name) + '" placeholder="' + esc(k[1]) + '">' : '')
     + '<small>소계 ' + (sum ? tbPmWon(sum) + '원' : '—') + '</small></div>'
     + '<button class="wkb' + (s.target === gi ? ' go' : '') + '" data-tbact="pmtarget" data-tbv="' + gi + '" title="붙여넣기·첨부가 여기로 들어갑니다">여기에 넣기</button>'
@@ -1414,6 +1414,37 @@ function tbPmHtml() {
   return h + out('전자기안문 본문 (업무포털에 붙여 넣기)', tbPmDraft(), 'draft') + out('품목내역 (엑셀 양식에 붙여 넣기)', tbPmTsv(), 'tsv', '내용·규격·단위·수량·예상단가 칸 순서 그대로')
     + tbMsg(s.msg, s.ok) + '<div class="tbhint">학교마다 양식이 다르니 기안 전에 한 번 확인하세요. 입력한 내용은 어디로도 전송되지 않습니다.</div>';
 }
+/* 끌어다 놓기 — 품의 도우미: 놓은 구입처 칸(없으면 «여기에 넣기» 구입처)에 견적서 PDF·그림이 붙는다 */
+function tbPmDropGroup(e) {
+  var c = e.target && e.target.closest && e.target.closest('[data-pmgrp]'), gi = c ? Number(c.getAttribute('data-pmgrp')) : (TB.pm.target || 0);
+  var g = TB.pm.groups[gi];
+  if (g && g.kind !== 'shop' && g.kind !== 'vendor') g = null;
+  return g ? gi : -1;
+}
+document.addEventListener('dragover', function (e) {
+  if (!(TB.open && TB.tool === 'pm') || !tbImDropFiles(e)) return;
+  e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  var gi = tbPmDropGroup(e);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-pmgrp]'), function (c) { c.classList.toggle('pmover', Number(c.getAttribute('data-pmgrp')) === gi); });
+});
+document.addEventListener('dragleave', function (e) {
+  if (e.relatedTarget === null) Array.prototype.forEach.call(document.querySelectorAll('.pmover'), function (c) { c.classList.remove('pmover'); });
+});
+document.addEventListener('drop', function (e) {
+  if (!(TB.open && TB.tool === 'pm') || !tbImDropFiles(e)) return;
+  e.preventDefault();
+  Array.prototype.forEach.call(document.querySelectorAll('.pmover'), function (c) { c.classList.remove('pmover'); });
+  var gi = tbPmDropGroup(e), s = TB.pm;
+  if (gi < 0) { s.msg = '파일은 인터넷쇼핑·업체결제 구입처에 넣을 수 있습니다. 그 구입처 칸 위에 놓아 주세요.'; s.ok = false; if (typeof render === 'function') render(); return; }
+  var paths = Array.prototype.map.call(e.dataTransfer.files || [], function (f) { return widgetAPI.tbImPathOf(f); }).filter(Boolean);
+  if (!paths.length) return;
+  var g = s.groups[gi];
+  widgetAPI.tbPmFiles(paths).then(function (r) {
+    if (r && r.ok && r.files && r.files.length) { r.files.forEach(function (f) { g.attach.push(f); }); s.msg = r.files.length + '개를 «' + TB_PM_KINDS[g.kind][0] + '» 에 첨부했습니다.' + (r.skipped ? ' (PDF·그림이 아닌 ' + r.skipped + '개는 건너뜀)' : ''); s.ok = true; }
+    else if (r && r.msg) { s.msg = r.msg; s.ok = false; }
+    if (typeof render === 'function') render();
+  });
+});
 /* 캡처 붙여넣기(Ctrl+V) — 입력칸 밖에서 눌렀을 때만 */
 document.addEventListener('paste', function (e) {
   if (!TB.open || TB.tool !== 'pm') return;

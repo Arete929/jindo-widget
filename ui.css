@@ -2829,6 +2829,7 @@
   .tbgth, .tbgr { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.6fr; align-items: center; padding: 8px 14px; font-size: calc(13px * var(--wf)); }
   .pmgt .tbgth, .pmgt .tbgr { grid-template-columns: 2.2fr .6fr .9fr .9fr 34px; gap: 6px; padding: 6px 10px; }
   .pmtarget { outline: 2px solid var(--accent); }
+  .pmover { outline: 2px dashed var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
   .pmatt { flex-wrap: wrap; gap: 6px; }
   .pmchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 6px; border: 1px solid var(--line); border-radius: 10px; font-size: calc(12px * var(--wf)); max-width: 100%; }
   .pmchip img { height: 34px; width: auto; border-radius: 4px; }

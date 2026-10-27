@@ -3950,16 +3950,26 @@ ipcMain.handle('tb-pm-pick', async (e) => {
     const r = await dialog.showOpenDialog(tbWin(e), { title: '견적서(PDF)·그림 고르기', properties: ['openFile', 'multiSelections'],
       filters: [{ name: '견적서 PDF · 그림', extensions: ['pdf', 'png', 'jpg', 'jpeg'] }] });
     if (r.canceled || !r.filePaths.length) return { ok: true, files: [] };
-    const files = [];
-    for (const p of r.filePaths) {
-      const ext = path.extname(p).toLowerCase(), name = path.basename(p);
-      if (ext === '.pdf') { files.push({ kind: 'pdf', name, path: p }); continue; }
-      const st = fs.statSync(p);
-      if (st.size > 12 * 1024 * 1024) return { ok: false, msg: name + ' — 그림이 너무 큽니다(12MB 까지)' };
-      files.push({ kind: 'img', name, dataUrl: 'data:image/' + (ext === '.png' ? 'png' : 'jpeg') + ';base64,' + fs.readFileSync(p).toString('base64') });
-    }
-    return { ok: true, files };
+    return tbPmReadFiles(r.filePaths);
   } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
+/* 끌어다 놓은 파일 — PDF·png·jpg 만 받고 나머지는 건너뛴다 */
+function tbPmReadFiles(paths) {
+  const files = []; let skipped = 0;
+  for (const p of paths) {
+    const ext = path.extname(p).toLowerCase(), name = path.basename(p);
+    if (!/^\.(pdf|png|jpe?g)$/.test(ext)) { skipped++; continue; }
+    if (ext === '.pdf') { files.push({ kind: 'pdf', name, path: p }); continue; }
+    const st = fs.statSync(p);
+    if (st.size > 12 * 1024 * 1024) return { ok: false, msg: name + ' — 그림이 너무 큽니다(12MB 까지)' };
+    files.push({ kind: 'img', name, dataUrl: 'data:image/' + (ext === '.png' ? 'png' : 'jpeg') + ';base64,' + fs.readFileSync(p).toString('base64') });
+  }
+  if (!files.length && skipped) return { ok: false, msg: 'PDF·그림(png, jpg) 파일만 넣을 수 있습니다' };
+  return { ok: true, files, skipped };
+}
+ipcMain.handle('tb-pm-files', async (e, paths) => {
+  try { return tbPmReadFiles((Array.isArray(paths) ? paths : []).filter((p) => typeof p === 'string' && p)); }
+  catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
 });
 ipcMain.handle('tb-pm-make', async (e, model) => {
   try {
