@@ -70,7 +70,7 @@ function tbTools() { return TB_TOOLS.filter(function (x) { return HAS_TT || x.k 
 function tbEntryTile() {
   return '<div class="lgrp">도구상자</div><div class="tbgrid tbinline">'
     + tbTools().map(function (x) {
-        return '<button class="tbcard" data-tbact="opentool" data-tbv="' + x.k + '">'
+        return '<button class="tbcard" data-tbact="opentool" data-tbv="' + x.k + '" title="' + esc(x.d) + '">'
           + (x.badge ? '<em class="tbbadge">' + x.badge + '</em>' : '')
           + '<span class="tbci">' + tbIcon(x.ic, 26) + '</span><b>' + esc(x.t) + '</b><small>' + esc(x.d) + '</small></button>';
       }).join('') + '</div>';
@@ -94,7 +94,7 @@ function viewToolbox() {
   if (!tool) {
     h += '<div class="tbsub">필요한 도구를 고르세요. 각 도구는 별도의 화면으로 열립니다.</div><div class="tbgrid">'
       + tbTools().map(function (x) {
-          return '<button class="tbcard" data-tbact="tool" data-tbv="' + x.k + '">'
+          return '<button class="tbcard" data-tbact="tool" data-tbv="' + x.k + '" title="' + esc(x.d) + '">'
             + (x.badge ? '<em class="tbbadge">' + x.badge + '</em>' : '')
             + '<span class="tbci">' + tbIcon(x.ic, 28) + '</span><b>' + esc(x.t) + '</b><small>' + esc(x.d) + '</small></button>';
         }).join('') + '</div>';
