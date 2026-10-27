@@ -633,7 +633,7 @@
 <section id="secBak">
   <h2>열쇠·설정 백업</h2>
   <div class="hint" style="margin-top:0">
-    노션 열쇠·틱틱 앱 비밀·구글 연결·런처 관리자 열쇠와 여러 설정을 <b>파일 하나</b>로 챙깁니다.
+    여러 열쇠(구글 연결·런처 관리자 열쇠 등)와 설정을 <b>파일 하나</b>로 챙깁니다.
     다른 PC 에서 <b>가져오기</b> 하면 그대로 옮겨집니다.
   </div>
   <div class="row" style="margin-top:10px">
@@ -658,7 +658,9 @@
   </div>
 </section>
 
-<section id="secTick">
+<!-- ★ 틱틱은 지비스 전용 — 혜원이지에서는 칸째로 가린다(2026-10-28).
+     위젯 쪽은 원래 «업무관리»(jinho) 안에만 있어서 혜원이지에는 안 보였다. -->
+<section id="secTick" data-only="jinho">
   <h2>틱틱 (TickTick)</h2>
   <div class="hint" style="margin-top:0">
     핸드폰 틱틱의 할 일을 위젯에서 보고, 여기서 만든 것도 틱틱에 올라갑니다.
@@ -2201,12 +2203,18 @@ $("tabHelp").onclick = function () { showPanel("help"); };
    칸을 더할 때 어긋난다. */
 var setSecs = [];
 function buildSetToc() {
-  setSecs = [].slice.call(document.querySelectorAll("#panelSet > section"))
-    .map(function (sec, i) {
+  /* ★ 이름이 붙어 있는 칸(secTick·secBak…)의 id 를 덮어쓰지 않는다 —
+       덮어쓰면 $('secTick') 가 null 이 되어 그 칸을 감추는 코드가 조용히 안 돌았다(2026-10-28). */
+  var all = [].slice.call(document.querySelectorAll("#panelSet > section"));
+  all.forEach(function (sec, i) {
+    if (!sec.id) sec.id = "s_" + i;
+    sec.classList.add("hsec");          // 머리에 안 가리게 자리를 비운다
+  });
+  /* 갈래에 따라 감춘 칸(data-only)은 목차에서도 뺀다 — 혜원이지에 없는 칸이 목차에 남던 것 */
+  setSecs = all.filter(function (sec) { return sec.style.display !== 'none'; })
+    .map(function (sec) {
       var h = sec.querySelector("h2");
-      sec.id = "s_" + i;
-      sec.classList.add("hsec");        // 머리에 안 가리게 자리를 비운다
-      return { id: sec.id, t: h ? h.textContent.trim() : ("칸 " + (i + 1)) };
+      return { id: sec.id, t: h ? h.textContent.trim() : sec.id };
     });
   $("tocSetW").innerHTML = setSecs.map(function (x, i) {
     return '<button type="button" data-sgo="' + x.id + '"'
@@ -2309,6 +2317,7 @@ function load() {
     TIMETABLE = s.timetable || null;
     paint();
     paintHot();
+    buildSetToc();      // 갈래에 따라 감춘 칸을 뺀 목차로 다시 만든다
   });
 }
 load();
