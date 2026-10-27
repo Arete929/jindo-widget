@@ -240,9 +240,10 @@ function register(helpers) {
   });
 
   /* 시트 만들기 / 휴지통으로 */
-  const SHEET_TITLE = '[혜원이지] 학생기록';
-  // ★ 이름을 바꾸기 전(v1.28 이하)에 만든 시트도 찾아야 한다. 못 찾으면 시트가 갈린다.
-  const SHEET_TITLES = [SHEET_TITLE, '[혜원 데스크] 학생기록'];
+  const SHEET_TITLE = '혜원이지';
+  // ★ 이름을 바꾸기 전(v1.28 이하·v2.10.58 이하)에 만든 시트도 찾아야 한다. 못 찾으면 시트가 갈린다.
+  const SHEET_TITLES = [SHEET_TITLE, '[혜원이지] 학생기록', '[혜원 데스크] 학생기록'];
+  const nowSheet = () => (S.load().gauth || {}).email || '';
 
   /* 다른 PC 에서 이미 만들어 둔 것이 있는지 본다 (없으면 null) */
   ipcMain.handle('rec-find', async () => {
@@ -252,19 +253,20 @@ function register(helpers) {
     return found;
   });
 
-  ipcMain.handle('rec-create', async () => {
+  ipcMain.handle('rec-create', async (_e, opt) => {
     const t = await token();
     // ★ 먼저 찾아본다. 다른 PC 에서 만들어 둔 것이 있으면 새로 만들지 않고 이어 쓴다.
-    //   (안 그러면 PC 마다 시트가 하나씩 생겨 기록이 갈린다)
-    const found = await rec.findSheet(t, SHEET_TITLES);
+    //   (안 그러면 PC 마다 시트가 하나씩 생겨 기록이 갈린다) — 사용자가 «새로 만들기» 를 골랐을 때만 건너뛴다
+    const found = (opt && opt.forceNew) ? null : await rec.findSheet(t, SHEET_TITLES);
     if (found) {
-      S.save({ recSheet: { id: found.id, url: found.url, createdAt: found.createdAt, trashedAt: '', email: (S.load().gauth || {}).email || '' } });
+      S.save({ recSheet: { id: found.id, url: found.url, createdAt: found.createdAt, trashedAt: '', email: nowSheet() } });
+      try { await rec.ensureContactTab(t, found.id); } catch (e) { S.log('연락처 탭 더하기 실패 — ' + (e.message || e)); }
       S.log('학생기록 — 이미 있는 시트에 이어 붙임: ' + found.id);
       S.send();
       return recState();
     }
     const made = await rec.createSheet(t, SHEET_TITLE);
-    S.save({ recSheet: { id: made.id, url: made.url, createdAt: made.createdAt, trashedAt: '', email: (S.load().gauth || {}).email || '' } });
+    S.save({ recSheet: { id: made.id, url: made.url, createdAt: made.createdAt, trashedAt: '', email: nowSheet() } });
     S.log('학생기록 시트 만듦 — ' + made.id);
     S.send();
     return recState();
@@ -277,6 +279,49 @@ function register(helpers) {
     const when = await rec.trashSheet(t, st.id);
     S.save({ recSheet: Object.assign({}, st, { trashedAt: when }), recTrashLog: (S.load().recTrashLog || []).concat([{ id: st.id, at: when }]) });
     S.log('학생기록 시트를 휴지통으로 — ' + st.id);
+    S.send();
+    return recState();
+  });
+
+  /* 시트 이름 바꾸기 — 구글 시트 이름만 바뀐다(내용·탭은 그대로, 연결도 그대로) */
+  ipcMain.handle('rec-rename', async (_e, title) => {
+    const st = S.load().recSheet;
+    if (!st || !st.id) throw new Error('연결된 시트가 없습니다');
+    const name = String(title || '').trim().slice(0, 100);
+    if (!name) throw new Error('시트 이름을 적어 주세요');
+    const t = await token();
+    await rec.renameSheet(t, st.id, name);
+    S.save({ recSheet: Object.assign({}, st, { title: name }) });
+    S.log('학생기록 — 시트 이름을 바꿈: ' + name);
+    S.send();
+    return recState();
+  });
+  /* 시트 이름·탭 알아보기(모달창이 보여 준다) */
+  ipcMain.handle('rec-sheet-info', async () => {
+    const st = S.load().recSheet;
+    if (!st || !st.id) return null;
+    const t = await token();
+    return rec.sheetInfo(t, st.id);
+  });
+  /* 연결 해제 — 이 앱에서만 풀고 구글 시트는 그대로 둔다 */
+  ipcMain.handle('rec-unlink', async () => {
+    S.save({ recSheet: null });
+    S.log('학생기록 — 시트 연결을 풂(시트는 그대로)');
+    S.send();
+    return recState();
+  });
+  /* 통합 — 드라이브에서 찾은 시트로 바꿔 연결한다. rename 이면 이름도 «혜원이지» 로(내용은 건드리지 않는다) */
+  ipcMain.handle('rec-merge', async (_e, opt) => {
+    const t = await token();
+    const found = await rec.findSheet(t, SHEET_TITLES);
+    if (!found) throw new Error('이어 쓸 시트를 찾지 못했습니다');
+    S.save({ recSheet: { id: found.id, url: found.url, createdAt: found.createdAt, trashedAt: '', email: nowSheet(), title: found.name || '' } });
+    try { await rec.ensureContactTab(t, found.id); } catch (e) { S.log('연락처 탭 더하기 실패 — ' + (e.message || e)); }
+    if (opt && opt.rename) {
+      try { await rec.renameSheet(t, found.id, SHEET_TITLE); S.save({ recSheet: Object.assign({}, S.load().recSheet, { title: SHEET_TITLE }) }); }
+      catch (e) { S.log('시트 이름 바꾸기 실패 — ' + (e.message || e)); }
+    }
+    S.log('학생기록 — 이어 쓰기로 연결: ' + found.id + (opt && opt.rename ? ' (이름 «혜원이지»)' : ''));
     S.send();
     return recState();
   });

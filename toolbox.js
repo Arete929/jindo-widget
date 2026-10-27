@@ -13,7 +13,7 @@ var TB = {
   qr: { text: '', title: '', raw: '', size: 512, level: 'M', dark: '#000000', dataUrl: '', msg: '', ok: true, busy: false },
   tm: { mins: 10, secs: 0, left: 600, run: false, end: 0, msg: '', big: false, done: false },
   yt: { url: '', phase: 'idle', info: null, q: '1080', stage: '', pct: 0, speed: '', eta: '', msg: '', ok: true, savedAt: '', file: '', dir: '', hist: [], engine: null, loaded: false, engBusy: false },
-  nm: { rd: null, src: '', mode: 'card', idx: 0, flip: false, order: [], score: 0, tried: 0, q: null, picked: '', pairs: null, selL: -1, selR: -1, fails: 0, msg: '', photos: {}, photoSig: '', show: 'photo', manage: false, busy: false, cls: '', have: {}, haveSig: '', typed: '', typedOk: false },
+  nm: { sel: [], rd: null, src: '', mode: 'card', idx: 0, flip: false, order: [], score: 0, tried: 0, q: null, picked: '', pairs: null, selL: -1, selR: -1, fails: 0, msg: '', photos: {}, photoSig: '', show: 'photo', manage: false, busy: false, cls: '', have: {}, haveSig: '', typed: '', typedOk: false },
   cal: { tab: 'hist', mem: null, fresh: false, expr: '', hist: [], res: '', err: '', d1: '', d2: '', dn: 30, dres: '', unitCat: 'len', unitVal: '1', unitFrom: 'm' },
   gr: { total: 200, rank: '', s5: false, s9: true, round: 'round', res: null },
   pm: { school: '', dept: '', biz: '', budget: '', ref: '', purpose: '', paste: '', groups: [], target: 0, busy: false, msg: '', ok: true },
@@ -736,6 +736,17 @@ function tbTick() {
    학번이 없는 줄(직접 입력으로 이름만 적은 경우)은 이름 그대로. */
 function tbNmKey(id, name) { return /^\d{4}$/.test(String(id || '')) ? id + ' ' + name : name; }
 function tbNmKeyName(key) { return String(key).replace(/^\d{4} /, ''); }
+/* 고른 학급 이름(여럿이면 «3-1 · 3-2») — 직접 입력이면 빈 글자 */
+function tbNmClsLabel() { return TB.nm.sel && TB.nm.sel.length ? TB.nm.sel.join(' · ') : ''; }
+/* 고른 학급들의 명단을 «번호 이름» 한 줄씩으로 합친다(학급 순서대로) */
+function tbNmBuildSrc() {
+  var sel = TB.nm.sel, lines = [];
+  tbRoster().forEach(function (c) { if (sel.indexOf(c.key) >= 0) c.students.forEach(function (st) { lines.push(st.id + ' ' + st.name); }); });
+  TB.nm.src = lines.join('\n');
+  TB.nm.cls = sel.length === 0 ? '' : (sel.length === 1 ? sel[0] : '__multi');
+  TB.nm.manage = false; TB.nm.msg = ''; TB.nm.photoSig = '';
+  TB.nm.order = []; TB.nm.q = null; TB.nm.rd = null; TB.nm.pairs = null; TB.nm.typed = ''; TB.nm.picked = '';
+}
 function tbNmList() {   // [{no, name, key, ph}] — «번호 이름» 한 줄씩, ph = 사진(있으면)
   return String(TB.nm.src || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean).map(function (l) {
     var m = l.match(/^(\S+)\s+(.+)$/);
@@ -1007,14 +1018,18 @@ function tbNmHtml0() {
   var h = '<div class="tbhero"><span class="tbhi">' + tbIcon('game', 26) + '</span><div><b>우리 반 학생, 얼마나 알고 있나요?</b>'
     + '<span>연습 카드, 선택형 퀴즈, 짝맞추기로 학생 이름을 반복해서 익혀보세요.</span></div></div>';
   /* ① 학급 선택 */
-  h += '<div class="tbstp"><span class="tbn">1</span> 학급 선택</div><div class="tbclsc">'
+  h += '<div class="tbstp"><span class="tbn">1</span> 학급 선택 <small class="tbmulti">눌러서 켜고 끄기 · 여러 학급을 함께 고를 수 있어요</small></div>'
+    + '<div class="tbclsc">'
     + cs.map(function (c) {
         var pc = c.students.filter(function (st) { return s.have[tbNmKey(st.id, st.name)]; }).length;
-        return '<button class="tbclsk' + (s.cls === c.key ? ' on' : '') + '" data-tbact="roster" data-tbp="nm.src" data-tbv="' + esc(c.key) + '" data-tbno="1">'
+        return '<button class="tbclsk' + (s.sel.indexOf(c.key) >= 0 ? ' on' : '') + '" data-tbact="nmcls" data-tbv="' + esc(c.key) + '">'
           + '<b>' + esc(c.key) + '</b><i class="tbdot ' + (pc >= 4 ? 'ok' : 'warn') + '"></i>'
           + '<small>👥 ' + c.students.length + '명 &nbsp; 📷 사진 ' + pc + '명</small></button>';
       }).join('')
     + '<button class="tbclsk' + (s.cls === '__manual' ? ' on' : '') + '" data-tbact="nmmanualsel"><b>직접 입력</b><small>번호와 이름을 적어서 연습</small></button></div>';
+  h += '<div class="tbrow nmsum">' + (s.sel.length
+      ? '<span class="tbhint" style="margin:0">선택한 학급 <b>' + esc(s.sel.join(' · ')) + '</b> · ' + list.length + '명</span><button class="wkb" data-tbact="nmclsclear" title="고른 학급을 모두 풀고 다시 고릅니다">✕ 모두 해제</button>'
+      : '<span class="tbhint" style="margin:0">학급을 눌러 고르세요 — 다시 누르면 풀리고, 여러 개를 함께 고를 수도 있어요.</span>') + '</div>';
   if (HAS_TT) h += tbNmNeisHtml();
   if (s.cls === '__manual' || (!cs.length && !s.cls)) {
     h += '<textarea class="gpai wide tbta" rows="4" data-tbin="nm.src" placeholder="한 줄에 «번호 이름» (예: 3201 강재은)">' + esc(s.src) + '</textarea>'
@@ -1022,7 +1037,7 @@ function tbNmHtml0() {
   }
   if (!list.length) return h + '<div class="empty">학급을 고르거나 명단을 적어 주세요.</div>' + tbMsg(s.msg, true);
   /* 사진 */
-  h += '<div class="tbrow"><span class="tbhint"><b>' + (s.cls && s.cls !== '__manual' ? esc(s.cls) : '직접 입력') + '</b> · ' + list.length + '명 · 사진 ' + nph + '명'
+  h += '<div class="tbrow"><span class="tbhint"><b>' + (tbNmClsLabel() ? esc(tbNmClsLabel()) : (s.cls && s.cls !== '__manual' ? esc(s.cls) : '직접 입력')) + '</b> · ' + list.length + '명 · 사진 ' + nph + '명'
     + (photoMode && pool.length < list.length ? ' · 사진 있는 ' + pool.length + '명만 연습' : '') + '</span>'
     + (HAS_TT ? '<button class="wkb go" data-tbact="nmnotion"' + (s.busy ? ' disabled' : '') + ' title="노션 학생 INFO 의 사진을 이 컴퓨터로 가져옵니다">⬇ 노션에서 사진 가져오기</button>' : '')
     + (HAS_TT ? '<button class="wkb" data-tbact="nmexport"' + (s.busy ? ' disabled' : '') + ' title="학급 명단과 사진을 파일 하나로 — 폰으로 옮겨 지비스 모바일에서 씁니다">📱 폰용 사진 묶음 내보내기</button>' : '')
@@ -1030,7 +1045,7 @@ function tbNmHtml0() {
     + '<button class="wkb' + (s.manage ? ' go' : '') + '" data-tbact="nmmanage">🖼 학생별 사진</button>'
     + (nph ? '<button class="wkb" data-tbact="nmphotoclear">🗑 사진 모두 지우기</button>' : '') + '</div>';
   if (nph < 2) {
-    h += '<div class="tbnote"><b>‘' + esc(s.cls && s.cls !== '__manual' ? s.cls : '이 명단') + '’에 사진이 등록된 학생이 ' + nph + '명입니다.</b>'
+    h += '<div class="tbnote"><b>‘' + esc(tbNmClsLabel() || (s.cls && s.cls !== '__manual' ? s.cls : '이 명단')) + '’에 사진이 등록된 학생이 ' + nph + '명입니다.</b>'
       + '<small>사진이 있어야 «사진 보고 이름 맞히기» 연습이 됩니다(퀴즈는 사진 있는 학생 4명 이상 권장). 사진이 없어도 번호와 이름으로 연습할 수 있습니다.</small>'
       + '<button class="wkb' + (HAS_TT ? '' : ' go') + '" data-tbact="nmphotos">사진 등록하러 가기 ›</button></div>';
   } else {
@@ -1699,8 +1714,15 @@ function tbAct(act, v, b) {
       widgetAPI.tbPhotoDel(allN).then(function (r) { TB.nm.photos = {}; TB.nm.have = {}; TB.nm.order = []; TB.nm.q = null; TB.nm.rd = null; TB.nm.pairs = null; TB.nm.msg = '이 명단의 사진 ' + ((r && r.n) || 0) + '장을 지웠습니다'; render(); });
       return;
     }
+    case 'nmcls': {
+      var ns = TB.nm, ix = ns.sel.indexOf(v);
+      if (ix >= 0) ns.sel.splice(ix, 1); else ns.sel.push(v);
+      ns.sel = tbRoster().map(function (c) { return c.key; }).filter(function (k) { return ns.sel.indexOf(k) >= 0; });   // 학급 순서 유지
+      tbNmBuildSrc(); break;
+    }
+    case 'nmclsclear': TB.nm.sel = []; tbNmBuildSrc(); TB.nm.cls = ''; break;
     case 'nmmanage': TB.nm.manage = !TB.nm.manage; break;
-    case 'nmmanualsel': TB.nm.cls = '__manual'; TB.nm.order = []; TB.nm.q = null; TB.nm.rd = null; TB.nm.pairs = null; TB.nm.photoSig = ''; break;
+    case 'nmmanualsel': TB.nm.sel = []; TB.nm.cls = '__manual'; TB.nm.order = []; TB.nm.q = null; TB.nm.rd = null; TB.nm.pairs = null; TB.nm.photoSig = ''; break;
     case 'nmapply': TB.nm.order = []; TB.nm.q = null; TB.nm.rd = null; TB.nm.pairs = null; TB.nm.photoSig = ''; TB.nm.msg = ''; break;
     case 'nmshuf': TB.nm.order = tbShuffle(tbNmPool(tbNmList()).map(function (_, i) { return i; })); TB.nm.idx = 0; TB.nm.flip = false; break;
     case 'nmans': s = TB.nm; if (!s.picked) { s.picked = v; s.tried++; if (v === s.q.cur.name) s.score++; else tbNmMark(s.q.cur, false); } break;

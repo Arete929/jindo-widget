@@ -18,6 +18,7 @@ const TAB_REC = '기록';
 const TAB_NOTE = '수업메모';   // 컴시간 시간표로 적는 수업 메모(=진도표)
 const TAB_CAT = '카테고리';
 const TAB_CFG = '설정';
+const TAB_CONTACT = '연락처';   // 학생·학부모 연락처 (학급관리)
 
 /* ★ J칸 «누가기록» 은 2026-09-08 에 늘렸다 — 옛 시트에는 없으므로 읽을 때 빈칸으로 본다 */
 const REC_HEAD = ['학번', '이름', '학년', '반', '번호', '카테고리', '내용', '작성일시', '수정일시', '누가기록'];
@@ -25,6 +26,7 @@ const DEFAULT_CATS = ['행발', '세특', '자율', '동아리', '진로', '자�
 /* 수업메모 — 날짜와 교시가 «어느 수업인지» 를 가리키고, 메모 한 줄이 알맹이다.
    차시는 그 학급에 적은 메모의 순번이다(시간표로 세면 휴업일까지 따져야 해서). */
 const NOTE_HEAD = ['날짜', '요일', '교시', '학급', '과목', '차시', '메모', '적은때'];
+const CONTACT_HEAD = ['학번', '이름', '학생 번호', '학부모 번호', '메모'];
 
 /* 화면에 보여줄 «2026.08.25 10:42:03» 꼴 (KST 는 이 PC 시계를 그대로 쓴다) */
 function stamp(d) {
@@ -56,7 +58,8 @@ async function findSheet(token, title) {
   return {
     id: f.id,
     url: 'https://docs.google.com/spreadsheets/d/' + f.id + '/edit',
-    createdAt: f.createdTime ? stamp(new Date(f.createdTime)) : ''
+    createdAt: f.createdTime ? stamp(new Date(f.createdTime)) : '',
+    name: f.name || ''
   };
 }
 
@@ -71,7 +74,8 @@ async function createSheet(token, title) {
         { properties: { title: TAB_REC } },
         { properties: { title: TAB_CAT } },
         { properties: { title: TAB_CFG } },
-        { properties: { title: TAB_NOTE } }
+        { properties: { title: TAB_NOTE } },
+        { properties: { title: TAB_CONTACT } }
       ]
     })
   });
@@ -82,6 +86,7 @@ async function createSheet(token, title) {
     [['순서', '이름', '사용']].concat(DEFAULT_CATS.map((c, i) => [i + 1, c, 'Y'])));
   await writeRange(token, id, TAB_CFG + '!A1', [['항목', '값'], ['만든날짜', now]]);
   await writeRange(token, id, TAB_NOTE + '!A1', [NOTE_HEAD]);
+  await writeRange(token, id, TAB_CONTACT + '!A1', [CONTACT_HEAD]);
   return { id: id, url: made.spreadsheetUrl || (`https://docs.google.com/spreadsheets/d/${id}/edit`), createdAt: now };
 }
 
@@ -137,6 +142,31 @@ async function ensureNoteTab(token, id) {
   });
   await writeRange(token, id, TAB_NOTE + '!A1', [NOTE_HEAD]);
   return true;
+}
+/* 연락처 탭 — 옛 시트에는 없으므로 이어 쓸 때 한 번 확인해 없으면 더한다(기존 탭·내용은 건드리지 않는다) */
+async function ensureContactTab(token, id) {
+  const names = await tabNames(token, id);
+  if (names.indexOf(TAB_CONTACT) >= 0) return false;
+  await json({
+    method: 'POST', url: `${SHEETS}/${id}:batchUpdate`, token: token,
+    contentType: 'application/json',
+    body: JSON.stringify({ requests: [{ addSheet: { properties: { title: TAB_CONTACT } } }] })
+  });
+  await writeRange(token, id, TAB_CONTACT + '!A1', [CONTACT_HEAD]);
+  return true;
+}
+/* 시트 이름 바꾸기 / 이름·탭 알아보기 */
+async function renameSheet(token, id, title) {
+  await json({
+    method: 'POST', url: `${SHEETS}/${id}:batchUpdate`, token: token,
+    contentType: 'application/json',
+    body: JSON.stringify({ requests: [{ updateSpreadsheetProperties: { properties: { title: title }, fields: 'title' } }] })
+  });
+  return title;
+}
+async function sheetInfo(token, id) {
+  const r = await json({ url: `${SHEETS}/${id}?fields=` + esc('properties(title),sheets(properties(title))'), token: token });
+  return { title: (r && r.properties && r.properties.title) || '', tabs: ((r && r.sheets) || []).map((s) => (s.properties || {}).title || '') };
 }
 async function loadNotes(token, id) {
   let rows;
@@ -234,5 +264,6 @@ async function putConf(token, id, key, value) {
 module.exports = {
   findSheet, createSheet, trashSheet, loadAll, saveRecord, clearRecord, saveCats, putConf,
   readRange, writeRange, stamp, DEFAULT_CATS, TAB_REC, TAB_CAT, TAB_CFG,
-  TAB_NOTE, NOTE_HEAD, ensureNoteTab, loadNotes, saveNote
+  TAB_NOTE, NOTE_HEAD, ensureNoteTab, loadNotes, saveNote,
+  TAB_CONTACT, CONTACT_HEAD, ensureContactTab, renameSheet, sheetInfo
 };

@@ -6013,6 +6013,125 @@ function linkTiles() {
    ★ QR 은 이 PC 에서 만든다(main 의 tb-qr). 주소는 공개 웹앱 주소이고 열쇠·연결 코드는 들어 있지 않다.
    ★ 팝업(alert 등) 없이 화면 안 창으로 보인다. Esc·바깥 누르기·✕ 로 닫는다. */
 var HY_PHONE_URL = 'https://arete929.github.io/hyewon_mobile/';
+/* ── 구글 계정 단추와 모달 (2026-10-27) ──────────────────────────────
+   머리 줄(설정 ⚙ 왼쪽): 로그아웃이면 회색 G «로그인», 로그인이면 컬러 G + 초록 점 + «로그인됨». 계정 아이디는 어디에도 보이지 않는다.
+   누르면 모달 — 로그아웃: 구글 계정으로 로그인 / 로그인: 시트 이름 바꾸기·시트 열기·기존 시트 통합·시트 연결 해제·로그아웃.
+   로그인하면 «혜원이지» 시트를 만든다. 이미 쓰던 시트(옛 이름)가 있으면 먼저 묻는다(이어 쓰기·이름 바꾸기·새로 만들기·나중에).
+   ★ 브라우저 기본 팝업(alert·confirm)은 쓰지 않는다 — 확인도 모달 안에서 한다. */
+var gm = { open: false, view: 'main', busy: '', msg: '', ok: true, info: null, draft: '', found: null };
+function gOn() { return !!(REC && REC.linked); }
+function gBtnHtml() {
+  var on = gOn();
+  return '<button class="gbtn ' + (on ? 'on' : 'off') + '" data-gm="open" title="' + (on ? '구글 계정 — 시트 이름·열기·연결 해제·로그아웃' : '구글 계정으로 로그인 — 학생기록·수업메모·연락처를 내 구글 시트에 저장') + '">'
+    + '<img src="assets/google-g-' + (on ? 'color' : 'black') + '.png" alt="">' + (on ? '<i></i>로그인됨' : '로그인') + '</button>';
+}
+function gMsgHtml() { return gm.msg ? '<div class="' + (gm.ok ? 'rhint' : 'atwarn') + '" style="margin:8px 0 0">' + esc(gm.msg) + '</div>' : ''; }
+function gModalHtml() {
+  if (!gm.open) return '';
+  var on = gOn(), h = '<div class="gmbg" data-gm="close"></div><div class="gm" role="dialog" aria-modal="true" aria-label="구글 계정">';
+  var head = function (t) { return '<div class="gmh"><img src="assets/google-g-' + (on ? 'color' : 'black') + '.png" alt=""><b>' + t + '</b><button class="wkb" data-gm="close" aria-label="닫기">✕</button></div>'; };
+  var busy = gm.busy;
+  if (gm.view === 'merge' && gm.found) {
+    h += head('이미 쓰던 시트를 찾았어요')
+      + '<div class="gmsub">내 구글 계정에 이전에 만든 시트가 있습니다. 어떻게 할까요?</div>'
+      + '<div class="gmbox"><img src="assets/sheet.png" alt=""><div><b>' + esc(gm.found.name || '학생기록') + '</b><small>' + (gm.found.createdAt ? esc(gm.found.createdAt) + ' 만듦' : '기록 · 수업메모 탭') + '</small></div></div>'
+      + '<button class="gmopt rec" data-gm="merge1"' + (busy ? ' disabled' : '') + '>이 시트를 «혜원이지» 시트로 이어 쓰기 <i>추천</i><small>기록은 그대로 두고, 시트 이름을 «혜원이지» 로 바꾸고 «연락처» 탭을 더합니다.</small></button>'
+      + '<button class="gmopt" data-gm="merge2"' + (busy ? ' disabled' : '') + '>이름은 그대로 두고 이어 쓰기<small>시트 이름을 바꾸지 않고 «연락처» 탭만 더합니다.</small></button>'
+      + '<button class="gmopt" data-gm="merge3"' + (busy ? ' disabled' : '') + '>새 «혜원이지» 시트를 따로 만들기<small>기존 시트는 그대로 두고 빈 시트를 새로 만듭니다. 기록이 두 곳으로 갈릴 수 있어요.</small></button>'
+      + '<div class="gmlater"><button class="wkb" data-gm="close">나중에 정하기</button></div>' + gMsgHtml();
+  } else if (gm.view === 'confirmUnlink') {
+    h += head('시트 연결을 풀까요?')
+      + '<div class="gmsub">이 앱에서만 연결을 풉니다. <b>구글 시트는 지워지지 않고</b> 내 드라이브에 그대로 남아요. 다시 로그인하면 이어 쓸 수 있습니다.</div>'
+      + '<div class="tbrow"><button class="wkb go" data-gm="unlink"' + (busy ? ' disabled' : '') + '>연결 풀기</button><button class="wkb" data-gm="back">취소</button></div>' + gMsgHtml();
+  } else if (gm.view === 'confirmOut') {
+    h += head('로그아웃할까요?')
+      + '<div class="gmsub">이 PC 의 구글 로그인 정보를 지웁니다. 시트와 기록은 그대로 남아요. 로그아웃하면 학생기록·수업메모·연락처를 시트에 저장하지 못합니다.</div>'
+      + '<div class="tbrow"><button class="wkb go" data-gm="signout"' + (busy ? ' disabled' : '') + '>로그아웃</button><button class="wkb" data-gm="back">취소</button></div>' + gMsgHtml();
+  } else if (!on) {
+    h += head('구글 계정')
+      + '<div class="gmsub">로그인하면 내 구글 계정에 «혜원이지» 시트를 만들고, 학생기록·수업메모·연락처를 그 시트에 저장합니다.</div>'
+      + '<button class="gmlogin" data-gm="login"' + (busy ? ' disabled' : '') + '><img src="assets/google-g-color.png" alt="">' + (busy === 'login' ? BROWSER + '에서 허용해 주세요…' : '구글 계정으로 로그인') + '</button>'
+      + '<div class="gmsub" style="margin-top:8px">로그인하지 않아도 시간표·급식·일정은 그대로 쓸 수 있어요.</div>' + gMsgHtml();
+  } else {
+    var sh = REC && REC.sheet && REC.sheet.id && !REC.sheet.trashedAt ? REC.sheet : null;
+    h += head('구글 계정') + '<div class="gmacct"><i></i>구글 계정 로그인됨</div>';
+    if (!sh) {
+      h += '<div class="gmsub">아직 연결된 시트가 없어요.</div>'
+        + '<div class="tbrow"><button class="wkb go" data-gm="create"' + (busy ? ' disabled' : '') + '>«혜원이지» 시트 만들기</button>'
+        + '<button class="wkb" data-gm="find"' + (busy ? ' disabled' : '') + '>이미 쓰던 시트 찾기</button></div>';
+    } else {
+      var tabs = gm.info && gm.info.tabs && gm.info.tabs.length ? gm.info.tabs.join(' · ') : '기록 · 카테고리 · 수업메모 · 연락처';
+      h += '<div class="gmbox"><img src="assets/sheet.png" alt=""><div><b>' + esc((gm.info && gm.info.title) || '시트') + '</b><small>' + esc(tabs) + '</small></div>'
+        + '<button class="wkb" data-gm="openSheet">시트 열기</button></div>'
+        + '<div class="gmrow"><input id="gmName" class="gpai" maxlength="100" value="' + esc(gm.draft) + '" placeholder="시트 이름"><button class="wkb go" data-gm="rename"' + (busy ? ' disabled' : '') + '>이름 저장</button></div>'
+        + '<div class="gmsub" style="margin-top:0">구글 시트 이름입니다. 학생기록·수업메모·연락처가 이 시트에 저장됩니다.</div>'
+        + '<div class="gmacts">'
+        + '<button class="gmact" data-gm="find"' + (busy ? ' disabled' : '') + '><b>🔗 기존 시트 통합하기</b><small>이전에 쓰던 시트가 따로 있으면 그 시트로 바꿔 이어 씁니다(두 시트의 내용을 합치지는 않아요)</small></button>'
+        + '<button class="gmact" data-gm="askUnlink"><b>⛓ 시트 연결 해제</b><small>이 앱에서만 연결을 풉니다 · 구글 시트는 지워지지 않아요</small></button>'
+        + '<button class="gmact out" data-gm="askOut"><b>⎋ 로그아웃</b><small>이 PC 의 로그인 정보를 지웁니다 · 시트는 그대로 남아요</small></button></div>';
+    }
+    h += gMsgHtml();
+  }
+  return h + '</div>';
+}
+function gStamp() { return typeof 지금시각 === 'function' ? 지금시각() : ''; }
+function gErr(e) { gm.busy = ''; gm.ok = false; gm.msg = (e && e.message) || String(e); render(); }
+function gLoadInfo() {
+  if (!(REC && REC.sheet && REC.sheet.id)) { gm.info = null; return; }
+  widgetAPI.recSheetInfo().then(function (i) { gm.info = i; if (i && !gm.draft) gm.draft = i.title || ''; render(); }).catch(function () { /* 이름을 못 읽어도 모달은 쓴다 */ });
+}
+function gAfterSheet(st, said) { REC = st; gm.busy = ''; gm.view = 'main'; gm.found = null; gm.ok = true; gm.msg = said + (gStamp() ? ' · ' + gStamp() : ''); gm.info = null; gm.draft = ''; render(); gLoadInfo(); }
+function gWire(app) {
+  app.querySelectorAll('[data-gm]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var a = b.dataset.gm;
+      if (a === 'open') { gm.open = true; gm.view = 'main'; gm.msg = ''; gm.ok = true; gm.found = null; gm.info = null; gm.draft = ''; render(); gLoadInfo(); return; }
+      if (a === 'close') { gm.open = false; gm.busy = ''; render(); return; }
+      if (a === 'back') { gm.view = 'main'; gm.msg = ''; render(); return; }
+      if (a === 'askUnlink') { gm.view = 'confirmUnlink'; gm.msg = ''; render(); return; }
+      if (a === 'askOut') { gm.view = 'confirmOut'; gm.msg = ''; render(); return; }
+      if (a === 'openSheet') { widgetAPI.recOpenSheet(); return; }
+      if (gm.busy) return;
+      if (a === 'login') {
+        gm.busy = 'login'; gm.msg = ''; render();
+        widgetAPI.recSignIn().then(function (st) {
+          REC = st;
+          if (st && st.sheet && st.sheet.id) { gAfterSheet(st, '✅ 로그인했습니다'); return; }
+          return widgetAPI.recFind().then(function (f) {
+            if (f) { gm.busy = ''; gm.found = f; gm.view = 'merge'; render(); return; }
+            return widgetAPI.recCreate().then(function (st2) { gAfterSheet(st2, '✅ «혜원이지» 시트를 만들었습니다'); });
+          });
+        }).catch(gErr);
+        return;
+      }
+      if (a === 'create') { gm.busy = 'create'; render(); widgetAPI.recCreate().then(function (st) { gAfterSheet(st, '✅ «혜원이지» 시트를 만들었습니다'); }).catch(gErr); return; }
+      if (a === 'find') {
+        gm.busy = 'find'; gm.msg = ''; render();
+        widgetAPI.recFind().then(function (f) {
+          gm.busy = '';
+          if (!f) { gm.ok = true; gm.msg = '이어 쓸 다른 시트를 찾지 못했어요.'; render(); return; }
+          if (REC && REC.sheet && REC.sheet.id === f.id) { gm.ok = true; gm.msg = '지금 쓰는 시트가 이미 그 시트예요.'; render(); return; }
+          gm.found = f; gm.view = 'merge'; render();
+        }).catch(gErr);
+        return;
+      }
+      if (a === 'merge1' || a === 'merge2') { gm.busy = 'merge'; render(); widgetAPI.recMerge({ rename: a === 'merge1' }).then(function (st) { gAfterSheet(st, '✅ 이어 쓰기로 연결했습니다'); }).catch(gErr); return; }
+      if (a === 'merge3') { gm.busy = 'merge'; render(); widgetAPI.recCreate({ forceNew: true }).then(function (st) { gAfterSheet(st, '✅ 새 «혜원이지» 시트를 만들었습니다'); }).catch(gErr); return; }
+      if (a === 'rename') {
+        var inp = app.querySelector('#gmName'), name = inp ? inp.value.trim() : '';
+        if (!name) { gm.ok = false; gm.msg = '시트 이름을 적어 주세요.'; render(); return; }
+        gm.draft = name; gm.busy = 'rename'; render();
+        widgetAPI.recRename(name).then(function (st) { REC = st; gm.busy = ''; gm.ok = true; gm.msg = '✅ 저장됨 · ' + gStamp(); gm.info = Object.assign({}, gm.info || {}, { title: name }); render(); }).catch(gErr);
+        return;
+      }
+      if (a === 'unlink') { gm.busy = 'unlink'; render(); widgetAPI.recUnlink().then(function (st) { REC = st; gm.busy = ''; gm.view = 'main'; gm.ok = true; gm.msg = '시트 연결을 풀었어요. 시트는 구글 드라이브에 그대로 있습니다.'; gm.info = null; gm.draft = ''; render(); }).catch(gErr); return; }
+      if (a === 'signout') { gm.busy = 'signout'; render(); widgetAPI.recSignOut().then(function (st) { REC = st; gm.busy = ''; gm.view = 'main'; gm.ok = true; gm.msg = '로그아웃했어요.'; gm.info = null; gm.draft = ''; render(); }).catch(gErr); return; }
+    });
+  });
+  var gi = app.querySelector('#gmName');
+  if (gi) gi.addEventListener('keydown', function (e) { if (e.key === 'Enter') { var r = app.querySelector('[data-gm="rename"]'); if (r) r.click(); } });
+}
+
 var hyQr = { open: false, size: 'm', cache: {}, busy: false, msg: '', ok: true };
 function hyQrOn() { return !HAS_TT; }
 function hyQrTile() {
@@ -7408,6 +7527,7 @@ function titleBar() {
     + '<span class="ttl">' + brandHtml() + '</span>'
     /* ★ 사용량 타일은 이름 옆 빈 자리에 — 아래 띠를 없애 두 줄을 돌려받는다 */
     + usgInline()
+    + gBtnHtml()
     + '<button class="gear" title="설정" onclick="widgetAPI.openSettings()"></button>'
     + usgToggleBtn()
     + '<button class="tclose" title="닫기 — 끄는 것이 아니라 감춥니다.'
@@ -7564,7 +7684,7 @@ function render() {
   html += '<div class="foot"><span class="fby">@JINHOKIM</span></div>';
   app.style.setProperty('--wf', String(FS[fsKey()] || 1));
   app.style.setProperty('--uf', String(FS.usage || 1));   // 사용량 상자 크기(탭과 따로)
-  app.innerHTML = html;
+  app.innerHTML = html + gModalHtml();
   // 두 번째 고정 줄이 머리 «바로 아래»에 붙도록, 머리 높이를 재서 알려 준다.
   // 머리는 업데이트 띠·사용량 띠가 있고 없고에 따라 높이가 달라져서 고정값을 쓸 수 없다.
   // 검색줄·주차 단추·날짜 줄을 머리 안으로 옮겨 «날짜까지» 통째로 고정한다.
@@ -8100,6 +8220,7 @@ function wireViews(app) {
       if (x && x.u) widgetAPI.openUrl(x.u);
     });
   });
+  gWire(app);                          // 구글 계정 단추·모달
   hyQrWire(app);                       // 혜원이지 폰 QR (혜원이지 전용)
   // 바로가기 손보기
   var lke = app.querySelector('#lkEd');

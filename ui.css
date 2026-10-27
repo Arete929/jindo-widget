@@ -2726,6 +2726,8 @@
   .tbimhelp .tbimol i { font-style: normal; color: var(--dim); }
   /* ★ 타일 배경 — 현재 테마의 강조색을 살짝 섞어, 바탕(--bg)과 한눈에 갈리게 한다(테마가 바뀌면 같이 바뀐다) */
   /* 이름 외우기 — ① 왼쪽 · ② 오른쪽 */
+  .tbmulti { color: var(--dim); font-weight: 600; margin-left: 8px; font-size: calc(11px * var(--wf)); }
+  .nmsum { margin: 8px 0; }
   .nmcols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
   .nmright { position: sticky; top: 8px; }
   .nmleft .tbclsc { grid-template-columns: repeat(auto-fill, minmax(calc(130px * var(--wf, 1)), 1fr)); }
@@ -2959,6 +2961,33 @@
   .lbdrophint { padding: 14px; text-align: center; font-size: calc(11px * var(--wf)); color: var(--dim); border: 1px dashed var(--line); border-radius: 9px; margin: 6px 0 4px; }
 
   /* ── 혜원이지 폰 QR 창 ── */
+  /* 구글 계정 단추(머리 줄 · 설정 왼쪽)와 모달 */
+  .gbtn { -webkit-app-region: no-drag; margin-left: auto; margin-right: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 7px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); color: var(--fg); font-weight: 800; font-size: calc(11.5px * var(--wf, 1)); cursor: pointer; white-space: nowrap; }
+  .gbtn img { width: 15px; height: 15px; display: block; }
+  .gbtn.off img { opacity: .6; filter: grayscale(1); }
+  .gbtn.on { border-color: #2e9f5b; }
+  .gbtn.on i { width: 7px; height: 7px; border-radius: 50%; background: #2e9f5b; display: inline-block; }
+  .gbtn + .gear { margin-left: 0; }
+  .gmbg { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.45); -webkit-app-region: no-drag; }
+  .gm { position: fixed; z-index: 81; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow-y: auto; box-sizing: border-box; padding: 16px 18px; border-radius: 18px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); box-shadow: 0 12px 36px rgba(0,0,0,.35); -webkit-app-region: no-drag; }
+  .gmh { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: calc(15px * var(--wf, 1)); }
+  .gmh img { width: 22px; height: 22px; } .gmh b { flex: 1; }
+  .gmsub { color: var(--dim); font-size: calc(11.5px * var(--wf, 1)); line-height: 1.55; margin: 4px 0 10px; }
+  .gmlogin { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border-radius: 14px; border: 1.5px solid var(--line); background: #fff; color: #222; font-weight: 800; cursor: pointer; margin: 8px 0; }
+  .gmlogin img { width: 20px; height: 20px; }
+  .gmacct { display: flex; align-items: center; gap: 8px; padding: 8px 12px; margin: 4px 0 10px; border-radius: 12px; border: 1.5px solid #2e9f5b; background: color-mix(in srgb, #2e9f5b 12%, var(--bg)); font-weight: 800; }
+  .gmacct i { width: 8px; height: 8px; border-radius: 50%; background: #2e9f5b; }
+  .gmbox { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 8px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--card); }
+  .gmbox img { width: 28px; height: 28px; } .gmbox > div { flex: 1; min-width: 0; } .gmbox b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .gmbox small { color: var(--dim); font-size: calc(11px * var(--wf, 1)); }
+  .gmrow { display: flex; gap: 8px; align-items: center; margin: 8px 0; } .gmrow input { flex: 1; min-width: 0; }
+  .gmacts { display: grid; gap: 8px; margin-top: 10px; }
+  .gmact { text-align: left; padding: 10px 14px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
+  .gmact b { display: block; } .gmact small { display: block; color: var(--dim); font-weight: 500; margin-top: 2px; line-height: 1.45; font-size: calc(11px * var(--wf, 1)); }
+  .gmact.out b { color: #d4565d; } .gmact:hover { border-color: var(--accent); }
+  .gmopt { display: block; width: 100%; text-align: left; padding: 11px 14px; margin: 8px 0; border-radius: 14px; border: 2px solid var(--line); background: var(--card); color: var(--fg); font-weight: 800; cursor: pointer; }
+  .gmopt.rec { border-color: var(--accent); } .gmopt i { font-style: normal; font-size: 11px; background: var(--accent); color: var(--on); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+  .gmopt small { display: block; font-weight: 500; color: var(--dim); margin-top: 3px; line-height: 1.5; font-size: calc(11px * var(--wf, 1)); }
+  .gmlater { text-align: center; margin-top: 8px; }
   .hyqrbg { position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,.45); -webkit-app-region: no-drag; }
   .hyqr { position: fixed; z-index: 71; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); overflow: auto;
           background: var(--card); color: var(--fg); border-radius: 14px; padding: 12px 16px 14px; box-shadow: 0 12px 40px rgba(0,0,0,.35); -webkit-app-region: no-drag; }
