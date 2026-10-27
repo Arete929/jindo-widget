@@ -10,7 +10,7 @@ var TB = {
   open: false, tool: '', direct: false,   // direct: 바로가기 탭의 카드에서 곧장 연 것 → ← 는 바로가기로
   pdf: { mode: 'split', files: [], pages: '', angle: 0, flip: 'none', fit: true, per: 1, prefix: '', mt: 10, mb: 10, ml: 10, mr: 10, busy: false, msg: '', ok: true, saved: [] },
   rnd: { names: '', src: 'class', cls: '', mode: 'pick', n: 1, noRepeat: true, picked: [], left: null, hist: [], spin: false, auto: true, phase: '', stopAt: 0, gBy: 'count', gNum: 4, groups: [], msg: '' },
-  qr: { text: '', size: 512, level: 'M', dark: '#000000', dataUrl: '', msg: '', ok: true, busy: false },
+  qr: { text: '', title: '', raw: '', size: 512, level: 'M', dark: '#000000', dataUrl: '', msg: '', ok: true, busy: false },
   tm: { mins: 10, secs: 0, left: 600, run: false, end: 0, msg: '', big: false, done: false },
   yt: { url: '', phase: 'idle', info: null, q: '1080', stage: '', pct: 0, speed: '', eta: '', msg: '', ok: true, savedAt: '', file: '', dir: '', hist: [], engine: null, loaded: false, engBusy: false },
   nm: { rd: null, src: '', mode: 'card', idx: 0, flip: false, order: [], score: 0, tried: 0, q: null, picked: '', pairs: null, selL: -1, selR: -1, fails: 0, msg: '', photos: {}, photoSig: '', show: 'photo', manage: false, busy: false, cls: '', have: {}, haveSig: '', typed: '', typedOk: false },
@@ -515,9 +515,37 @@ function tbRndFinish(pool) {
 }
 
 /* ═══════════ ③ QR 생성기 ═══════════ */
+/* 제목 + QR 을 한 장의 그림으로 — 제목이 비면 QR 그대로. 크기는 QR 그림 폭에 맞춘다 */
+function tbQrCompose(rawUrl, title, size) {
+  title = String(title || '').trim();
+  if (!title) return Promise.resolve(rawUrl);
+  return new Promise(function (resolve) {
+    var img = new Image();
+    img.onload = function () {
+      var W = img.width, k = W / 512, pad = Math.round(32 * k), fs = Math.round(34 * k), maxW = W + pad * 2 - pad, lines = [], cur = '';
+      var c = document.createElement('canvas'), g = c.getContext('2d');
+      g.font = '800 ' + fs + 'px "Malgun Gothic","맑은 고딕",sans-serif';
+      title.split('').forEach(function (ch) {
+        if (ch === '\n') { lines.push(cur); cur = ''; return; }
+        if (g.measureText(cur + ch).width > maxW && cur) { lines.push(cur); cur = ch; } else cur += ch;
+      });
+      lines.push(cur); lines = lines.slice(0, 3);
+      var lh = Math.round(fs * 1.35), th = lines.length * lh + Math.round(18 * k);
+      c.width = W + pad * 2; c.height = pad + th + W + pad;
+      g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height);
+      g.font = '800 ' + fs + 'px "Malgun Gothic","맑은 고딕",sans-serif'; g.fillStyle = '#111111'; g.textAlign = 'center'; g.textBaseline = 'top';
+      lines.forEach(function (l, i) { g.fillText(l, c.width / 2, pad + i * lh, maxW); });
+      g.drawImage(img, pad, pad + th, W, W);
+      resolve(c.toDataURL('image/png'));
+    };
+    img.onerror = function () { resolve(rawUrl); };
+    img.src = rawUrl;
+  });
+}
 function tbQrHtml() {
   var s = TB.qr;
-  var h = '<textarea class="gpai wide tbta" rows="3" data-tbin="qr.text" placeholder="QR 로 만들 주소나 글 (예: https://…)">' + esc(s.text) + '</textarea>'
+  var h = '<div class="tbrow" style="margin-top:0"><label class="tbl">제목</label><input class="gpai wide" data-tbin="qr.title" placeholder="예) 학급 알림장 · 과제 제출 (QR 위에 글자로 들어갑니다, 비워도 됩니다)" value="' + esc(s.title) + '"></div>'
+    + '<textarea class="gpai wide tbta" rows="3" data-tbin="qr.text" placeholder="QR 로 만들 주소나 글 (예: https://…)">' + esc(s.text) + '</textarea>'
     + '<div class="tbrow"><label class="tbl">크기</label>' + tbPal('qr.size', s.size, [[256, '작게'], [512, '보통'], [1024, '크게']])
     + '<label class="tbl">오류 복원</label>' + tbPal('qr.level', s.level, [['L', '낮음 7%'], ['M', '보통 15%'], ['Q', '높음 25%'], ['H', '최고 30%']]) + '</div>'
     + '<div class="tbrow"><label class="tbl">색</label>' + tbPal('qr.dark', s.dark, [['#000000', '검정'], ['#1e3a8a', '남색'], ['#6d28d9', '보라'], ['#047857', '초록'], ['#b91c1c', '빨강']]) + '</div>'
@@ -1580,7 +1608,11 @@ function tbAct(act, v, b) {
       s.busy = true; s.msg = ''; render();
       widgetAPI.tbQr({ text: s.text, size: s.size, level: s.level, dark: s.dark }).then(function (r) {
         s.busy = false;
-        if (r && r.ok) { s.dataUrl = r.dataUrl; s.ok = true; s.msg = ''; } else { s.ok = false; s.msg = (r && r.msg) || '못 만들었어요'; }
+        if (r && r.ok) {
+          s.raw = r.dataUrl; s.ok = true; s.msg = '';
+          return tbQrCompose(r.dataUrl, s.title, s.size).then(function (u) { s.dataUrl = u; render(); });
+        }
+        s.ok = false; s.msg = (r && r.msg) || '못 만들었어요';
         render();
       }).catch(function (e) { s.busy = false; s.ok = false; s.msg = String((e && e.message) || e); render(); });
       return;
@@ -1604,7 +1636,7 @@ function tbAct(act, v, b) {
       }).catch(function (e) { TB.yt.engBusy = false; TB.yt.ok = false; TB.yt.msg = String((e && e.message) || e); render(); });
       return;
     case 'qrsave':
-      widgetAPI.tbQrSave({ dataUrl: TB.qr.dataUrl, name: 'QR' }).then(function (r) { TB.qr.ok = !!(r && (r.ok || r.canceled)); TB.qr.msg = (r && r.msg) || ''; render(); });
+      widgetAPI.tbQrSave({ dataUrl: TB.qr.dataUrl, name: String(TB.qr.title || '').trim().replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 40) || 'QR' }).then(function (r) { TB.qr.ok = !!(r && (r.ok || r.canceled)); TB.qr.msg = (r && r.msg) || ''; render(); });
       return;
     case 'qrcopy':
       widgetAPI.tbQrCopy({ dataUrl: TB.qr.dataUrl }).then(function (r) { TB.qr.ok = !!(r && r.ok); TB.qr.msg = (r && r.msg) || ''; render(); });
@@ -1784,6 +1816,7 @@ function wireToolbox(app) {
       if (path === 'cal.expr') { TB.cal.expr = el.value; tbAct('eq', '', el); }
       else if (path === 'cal.unitVal') { TB.cal.unitVal = el.value; tbAct('ucalc', '', el); }
       else if (path === 'qr.text') { TB.qr.text = el.value; tbAct('qrmake', '', el); }
+      else if (path === 'qr.title') { TB.qr.title = el.value; tbAct('qrmake', '', el); }
       else if (path === 'yt.url') { TB.yt.url = el.value; tbAct('ytcheck', '', el); }
       else if (path === 'nm.typed') { TB.nm.typed = el.value; tbAct('nmsubmit', '', el); }
       else if (el.dataset.tbenter) { var pe = tbPath(path); pe[0][pe[1]] = el.value; tbAct('grcalc', '', el); }
