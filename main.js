@@ -3944,6 +3944,36 @@ ipcMain.handle('tb-img-save', (_e, o) => {
     return { ok: true, name: path.basename(target), size: fs.statSync(target).size };
   } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
 });
+/* ── 품의 도우미(도구상자) — 첨부 고르기 · 서류 묶음 만들기 (pmmake.js) ── */
+ipcMain.handle('tb-pm-pick', async (e) => {
+  try {
+    const r = await dialog.showOpenDialog(tbWin(e), { title: '견적서(PDF)·그림 고르기', properties: ['openFile', 'multiSelections'],
+      filters: [{ name: '견적서 PDF · 그림', extensions: ['pdf', 'png', 'jpg', 'jpeg'] }] });
+    if (r.canceled || !r.filePaths.length) return { ok: true, files: [] };
+    const files = [];
+    for (const p of r.filePaths) {
+      const ext = path.extname(p).toLowerCase(), name = path.basename(p);
+      if (ext === '.pdf') { files.push({ kind: 'pdf', name, path: p }); continue; }
+      const st = fs.statSync(p);
+      if (st.size > 12 * 1024 * 1024) return { ok: false, msg: name + ' — 그림이 너무 큽니다(12MB 까지)' };
+      files.push({ kind: 'img', name, dataUrl: 'data:image/' + (ext === '.png' ? 'png' : 'jpeg') + ';base64,' + fs.readFileSync(p).toString('base64') });
+    }
+    return { ok: true, files };
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
+ipcMain.handle('tb-pm-make', async (e, model) => {
+  try {
+    const s = await dialog.showOpenDialog(tbWin(e), { title: '서류 묶음을 저장할 폴더 고르기', properties: ['openDirectory', 'createDirectory'], defaultPath: app.getPath('documents') });
+    if (s.canceled || !s.filePaths.length) return { ok: false, canceled: true, msg: '취소했습니다' };
+    const { PDFDocument } = require('pdf-lib');
+    const stamp = new Date().toISOString().slice(0, 10);
+    const safe = String((model && model.biz) || '품의').replace(/[\/:*?"<>|]+/g, ' ').trim().slice(0, 30) || '품의';
+    const out = path.join(s.filePaths[0], '품의_' + safe + '_' + stamp);
+    const r = await require('./pmmake').makeBundle(model, out, { BrowserWindow, PDFDocument });
+    try { shell.showItemInFolder(r.saved[0]); } catch (err) { /* 못 열어도 그만 */ }
+    return { ok: true, saved: r.saved, msg: r.saved.length + '개 파일 — ' + out };
+  } catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
 ipcMain.on('tb-reveal', (_e, p) => { try { if (p) shell.showItemInFolder(String(p)); } catch (err) { /* 못 열어도 그만 */ } });
 
 /* ── 학생이름외우기 사진(v2.10.8) ──

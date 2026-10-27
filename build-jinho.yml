@@ -25,6 +25,8 @@ files:
   - chat.js
   - ytdl.js       # 영상 내려받기 뒤쪽(yt-dlp·ffmpeg 를 부른다) — 도구상자
   - toolbox.js    # 도구상자 — 바로가기 탭 안의 PDF·QR·타이머 등(지비스·혜원이지 공통)
+  - xlsfill.js    # 품목내역 엑셀(.xls) — 학교 양식 틀 그대로 채우기 (도구상자 품의 도우미)
+  - pmmake.js     # 품의 서류 묶음(견적서 PDF·품목내역·전자기안문) 만들기
   - easy.html     # «넓게 보기» 창 (왼쪽 메뉴 + 대시보드)
   - easy.js
   - timetable.html

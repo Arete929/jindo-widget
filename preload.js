@@ -68,6 +68,8 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   onAttFilesChanged: (cb) => ipcRenderer.on('att-files-changed', () => cb()),
   onAttNotionProgress: (cb) => ipcRenderer.on('att-notion-progress', (_e, d) => cb(d)),
   tbReveal: (p) => ipcRenderer.send('tb-reveal', p),
+  tbPmPick: () => ipcRenderer.invoke('tb-pm-pick'),
+  tbPmMake: (m) => ipcRenderer.invoke('tb-pm-make', m),
   /* 사진 줄이기(일괄) — 끌어다 놓은 파일의 진짜 경로는 webUtils 로만 알 수 있다(Electron 32+) */
   tbImPathOf: (file) => { try { return webUtils.getPathForFile(file) || ''; } catch (e) { return ''; } },
   tbImPick: (kind) => ipcRenderer.invoke('tb-img-pick', kind),

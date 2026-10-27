@@ -1,4 +1,4 @@
-/* 파일명: toolbox.js | @version 1.10.0 — v1.10.0 «품의 도우미»(품목 표 → 합계·한글 금액 → 전자기안문·품목내역·구입 계획서 복사) / v1.9.0 — v1.9.0 «영상 내려받기»(주소 → 확인 → 화질 → 받기, 유튜브·1080p 까지·로그인 영상 제외) · v1.8.0 학생이름외우기 «NEIS 사진 일괄 등록»(zip·PDF·폴더, 학년 통째로 — 지비스 전용) · v1.7.0 도구마다 크게·작게(A− 100% A+, 도구별로 기억) · v1.6.1 사진 줄이기 본문이 좁은 칸에 갇히던 틀 수정 · v1.6.0 «사진 줄이기» 일괄(폴더·사진 고르기/끌어다 놓기 → 새 폴더에 저장, 나이스 고입 200KB · 화소 그대로 «무손실 정리» → mozjpeg → Lanczos 순서, 도움말 포함) · v1.5.0 이름외우기 퀴즈는 «한 바퀴» 방식(같은 학생이 두 번 나오지 않음) + 끝나면 틀린 학생만 다시 · v1.4.2 사진은 «3201 강재은» (학번 이름) 꼴로 보관 — 동명이인도 저절로 갈림 · v1.4.0 학생이름외우기는 지비스 전용(혜원이지에서 뺌) + 노션 학생 INFO 사진 가져오기 · v1.3.1 뽑기 자동/수동·v1.3.0 스쿨보드 모양(PDF 메뉴·계산기·등급표·이름외우기 학급 카드)
+/* 파일명: toolbox.js | @version 1.10.0 — v1.10.0 «품의 도우미»(구입처별 품목 → 견적서 PDF·품목내역 엑셀(학교 양식 틀 그대로)·전자기안문, 캡처 Ctrl+V·견적서 PDF 첨부) / v1.9.0 — v1.9.0 «영상 내려받기»(주소 → 확인 → 화질 → 받기, 유튜브·1080p 까지·로그인 영상 제외) · v1.8.0 학생이름외우기 «NEIS 사진 일괄 등록»(zip·PDF·폴더, 학년 통째로 — 지비스 전용) · v1.7.0 도구마다 크게·작게(A− 100% A+, 도구별로 기억) · v1.6.1 사진 줄이기 본문이 좁은 칸에 갇히던 틀 수정 · v1.6.0 «사진 줄이기» 일괄(폴더·사진 고르기/끌어다 놓기 → 새 폴더에 저장, 나이스 고입 200KB · 화소 그대로 «무손실 정리» → mozjpeg → Lanczos 순서, 도움말 포함) · v1.5.0 이름외우기 퀴즈는 «한 바퀴» 방식(같은 학생이 두 번 나오지 않음) + 끝나면 틀린 학생만 다시 · v1.4.2 사진은 «3201 강재은» (학번 이름) 꼴로 보관 — 동명이인도 저절로 갈림 · v1.4.0 학생이름외우기는 지비스 전용(혜원이지에서 뺌) + 노션 학생 INFO 사진 가져오기 · v1.3.1 뽑기 자동/수동·v1.3.0 스쿨보드 모양(PDF 메뉴·계산기·등급표·이름외우기 학급 카드)
    도구상자 — «바로가기» 탭 안의 타일로 들어간다. 지비스·혜원이지 공통(views.js 다음에 읽힌다).
    스쿨보드(제작 호똑쌤)의 도구상자를 본떠 «선으로 그린 아이콘» 카드 여덟 개:
    PDF 편집기 · 랜덤 뽑기·모둠 편성 · QR 생성기 · 수업 타이머 · 학생이름외우기 · 계산기 ·
@@ -17,7 +17,7 @@ var TB = {
   cal: { tab: 'hist', mem: null, fresh: false, expr: '', hist: [], res: '', err: '', d1: '', d2: '', dn: 30, dres: '', unitCat: 'len', unitVal: '1', unitFrom: 'm' },
   sc: { total: 100, n: 20, nSub: 4, step: 0.5, diffs: [], res: null, msg: '' },
   gr: { total: 200, scheme: '9', round: 'round', res: null },
-  pm: { school: '', dept: '', biz: '', budget: '', ref: '', purpose: '', ship: '', paste: '', rows: [], msg: '', ok: true },
+  pm: { school: '', dept: '', biz: '', budget: '', ref: '', purpose: '', paste: '', groups: [], target: 0, busy: false, msg: '', ok: true },
   im: { help: false, base: '', files: [], skipped: 0, preset: 'neis', kb: '300', side: 0, busy: false, cancel: false, done: 0, total: 0, results: [], outDir: '', outName: '', at: '', msg: '', ok: true }
 };
 
@@ -1288,15 +1288,25 @@ function tbGrHtml() {
 }
 
 /* ═══════════ ⑨ 품의 도우미 ═══════════
-   물품 구입 품의(전자기안문·품목내역·구입 계획서)에 쓸 글을 만든다. 파일은 올리지 않고 표를 직접 적거나
-   엑셀·한글 표를 복사해 붙여 넣는다. 학교명·부서·예산과목만 이 기기에 기억한다. */
+   물품 구입 품의 서류 한 벌 — 견적서(PDF) · 품목내역(엑셀 .xls, 학교 양식의 틀 그대로) · 전자기안문(글).
+   구입처(인터넷쇼핑·업체결제·협의회비·예비비)마다 품목을 적고, 장바구니 캡처(Ctrl+V)·업체 견적서(PDF)를 붙이면
+   «서류 묶음 만들기» 가 폴더 하나에 세 가지를 만들어 준다(main.js 의 tb-pm-make → pmmake.js).
+   파일은 어디로도 보내지 않는다. 학교명·부서·예산과목만 이 컴퓨터에 기억한다. */
 var TB_PM_KEEP = ['school', 'dept', 'budget'];
+var TB_PM_KINDS = { shop: ['인터넷쇼핑', '쇼핑몰 이름', '네이버'], vendor: ['업체결제', '업체 이름', ''], fee: ['협의회비', '', ''], reserve: ['예비비', '', ''] };
+function tbPmRow(n, q, p) { return { n: n || '', q: q == null ? '' : String(q), p: p == null ? '' : String(p) }; }
+function tbPmGroup(kind) {
+  var g = { kind: kind, name: kind === 'shop' ? '네이버' : '', rows: [tbPmRow(), tbPmRow()], attach: [] };
+  if (kind === 'fee') g.rows = [tbPmRow('협의회비 ()', 1)];
+  if (kind === 'reserve') g.rows = [tbPmRow('상품 포장 및 예비비', 1)];
+  if (kind === 'vendor') g.rows = [tbPmRow(), tbPmRow()];
+  return g;
+}
 function tbPmLoad() {
   try { var o = JSON.parse(localStorage.getItem('tbPm') || '{}'); TB_PM_KEEP.forEach(function (k) { if (typeof o[k] === 'string') TB.pm[k] = o[k]; }); } catch (e) { /* 처음이면 빈칸 */ }
-  if (!TB.pm.rows.length) TB.pm.rows = [tbPmRow(), tbPmRow(), tbPmRow()];
+  if (!TB.pm.groups.length) TB.pm.groups = [tbPmGroup('shop')];
 }
 function tbPmSave() { try { var o = {}; TB_PM_KEEP.forEach(function (k) { o[k] = TB.pm[k]; }); localStorage.setItem('tbPm', JSON.stringify(o)); } catch (e) { /* 못 적어도 그만 */ } }
-function tbPmRow() { return { n: '', spec: '', q: '', p: '' }; }
 function tbPmMoney(v) { var n = Number(String(v == null ? '' : v).replace(/[,\s원]/g, '')); return isFinite(n) && n > 0 ? Math.round(n) : 0; }
 function tbPmWon(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 /* 한글 금액 — 위조를 막으려 일·십·백·천을 모두 적는다(금일십이만삼천원) */
@@ -1311,17 +1321,14 @@ function tbPmKo(n) {
   }
   return out;
 }
+function tbPmRowAmt(r) { var p = tbPmMoney(r.p), q = tbPmMoney(r.q) || (String(r.n || '').trim() && p ? 1 : 0); return String(r.n || '').trim() && p && q ? q * p : 0; }
+function tbPmGroupSum(g) { return g.rows.reduce(function (a, r) { return a + tbPmRowAmt(r); }, 0); }
 function tbPmCalc() {
-  var s = TB.pm, items = [], sum = 0;
-  s.rows.forEach(function (r) {
-    var name = String(r.n || '').trim(), q = tbPmMoney(r.q) || (name && tbPmMoney(r.p) ? 1 : 0), p = tbPmMoney(r.p);
-    if (!name || !q || !p) return;
-    items.push({ n: name, spec: String(r.spec || '').trim(), q: q, p: p, amt: q * p }); sum += q * p;
-  });
-  var ship = tbPmMoney(s.ship);
-  return { items: items, sum: sum, ship: ship, total: sum + ship };
+  var gs = TB.pm.groups, sum = 0, items = [];
+  gs.forEach(function (g) { g.rows.forEach(function (r) { var a = tbPmRowAmt(r); if (a) { sum += a; items.push({ g: g.kind, n: String(r.n).trim(), q: tbPmMoney(r.q) || 1, p: tbPmMoney(r.p), amt: a }); } }); });
+  return { items: items, total: sum };
 }
-/* 붙여 넣은 표 → 칸 — 탭·쉼표·두 칸 이상 띄어쓰기로 나누고, 숫자 칸이 없는 줄(머리글)은 건너뛴다 */
+/* 붙여 넣은 표 → 줄 — 탭·쉼표·두 칸 이상 띄어쓰기로 나누고, 숫자 칸이 없는 줄(머리글)은 건너뛴다. 품명 · (규격) · 수량 · 단가 순 */
 function tbPmParse(text) {
   var rows = [];
   String(text || '').split(/\r?\n/).forEach(function (line) {
@@ -1330,70 +1337,102 @@ function tbPmParse(text) {
     var nums = [], txt = [];
     cells.forEach(function (c) { if (c && /^[\d,.\s]+(원|개|세트|EA|ea)?$/.test(c) && /\d/.test(c)) nums.push(tbPmMoney(c)); else if (c) txt.push(c); });
     if (!txt.length || !nums.length) return;
-    var q = nums.length >= 2 ? nums[0] : 1, p = nums.length >= 2 ? nums[1] : nums[0];
-    rows.push({ n: txt[0], spec: txt.slice(1).join(' '), q: String(q), p: String(p) });
+    rows.push(tbPmRow(txt.join(' '), nums.length >= 2 ? nums[0] : 1, nums.length >= 2 ? nums[1] : nums[0]));
   });
   return rows;
 }
 function tbPmDraft() {
   var s = TB.pm, c = tbPmCalc(); if (!c.items.length) return '';
-  var biz = s.biz.trim() || '(사업명)', first = c.items[0].n, more = c.items.length - 1;
+  var main = c.items.filter(function (x) { return x.g === 'shop' || x.g === 'vendor'; }).filter(function (x) { return !/^배송비/.test(x.n); });
+  var first = (main[0] || c.items[0]).n, more = Math.max(0, main.length - 1), biz = s.biz.trim() || '(사업명)';
   return '제목: ' + biz + ' 물품 구입 요청\n'
     + '1. 관련: ' + (s.ref.trim() || '(관련 근거)') + '\n'
     + '2. ' + biz + ' 관련 물품을 아래와 같이 구입하고자 합니다.\n'
     + '  가. 내역: ' + first + (more ? ' 외 ' + more + '종' : '') + '\n'
     + '  나. 용도: ' + (s.purpose.trim() || '(구입 목적)') + '\n'
-    + '  다. 소요예산: 금' + tbPmWon(c.total) + '원(금' + tbPmKo(c.total) + '원)' + (c.ship ? ' (배송비 ' + tbPmWon(c.ship) + '원 포함)' : '') + '\n'
-    + '  라. 산출내역: ' + first + (more ? ' 외 ' + more + '건' : '') + '(품목내역 참조)\n'
+    + '  다. 소요예산: 금' + tbPmWon(c.total) + '원(금' + tbPmKo(c.total) + '원)\n'
+    + '  라. 산출내역: 품의 견적서 및 품목내역 참조\n'
     + '  마. 예산과목: ' + (s.budget.trim() || '(예산과목)') + '\n'
-    + '붙임  1. 지출(지급)품의서 1부.\n      2. 품목내역 1부.  끝.';
+    + '붙임  1. 품의 견적서 1부.\n      2. 품목내역 1부.  끝.';
 }
-function tbPmPlan() {
-  var s = TB.pm, c = tbPmCalc(); if (!c.items.length) return '';
-  var biz = s.biz.trim() || '(사업명)';
-  return (s.school.trim() ? s.school.trim() + ' ' : '') + biz + ' 물품 구입 계획\n\n'
-    + '1. 추진 근거\n  ' + (s.ref.trim() || '(관련 근거)') + '\n\n'
-    + '2. 목적\n  ' + (s.purpose.trim() || '(구입 목적)') + '\n\n'
-    + '3. 세부 내용\n' + c.items.map(function (x, i) { return '  ' + (i + 1) + ') ' + x.n + (x.spec ? '(' + x.spec + ')' : '') + ' ' + x.q + '개 × ' + tbPmWon(x.p) + '원 = ' + tbPmWon(x.amt) + '원'; }).join('\n') + '\n\n'
-    + '4. 소요 예산\n  금' + tbPmWon(c.total) + '원(금' + tbPmKo(c.total) + '원) — ' + (s.budget.trim() || '(예산과목)') + (s.dept.trim() ? '\n\n5. 담당 부서\n  ' + s.dept.trim() : '');
-}
+/* 품목내역 — 학교 엑셀 양식과 «같은 칸» (내용·규격·단위·수량·예상단가). 순번·합계 줄은 없다. 협의회비는 품목이 아니라 뺀다 */
 function tbPmTsv() {
-  var c = tbPmCalc(); if (!c.items.length) return '';
-  var l = ['순번\t내용\t규격\t수량\t단가\t예상금액'];
-  c.items.forEach(function (x, i) { l.push((i + 1) + '\t' + x.n + '\t' + x.spec + '\t' + x.q + '\t' + x.p + '\t' + x.amt); });
-  if (c.ship) l.push('\t배송비\t\t\t\t' + c.ship);
-  l.push('\t합계\t\t\t\t' + c.total);
-  return l.join('\n');
+  var c = tbPmCalc(), l = []; c.items.forEach(function (x) { if (x.g !== 'fee') l.push(x.n + '\t\t\t' + x.q + '\t' + x.p); });
+  return l.length ? '내용\t규격\t단위\t수량\t예상단가\n' + l.join('\n') : '';
+}
+function tbPmModel() {
+  var s = TB.pm;
+  return { school: s.school, dept: s.dept, biz: s.biz, budget: s.budget, ref: s.ref, purpose: s.purpose, draft: tbPmDraft(),
+    groups: s.groups.map(function (g) { return { kind: g.kind, name: g.name, rows: g.rows.map(function (r) { return { n: r.n, q: r.q, p: r.p }; }), attach: g.attach.map(function (a) { return { kind: a.kind, name: a.name, path: a.path, dataUrl: a.dataUrl }; }) }; }) };
+}
+function tbPmGroupHtml(g, gi) {
+  var s = TB.pm, k = TB_PM_KINDS[g.kind], sum = tbPmGroupSum(g), isGrp = g.kind === 'shop' || g.kind === 'vendor';
+  var h = '<div class="tbc2' + (s.target === gi ? ' pmtarget' : '') + '"><div class="tbc2h"><div class="tbc2t"><b>' + esc(k[0]) + '</b>'
+    + (isGrp ? ' <input type="text" class="gpai" style="width:11em" data-tbin="pm.groups.' + gi + '.name" value="' + esc(g.name) + '" placeholder="' + esc(k[1]) + '">' : '')
+    + '<small>소계 ' + (sum ? tbPmWon(sum) + '원' : '—') + '</small></div>'
+    + '<button class="wkb' + (s.target === gi ? ' go' : '') + '" data-tbact="pmtarget" data-tbv="' + gi + '" title="붙여넣기·첨부가 여기로 들어갑니다">여기에 넣기</button>'
+    + '<button class="wkb" data-tbact="pmgdel" data-tbv="' + gi + '" title="이 구입처 지우기">✕</button></div>'
+    + '<div class="tbgt pmgt"><div class="tbgth"><span>품명</span><span>수량</span><span>단가</span><span>금액</span><span></span></div>'
+    + g.rows.map(function (r, i) {
+        var a = tbPmRowAmt(r), p = 'pm.groups.' + gi + '.rows.' + i + '.';
+        return '<div class="tbgr pmr"><input type="text" class="gpai" data-tbin="' + p + 'n" value="' + esc(r.n) + '" placeholder="품명">'
+          + '<input type="text" inputmode="numeric" class="gpai" data-tbin="' + p + 'q" value="' + esc(r.q) + '" placeholder="1">'
+          + '<input type="text" inputmode="numeric" class="gpai" data-tbin="' + p + 'p" value="' + esc(r.p) + '" placeholder="0">'
+          + '<span class="tbgc">' + (a ? tbPmWon(a) : '—') + '</span>'
+          + '<button class="wkb" data-tbact="pmdel" data-tbv="' + gi + '.' + i + '" title="이 줄 지우기">✕</button></div>';
+      }).join('') + '</div>'
+    + '<div class="tbrow"><button class="wkb" data-tbact="pmadd" data-tbv="' + gi + '">＋ 줄 추가</button>'
+    + (g.kind === 'shop' ? '<button class="wkb" data-tbact="pmship" data-tbv="' + gi + '">＋ 배송비 줄</button>' : '') + '</div>';
+  if (isGrp) {
+    h += '<div class="tbrow pmatt">' + g.attach.map(function (a, ai) {
+      return '<span class="pmchip">' + (a.kind === 'img' ? '<img src="' + esc(a.dataUrl) + '" alt="">' : tbIcon('m_file', 16)) + '<em>' + esc(a.name) + '</em>'
+        + '<button class="wkb" data-tbact="pmadel" data-tbv="' + gi + '.' + ai + '" title="빼기">✕</button></span>';
+    }).join('') + '<button class="wkb" data-tbact="pmpick" data-tbv="' + gi + '">＋ 파일 첨부 (견적서 PDF·그림)</button></div>';
+  }
+  return h + '</div>';
 }
 function tbPmHtml() {
   var s = TB.pm, c = tbPmCalc();
+  if (s.target == null || s.target >= s.groups.length) s.target = 0;
   var fld = function (lab, key, ph, wide) { return '<label class="tbfld"' + (wide ? ' style="flex:1 1 100%"' : '') + '><span>' + lab + '</span><input type="text" class="gpai" data-tbin="pm.' + key + '" value="' + esc(s[key]) + '" placeholder="' + esc(ph) + '"></label>'; };
-  var h = '<div class="tbc2"><div class="tbc2h"><span class="tbc2i sm">' + tbIcon('m_doc', 16) + '</span><div class="tbc2t"><b>문서 정보</b><small>학교명·부서·예산과목은 이 컴퓨터에 기억해 두었다가 다음에 채워 줍니다.</small></div></div>'
-    + '<div class="tbflds">' + fld('학교명', 'school', '예) ○○중학교') + fld('부서', 'dept', '예) 체육부') + fld('사업명', 'biz', '예) 2학기 체육수업 용품') + fld('예산과목', 'budget', '예) 학교운영비 / 학습준비물')
+  var h = '<div class="tbc2"><div class="tbc2h"><span class="tbc2i sm">' + tbIcon('m_doc', 16) + '</span><div class="tbc2t"><b>문서 정보</b><small>학교명·부서·예산과목은 이 컴퓨터에 기억해 두었다가 다음에 채워 줍니다. 사업명은 «2026학년도 …» 처럼 학년도까지 적으면 견적서 제목이 됩니다.</small></div></div>'
+    + '<div class="tbflds">' + fld('사업명', 'biz', '예) 2026학년도 교내 학교스포츠클럽활성화(교내리그운영)', true) + fld('학교명', 'school', '예) ○○중학교') + fld('부서', 'dept', '예) 체육부') + fld('예산과목', 'budget', '예) 학교운영비')
     + fld('관련 근거', 'ref', '예) 체육부-1234(2026. 9. 1.)', true) + fld('구입 목적', 'purpose', '예) 체육 수업용 용품 확보', true) + '</div></div>'
-    + '<div class="tbc2"><div class="tbc2h"><span class="tbc2i sm">' + tbIcon('list', 16) + '</span><div class="tbc2t"><b>품목</b><small>직접 적거나, 아래 상자에 엑셀·한글 표를 복사해 붙여 넣으세요(품명 · 규격 · 수량 · 단가 순).</small></div></div>'
-    + '<div class="tbgt pmgt"><div class="tbgth"><span>품명</span><span>규격</span><span>수량</span><span>단가</span><span>금액</span><span></span></div>'
-    + s.rows.map(function (r, i) {
-        var q = tbPmMoney(r.q) || (r.n && tbPmMoney(r.p) ? 1 : 0), amt = q * tbPmMoney(r.p);
-        return '<div class="tbgr pmr"><input type="text" class="gpai" data-tbin="pm.rows.' + i + '.n" value="' + esc(r.n) + '" placeholder="품명">'
-          + '<input type="text" class="gpai" data-tbin="pm.rows.' + i + '.spec" value="' + esc(r.spec) + '" placeholder="규격">'
-          + '<input type="text" inputmode="numeric" class="gpai" data-tbin="pm.rows.' + i + '.q" value="' + esc(r.q) + '" placeholder="1">'
-          + '<input type="text" inputmode="numeric" class="gpai" data-tbin="pm.rows.' + i + '.p" value="' + esc(r.p) + '" placeholder="0">'
-          + '<span class="tbgc">' + (amt ? tbPmWon(amt) : '—') + '</span>'
-          + '<button class="wkb" data-tbact="pmdel" data-tbv="' + i + '" title="이 줄 지우기">✕</button></div>';
-      }).join('') + '</div>'
-    + '<div class="tbrow"><button class="wkb" data-tbact="pmadd">＋ 줄 추가</button><button class="wkb" data-tbact="pmcalc">합계 다시 계산</button>'
-    + '<label class="tbl">배송비</label><input type="text" inputmode="numeric" class="gpai" style="width:7em" data-tbin="pm.ship" value="' + esc(s.ship) + '" placeholder="0"></div>'
-    + '<textarea class="gpai" rows="3" style="width:100%" data-tbin="pm.paste" placeholder="여기에 표를 붙여 넣고 «표 가져오기» 를 누르세요">' + esc(s.paste) + '</textarea>'
-    + '<div class="tbrow"><button class="wkb go" data-tbact="pmparse">표 가져오기</button><button class="wkb" data-tbact="pmclear">품목 비우기</button></div>'
-    + '<div class="tbhint">합계 <b>' + tbPmWon(c.sum) + '원</b>' + (c.ship ? ' + 배송비 ' + tbPmWon(c.ship) + '원' : '') + ' = <b>금' + tbPmWon(c.total) + '원(금' + tbPmKo(c.total) + '원)</b> · 품목 ' + c.items.length + '개</div></div>';
-  var out = function (lab, txt, kind) {
-    return '<div class="tbc2"><div class="tbc2h"><div class="tbc2t"><b>' + lab + '</b></div><button class="wkb go" data-tbact="pmcopy" data-tbv="' + kind + '"' + (txt ? '' : ' disabled') + '>⧉ 복사</button></div>'
+    + s.groups.map(tbPmGroupHtml).join('')
+    + '<div class="tbc2"><div class="tbrow"><b>구입처 더하기</b>'
+    + ['shop', 'vendor', 'fee', 'reserve'].map(function (k) { return '<button class="wkb" data-tbact="pmgadd" data-tbv="' + k + '">＋ ' + TB_PM_KINDS[k][0] + '</button>'; }).join('') + '</div>'
+    + '<textarea class="gpai" rows="3" style="width:100%" data-tbin="pm.paste" placeholder="엑셀·한글 표를 복사해 여기에 붙여 넣고 «표 가져오기» 를 누르면 «여기에 넣기» 를 켠 구입처에 들어갑니다(품명 · 수량 · 단가 순)">' + esc(s.paste) + '</textarea>'
+    + '<div class="tbrow"><button class="wkb go" data-tbact="pmparse">표 가져오기</button>'
+    + '<span class="tbhint" style="margin:0">장바구니 캡처는 <b>Ctrl+V</b> — «여기에 넣기» 를 켠 구입처에 첨부됩니다.</span></div></div>'
+    + '<div class="tbc2"><div class="tbhint" style="margin:0">합계 <b>금' + tbPmWon(c.total) + '원(금' + tbPmKo(c.total) + '원)</b> · 품목 ' + c.items.length + '줄</div>'
+    + '<div class="tbrow"><button class="wkb go tbgo" data-tbact="pmmake"' + (c.items.length && !s.busy ? '' : ' disabled') + '>' + (s.busy ? '만드는 중…' : '서류 묶음 만들기 (견적서·품목내역·전자기안문)') + '</button></div>'
+    + '<div class="tbhint" style="margin:0">폴더를 고르면 견적서 PDF(1쪽 표 + 캡처 쪽 + 업체 견적서), 품목내역 엑셀(학교 양식 그대로), 전자기안문 글 파일이 만들어집니다.</div></div>';
+  var out = function (lab, txt, kind, note) {
+    return '<div class="tbc2"><div class="tbc2h"><div class="tbc2t"><b>' + lab + '</b>' + (note ? '<small>' + note + '</small>' : '') + '</div><button class="wkb go" data-tbact="pmcopy" data-tbv="' + kind + '"' + (txt ? '' : ' disabled') + '>⧉ 복사</button></div>'
       + (txt ? '<pre class="tbpre" style="white-space:pre-wrap;user-select:text">' + esc(txt) + '</pre>' : '<div class="tbhint">품목을 넣으면 여기에 만들어집니다.</div>') + '</div>';
   };
-  return h + out('전자기안문 본문 (업무포털에 붙여 넣기)', tbPmDraft(), 'draft') + out('품목내역 (엑셀·한글 표에 붙여 넣기)', tbPmTsv(), 'tsv') + out('구입 계획서 초안', tbPmPlan(), 'plan')
+  return h + out('전자기안문 본문 (업무포털에 붙여 넣기)', tbPmDraft(), 'draft') + out('품목내역 (엑셀 양식에 붙여 넣기)', tbPmTsv(), 'tsv', '내용·규격·단위·수량·예상단가 칸 순서 그대로')
     + tbMsg(s.msg, s.ok) + '<div class="tbhint">학교마다 양식이 다르니 기안 전에 한 번 확인하세요. 입력한 내용은 어디로도 전송되지 않습니다.</div>';
 }
+/* 캡처 붙여넣기(Ctrl+V) — 입력칸 밖에서 눌렀을 때만 */
+document.addEventListener('paste', function (e) {
+  if (!TB.open || TB.tool !== 'pm') return;
+  var t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+  var items = (e.clipboardData && e.clipboardData.items) || [], got = false;
+  Array.prototype.forEach.call(items, function (it) {
+    if (it.kind !== 'file' || !/^image\//.test(it.type)) return;
+    var f = it.getAsFile(); if (!f) return; got = true;
+    var fr = new FileReader();
+    fr.onload = function () {
+      var g = TB.pm.groups[TB.pm.target || 0]; if (!g) return;
+      if (g.kind !== 'shop' && g.kind !== 'vendor') { TB.pm.msg = '캡처는 인터넷쇼핑·업체결제 구입처에 붙일 수 있습니다. «여기에 넣기» 를 옮겨 주세요.'; TB.pm.ok = false; if (typeof render === 'function') render(); return; }
+      g.attach.push({ kind: 'img', name: '캡처 ' + (g.attach.length + 1) + '.png', dataUrl: String(fr.result) }); TB.pm.msg = '캡처를 붙였습니다.'; TB.pm.ok = true;
+      if (typeof render === 'function') render();
+    };
+    fr.readAsDataURL(f);
+  });
+  if (got) e.preventDefault();
+});
 
 /* ═══════════ 단추 동작 ═══════════ */
 function tbAct(act, v, b) {
@@ -1635,21 +1674,47 @@ function tbAct(act, v, b) {
       break;
     }
     /* 품의 */
-    case 'pmadd': TB.pm.rows.push(tbPmRow()); break;
-    case 'pmdel': TB.pm.rows.splice(Number(v), 1); if (!TB.pm.rows.length) TB.pm.rows.push(tbPmRow()); break;
-    case 'pmcalc': tbPmSave(); break;
-    case 'pmclear': TB.pm.rows = [tbPmRow(), tbPmRow(), tbPmRow()]; TB.pm.paste = ''; TB.pm.msg = ''; break;
+    case 'pmgadd': TB.pm.groups.push(tbPmGroup(v)); TB.pm.target = TB.pm.groups.length - 1; break;
+    case 'pmgdel': TB.pm.groups.splice(Number(v), 1); if (!TB.pm.groups.length) TB.pm.groups.push(tbPmGroup('shop')); TB.pm.target = 0; break;
+    case 'pmtarget': TB.pm.target = Number(v); break;
+    case 'pmadd': TB.pm.groups[Number(v)].rows.push(tbPmRow()); break;
+    case 'pmship': {
+      var sg = TB.pm.groups[Number(v)], last = sg.rows.filter(function (r) { return String(r.n).trim() && !/^배송비/.test(r.n); }).pop();
+      sg.rows = sg.rows.filter(function (r) { return String(r.n).trim() || tbPmMoney(r.p); });
+      sg.rows.push(tbPmRow('배송비' + (last ? ' (' + String(last.n).trim() + ')' : ''), 1, 3000)); break;
+    }
+    case 'pmdel': { var pi = String(v).split('.'), pg = TB.pm.groups[Number(pi[0])]; pg.rows.splice(Number(pi[1]), 1); if (!pg.rows.length) pg.rows.push(tbPmRow()); break; }
+    case 'pmadel': { var ai = String(v).split('.'); TB.pm.groups[Number(ai[0])].attach.splice(Number(ai[1]), 1); break; }
+    case 'pmpick': {
+      var tg = TB.pm.groups[Number(v)];
+      widgetAPI.tbPmPick().then(function (r) {
+        if (r && r.ok && r.files && r.files.length) { r.files.forEach(function (f) { tg.attach.push(f); }); TB.pm.msg = r.files.length + '개를 첨부했습니다.'; TB.pm.ok = true; }
+        else if (r && r.msg) { TB.pm.msg = r.msg; TB.pm.ok = false; }
+        render();
+      });
+      return;
+    }
     case 'pmparse': {
-      s = TB.pm; var got = tbPmParse(s.paste);
+      s = TB.pm; var got = tbPmParse(s.paste), tg2 = s.groups[s.target || 0];
       if (!got.length) { s.msg = '표에서 품목을 찾지 못했습니다. 품명과 숫자(수량·단가)가 같은 줄에 있어야 합니다.'; s.ok = false; break; }
-      var kept = s.rows.filter(function (r) { return String(r.n || '').trim(); });
-      s.rows = kept.concat(got); s.paste = ''; s.msg = got.length + '개 품목을 가져왔습니다. 칸을 눌러 고칠 수 있어요.'; s.ok = true; tbPmSave();
+      tg2.rows = tg2.rows.filter(function (r) { return String(r.n || '').trim() || tbPmMoney(r.p); }).concat(got); s.paste = '';
+      s.msg = got.length + '개 품목을 «' + TB_PM_KINDS[tg2.kind][0] + '» 에 가져왔습니다. 칸을 눌러 고칠 수 있어요.'; s.ok = true; tbPmSave();
       break;
     }
     case 'pmcopy': {
-      s = TB.pm; var txt = v === 'draft' ? tbPmDraft() : v === 'tsv' ? tbPmTsv() : tbPmPlan(); tbPmSave();
+      s = TB.pm; var txt = v === 'draft' ? tbPmDraft() : tbPmTsv(); tbPmSave();
       try { navigator.clipboard.writeText(txt); s.msg = '복사했습니다.'; s.ok = true; } catch (e) { s.msg = '복사하지 못했습니다. 글을 드래그해서 복사해 주세요.'; s.ok = false; }
       break;
+    }
+    case 'pmmake': {
+      s = TB.pm; tbPmSave(); s.busy = true; s.msg = ''; render();
+      widgetAPI.tbPmMake(tbPmModel()).then(function (r) {
+        s.busy = false;
+        if (r && r.ok) { s.msg = '만들었습니다 — ' + r.msg; s.ok = true; }
+        else { s.msg = (r && r.msg) || '만들지 못했습니다'; s.ok = false; }
+        render();
+      });
+      return;
     }
     /* 등급 */
     case 'grcalc': {
