@@ -1383,37 +1383,53 @@ function tbPmGroupHtml(g, gi) {
       }).join('') + '</div>'
     + '<div class="tbrow"><button class="wkb" data-tbact="pmadd" data-tbv="' + gi + '">＋ 줄 추가</button>'
     + (g.kind === 'shop' ? '<button class="wkb" data-tbact="pmship" data-tbv="' + gi + '">＋ 배송비 줄</button>' : '') + '</div>';
-  if (isGrp) {
-    h += '<div class="tbrow pmatt">' + g.attach.map(function (a, ai) {
-      return '<span class="pmchip">' + (a.kind === 'img' ? '<img src="' + esc(a.dataUrl) + '" alt="">' : tbIcon('m_file', 16)) + '<em>' + esc(a.name) + '</em>'
-        + (a.kind === 'img' ? '<button class="wkb' + (a.read ? '' : ' go') + '" data-tbact="pmread" data-tbv="' + gi + '.' + ai + '"' + (s.busy ? ' disabled' : '') + ' title="캡처에서 품목·수량·단가·배송비를 읽어 줄로 넣습니다">' + (s.reading === gi + '.' + ai ? '읽는 중…' : a.read ? '다시 읽기' : '품목 읽기') + '</button>' : '')
-        + '<button class="wkb" data-tbact="pmadel" data-tbv="' + gi + '.' + ai + '" title="빼기">✕</button></span>';
-    }).join('') + '<button class="wkb" data-tbact="pmpick" data-tbv="' + gi + '">＋ 파일 첨부 (견적서 PDF·그림)</button></div>';
-  }
+  if (isGrp && g.attach.length) h += '<div class="tbhint" style="margin:2px 0 0">첨부 ' + g.attach.length + '개 (오른쪽 «붙여넣기·첨부» 에서 볼 수 있습니다)</div>';
   return h + '</div>';
+}
+/* 오른쪽 «붙여넣기·첨부» — 고른 구입처(여기에 넣기)로 캡처·파일·표가 들어간다 */
+function tbPmPaneHtml() {
+  var s = TB.pm, gi = s.target || 0, tg = s.groups[gi], isGrp = tg && (tg.kind === 'shop' || tg.kind === 'vendor');
+  var pal = s.groups.map(function (g, i) {
+    var lab = TB_PM_KINDS[g.kind][0] + (g.name ? '(' + g.name + ')' : '');
+    return '<button class="wkb' + (i === gi ? ' on go' : '') + '" data-tbact="pmtarget" data-tbv="' + i + '">' + esc(lab) + '</button>';
+  }).join('');
+  var h = '<div class="tbc2"><div class="tbc2h"><div class="tbc2t"><b>붙여넣기 · 첨부</b><small>아래에서 고른 구입처로 들어갑니다</small></div></div>'
+    + '<div class="tbrow" style="margin-top:0">' + pal + '</div>';
+  if (isGrp) {
+    h += '<div class="pmdz"><b>캡처는 Ctrl+V</b><span>견적서 PDF·그림 파일은 여기에 끌어다 놓기</span>'
+      + '<button class="wkb" data-tbact="pmpick" data-tbv="' + gi + '">＋ 파일 고르기</button></div>';
+    h += '<div class="pmatt">' + (tg.attach.length ? tg.attach.map(function (a, ai) {
+      return '<span class="pmchip">' + (a.kind === 'img' ? '<img src="' + esc(a.dataUrl) + '" alt="">' : tbIcon('m_file', 16)) + '<em>' + esc(a.name) + '</em>'
+        + (a.kind === 'img' ? '<button class="wkb' + (a.read ? '' : ' go') + '" data-tbact="pmread" data-tbv="' + gi + '.' + ai + '"' + (s.busy ? ' disabled' : '') + ' title="캡처에서 품목·수량·단가·배송비를 읽어 왼쪽 표에 넣습니다">' + (s.reading === gi + '.' + ai ? '읽는 중…' : a.read ? '다시 읽기' : '품목 읽기') + '</button>' : '')
+        + '<button class="wkb" data-tbact="pmadel" data-tbv="' + gi + '.' + ai + '" title="빼기">✕</button></span>';
+    }).join('') : '<span class="tbhint" style="margin:0">첨부한 캡처·파일이 없습니다. 캡처는 붙인 뒤 «품목 읽기» 를 누르면 품목·수량·단가·배송비가 왼쪽 표에 들어갑니다.</span>') + '</div>';
+  } else {
+    h += '<div class="tbhint">협의회비·예비비에는 캡처·파일을 붙이지 않습니다. 인터넷쇼핑·업체결제 구입처를 고르세요.</div>';
+  }
+  return h + '<textarea class="gpai" rows="4" style="width:100%" data-tbin="pm.paste" placeholder="엑셀·한글 표를 복사해 여기에 붙여 넣고 «표 가져오기» 를 누르면 고른 구입처 표에 들어갑니다(품명 · 수량 · 단가 순)">' + esc(s.paste) + '</textarea>'
+    + '<div class="tbrow"><button class="wkb go" data-tbact="pmparse">표 가져오기</button></div></div>';
 }
 function tbPmHtml() {
   var s = TB.pm, c = tbPmCalc();
   if (s.target == null || s.target >= s.groups.length) s.target = 0;
   var fld = function (lab, key, ph, wide) { return '<label class="tbfld"' + (wide ? ' style="flex:1 1 100%"' : '') + '><span>' + lab + '</span><input type="text" class="gpai" data-tbin="pm.' + key + '" value="' + esc(s[key]) + '" placeholder="' + esc(ph) + '"></label>'; };
-  var h = '<div class="tbc2"><div class="tbc2h"><span class="tbc2i sm">' + tbIcon('m_doc', 16) + '</span><div class="tbc2t"><b>문서 정보</b><small>학교명·부서·예산과목은 이 컴퓨터에 기억해 두었다가 다음에 채워 줍니다. 사업명은 «2026학년도 …» 처럼 학년도까지 적으면 견적서 제목이 됩니다.</small></div></div>'
-    + '<div class="tbflds">' + fld('사업명', 'biz', '예) 2026학년도 교내 학교스포츠클럽활성화(교내리그운영)', true) + fld('학교명', 'school', '예) ○○중학교') + fld('부서', 'dept', '예) 체육부') + fld('예산과목', 'budget', '예) 학교운영비')
-    + fld('관련 근거', 'ref', '예) 체육부-1234(2026. 9. 1.)', true) + fld('구입 목적', 'purpose', '예) 체육 수업용 용품 확보', true) + '</div></div>'
-    + s.groups.map(tbPmGroupHtml).join('')
-    + '<div class="tbc2"><div class="tbrow"><b>구입처 더하기</b>'
-    + ['shop', 'vendor', 'fee', 'reserve'].map(function (k) { return '<button class="wkb" data-tbact="pmgadd" data-tbv="' + k + '">＋ ' + TB_PM_KINDS[k][0] + '</button>'; }).join('') + '</div>'
-    + '<textarea class="gpai" rows="3" style="width:100%" data-tbin="pm.paste" placeholder="엑셀·한글 표를 복사해 여기에 붙여 넣고 «표 가져오기» 를 누르면 «여기에 넣기» 를 켠 구입처에 들어갑니다(품명 · 수량 · 단가 순)">' + esc(s.paste) + '</textarea>'
-    + '<div class="tbrow"><button class="wkb go" data-tbact="pmparse">표 가져오기</button>'
-    + '<span class="tbhint" style="margin:0">장바구니 캡처는 <b>Ctrl+V</b> — «여기에 넣기» 를 켠 구입처에 첨부됩니다.</span></div></div>'
-    + '<div class="tbc2"><div class="tbhint" style="margin:0">합계 <b>금' + tbPmWon(c.total) + '원(금' + tbPmKo(c.total) + '원)</b> · 품목 ' + c.items.length + '줄</div>'
+  var left = s.groups.map(tbPmGroupHtml).join('')
+    + '<div class="tbc2"><div class="tbrow" style="margin-top:0"><b>구입처 더하기</b>'
+    + ['shop', 'vendor', 'fee', 'reserve'].map(function (k) { return '<button class="wkb" data-tbact="pmgadd" data-tbv="' + k + '">＋ ' + TB_PM_KINDS[k][0] + '</button>'; }).join('') + '</div></div>'
+    + '<div class="tbc2"><div class="tbhint pmtotal" style="margin:0">합계 <b>금' + tbPmWon(c.total) + '원(금' + tbPmKo(c.total) + '원)</b> · 품목 ' + c.items.length + '줄</div>'
     + '<div class="tbrow"><button class="wkb go tbgo" data-tbact="pmmake"' + (c.items.length && !s.busy ? '' : ' disabled') + '>' + (s.busy ? '만드는 중…' : '서류 묶음 만들기 (견적서·품목내역·전자기안문)') + '</button></div>'
     + '<div class="tbhint" style="margin:0">폴더를 고르면 견적서 PDF(1쪽 표 + 캡처 쪽 + 업체 견적서), 품목내역 엑셀(학교 양식 그대로), 전자기안문 글 파일이 만들어집니다.</div></div>';
+  var h = '<div class="pmcols"><div class="pmleft">' + left + '</div><div class="pmright">' + tbPmPaneHtml() + '</div></div>'
+    + tbMsg(s.msg, s.ok)
+    + '<div class="tbc2"><div class="tbc2h"><span class="tbc2i sm">' + tbIcon('m_doc', 16) + '</span><div class="tbc2t"><b>문서 정보</b><small>학교명·부서·예산과목은 이 컴퓨터에 기억해 두었다가 다음에 채워 줍니다. 사업명은 «2026학년도 …» 처럼 학년도까지 적으면 견적서 제목이 됩니다.</small></div></div>'
+    + '<div class="tbflds">' + fld('사업명', 'biz', '예) 2026학년도 교내 학교스포츠클럽활성화(교내리그운영)', true) + fld('학교명', 'school', '예) ○○중학교') + fld('부서', 'dept', '예) 체육부') + fld('예산과목', 'budget', '예) 학교운영비')
+    + fld('관련 근거', 'ref', '예) 체육부-1234(2026. 9. 1.)', true) + fld('구입 목적', 'purpose', '예) 체육 수업용 용품 확보', true) + '</div></div>';
   var out = function (lab, txt, kind, note) {
     return '<div class="tbc2"><div class="tbc2h"><div class="tbc2t"><b>' + lab + '</b>' + (note ? '<small>' + note + '</small>' : '') + '</div><button class="wkb go" data-tbact="pmcopy" data-tbv="' + kind + '"' + (txt ? '' : ' disabled') + '>⧉ 복사</button></div>'
       + (txt ? '<pre class="tbpre" style="white-space:pre-wrap;user-select:text">' + esc(txt) + '</pre>' : '<div class="tbhint">품목을 넣으면 여기에 만들어집니다.</div>') + '</div>';
   };
   return h + out('전자기안문 본문 (업무포털에 붙여 넣기)', tbPmDraft(), 'draft') + out('품목내역 (엑셀 양식에 붙여 넣기)', tbPmTsv(), 'tsv', '내용·규격·단위·수량·예상단가 칸 순서 그대로')
-    + tbMsg(s.msg, s.ok) + '<div class="tbhint">학교마다 양식이 다르니 기안 전에 한 번 확인하세요. 입력한 내용은 어디로도 전송되지 않습니다.</div>';
+    + '<div class="tbhint">학교마다 양식이 다르니 기안 전에 한 번 확인하세요. 입력한 내용은 어디로도 전송되지 않습니다(«품목 읽기» 를 누른 캡처만 Claude 로 보냅니다).</div>';
 }
 /* 끌어다 놓기 — 품의 도우미: 놓은 구입처 칸(없으면 «여기에 넣기» 구입처)에 견적서 PDF·그림이 붙는다 */
 function tbPmDropGroup(e) {
@@ -1427,6 +1443,8 @@ document.addEventListener('dragover', function (e) {
   e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
   var gi = tbPmDropGroup(e);
   Array.prototype.forEach.call(document.querySelectorAll('[data-pmgrp]'), function (c) { c.classList.toggle('pmover', Number(c.getAttribute('data-pmgrp')) === gi); });
+  var onR = !!(e.target.closest && e.target.closest('.pmright'));
+  Array.prototype.forEach.call(document.querySelectorAll('.pmdz'), function (c) { c.classList.toggle('pmover', onR && gi >= 0); });
 });
 document.addEventListener('dragleave', function (e) {
   if (e.relatedTarget === null) Array.prototype.forEach.call(document.querySelectorAll('.pmover'), function (c) { c.classList.remove('pmover'); });

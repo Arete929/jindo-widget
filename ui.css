@@ -2829,6 +2829,12 @@
   .tbgth, .tbgr { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.6fr; align-items: center; padding: 8px 14px; font-size: calc(13px * var(--wf)); }
   .pmgt .tbgth, .pmgt .tbgr { grid-template-columns: 2.2fr .6fr .9fr .9fr 34px; gap: 6px; padding: 6px 10px; }
   .pmtarget { outline: 2px solid var(--accent); }
+  .pmcols { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+  .pmright { position: sticky; top: 8px; }
+  .pmdz { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 8px 0; padding: 18px 12px; border: 2px dashed var(--line); border-radius: 14px; text-align: center; font-size: calc(12.5px * var(--wf)); color: var(--dim); }
+  .pmdz b { color: var(--fg); font-size: calc(14px * var(--wf)); }
+  .pmtotal b { font-size: calc(14px * var(--wf)); }
+  @media (max-width: 860px) { .pmcols { grid-template-columns: minmax(0, 1fr); } .pmright { position: static; } }
   .pmover { outline: 2px dashed var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
   .pmatt { flex-wrap: wrap; gap: 6px; }
   .pmchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 6px; border: 1px solid var(--line); border-radius: 10px; font-size: calc(12px * var(--wf)); max-width: 100%; }
