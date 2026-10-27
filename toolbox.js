@@ -2,7 +2,7 @@
    도구상자 — «바로가기» 탭 안의 타일로 들어간다. 지비스·혜원이지 공통(views.js 다음에 읽힌다).
    스쿨보드(제작 호똑쌤)의 도구상자를 본떠 «선으로 그린 아이콘» 카드 여덟 개:
    PDF 편집기 · 랜덤 뽑기·모둠 편성 · QR 생성기 · 수업 타이머 · 학생이름외우기 · 계산기 ·
-   시험문제 배점 산출기 · 등급별 인원 예측.   (글깎이·투표 및 설문·온라인등록부는 뺐다 — 서버가 필요해서)
+   등급별 인원 예측. (시험문제 배점 산출기는 2026-10-27 에 뺐다)   (글깎이·투표 및 설문·온라인등록부는 뺐다 — 서버가 필요해서)
    ★ 입력칸은 칠 때마다 다시 그리지 않는다(버벅임) — 값만 TB 에 담아 두고 단추를 눌러야 계산한다.
    ★ <select> 를 쓰지 않는다(단추 팔레트). 파일을 다루는 일(PDF·QR 저장)은 main.js 의 tb-* 가 한다. */
 
@@ -15,8 +15,7 @@ var TB = {
   yt: { url: '', phase: 'idle', info: null, q: '1080', stage: '', pct: 0, speed: '', eta: '', msg: '', ok: true, savedAt: '', file: '', dir: '', hist: [], engine: null, loaded: false, engBusy: false },
   nm: { rd: null, src: '', mode: 'card', idx: 0, flip: false, order: [], score: 0, tried: 0, q: null, picked: '', pairs: null, selL: -1, selR: -1, fails: 0, msg: '', photos: {}, photoSig: '', show: 'photo', manage: false, busy: false, cls: '', have: {}, haveSig: '', typed: '', typedOk: false },
   cal: { tab: 'hist', mem: null, fresh: false, expr: '', hist: [], res: '', err: '', d1: '', d2: '', dn: 30, dres: '', unitCat: 'len', unitVal: '1', unitFrom: 'm' },
-  sc: { total: 100, n: 20, nSub: 4, step: 0.5, diffs: [], res: null, msg: '' },
-  gr: { total: 200, scheme: '9', round: 'round', res: null },
+  gr: { total: 200, rank: '', s5: false, s9: true, round: 'round', res: null },
   pm: { school: '', dept: '', biz: '', budget: '', ref: '', purpose: '', paste: '', groups: [], target: 0, busy: false, msg: '', ok: true },
   im: { help: false, base: '', files: [], skipped: 0, preset: 'neis', kb: '300', side: 0, busy: false, cancel: false, done: 0, total: 0, results: [], outDir: '', outName: '', at: '', msg: '', ok: true }
 };
@@ -59,7 +58,6 @@ var TB_TOOLS = [
   { k: 'tm', ic: 'alarm', t: '수업 타이머', badge: 'NEW', d: '안내 글과 함께 큰 화면 타이머를 띄우고 끝나면 소리로 알려 줍니다.' },
   { k: 'nm', ic: 'game', t: '학생이름외우기', d: '번호를 보고 이름 떠올리기: 카드 연습 · 퀴즈 · 짝맞추기로 새 학기 이름을 빠르게 외웁니다.' },
   { k: 'cal', ic: 'calc', t: '계산기', d: '사칙연산·계산 기록, 날짜 계산, 단위 변환을 한곳에서 씁니다.' },
-  { k: 'sc', ic: 'list', t: '시험문제 배점 산출기', d: '총점과 문항 수에 맞춰 문항별 배점을 난이도에 따라 자동으로 산출합니다.' },
   { k: 'gr', ic: 'award', t: '등급별 인원 예측', d: '총 인원 기준으로 등급별 인원과 누적 석차를 예측합니다.' },
   { k: 'pm', ic: 'm_doc', t: '품의 도우미', badge: 'NEW', d: '물품 구입 품목을 표로 넣으면 합계·한글 금액을 계산하고 전자기안문 본문과 구입 계획서 초안을 만들어 복사합니다.' }
 ];
@@ -102,7 +100,7 @@ function viewToolbox() {
         }).join('') + '</div>';
     return h + tbBigTimer();
   }
-  var body = { pdf: tbPdfHtml, im: tbImHtml, rnd: tbRndHtml, yt: tbYtHtml, qr: tbQrHtml, tm: tbTmHtml, nm: tbNmHtml, cal: tbCalHtml, sc: tbScHtml, gr: tbGrHtml, pm: tbPmHtml }[tool.k];
+  var body = { pdf: tbPdfHtml, im: tbImHtml, rnd: tbRndHtml, yt: tbYtHtml, qr: tbQrHtml, tm: tbTmHtml, nm: tbNmHtml, cal: tbCalHtml, gr: tbGrHtml, pm: tbPmHtml }[tool.k];
   return h + '<div class="tbbody" style="zoom:' + tbZoom(tool.k) + '">' + body() + '</div>' + tbBigTimer();
 }
 
@@ -1205,52 +1203,6 @@ function tbCalcRun() {
   s.hist.unshift({ e: s.expr, r: s.res }); s.hist = s.hist.slice(0, 30); tbCalSave();
 }
 
-/* ═══════════ ⑦ 시험문제 배점 산출기 ═══════════ */
-var TB_DW = { 상: 1.25, 중: 1, 하: 0.8 };
-function tbScoreCalc(total, n, nSub, diffs, step) {
-  if (!(total > 0) || !(n >= 1)) return { ok: false, msg: '총점과 문항 수를 확인해 주세요' };
-  if (nSub < 0 || nSub > n) return { ok: false, msg: '서답형 수가 문항 수보다 클 수 없어요' };
-  var units = Math.round(total / step);
-  if (Math.abs(units * step - total) > 1e-9) return { ok: false, msg: '총점이 배점 단위(' + step + '점)의 배수가 아니에요' };
-  if (units < n) return { ok: false, msg: '문항 수가 너무 많아 한 문항에 ' + step + '점도 못 줘요' };
-  var w = [], i;
-  for (i = 0; i < n; i++) w.push((i >= n - nSub ? 1.5 : 1) * TB_DW[diffs[i] || '중']);
-  var sumW = w.reduce(function (a, b) { return a + b; }, 0);
-  var raw = w.map(function (x) { return x / sumW * units; });
-  var base = raw.map(function (x) { return Math.max(1, Math.floor(x)); });
-  var diff = units - base.reduce(function (a, b) { return a + b; }, 0);
-  var order = raw.map(function (x, k) { return k; }).sort(function (a, b) { return (raw[b] - Math.floor(raw[b])) - (raw[a] - Math.floor(raw[a])); });
-  var k = 0;
-  while (diff > 0) { base[order[k % n]]++; diff--; k++; }
-  k = 0;
-  while (diff < 0) {                       // 모자라지 않게 가장 큰 배점에서 덜어 낸다
-    var big = 0; for (i = 1; i < n; i++) if (base[i] > base[big]) big = i;
-    if (base[big] <= 1) break;
-    base[big]--; diff++;
-  }
-  return { ok: true, pts: base.map(function (u) { return Math.round(u * step * 100) / 100; }) };
-}
-function tbScHtml() {
-  var s = TB.sc;
-  while (s.diffs.length < s.n) s.diffs.push('중');
-  var h = '<div class="tbrow"><label class="tbl">총점</label><input type="number" class="gpai" style="width:6em" data-tbin="sc.total" value="' + esc(s.total) + '">'
-    + '<label class="tbl">문항 수</label><input type="number" class="gpai" style="width:5em" data-tbin="sc.n" value="' + esc(s.n) + '">'
-    + '<label class="tbl">그중 서답형</label><input type="number" class="gpai" style="width:5em" data-tbin="sc.nSub" value="' + esc(s.nSub) + '"></div>'
-    + '<div class="tbrow"><label class="tbl">배점 단위</label>' + tbPal('sc.step', s.step, [[0.1, '0.1점'], [0.5, '0.5점'], [1, '1점']])
-    + '<button class="wkb go tbgo" data-tbact="sccalc">배점 산출</button></div>'
-    + '<div class="tbhint">서답형은 뒤쪽 문항으로 보고 1.5배, 난이도 상 1.25배·하 0.8배 비율로 나눕니다. 난이도는 표에서 눌러 바꾸세요.</div>';
-  if (s.res) {
-    var sum = s.res.reduce(function (a, b) { return a + b; }, 0);
-    h += '<table class="tbtbl"><thead><tr><th>번호</th><th>구분</th><th>난이도</th><th>배점</th></tr></thead><tbody>'
-      + s.res.map(function (p, i) {
-          return '<tr><td>' + (i + 1) + '</td><td>' + (i >= s.res.length - s.nSub ? '서답형' : '선택형') + '</td>'
-            + '<td><button class="wkb" data-tbact="scdiff" data-tbv="' + i + '">' + (s.diffs[i] || '중') + '</button></td><td><b>' + tbFmt(p) + '</b></td></tr>';
-        }).join('') + '</tbody><tfoot><tr><td colspan="3">합계</td><td><b>' + tbFmt(sum) + '</b></td></tr></tfoot></table>'
-      + '<div class="tbrow"><button class="wkb" data-tbact="sccopy">⧉ 표 복사</button></div>';
-  }
-  return h + tbMsg(s.msg, false);
-}
-
 /* ═══════════ ⑧ 등급별 인원 예측 ═══════════ */
 var TB_GR = { '9': [4, 11, 23, 40, 60, 77, 89, 96, 100], '5': [10, 34, 66, 90, 100] };
 function tbGradeCalc(N, scheme, mode) {
@@ -1265,26 +1217,49 @@ function tbGradeCalc(N, scheme, mode) {
   });
   return out;
 }
+/* 등수 → 이 등급제에서 몇 등급인지 (rows = tbGradeCalc 결과). 못 찾으면 null */
+function tbGradeOf(rows, rank) {
+  for (var i = 0; i < rows.length; i++) if (rows[i].count && rank <= rows[i].limit) return { grade: rows[i].grade, row: rows[i], from: rows[i].limit - rows[i].count + 1 };
+  return null;
+}
+function tbGrTable(N, scheme, round, rank) {
+  var rows = tbGradeCalc(N, scheme, round), acc = 0, me = rank ? tbGradeOf(rows, rank) : null;
+  return '<div class="tbc2"><div class="tbc2h"><span class="tbc2i sm award">' + tbIcon('award', 16) + '</span><div class="tbc2t"><b>' + scheme + '등급제 예상 등급 분포</b><small>총 ' + N + '명'
+    + (me ? ' · 내 등수 ' + rank + '등 → <b>' + me.grade + '등급</b>' : '') + '</small></div></div>'
+    + '<div class="tbgt"><div class="tbgth"><span>등급</span><span>비율</span><span>인원</span><span>누적 인원수</span></div>'
+    + rows.map(function (r) {
+        var from = acc + 1, isMe = !!(me && me.grade === r.grade); acc += r.count;
+        return '<div class="tbgr g' + (scheme === '5' ? r.grade * 2 - 1 : r.grade) + (isMe ? ' me' : '') + '"><span><i class="tbgb">' + r.grade + '</i> 등급' + (isMe ? ' <em class="tbmetag">◀ 내 위치</em>' : '') + '</span><span>' + r.pct + '%</span><span><b>' + r.count + '명</b></span>'
+          + '<span class="tbgc">' + (r.count ? from + '등 ~ ' + acc + '등' : '—') + '</span></div>'
+          + (isMe ? '<div class="tbmeline">' + rank + '등은 ' + r.grade + '등급 ' + r.count + '명 중 <b>' + (rank - from + 1) + '번째</b>' + (r.limit - rank ? ' · 위 등급 경계까지 ' + (rank - from) + '명, 아래 등급 경계까지 ' + (r.limit - rank) + '명' : ' · 이 등급의 마지막 자리(바로 아래 등수부터 ' + (r.grade + 1) + '등급)') + '</div>' : '');
+      }).join('') + '</div></div>';
+}
 function tbGrHtml() {
   var s = TB.gr;
   var N = Math.max(1, Math.round(tbNum(s.total, 100)));
-  var rows = tbGradeCalc(N, s.scheme, s.round), acc = 0;
+  var rank = Math.round(tbNum(s.rank, 0)), rankMsg = '';
+  if (String(s.rank).trim() !== '') {
+    if (rank < 1) rankMsg = '등수는 1 이상으로 넣어 주세요.';
+    else if (rank > N) rankMsg = '등수가 총 인원(' + N + '명)보다 큽니다.';
+  }
+  if (rankMsg || rank < 1) rank = 0;
+  var on = ['5', '9'].filter(function (k) { return s['s' + k]; });
   var h = '<div class="tbhero"><span class="tbhi">' + tbIcon('award', 26) + '</span><div><small class="tbey">GRADE FORECAST</small>'
-    + '<b>등급별 예상 인원과 석차를 한눈에</b><span>전체 인원과 등급제를 선택하면 등급별 인원·누적 석차를 바로 예측합니다.</span></div><em class="tbbadge2">5·9등급제</em></div>'
-    + '<div class="tbc2"><div class="tbc2h"><span class="tbc2i sm">👥</span><div class="tbc2t"><b>예측 조건</b><small>학년 또는 과목의 전체 응시 인원을 입력하세요.</small></div></div>'
+    + '<b>등급별 예상 인원과 석차를 한눈에</b><span>총 인원을 넣으면 등급별 인원·누적 석차를, 내 등수까지 넣으면 지금 몇 등급에 있는지 표시합니다.</span></div><em class="tbbadge2">5·9등급제</em></div>'
+    + '<div class="tbc2"><div class="tbc2h"><span class="tbc2i sm">👥</span><div class="tbc2t"><b>예측 조건</b><small>학년 또는 과목의 전체 응시 인원과, 확인할 등수를 입력하세요. 등급제는 둘 다 켤 수 있습니다.</small></div></div>'
     + '<div class="tbflds"><label class="tbfld"><span>총 인원</span><input type="number" min="1" class="gpai" data-tbin="gr.total" data-tbenter="1" value="' + esc(s.total) + '"></label>'
-    + '<div class="tbfld"><span>등급제</span><div>' + tbPal('gr.scheme', s.scheme, [['5', '5등급제'], ['9', '9등급제']]) + '</div></div></div>'
+    + '<label class="tbfld"><span>내 등수 (선택)</span><input type="number" min="1" class="gpai" data-tbin="gr.rank" data-tbenter="1" placeholder="예) 37" value="' + esc(s.rank) + '"></label>'
+    + '<div class="tbfld"><span>등급제 (중복 선택)</span><span class="tbpal">'
+    + ['5', '9'].map(function (k) { return '<button class="wkb' + (s['s' + k] ? ' go' : '') + '" data-tbact="grtog" data-tbv="' + k + '">' + k + '등급제</button>'; }).join('') + '</span></div></div>'
     + '<div class="tbrow"><label class="tbl">경계 처리</label>' + tbPal('gr.round', s.round, [['round', '반올림'], ['ceil', '올림'], ['floor', '내림']])
-    + '<button class="wkb go" data-tbact="grcalc">계산하기</button></div></div>'
-    + '<div class="tbc2"><div class="tbc2h"><span class="tbc2i sm award">' + tbIcon('award', 16) + '</span><div class="tbc2t"><b>예상 등급 분포</b><small>총 ' + N + '명 · ' + s.scheme + '등급제</small></div></div>'
-    + '<div class="tbgt"><div class="tbgth"><span>등급</span><span>비율</span><span>인원</span><span>누적 인원수</span></div>'
-    + rows.map(function (r) {
-        var from = acc + 1; acc += r.count;
-        return '<div class="tbgr g' + (s.scheme === '5' ? r.grade * 2 - 1 : r.grade) + '"><span><i class="tbgb">' + r.grade + '</i> 등급</span><span>' + r.pct + '%</span><span><b>' + r.count + '명</b></span>'
-          + '<span class="tbgc">' + (r.count ? from + '등 ~ ' + acc + '등' : '—') + '</span></div>';
-      }).join('') + '</div>'
-    + '<div class="tbhint">동점자는 같은 등급으로 보고, 경계에 걸린 동점자는 위 등급에 넣는 학교가 많습니다 — 학교 규정을 따르세요.</div></div>';
-  return h;
+    + '<button class="wkb go" data-tbact="grcalc">계산하기</button></div>'
+    + (rankMsg ? '<div class="atwarn">' + esc(rankMsg) + '</div>' : '') + '</div>';
+  if (rank) {
+    var top = (rank / N * 100), parts = on.map(function (k) { var g = tbGradeOf(tbGradeCalc(N, k, s.round), rank); return k + '등급제 <b>' + (g ? g.grade + '등급' : '—') + '</b>'; });
+    h += '<div class="tbc2 tbmebox"><b>' + rank + '등 / ' + N + '명</b> <span>상위 ' + (Math.round(top * 10) / 10) + '%</span> → ' + parts.join(' · ') + '</div>';
+  }
+  h += on.map(function (k) { return tbGrTable(N, k, s.round, rank); }).join('');
+  return h + '<div class="tbhint">동점자는 같은 등급으로 보고, 경계에 걸린 동점자는 위 등급에 넣는 학교가 많습니다 — 학교 규정을 따르세요.</div>';
 }
 
 /* ═══════════ ⑨ 품의 도우미 ═══════════
@@ -1503,7 +1478,7 @@ function tbAct(act, v, b) {
       if (b.dataset.tbp === 'cal.unitFrom' || b.dataset.tbp === 'cal.unitCat') {
         if (b.dataset.tbp === 'cal.unitCat') TB.cal.unitFrom = Object.keys(TB_UNITS[TB.cal.unitCat].base)[0];
       }
-      if (b.dataset.tbp === 'sc.step' || b.dataset.tbp === 'gr.scheme' || b.dataset.tbp === 'gr.round') { TB.sc.res = null; TB.gr.res = null; }
+      if (b.dataset.tbp === 'gr.round') TB.gr.res = null;
       break;
     }
     case 'step': {
@@ -1704,25 +1679,6 @@ function tbAct(act, v, b) {
       break;
     }
     case 'ucalc': break;   // 값은 이미 담겼다 — 다시 그리면 결과가 나온다
-    /* 배점 */
-    case 'sccalc': {
-      s = TB.sc; s.total = tbNum(s.total, 100); s.n = Math.min(100, Math.max(1, Math.round(tbNum(s.n, 20)))); s.nSub = Math.round(tbNum(s.nSub, 0));
-      while (s.diffs.length < s.n) s.diffs.push('중'); s.diffs.length = s.n;
-      var r3 = tbScoreCalc(s.total, s.n, s.nSub, s.diffs, s.step);
-      if (r3.ok) { s.res = r3.pts; s.msg = ''; } else { s.res = null; s.msg = r3.msg; }
-      break;
-    }
-    case 'scdiff': {
-      s = TB.sc; var di = Number(v); s.diffs[di] = ({ 중: '상', 상: '하', 하: '중' })[s.diffs[di] || '중'];
-      var r4 = tbScoreCalc(s.total, s.n, s.nSub, s.diffs, s.step); if (r4.ok) s.res = r4.pts;
-      break;
-    }
-    case 'sccopy': {
-      s = TB.sc;
-      var lines = s.res.map(function (p, i) { return (i + 1) + '번\t' + (i >= s.res.length - s.nSub ? '서답형' : '선택형') + '\t' + tbFmt(p); });
-      try { navigator.clipboard.writeText(lines.join('\n')); s.msg = ''; } catch (e) { /* 못 복사해도 그만 */ }
-      break;
-    }
     /* 품의 */
     case 'pmgadd': TB.pm.groups.push(tbPmGroup(v)); TB.pm.target = TB.pm.groups.length - 1; break;
     case 'pmgdel': TB.pm.groups.splice(Number(v), 1); if (!TB.pm.groups.length) TB.pm.groups.push(tbPmGroup('shop')); TB.pm.target = 0; break;
@@ -1784,9 +1740,13 @@ function tbAct(act, v, b) {
       return;
     }
     /* 등급 */
+    case 'grtog': {
+      s = TB.gr; var gk = 's' + v, ok = 's' + (v === '5' ? '9' : '5');
+      if (s[gk] && !s[ok]) break;               // 둘 다 끄지는 못한다 — 적어도 하나
+      s[gk] = !s[gk]; break;
+    }
     case 'grcalc': {
       s = TB.gr; s.total = Math.max(1, Math.round(tbNum(s.total, 200)));
-      s.res = tbGradeCalc(s.total, s.scheme, s.round);
       break;
     }
   }

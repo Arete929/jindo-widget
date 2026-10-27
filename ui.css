@@ -2829,6 +2829,11 @@
   .tbgth, .tbgr { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.6fr; align-items: center; padding: 8px 14px; font-size: calc(13px * var(--wf)); }
   .pmgt .tbgth, .pmgt .tbgr { grid-template-columns: 2.2fr .6fr .9fr .9fr 34px; gap: 6px; padding: 6px 10px; }
   .pmtarget { outline: 2px solid var(--accent); }
+  .tbgr.me { outline: 2.5px solid var(--accent); font-weight: 800; }
+  .tbmetag { font-style: normal; font-size: calc(11px * var(--wf)); color: var(--accent); font-weight: 800; margin-left: 4px; }
+  .tbmeline { margin: -2px 6px 2px; padding: 7px 12px; border-radius: 10px; background: var(--card); border: 1px dashed var(--accent); font-size: calc(12px * var(--wf)); color: var(--fg); }
+  .tbmebox { font-size: calc(14px * var(--wf)); display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; border: 2px solid var(--accent); }
+  .tbmebox span { color: var(--dim); font-size: calc(12px * var(--wf)); }
   .pmcols { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 12px; align-items: start; }
   .pmright { position: sticky; top: 8px; }
   .pmdz { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 8px 0; padding: 18px 12px; border: 2px dashed var(--line); border-radius: 14px; text-align: center; font-size: calc(12.5px * var(--wf)); color: var(--dim); }
