@@ -6143,13 +6143,15 @@ function lkAddFrom(app) {
 function viewLinks() {
   if (typeof TB !== 'undefined' && TB.open) return viewToolbox();   // 도구상자(toolbox.js)가 열려 있으면 그 화면
   var feed = feedTiles();
+  /* ★ 혜원이지는 «✎ 고치기» 를 «함께 쓰는 앱» 아래로 내린다(고치는 중에는 «✓ 다 됐어요» 가 머리줄에 나온다). 지비스는 그대로 */
+  var lkBelow = FLAVOR !== 'jinho';
   /* ★ 머리줄 하나에 다 모은다 — 검색칸과 «앱 고치기» 가 아래 따로 있으면,
      서른일곱 개를 굴려 내려간 자리에서는 둘 다 화면 밖이라 못 쓴다.
      .top2 는 머리에 붙박이로 남으므로 굴려도 늘 보인다. */
   var h = '<div class="top2"><div class="wknav">'
     // ★ 아래 런처보드에도 «고치기» 가 있다 — 이름을 갈라야 헷갈리지 않는다
-    + '<button class="wkb' + (lkEdit ? ' now' : '') + '" id="lkEd">'
-    + (lkEdit ? '✓ 다 됐어요' : (lbOn() ? '✎ 내 바로가기' : '✎ 고치기')) + '</button>'
+    + (lkBelow && !lkEdit ? '' : '<button class="wkb' + (lkEdit ? ' now' : '') + '" id="lkEd">'
+      + (lkEdit ? '✓ 다 됐어요' : (lbOn() ? '✎ 내 바로가기' : '✎ 고치기')) + '</button>')
     + (lbOn()
       ? '<input id="lbQ" class="lbq" placeholder="앱 찾기" value="' + esc(lbQ) + '">'
         + (lbAdmin()
@@ -6200,7 +6202,7 @@ function viewLinks() {
     /* ★ 런처보드가 켜져 있을 땐 이 안내를 접는다 — 런처보드가 본문인데
        «바로가기가 없습니다» 가 맨 위를 차지해 «어디에 담으라는 건지» 헷갈렸다. */
     h += '<div class="empty">담아 둔 바로가기가 없습니다.<br>'
-      + '위의 <b>✎ 고치기</b> 를 눌러 담아 보세요.</div>';
+      + (lkBelow ? '아래의' : '위의') + ' <b>✎ 고치기</b> 를 눌러 담아 보세요.</div>';
   }
 
   if (lbOn()) { h += viewBoardApps(); }
@@ -6213,6 +6215,7 @@ function viewLinks() {
     h += '<div class="lgrp">' + esc(feedName()) + '</div>'
       + '<div class="empty">' + esc(FEED.error) + '</div>';
   }
+  if (lkBelow && !lkEdit) h += '<div class="lkbelow"><button class="wkb" id="lkEd" title="내 바로가기를 담고 고치고 뺍니다">✎ 고치기</button></div>';
   return h + hyQrHtml();
 }
 
