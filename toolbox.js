@@ -11,7 +11,7 @@ var TB = {
   pdf: { mode: 'split', files: [], pages: '', angle: 0, flip: 'none', fit: true, per: 1, prefix: '', mt: 10, mb: 10, ml: 10, mr: 10, busy: false, msg: '', ok: true, saved: [] },
   rnd: { names: '', src: 'class', cls: '', mode: 'pick', n: 1, noRepeat: true, picked: [], left: null, hist: [], spin: false, auto: true, phase: '', stopAt: 0, gBy: 'count', gNum: 4, groups: [], msg: '' },
   qr: { text: '', size: 512, level: 'M', dark: '#000000', dataUrl: '', msg: '', ok: true, busy: false },
-  tm: { mins: 10, left: 600, run: false, end: 0, msg: '', big: false, done: false },
+  tm: { mins: 10, secs: 0, left: 600, run: false, end: 0, msg: '', big: false, done: false },
   yt: { url: '', phase: 'idle', info: null, q: '1080', stage: '', pct: 0, speed: '', eta: '', msg: '', ok: true, savedAt: '', file: '', dir: '', hist: [], engine: null, loaded: false, engBusy: false },
   nm: { rd: null, src: '', mode: 'card', idx: 0, flip: false, order: [], score: 0, tried: 0, q: null, picked: '', pairs: null, selL: -1, selR: -1, fails: 0, msg: '', photos: {}, photoSig: '', show: 'photo', manage: false, busy: false, cls: '', have: {}, haveSig: '', typed: '', typedOk: false },
   cal: { tab: 'hist', mem: null, fresh: false, expr: '', hist: [], res: '', err: '', d1: '', d2: '', dn: 30, dres: '', unitCat: 'len', unitVal: '1', unitFrom: 'm' },
@@ -634,18 +634,20 @@ function tbYtHtml() {
 }
 
 /* ═══════════ ④ 수업 타이머 ═══════════ */
+function tbTmTotal() { var t = TB.tm; return Math.max(1, Math.round(Number(t.mins) || 0) * 60 + Math.round(Number(t.secs) || 0)); }   /* 맞춘 시간(초) — 분+초, 최소 1초 */
 function tbTmFmt(sec) { sec = Math.max(0, Math.ceil(sec)); var m = Math.floor(sec / 60), r = sec % 60; return (m < 10 ? '0' : '') + m + ':' + (r < 10 ? '0' : '') + r; }
 function tbTmLeft() { var t = TB.tm; return t.run ? Math.max(0, (t.end - Date.now()) / 1000) : t.left; }
 function tbTmHtml() {
   var t = TB.tm;
   var h = '<div class="tbrow">' + tbPal('tm.mins', t.mins, [[1, '1분'], [3, '3분'], [5, '5분'], [10, '10분'], [15, '15분'], [20, '20분'], [30, '30분'], [45, '45분'], [50, '50분']]) + '</div>'
-    + '<div class="tbrow"><label class="tbl">직접(분)</label>' + tbStep('tm.mins', t.mins, 1, 180) + '</div>'
+    + '<div class="tbrow"><label class="tbl">직접</label>' + tbStep('tm.mins', t.mins, 0, 180) + '<span class="tbl">분</span>' + tbStep('tm.secs', t.secs, 0, 59) + '<span class="tbl">초</span></div>'
+    + '<div class="tbrow"><label class="tbl">초</label>' + tbPal('tm.secs', t.secs, [[0, '0초'], [10, '10초'], [15, '15초'], [20, '20초'], [30, '30초'], [45, '45초']]) + '</div>'
     + '<div class="tbrow"><label class="tbl">안내 글</label><input class="gpai wide" data-tbin="tm.msg" placeholder="예) 모둠 활동 정리하고 자리에 앉아요" value="' + esc(t.msg) + '"></div>'
     + '<div class="tbdigits' + (t.done ? ' done' : '') + '" id="tbDigits">' + (t.done ? '끝!' : tbTmFmt(tbTmLeft())) + '</div>'
     + (t.msg ? '<div class="tbtmmsg">' + esc(t.msg) + '</div>' : '')
     + '<div class="tbrow">'
     + (t.run ? '<button class="wkb tbgo" data-tbact="tmpause">⏸ 잠깐 멈춤</button>'
-      : '<button class="wkb go tbgo" data-tbact="tmstart">▶ ' + (t.left > 0 && t.left < t.mins * 60 && !t.done ? '이어서' : '시작') + '</button>')
+      : '<button class="wkb go tbgo" data-tbact="tmstart">▶ ' + (t.left > 0 && t.left < tbTmTotal() && !t.done ? '이어서' : '시작') + '</button>')
     + '<button class="wkb" data-tbact="tmreset">↺ 처음으로</button>'
     + '<button class="wkb" data-tbact="tmbig">⛶ 크게 보기</button></div>';
   return h;
@@ -1471,7 +1473,8 @@ function tbAct(act, v, b) {
       var pp = tbPath(b.dataset.tbp), cur = pp[0][pp[1]];
       pp[0][pp[1]] = (typeof cur === 'number') ? Number(v) : (typeof cur === 'boolean') ? (v === '1' || v === 'true') : v;
       if (b.dataset.tbp === 'pdf.mode') { TB.pdf.files = []; TB.pdf.msg = ''; TB.pdf.saved = []; TB.pdf.pages = ''; }
-      if (b.dataset.tbp === 'tm.mins') { TB.tm.left = TB.tm.mins * 60; TB.tm.run = false; TB.tm.done = false; clearInterval(tbTimerId); tbTimerId = null; }
+      if (b.dataset.tbp === 'tm.mins' && b.dataset.tbact === 'set') TB.tm.secs = 0;   /* 분 단추(1분·3분…)는 «딱 그 분» */
+      if (b.dataset.tbp === 'tm.mins' || b.dataset.tbp === 'tm.secs') { TB.tm.left = tbTmTotal(); TB.tm.run = false; TB.tm.done = false; clearInterval(tbTimerId); tbTimerId = null; }
       if (b.dataset.tbp === 'rnd.mode' || b.dataset.tbp === 'rnd.noRepeat') { TB.rnd.left = null; TB.rnd.picked = []; }
       if (b.dataset.tbp === 'rnd.auto' || b.dataset.tbp === 'rnd.mode') { clearTimeout(tbSpinId); TB.rnd.spin = false; TB.rnd.phase = ''; }
       if (b.dataset.tbp === 'nm.mode' || b.dataset.tbp === 'nm.show') { TB.nm.typed = ''; TB.nm.msg = ''; TB.nm.order = []; TB.nm.q = null; TB.nm.rd = null; TB.nm.pairs = null; TB.nm.picked = ''; TB.nm.selL = TB.nm.selR = -1; }
@@ -1484,7 +1487,7 @@ function tbAct(act, v, b) {
     case 'step': {
       var p2 = tbPath(b.dataset.tbp);
       p2[0][p2[1]] = Math.min(Number(b.dataset.tbmax), Math.max(Number(b.dataset.tbmin), Number(p2[0][p2[1]]) + Number(v)));
-      if (b.dataset.tbp === 'tm.mins') { TB.tm.left = TB.tm.mins * 60; TB.tm.run = false; TB.tm.done = false; clearInterval(tbTimerId); tbTimerId = null; }
+      if (b.dataset.tbp === 'tm.mins' || b.dataset.tbp === 'tm.secs') { TB.tm.left = tbTmTotal(); TB.tm.run = false; TB.tm.done = false; clearInterval(tbTimerId); tbTimerId = null; }
       break;
     }
     case 'roster': {
@@ -1608,13 +1611,13 @@ function tbAct(act, v, b) {
       return;
     /* 타이머 */
     case 'tmstart': {
-      s = TB.tm; if (s.done || s.left <= 0) { s.left = s.mins * 60; s.done = false; }
+      s = TB.tm; if (s.done || s.left <= 0) { s.left = tbTmTotal(); s.done = false; }
       s.run = true; s.end = Date.now() + s.left * 1000;
       clearInterval(tbTimerId); tbTimerId = setInterval(tbTick, 250);
       break;
     }
     case 'tmpause': s = TB.tm; s.left = tbTmLeft(); s.run = false; clearInterval(tbTimerId); tbTimerId = null; break;
-    case 'tmreset': s = TB.tm; s.run = false; s.done = false; s.left = s.mins * 60; clearInterval(tbTimerId); tbTimerId = null; break;
+    case 'tmreset': s = TB.tm; s.run = false; s.done = false; s.left = tbTmTotal(); clearInterval(tbTimerId); tbTimerId = null; break;
     case 'tmbig': TB.tm.big = !TB.tm.big; break;
     /* 이름외우기 */
     case 'nmflip': TB.nm.flip = !TB.nm.flip; break;
