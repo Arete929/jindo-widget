@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 2.1.0 — 도구상자 스쿨보드 모양 보강(.tbhero·.tbpdf·.tbstage·.tbcalw·.tbgt) · 바로가기 탭의 도구 카드(.tbinline) · 이름외우기 사진(.tbph·.tbpgrid) · 도구상자(.tb*) · 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
+/* 파일명: ui.css | @version 2.1.1 — 도구상자 품의 도우미(.pmgt·.tbpre) / 도구상자 스쿨보드 모양 보강(.tbhero·.tbpdf·.tbstage·.tbcalw·.tbgt) · 바로가기 탭의 도구 카드(.tbinline) · 이름외우기 사진(.tbph·.tbpgrid) · 도구상자(.tb*) · 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -2827,6 +2827,9 @@
   /* 등급표 */
   .tbgt { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 8px; }
   .tbgth, .tbgr { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.6fr; align-items: center; padding: 8px 14px; font-size: calc(13px * var(--wf)); }
+  .pmgt .tbgth, .pmgt .tbgr { grid-template-columns: 1.6fr 1fr .6fr .9fr .9fr 34px; gap: 6px; padding: 6px 10px; }
+  .pmgt .tbgr input { min-width: 0; width: 100%; box-sizing: border-box; }
+  .tbpre { margin: 6px 0 0; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: calc(12.5px * var(--wf)); line-height: 1.6; max-height: 260px; overflow: auto; }
   .tbgth { font-size: calc(11.5px * var(--wf)); font-weight: 800; color: var(--dim); background: var(--bg); border-radius: 10px; }
   .tbgr { border-radius: 12px; border: 1px solid var(--line); font-weight: 700; }
   .tbgb { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 8px; color: #fff; font-style: normal; font-weight: 900; margin-right: 6px; }
