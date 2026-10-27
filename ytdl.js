@@ -1,10 +1,10 @@
 // 파일명: ytdl.js | @version 1.0.0
-// 영상 내려받기 — 도구상자의 «영상 내려받기» 뒤쪽(메인 프로세스). 지비스·혜원이지 공통.
+// Youtube 내려받기 — 도구상자의 «Youtube 내려받기» 뒤쪽(메인 프로세스). 지비스·혜원이지 공통.
 //
 // ★ 받아 주는 일은 오픈소스 «yt-dlp», 영상과 소리를 합치는 일은 «ffmpeg» 가 한다. 둘 다 설치 파일에 담겨 온다
 //   (vendor/ → 설치된 resources/vendor/). 받을 때 따로 준비할 것이 없다.
 // ★ 로그인이 필요한 영상(나이 제한·비공개·멤버십)은 지원하지 않는다 — 쿠키를 건드리지 않는다.
-// ★ 화질은 1080p 까지(H.264 MP4). 소리만은 M4A.
+// ★ 화질은 1080p 까지(H.264 MP4). 소리만은 MP3(ffmpeg libmp3lame, 최고 음질).
 // ★ 주소는 유튜브(youtube.com · youtu.be)만 받는다. 영상 ID 11자만 뽑아 «https://www.youtube.com/watch?v=ID» 로
 //   다시 만들어 쓰므로 재생목록·시간·그 밖의 꼬리표는 모두 떨어진다. 프로그램은 셸 없이 인자 배열로만 부른다.
 // ★ 학교 망의 보안 장비(SSL 검사)가 유튜브 통신을 가로채면 yt-dlp 의 인증서 확인이 실패한다(이 PC 에서 실측: ePrism SSL).
@@ -92,7 +92,7 @@ async function runSmart(args, opt) {
   if (r.code !== 0 && !trustSkip && CERT_RE.test(r.err) && !(job && job.canceled)) {
     if (await osTrustsYoutube()) {
       trustSkip = true;
-      H.log('영상 내려받기 — 학교 망 보안 장비 인증서를 Windows 가 믿어서, 이번 실행에서는 인증서 확인을 건너뜁니다');
+      H.log('Youtube 내려받기 — 학교 망 보안 장비 인증서를 Windows 가 믿어서, 이번 실행에서는 인증서 확인을 건너뜁니다');
       r = await run(['--no-check-certificates'].concat(args), opt);
     } else {
       r.err += '\n(이 PC 가 믿지 않는 인증서입니다 — 연결을 막았습니다)';
@@ -143,7 +143,7 @@ const FORMATS = {
   '1080': 'bv*[height<=1080][vcodec^=avc1]+ba[ext=m4a]/bv*[height<=1080]+ba/b[height<=1080]',
   '720': 'bv*[height<=720][vcodec^=avc1]+ba[ext=m4a]/bv*[height<=720]+ba/b[height<=720]',
   '480': 'bv*[height<=480][vcodec^=avc1]+ba[ext=m4a]/bv*[height<=480]+ba/b[height<=480]',
-  audio: 'ba[ext=m4a]/ba'
+  audio: 'ba/b'          // 소리만은 가장 좋은 소리 → ffmpeg 로 MP3(최고 음질 VBR)
 };
 function killTree(child) {
   if (!child || !child.pid) return;
@@ -169,7 +169,7 @@ async function get(e, o) {
   push();
   const args = baseArgs().concat([
     '-f', FORMATS[q], '--merge-output-format', 'mp4/mkv',
-    ...(q === 'audio' ? [] : []),
+    ...(q === 'audio' ? ['-x', '--audio-format', 'mp3', '--audio-quality', '0'] : []),
     '--ffmpeg-location', ffDir(), '--windows-filenames', '--trim-filenames', '140', '--no-mtime',
     '--concurrent-fragments', '4', '--no-overwrites',
     '-P', 'home:' + dir, '-P', 'temp:' + tmp, '-o', '%(title).100B.%(ext)s',
@@ -222,7 +222,7 @@ async function get(e, o) {
   const hist = ((H.load() || {}).ytHist || []).filter((x) => x && x.file !== finalFile);
   hist.unshift(rec);
   H.save({ ytHist: hist.slice(0, 20) });
-  H.log('영상 내려받기 — ' + path.basename(finalFile) + ' (' + q + ', ' + Math.round(size / 1048576) + 'MB)');
+  H.log('Youtube 내려받기 — ' + path.basename(finalFile) + ' (' + q + ', ' + Math.round(size / 1048576) + 'MB)');
   return { ok: true, file: finalFile, name: path.basename(finalFile), size, at, hist: hist.slice(0, 20) };
 }
 function stampNow() {
@@ -247,7 +247,7 @@ async function updateEngine() {
     fs.writeFileSync(part, buf);
     fs.renameSync(part, dest);
     const ver = await engineVersion();
-    H.log('영상 내려받기 엔진 새로 받음 — ' + ver);
+    H.log('Youtube 내려받기 엔진 새로 받음 — ' + ver);
     return { ok: true, version: ver, at: stampNow() };
   } catch (e) { return { ok: false, msg: '엔진을 받지 못했습니다 — ' + String((e && e.message) || e).slice(0, 120) }; }
 }

@@ -53,7 +53,7 @@ var TB_TOOLS = [
   { k: 'pdf', ic: 'pdf', t: 'PDF 편집기', badge: 'NEW', d: 'PDF 합치기·나누기·쪽 뽑기·쪽 지우기·돌리기, 그림을 PDF 로 만들기를 내 컴퓨터에서 처리합니다.' },
   { k: 'im', ic: 'm_imgdown', t: '사진 줄이기', badge: 'NEW', d: '사진·폴더를 올리면 화질을 지키며 용량을 줄여 새 폴더에 저장합니다. 나이스 고입 사진(200KB 이하)도 한 번에.' },
   { k: 'rnd', ic: 'dice', t: '랜덤 뽑기·모둠 편성', d: '학급 명단이나 직접 적은 이름으로 발표자를 뽑고 모둠을 자동으로 편성합니다.' },
-  { k: 'yt', ic: 'm_video', t: '영상 내려받기', badge: 'NEW', d: '유튜브 영상 주소를 붙여 넣으면 영상(최대 1080p MP4)이나 소리만(M4A)으로 내 컴퓨터에 저장합니다.' },
+  { k: 'yt', ic: 'm_video', t: 'Youtube 내려받기', badge: 'NEW', d: '유튜브 영상 주소를 붙여 넣으면 영상(최대 1080p MP4)이나 소리만(MP3)으로 내 컴퓨터에 저장합니다.' },
   { k: 'qr', ic: 'qr', t: 'QR 생성기', d: '주소나 글을 QR 코드로 만들어 그림으로 저장하거나 복사합니다.' },
   { k: 'tm', ic: 'alarm', t: '수업 타이머', badge: 'NEW', d: '안내 글과 함께 큰 화면 타이머를 띄우고 끝나면 소리로 알려 줍니다.' },
   { k: 'nm', ic: 'game', t: '학생이름외우기', d: '번호를 보고 이름 떠올리기: 카드 연습 · 퀴즈 · 짝맞추기로 새 학기 이름을 빠르게 외웁니다.' },
@@ -85,6 +85,20 @@ function tbZoomBtns(k) {
     + '<button class="wkb" data-tbact="tbz" data-tbv="0" title="원래 크기로">' + Math.round(z * 100) + '%</button>'
     + '<button class="wkb" data-tbact="tbz" data-tbv="1" title="이 도구를 크게">A+</button></span>';
 }
+/* ── 도구마다 같은 모양의 머리(아이콘 + 영문 소제목 + 제목 + 설명) — 랜덤뽑기·계산기·등급 예측처럼. 자기 머리가 있는 도구는 건너뛴다 ── */
+var TB_HERO = {
+  pdf: ['PDF TOOLKIT', '쪽을 합치고, 나누고, 돌려서 PDF 를 바로 고쳐요', '파일을 끌어다 놓고 원하는 작업을 고르세요. 파일은 내 컴퓨터 안에서만 처리합니다.'],
+  im: ['PHOTO SHRINK', '사진 용량을 화질 걱정 없이 줄여요', '사진이나 폴더를 올리면 «줄인사진_…» 폴더를 새로 만들어 저장합니다. 원본은 그대로 둡니다.'],
+  qr: ['QR GENERATOR', '주소나 글을 QR 코드로 바로 만들어요', '제목을 넣으면 제목과 QR 이 한 장의 그림으로 보이고 저장됩니다.'],
+  yt: ['YOUTUBE DOWNLOADER', '유튜브 영상·소리를 내 컴퓨터에 저장해요', '주소를 붙여 넣고 영상(1080p까지 MP4) 또는 소리만(MP3)을 골라 받으세요.'],
+  tm: ['CLASS TIMER', '수업 시간을 분·초까지 정확히 재요', '시간을 맞추고 시작하면 남은 시간을 크게 보여 줍니다.'],
+  pm: ['PURCHASE HELPER', '품의 서류 한 벌을 한 번에 만들어요', '구입처별 품목으로 견적서 PDF·품목내역 엑셀·전자기안문을 만듭니다.']
+};
+function tbHeroHtml(tool) {
+  var o = TB_HERO[tool.k]; if (!o) return '';
+  return '<div class="tbhero"><span class="tbhi">' + tbIcon(tool.ic, 26) + '</span><div><small class="tbey">' + o[0] + '</small><b>' + o[1] + '</b><span>' + o[2] + '</span></div>'
+    + (tool.badge ? '<em class="tbbadge2">' + tool.badge + '</em>' : '') + '</div>';
+}
 function viewToolbox() {
   var tool = tbTools().filter(function (x) { return x.k === TB.tool; })[0];
   var h = '<div class="top2"><div class="wknav">'
@@ -101,7 +115,7 @@ function viewToolbox() {
     return h + tbBigTimer();
   }
   var body = { pdf: tbPdfHtml, im: tbImHtml, rnd: tbRndHtml, yt: tbYtHtml, qr: tbQrHtml, tm: tbTmHtml, nm: tbNmHtml, cal: tbCalHtml, gr: tbGrHtml, pm: tbPmHtml }[tool.k];
-  return h + '<div class="tbbody" style="zoom:' + tbZoom(tool.k) + '">' + body() + '</div>' + tbBigTimer();
+  return h + '<div class="tbbody" style="zoom:' + tbZoom(tool.k) + '">' + tbHeroHtml(tool) + body() + '</div>' + tbBigTimer();
 }
 
 /* ── 작은 부품 ── */
@@ -243,8 +257,7 @@ function tbImKB(n) { return (n >= 1024 * 1024 ? (n / 1048576).toFixed(1) + ' MB'
 function tbImHtml() {
   var s = TB.im, lim = tbImLimit();
   var tot = s.files.reduce(function (a, f) { return a + (f.size || 0); }, 0);
-  var h = '<div class="tbph2"><span class="tbphi">' + tbIcon('m_imgdown', 22) + '</span><div><b>사진 용량 줄이기</b>'
-    + '<small>사진이나 폴더를 올리면 그 폴더 안에 «줄인사진_…» 폴더를 새로 만들어 저장합니다. 원본은 그대로 둡니다.</small></div></div>';
+  var h = '';
   /* 1) 올리기 */
   h += '<div class="tbc2 tbimdrop" id="tbImDrop"><span class="tbc2i">' + tbIcon('m_image', 22) + '</span><div class="tbc2t"><b>'
     + (s.files.length ? '사진 ' + s.files.length.toLocaleString() + '장 · 합계 ' + tbImKB(tot) : '여기로 사진이나 폴더를 끌어다 놓으세요')
@@ -280,7 +293,7 @@ function tbImHtml() {
       + (s.at ? '<div class="rhint" style="margin-top:6px">✅ 저장됨 · ' + esc(s.at) + '</div>' : '');
   }
   /* ★ .tbpdf 는 «왼쪽 220px 메뉴 + 본문» 2단 틀이라, 메뉴 없이 본문만 넣으면 본문이 220px 칸에 갇힌다(v2.10.24 실수) — 한 단짜리 틀을 쓴다 */
-  return '<div class="tbimwrap"><section class="tbpanel">' + h + '</section></div><div class="tbfoot">사진은 내 컴퓨터 안에서만 처리하고 어디로도 보내지 않습니다.</div>';
+  return '<div class="tbimwrap">' + h + '</div><div class="tbfoot">사진은 내 컴퓨터 안에서만 처리하고 어디로도 보내지 않습니다.</div>';
 }
 
 function tbImHelp() {
@@ -544,24 +557,26 @@ function tbQrCompose(rawUrl, title, size) {
 }
 function tbQrHtml() {
   var s = TB.qr;
-  var h = '<div class="tbrow" style="margin-top:0"><label class="tbl">제목</label><input class="gpai wide" data-tbin="qr.title" placeholder="예) 학급 알림장 · 과제 제출 (QR 위에 글자로 들어갑니다, 비워도 됩니다)" value="' + esc(s.title) + '"></div>'
-    + '<textarea class="gpai wide tbta" rows="3" data-tbin="qr.text" placeholder="QR 로 만들 주소나 글 (예: https://…)">' + esc(s.text) + '</textarea>'
-    + '<div class="tbrow"><label class="tbl">크기</label>' + tbPal('qr.size', s.size, [[256, '작게'], [512, '보통'], [1024, '크게']])
+  var h = '<div class="tbc2"><div class="tbc2h"><b>내용</b><small>제목은 QR 위에 글자로 들어갑니다(비워도 됩니다)</small></div>'
+    + '<div class="tbrow" style="margin-top:0"><label class="tbl">제목</label><input class="gpai wide" data-tbin="qr.title" placeholder="예) 학급 알림장 · 과제 제출" value="' + esc(s.title) + '"></div>'
+    + '<textarea class="gpai wide tbta" rows="3" data-tbin="qr.text" placeholder="QR 로 만들 주소나 글 (예: https://…)">' + esc(s.text) + '</textarea></div>'
+    + '<div class="tbc2"><div class="tbc2h"><b>모양</b></div>'
+    + '<div class="tbrow" style="margin-top:0"><label class="tbl">크기</label>' + tbPal('qr.size', s.size, [[256, '작게'], [512, '보통'], [1024, '크게']])
     + '<label class="tbl">오류 복원</label>' + tbPal('qr.level', s.level, [['L', '낮음 7%'], ['M', '보통 15%'], ['Q', '높음 25%'], ['H', '최고 30%']]) + '</div>'
     + '<div class="tbrow"><label class="tbl">색</label>' + tbPal('qr.dark', s.dark, [['#000000', '검정'], ['#1e3a8a', '남색'], ['#6d28d9', '보라'], ['#047857', '초록'], ['#b91c1c', '빨강']]) + '</div>'
-    + '<div class="tbrow"><button class="wkb go tbgo" data-tbact="qrmake"' + (s.busy ? ' disabled' : '') + '>' + (s.busy ? '만드는 중…' : 'QR 만들기') + '</button></div>';
+    + '<div class="tbrow"><button class="wkb go tbgo" data-tbact="qrmake"' + (s.busy ? ' disabled' : '') + '>' + (s.busy ? '만드는 중…' : 'QR 만들기') + '</button></div></div>';
   if (s.dataUrl) {
-    h += '<div class="tbqr"><img src="' + s.dataUrl + '" alt="QR"></div>'
-      + '<div class="tbrow"><button class="wkb go" data-tbact="qrsave">💾 그림으로 저장</button><button class="wkb" data-tbact="qrcopy">⧉ 복사</button></div>';
+    h += '<div class="tbc2"><div class="tbc2h"><b>만든 그림</b></div><div class="tbqr"><img src="' + s.dataUrl + '" alt="QR"></div>'
+      + '<div class="tbrow"><button class="wkb go" data-tbact="qrsave">💾 그림으로 저장</button><button class="wkb" data-tbact="qrcopy">⧉ 복사</button></div></div>';
   }
   return h + tbMsg(s.msg, s.ok);
 }
 
-/* ═══════════ 영상 내려받기 ═══════════
+/* ═══════════ Youtube 내려받기 ═══════════
    ★ 받는 일은 메인 프로세스(ytdl.js)가 한다 — 여기서는 주소 → 확인 → 화질 → 받기 → 저장됨 을 보여 줄 뿐이다.
    ★ 진행 게이지는 «값만 고쳐» 그린다(전체를 다시 그리지 않아 입력칸·단추가 흔들리지 않는다).
    ★ 로그인이 필요한 영상은 받지 않는다. 내가 만들었거나 이용을 허락받은 영상만 받도록 안내를 늘 보인다. */
-var TB_YT_Q = [['1080', '1080p'], ['720', '720p'], ['480', '480p'], ['audio', '소리만(M4A)']];
+var TB_YT_Q = [['1080', '1080p'], ['720', '720p'], ['480', '480p'], ['audio', '소리만(MP3)']];
 function tbYtFmtDur(sec) { sec = Math.max(0, Math.round(sec || 0)); var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), r = sec % 60; return (h ? h + ':' + (m < 10 ? '0' : '') : '') + m + ':' + (r < 10 ? '0' : '') + r; }
 function tbYtFmtSize(n) { return n >= 1073741824 ? (n / 1073741824).toFixed(1) + 'GB' : Math.max(1, Math.round(n / 1048576)) + 'MB'; }
 function tbYtLoad(force) {
@@ -628,7 +643,7 @@ function tbYtHtml() {
       + '<div class="tbytmeta"><b>' + esc(i.title) + '</b><span>' + esc(i.channel) + (i.duration ? ' · ' + tbYtFmtDur(i.duration) : '') + '</span>'
       + (i.license ? '<span class="tbytlic">' + esc(i.license) + '</span>' : '') + '</div></div></div>';
     h += '<div class="tbyt"><div class="tbytlab">무엇으로 받을까요</div><div class="tbrow">' + tbPal('yt.q', y.q, TB_YT_Q) + '</div>'
-      + '<div class="rhint">' + (y.q === 'audio' ? '소리만 M4A 로 저장합니다.' : 'H.264 MP4 로 저장합니다 — 거의 모든 PC·전자칠판에서 바로 재생됩니다.') + '</div>';
+      + '<div class="rhint">' + (y.q === 'audio' ? '소리만 MP3 로 저장합니다.' : 'H.264 MP4 로 저장합니다 — 거의 모든 PC·전자칠판에서 바로 재생됩니다.') + '</div>';
     if (y.phase === 'run') {
       h += '<div class="tbytg" id="tbYtG" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + y.pct + '"><i id="tbYtBar" style="width:' + y.pct + '%"></i></div>'
         + '<div class="tbytgl"><span id="tbYtL">' + esc(y.stage) + ' ' + (y.pct ? y.pct + '%' : '') + '</span><span id="tbYtS">' + esc((y.speed || '') + (y.eta ? ' · 남은 ' + y.eta : '')) + '</span></div>'
@@ -650,7 +665,7 @@ function tbYtHtml() {
     + '<button class="wkb" data-tbact="ytdir"' + (busy ? ' disabled' : '') + '>바꾸기</button><button class="wkb" data-tbact="ytopendir">열기</button></div></div>';
   if ((y.hist || []).length) {
     h += '<div class="tbyt"><div class="tbytlab">내려받은 기록</div>' + y.hist.slice(0, 8).map(function (x) {
-      return '<div class="tbythist"><span>' + esc(String(x.title || '').slice(0, 60)) + '<small>' + esc(String(x.at || '').slice(0, 16)) + ' · ' + esc(x.q === 'audio' ? 'M4A' : x.q + 'p') + '</small></span>'
+      return '<div class="tbythist"><span>' + esc(String(x.title || '').slice(0, 60)) + '<small>' + esc(String(x.at || '').slice(0, 16)) + ' · ' + esc(x.q === 'audio' ? 'MP3' : x.q + 'p') + '</small></span>'
         + '<button class="wkb" data-tbact="ytshow" data-tbv="' + esc(x.file) + '">폴더에서 보기</button></div>';
     }).join('') + '</div>';
   }
@@ -667,17 +682,18 @@ function tbTmFmt(sec) { sec = Math.max(0, Math.ceil(sec)); var m = Math.floor(se
 function tbTmLeft() { var t = TB.tm; return t.run ? Math.max(0, (t.end - Date.now()) / 1000) : t.left; }
 function tbTmHtml() {
   var t = TB.tm;
-  var h = '<div class="tbrow">' + tbPal('tm.mins', t.mins, [[1, '1분'], [3, '3분'], [5, '5분'], [10, '10분'], [15, '15분'], [20, '20분'], [30, '30분'], [45, '45분'], [50, '50분']]) + '</div>'
+  var h = '<div class="tbc2"><div class="tbc2h"><b>시간 맞추기</b><small>분 단추를 누르거나, 분·초를 직접 올리고 내리세요</small></div>'
+    + '<div class="tbrow" style="margin-top:0">' + tbPal('tm.mins', t.mins, [[1, '1분'], [3, '3분'], [5, '5분'], [10, '10분'], [15, '15분'], [20, '20분'], [30, '30분'], [45, '45분'], [50, '50분']]) + '</div>'
     + '<div class="tbrow"><label class="tbl">직접</label>' + tbStep('tm.mins', t.mins, 0, 180) + '<span class="tbl">분</span>' + tbStep('tm.secs', t.secs, 0, 59) + '<span class="tbl">초</span></div>'
     + '<div class="tbrow"><label class="tbl">초</label>' + tbPal('tm.secs', t.secs, [[0, '0초'], [10, '10초'], [15, '15초'], [20, '20초'], [30, '30초'], [45, '45초']]) + '</div>'
-    + '<div class="tbrow"><label class="tbl">안내 글</label><input class="gpai wide" data-tbin="tm.msg" placeholder="예) 모둠 활동 정리하고 자리에 앉아요" value="' + esc(t.msg) + '"></div>'
-    + '<div class="tbdigits' + (t.done ? ' done' : '') + '" id="tbDigits">' + (t.done ? '끝!' : tbTmFmt(tbTmLeft())) + '</div>'
+    + '<div class="tbrow"><label class="tbl">안내 글</label><input class="gpai wide" data-tbin="tm.msg" placeholder="예) 모둠 활동 정리하고 자리에 앉아요" value="' + esc(t.msg) + '"></div></div>'
+    + '<div class="tbc2"><div class="tbdigits' + (t.done ? ' done' : '') + '" id="tbDigits">' + (t.done ? '끝!' : tbTmFmt(tbTmLeft())) + '</div>'
     + (t.msg ? '<div class="tbtmmsg">' + esc(t.msg) + '</div>' : '')
     + '<div class="tbrow">'
     + (t.run ? '<button class="wkb tbgo" data-tbact="tmpause">⏸ 잠깐 멈춤</button>'
       : '<button class="wkb go tbgo" data-tbact="tmstart">▶ ' + (t.left > 0 && t.left < tbTmTotal() && !t.done ? '이어서' : '시작') + '</button>')
     + '<button class="wkb" data-tbact="tmreset">↺ 처음으로</button>'
-    + '<button class="wkb" data-tbact="tmbig">⛶ 크게 보기</button></div>';
+    + '<button class="wkb" data-tbact="tmbig">⛶ 크게 보기</button></div></div>';
   return h;
 }
 function tbBigTimer() {
@@ -1259,9 +1275,15 @@ function tbGrTable(N, scheme, round, rank) {
     + '<div class="tbgt"><div class="tbgth"><span>등급</span><span>비율</span><span>인원</span><span>누적 인원수</span></div>'
     + rows.map(function (r) {
         var from = acc + 1, isMe = !!(me && me.grade === r.grade); acc += r.count;
-        return '<div class="tbgr g' + (scheme === '5' ? r.grade * 2 - 1 : r.grade) + (isMe ? ' me' : '') + '"><span><i class="tbgb">' + r.grade + '</i> 등급' + (isMe ? ' <em class="tbmetag">◀ 내 위치</em>' : '') + '</span><span>' + r.pct + '%</span><span><b>' + r.count + '명</b></span>'
-          + '<span class="tbgc">' + (r.count ? from + '등 ~ ' + acc + '등' : '—') + '</span></div>'
-          + (isMe ? '<div class="tbmeline">' + rank + '등은 ' + r.grade + '등급 ' + r.count + '명 중 <b>' + (rank - from + 1) + '번째</b>' + (r.limit - rank ? ' · 위 등급 경계까지 ' + (rank - from) + '명, 아래 등급 경계까지 ' + (r.limit - rank) + '명' : ' · 이 등급의 마지막 자리(바로 아래 등수부터 ' + (r.grade + 1) + '등급)') + '</div>' : '');
+        /* ★ 내 위치 = 이 등급 타일을 «가로로 가르는 선». 선의 높이는 등급 안에서 몇 번째인지(맨 위 = 이 등급 1등 쪽, 맨 아래 = 마지막 등수 쪽),
+           선 끝에 «몇 등 · 몇 등급 몇 번째 · 위·아래 경계까지 몇 명» 설명을 붙인다 */
+        var line = '';
+        if (isMe) {
+          var f = Math.min(1, Math.max(0, (rank - from + 0.5) / r.count)), up = rank - from, down = r.limit - rank;
+          line = '<div class="tbline" style="top:calc(6px + (100% - 12px) * ' + (Math.round(f * 1000) / 1000) + ')"><span class="tbltag"><b>' + rank + '등 → ' + r.grade + '등급</b><br>' + r.count + '명 중 ' + (rank - from + 1) + '번째 · 위 경계까지 ' + up + '명 · 아래 경계까지 ' + down + '명</span></div>';
+        }
+        return '<div class="tbgr g' + (scheme === '5' ? r.grade * 2 - 1 : r.grade) + (isMe ? ' me' : '') + '"><span><i class="tbgb">' + r.grade + '</i> 등급</span><span>' + r.pct + '%</span><span><b>' + r.count + '명</b></span>'
+          + '<span class="tbgc">' + (r.count ? from + '등 ~ ' + acc + '등' : '—') + '</span>' + line + '</div>';
       }).join('') + '</div></div>';
 }
 function tbGrHtml() {
@@ -1277,17 +1299,19 @@ function tbGrHtml() {
   var h = '<div class="tbhero"><span class="tbhi">' + tbIcon('award', 26) + '</span><div><small class="tbey">GRADE FORECAST</small>'
     + '<b>등급별 예상 인원과 석차를 한눈에</b><span>총 인원을 넣으면 등급별 인원·누적 석차를, 내 등수까지 넣으면 지금 몇 등급에 있는지 표시합니다.</span></div><em class="tbbadge2">5·9등급제</em></div>'
     + '<div class="tbc2"><div class="tbc2h"><span class="tbc2i sm">👥</span><div class="tbc2t"><b>예측 조건</b><small>학년 또는 과목의 전체 응시 인원과, 확인할 등수를 입력하세요. 등급제는 둘 다 켤 수 있습니다.</small></div></div>'
-    + '<div class="tbflds"><label class="tbfld"><span>총 인원</span><input type="number" min="1" class="gpai" data-tbin="gr.total" data-tbenter="1" value="' + esc(s.total) + '"></label>'
-    + '<label class="tbfld"><span>내 등수 (선택)</span><input type="number" min="1" class="gpai" data-tbin="gr.rank" data-tbenter="1" placeholder="예) 37" value="' + esc(s.rank) + '"></label>'
-    + '<div class="tbfld"><span>등급제 (중복 선택)</span><span class="tbpal">'
-    + ['5', '9'].map(function (k) { return '<button class="wkb' + (s['s' + k] ? ' go' : '') + '" data-tbact="grtog" data-tbv="' + k + '">' + k + '등급제</button>'; }).join('') + '</span></div></div>'
+    + '<div class="grcond"><div class="grleft">'
+    + '<div class="tbflds"><label class="tbfld"><span>총 인원</span><input type="number" min="1" class="gpai tbinbig" data-tbin="gr.total" data-tbenter="1" value="' + esc(s.total) + '"></label>'
+    + '<label class="tbfld"><span>내 등수 (선택)</span><input type="number" min="1" class="gpai tbinbig" data-tbin="gr.rank" data-tbenter="1" placeholder="예) 37" value="' + esc(s.rank) + '"></label></div>'
+    + '<div class="tbrow"><label class="tbl">등급제 (중복 선택)</label><span class="tbpal">'
+    + ['5', '9'].map(function (k) { return '<button class="wkb' + (s['s' + k] ? ' go' : '') + '" data-tbact="grtog" data-tbv="' + k + '">' + k + '등급제</button>'; }).join('') + '</span></div>'
     + '<div class="tbrow"><label class="tbl">경계 처리</label>' + tbPal('gr.round', s.round, [['round', '반올림'], ['ceil', '올림'], ['floor', '내림']])
     + '<button class="wkb go" data-tbact="grcalc">계산하기</button></div>'
-    + (rankMsg ? '<div class="atwarn">' + esc(rankMsg) + '</div>' : '') + '</div>';
-  if (rank) {
-    var top = (rank / N * 100), parts = on.map(function (k) { var g = tbGradeOf(tbGradeCalc(N, k, s.round), rank); return k + '등급제 <b>' + (g ? g.grade + '등급' : '—') + '</b>'; });
-    h += '<div class="tbc2 tbmebox"><b>' + rank + '등 / ' + N + '명</b> <span>상위 ' + (Math.round(top * 10) / 10) + '%</span> → ' + parts.join(' · ') + '</div>';
-  }
+    + (rankMsg ? '<div class="atwarn">' + esc(rankMsg) + '</div>' : '') + '</div>'
+    + '<div class="grres">' + (rank
+        ? '<div class="grrk"><b>' + rank + '등</b><span>/ ' + N + '명 · 상위 ' + (Math.round(rank / N * 1000) / 10) + '%</span></div>'
+          + on.map(function (k) { var g = tbGradeOf(tbGradeCalc(N, k, s.round), rank); return '<div class="grpill"><span>' + k + '등급제</span><b>' + (g ? g.grade + '등급' : '—') + '</b></div>'; }).join('')
+        : '<div class="grempty">내 등수를 넣고 «계산하기»(또는 Enter)를 누르면<br>지금 몇 등급인지 여기에 크게 보입니다.</div>')
+    + '</div></div></div>';
   h += on.map(function (k) { return tbGrTable(N, k, s.round, rank); }).join('');
   return h + '<div class="tbhint">동점자는 같은 등급으로 보고, 경계에 걸린 동점자는 위 등급에 넣는 학교가 많습니다 — 학교 규정을 따르세요.</div>';
 }
@@ -1617,7 +1641,7 @@ function tbAct(act, v, b) {
       }).catch(function (e) { s.busy = false; s.ok = false; s.msg = String((e && e.message) || e); render(); });
       return;
     }
-    /* 영상 내려받기 */
+    /* Youtube 내려받기 */
     case 'ytcheck': tbYtCheck(); return;
     case 'ytget': tbYtGet(); return;
     case 'ytcancel': widgetAPI.ytCancel(); TB.yt.stage = '취소하는 중…'; tbYtPatch(); return;
