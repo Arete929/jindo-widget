@@ -2100,6 +2100,14 @@ function acSpyScroll() {
   if (!heads.length) return;
   var line = app.getBoundingClientRect().top + (parseFloat(
     getComputedStyle(app).getPropertyValue('--toph')) || 46) + 34;
+  /* ★ 고정된 줄(머리·월 단추·학년부 «구분 줄»)이 차지한 높이를 실제로 잰다 — 학년 스위치를 켜면 구분 줄만큼 머리가 길어지는데,
+     그 높이를 빼먹어서 «오늘»이 10월인데도 이전 달(9월) 단추가 켜져 보이던 문제(2026-10-28) */
+  var stickyBottom = 0;
+  app.querySelectorAll('.top, .top2, .gpbar').forEach(function (e) {
+    var ps = getComputedStyle(e).position;
+    if (ps === 'sticky' || ps === 'fixed') stickyBottom = Math.max(stickyBottom, e.getBoundingClientRect().bottom);
+  });
+  line = Math.max(line, stickyBottom + 34);
   var pick = heads[0].dataset.mon;
   heads.forEach(function (el) { if (el.getBoundingClientRect().top <= line) pick = el.dataset.mon; });
   if (pick === acSpy) return;
