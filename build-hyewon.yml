@@ -71,13 +71,7 @@ files:
   - assets/**
   - node_modules/**/*
 # ★ 실행 파일(jpegtran.exe)과 WASM 압축기는 asar 안에서는 못 쓴다 — 밖으로 풀어 둔다
-# ★ 영상 내려받기 — 실행 파일은 asar 밖(resources/vendor)에 둔다. node tools/fetch-vendor.js 로 vendor/ 를 먼저 채울 것
-extraResources:
-  - from: vendor
-    to: vendor
-    filter:
-      - yt-dlp.exe
-      - ffmpeg/**
+# ★ 혜원이지에는 «Youtube 내려받기» 를 넣지 않는다(2026-10-28) — yt-dlp·ffmpeg(약 170MB)를 빼서 설치 크기를 줄였다. 지비스(build-jinho.yml)에는 그대로 있다.
 asarUnpack:
   - assets/jpegtran/**
   - node_modules/@jsquash/**

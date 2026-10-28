@@ -63,7 +63,8 @@ var TB_TOOLS = [
 ];
 
 /* ★ 학생이름외우기는 지비스에서만 쓴다(학생 얼굴 사진이 들어간다) — 혜원이지에서는 카드 자체를 뺀다 */
-function tbTools() { return TB_TOOLS.filter(function (x) { return HAS_TT || x.k !== 'nm'; }); }
+/* ★ 학생이름외우기(nm)와 Youtube 내려받기(yt)는 지비스에서만 — 혜원이지에는 카드 자체를 뺀다(yt 는 설치 크기가 170MB 커져서) */
+function tbTools() { return TB_TOOLS.filter(function (x) { return HAS_TT || (x.k !== 'nm' && x.k !== 'yt'); }); }
 
 /* ── 바로가기 탭에 들어가는 «도구상자» 타일 ── */
 /* ★ v1.2.0 — 도구 여덟 개를 바로가기 탭에 «그대로» 펼친다(한 번 더 들어가지 않는다). 누르면 그 도구가 바로 열린다 */
