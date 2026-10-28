@@ -284,7 +284,7 @@ function test() {
 /* ── 켜고 끄기 ── */
 function start() {
   stop();
-  timer = setInterval(tick, 30 * 1000);
+  timer = setInterval(() => { try { tick(); } catch (e) { D.debugLog('수업 알림 tick: ' + (e && e.message)); } }, 30 * 1000);   // ★ 예외가 메인 프로세스까지 번지지 않게
   setTimeout(() => { try { tick(); } catch (e) { D.debugLog('수업 알림 tick: ' + e.message); } }, 5000);
 }
 function stop() { if (timer) clearInterval(timer); timer = null; }
