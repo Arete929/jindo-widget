@@ -1,8 +1,10 @@
-// 파일명: preload.js | @version 2.2.0 — alarmDone·alarmTest(수업 알림) / v2.1.0 — tbIm*(사진 줄이기) / v2.0.0 — attList(cls)·attMeGet·attMeSet (혜원이지 출결)
+// 파일명: preload.js | @version 2.3.0 — onSys(내 PC 숫자만) / v2.2.0 — alarmDone·alarmTest(수업 알림) / v2.1.0 — tbIm*(사진 줄이기) / v2.0.0 — attList(cls)·attMeGet·attMeSet (혜원이지 출결)
 const { contextBridge, ipcRenderer, webFrame, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
   onData: (cb) => ipcRenderer.on('jindo-data', (_e, payload) => cb(payload)),
+  /* «내 PC» 숫자만 3초마다 — 자료 전체를 다시 받아 화면을 통째로 그리지 않게 따로 받는다 */
+  onSys: (cb) => ipcRenderer.on('sys-data', (_e, s) => cb(s)),
   onTasks: (cb) => ipcRenderer.on('task-status', (_e, list) => cb(list)),
   refreshNow: () => ipcRenderer.send('refresh-now'),
   openLogin: () => ipcRenderer.send('open-login'),

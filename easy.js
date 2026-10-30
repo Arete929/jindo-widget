@@ -91,22 +91,26 @@ function sideUsage() {
       + body + '</div>';
   }).join('');
   // 내 PC — 같은 막대 모양으로
-  if (ms.length) {
-    h += '<div class="sut"><div class="sun">내 PC</div>'
-      + (USGSTYLE === 'ring'
-        ? '<div class="rings">' + ms.map(function (x) {
-            return '<div class="ring">' + ringSvg(x.pct)
-              + '<div class="lb">' + esc(x.lb) + '</div>'
-              + '<div class="rs">' + esc(x.sub) + '</div></div>';
-          }).join('') + '</div>'
-        : ms.map(function (x) {
-            return '<div class="sub"><span class="subt">' + esc(x.lb) + '<b>' + x.pct + '%</b></span>'
-              + '<span class="subk"><i style="width:' + x.pct + '%;background:' + usgFill(x.pct) + '"></i></span>'
-              + '<span class="subr">' + esc(x.sub) + '</span></div>';
-          }).join(''))
-      + '</div>';
-  }
+  if (ms.length) h += sysSideHtml();
   return h + (keys.length ? usgReloadBox(keys) : '') + '</div>';
+}
+/* 「내 PC」 타일 하나 — 3초마다 오는 숫자는 views.js patchSys 가 이 자리(data-sys)만 갈아 끼운다 */
+function sysSideHtml() {
+  var ms = sysMetrics();
+  if (!ms.length) return '';
+  return sysMark('<div class="sut"><div class="sun">내 PC</div>'
+    + (USGSTYLE === 'ring'
+      ? '<div class="rings">' + ms.map(function (x) {
+          return '<div class="ring">' + ringSvg(x.pct)
+            + '<div class="lb">' + esc(x.lb) + '</div>'
+            + '<div class="rs">' + esc(x.sub) + '</div></div>';
+        }).join('') + '</div>'
+      : ms.map(function (x) {
+          return '<div class="sub"><span class="subt">' + esc(x.lb) + '<b>' + x.pct + '%</b></span>'
+            + '<span class="subk"><i style="width:' + x.pct + '%;background:' + usgFill(x.pct) + '"></i></span>'
+            + '<span class="subr">' + esc(x.sub) + '</span></div>';
+        }).join(''))
+    + '</div>', 'side');
 }
 
 /* ── 다시 읽기 — 누르면 아래가 펼쳐지며 진행률이 보인다 ──────

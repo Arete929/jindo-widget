@@ -4263,6 +4263,24 @@ function sysMetrics() {
   }
   return out;
 }
+/* 「내 PC」 자리에 표시(data-sys)를 달아 둔다 — 3초마다 오는 숫자는 이 자리만 갈아 끼운다.
+   화면 전체를 다시 그리면 렌더러가 쉬지 않고 일하고, 가려진 창을 불러낼 때 멈칫했다(2026-10-31). */
+function sysMark(html, kind) {
+  return html ? html.replace(/^<(\w+)/, '<$1 data-sys="' + kind + '"') : '';
+}
+function sysTile() { return sysMark(usgTile('내 PC', sysMetrics(), ''), 'tile'); }
+/* 숫자만 바뀌었다 — 표시한 자리만 새로 그린다(타일 안에는 단추가 없어 다시 연결할 것이 없다) */
+function patchSys() {
+  if (!SYSSHOW || !SYS) return;
+  var els = document.querySelectorAll('[data-sys]');
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i], k = el.getAttribute('data-sys'), h = '';
+    if (k === 'tile') h = sysTile();
+    else if (k === 'box') h = sysBox();
+    else if (k === 'side' && typeof sysSideHtml === 'function') h = sysSideHtml();
+    if (h) el.outerHTML = h;
+  }
+}
 function sysBox() {
   var ms = sysMetrics();
   if (!ms.length) return '';
@@ -4280,7 +4298,7 @@ function sysBox() {
         + '<div class="rs">' + esc(x.sub) + '</div></div>';
     }).join('') + '</div>';
   }
-  return h + '</div>';
+  return sysMark(h + '</div>', 'box');
 }
 
 var TASKS = [];
@@ -4490,7 +4508,7 @@ function usgInline() {
     if (u.account) tip = (tip ? tip + ' · ' : '') + u.account;
     out.push(usgTile(u.label || k, usgMetrics(u), tip, u.account));
   });
-  out.push(usgTile('내 PC', sysMetrics(), ''));
+  out.push(sysTile());
   out = out.filter(Boolean);
   if (!out.length) return '';
   return '<span class="utiles">' + out.join('')
@@ -8140,6 +8158,15 @@ widgetAPI.onData(function (p) {
   var want = APPNAME + (IS_EASY ? ' — 넓게 보기' : '');
   if (APPNAME && document.title !== want) document.title = want;
   renderSoon();
+});
+
+/* 「내 PC」 숫자만 — 3초마다 온다. 표시한 자리만 갈아 끼우고 화면 전체는 다시 그리지 않는다.
+   (타일이 새로 생기거나 사라질 때는 자료 전체가 따로 오므로 거기서 그려진다) */
+if (widgetAPI.onSys) widgetAPI.onSys(function (s) {
+  if (!s) return;
+  SYSSHOW = !!s.show;
+  SYS = s.data || null;
+  patchSys();
 });
 
 // 남은 시간·지금 수업 표시는 30초마다 다시 그린다 (자료는 그대로, 시계만 흐른다).
