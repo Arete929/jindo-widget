@@ -1648,6 +1648,11 @@
   /* 수정요청사항·수정여부 — 시트처럼 신청사유 옆 칸 */
   /* 칸 너비 손잡이 — 머리글 오른쪽 끝. 시트처럼 끌어서 바꾼다 */
   .attt th { position: relative; }
+  /* ★ 출결 표 머리줄(연번·구분·…·증빙첨부)도 굴려 내려가면 머리 밑에 붙어 있게 한다.
+     .attw 가 overflow-x:auto 라 그대로는 sticky 가 안 먹는다 → 표가 옆으로 안 굴러도 되는 폭일 때만
+     (JS 가 fit 을 붙인다) overflow 를 풀어 머리줄을 고정한다(2026-10-31 지시). */
+  .attw.fit { overflow: visible; }
+  .attw.fit .attt thead th { position: sticky; top: calc(var(--toph, 0px) + var(--top2h, 0px)); z-index: 3; }
   .atrz { position: absolute; top: 0; right: 0; width: 6px; height: 100%; z-index: 2;
           cursor: col-resize; -webkit-app-region: no-drag; }
   .atrz:hover, body.atrzing .atrz { background: color-mix(in srgb, var(--accent) 45%, transparent); }

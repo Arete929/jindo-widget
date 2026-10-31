@@ -7739,8 +7739,18 @@ function render() {
   setTimeout(dashPlace, 0);
 
   wireViews(app);
+  attFit(app);
   report();
 }
+
+/* 출결 표가 옆으로 굴릴 필요 없는 폭이면 머리줄 고정(sticky)이 되게 .fit 을 붙인다 — ui.css .attw.fit */
+function attFit(app) {
+  [].forEach.call((app || document).querySelectorAll('.attw'), function (w) {
+    w.classList.remove('fit');
+    if (w.scrollWidth <= w.clientWidth + 1) w.classList.add('fit');
+  });
+}
+window.addEventListener('resize', function () { attFit(document.getElementById('app')); });
 
 /* 붙박이 줄 높이 지키기 — 머리·구분 줄의 크기가 바뀌면 --toph·--gpbh 를 다시 적는다.
    그릴 때마다 새로 걸고, 앞의 것은 뗀다. */
