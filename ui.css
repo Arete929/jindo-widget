@@ -1715,7 +1715,9 @@
   .cmh small { font-weight: 600; color: var(--dim); margin-left: 6px; letter-spacing: 0; }
   /* 교사 고르기 아코디언 — 접으면 한 줄, 펼치면 이름 단추들 */
   .cmacc { border: 1px solid var(--line); border-radius: 9px; margin: 6px 0 4px; overflow: hidden; }
-  .cmacch { display: flex; align-items: center; gap: 7px; width: 100%; border: 0; cursor: pointer; text-align: left;
+  .cmaccr { display: flex; align-items: center; gap: 6px; background: var(--card); padding-right: 6px; }
+  .cmmine { flex: none; }
+  .cmacch { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; width: 100%; border: 0; cursor: pointer; text-align: left;
             background: var(--card); color: var(--fg); font: inherit; font-size: calc(11px * var(--wf)); padding: 6px 9px; }
   .cmacct { color: var(--dim); font-weight: 700; }
   .cmaccn { font-weight: 800; color: var(--accent); }

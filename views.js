@@ -988,15 +988,17 @@ function cmTeachAcc(list, me, see) {
   var n = {};
   list.forEach(function (t) { n[t.name] = (n[t.name] || 0) + 1; });
   var nm = function (t) { return esc(t.name) + (n[t.name] > 1 ? '<sup>' + t.i + '</sup>' : ''); };
-  var h = '<div class="cmacc' + (cmAccOpen ? ' open' : '') + '">'
+  /* ★ 다른 교사를 보고 있으면 머리 줄에 «내 시간표» 단추 — 펼치지 않고도 한 번에 돌아온다(2026-11-02 지시) */
+  var h = '<div class="cmacc' + (cmAccOpen ? ' open' : '') + '"><div class="cmaccr">'
     + '<button class="cmacch" data-cta="1" title="' + (cmAccOpen ? '접기' : '다른 교사 시간표 보기') + '">'
     + '<span class="cmacct">교사</span><span class="cmaccn">' + nm(see) + (see.i === me.i ? ' (나)' : '') + '</span>'
-    + '<span class="cmacca">' + (cmAccOpen ? '접기 ▴' : '다른 교사 보기 ▾') + '</span></button>';
+    + '<span class="cmacca">' + (cmAccOpen ? '접기 ▴' : '다른 교사 보기 ▾') + '</span></button>'
+    + (see.i !== me.i ? '<button class="wkb now cmmine" data-ct="0" title="' + esc(me.name) + ' 선생님(나) 시간표로">★ 내 시간표</button>' : '')
+    + '</div>';
   if (cmAccOpen) {
     h += '<div class="cmaccb">' + list.map(function (t) {
       return '<button class="wkb' + (t.i === see.i ? ' now' : '') + (t.i === me.i ? ' cmme' : '') + '" data-ct="' + t.i + '">' + nm(t) + '</button>';
     }).join('');
-    if (see.i !== me.i) h += '<button class="cmhome" data-ct="0">★ 나(' + esc(me.name) + ')로 돌아가기</button>';
     h += '</div>';
   }
   return h + '</div>';
