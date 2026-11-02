@@ -726,6 +726,9 @@ var CM = null, cmBusy = false, cmErr = '', cmMode = '', cmGrade = 1, cmCls = 1, 
 // 교사표와 학급표를 나란히 볼 것인가(가로) 위아래로 볼 것인가(세로)
 var cmSide = 'col';   // col = 세로(교사표 밑에 학급표) · row = 가로(나란히)
 var cmWeek = 0;       // 0 = 이번 주 · 1 = 다음 주 · 2 = 함께(두 주를 위아래로)
+/* 다른 교사 시간표 — 아코디언을 펼쳐 이름을 누르면 그 교사 표를 본다(2026-11-02 지시).
+   cmTeach 0 = 나. 앱을 다시 열면 늘 내 표로 시작한다(기억하지 않는다). */
+var cmTeach = 0, cmAccOpen = false;
 
 function loadComci() {
   if (cmBusy) return;
@@ -917,11 +920,13 @@ function viewComci() {
     var me = d.byTeacher.filter(function (t) { return t.i === cfg.teacherIdx; })[0]
       || d.byTeacher.filter(function (t) { return t.name === cfg.teacher; })[0]
       || d.byTeacher[0];
-    h += '<div class="cmh">' + me.i + ' ' + esc(me.name) + ' 선생님'
-      + (hasC ? '' : '<small>설정에서 내 이름을 바꿀 수 있어요</small>') + '</div>';
+    var see = (cmTeach && d.byTeacher.filter(function (t) { return t.i === cmTeach; })[0]) || me;
+    if (d.byTeacher.length > 1) h += cmTeachAcc(d.byTeacher, me, see);
+    h += '<div class="cmh">' + see.i + ' ' + esc(see.name) + ' 선생님'
+      + (hasC || see !== me ? '' : '<small>설정에서 내 이름을 바꿀 수 있어요</small>') + '</div>';
     // 표 아래 손잡이 — 교사·학급 표가 함께 커진다(kind comci)
     weeks.forEach(function (src) {
-      var mine = (src.byTeacher || []).filter(function (t) { return t.i === me.i; })[0];
+      var mine = (src.byTeacher || []).filter(function (t) { return t.i === see.i; })[0];
       if (!mine) return;
       if (wk === 2) h += '<div class="cmwk">' + esc(cmWeekName(src)) + '<small>' + esc(cmDate(src.start, 0) + ' ~ ' + cmDate(src.start, 4)) + '</small></div>';
       h += grzWrap('comci', cmTable(mine.days, function (x) {
@@ -972,6 +977,26 @@ function viewComci() {
           + '<b>' + esc(x.subject) + '</b><u>' + esc(x.teacher) + '</u></td>';
       }, src.start));
     });
+    h += '</div>';
+  }
+  return h + '</div>';
+}
+
+/* 교사 고르기 아코디언 — 접혀 있으면 «지금 보는 교사» 한 줄, 펼치면 모든 교사 이름 단추.
+   가려진 이름이 겹치는 교사(김진* 둘)는 이름 옆에 컴시간 번호를 작게 붙여 가른다. */
+function cmTeachAcc(list, me, see) {
+  var n = {};
+  list.forEach(function (t) { n[t.name] = (n[t.name] || 0) + 1; });
+  var nm = function (t) { return esc(t.name) + (n[t.name] > 1 ? '<sup>' + t.i + '</sup>' : ''); };
+  var h = '<div class="cmacc' + (cmAccOpen ? ' open' : '') + '">'
+    + '<button class="cmacch" data-cta="1" title="' + (cmAccOpen ? '접기' : '다른 교사 시간표 보기') + '">'
+    + '<span class="cmacct">교사</span><span class="cmaccn">' + nm(see) + (see.i === me.i ? ' (나)' : '') + '</span>'
+    + '<span class="cmacca">' + (cmAccOpen ? '접기 ▴' : '다른 교사 보기 ▾') + '</span></button>';
+  if (cmAccOpen) {
+    h += '<div class="cmaccb">' + list.map(function (t) {
+      return '<button class="wkb' + (t.i === see.i ? ' now' : '') + (t.i === me.i ? ' cmme' : '') + '" data-ct="' + t.i + '">' + nm(t) + '</button>';
+    }).join('');
+    if (see.i !== me.i) h += '<button class="cmhome" data-ct="0">★ 나(' + esc(me.name) + ')로 돌아가기</button>';
     h += '</div>';
   }
   return h + '</div>';
@@ -8321,7 +8346,7 @@ function wireViews(app) {
   //   .wkb 만 훑던 때에는 눌러도 아무 일이 없어서 «펼쳐지지 않는다» 였다.
   /* ★ 여기 목록에 빠진 «단추 종류» 는 눌러도 아무 일이 없다. 새 단추를 만들면 꼭 넣을 것.
      (2026-09-02: 업무관리·내 할 일 단추를 만들고 여기 안 넣어서 체크박스가 안 먹었다) */
-  app.querySelectorAll('.wkb, .rach, .gph, .tkbtn, .tdck, .tdb, .tdclear,'
+  app.querySelectorAll('.wkb, .cmacch, .cmhome, .rach, .gph, .tkbtn, .tdck, .tdb, .tdclear,'
     + ' #tkAddT')
     .forEach(function (b) {
     b.addEventListener('click', function () {
@@ -8738,6 +8763,8 @@ function wireViews(app) {
         cmWeek = Number(b.dataset.cw) || 0;
         render(); return;
       }
+      if (b.dataset.cta) { cmAccOpen = !cmAccOpen; render(); return; }      // 교사 아코디언 펼치기·접기
+      if (b.dataset.ct) { cmTeach = Number(b.dataset.ct) || 0; render(); return; }   // 그 교사 표 보기(0 = 나)
       if (b.dataset.wm) {                       // 이번주 화면 — 몇 주를 나란히 볼지(웹앱에 넘겨 펼침 단추를 맞춘다)
         DASHWEEKMODE = b.dataset.wm;
         widgetAPI.dashWeekMode(DASHWEEKMODE);

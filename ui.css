@@ -1713,6 +1713,20 @@
     margin: 9px 0 5px; letter-spacing: -.2px;
   }
   .cmh small { font-weight: 600; color: var(--dim); margin-left: 6px; letter-spacing: 0; }
+  /* 교사 고르기 아코디언 — 접으면 한 줄, 펼치면 이름 단추들 */
+  .cmacc { border: 1px solid var(--line); border-radius: 9px; margin: 6px 0 4px; overflow: hidden; }
+  .cmacch { display: flex; align-items: center; gap: 7px; width: 100%; border: 0; cursor: pointer; text-align: left;
+            background: var(--card); color: var(--fg); font: inherit; font-size: calc(11px * var(--wf)); padding: 6px 9px; }
+  .cmacct { color: var(--dim); font-weight: 700; }
+  .cmaccn { font-weight: 800; color: var(--accent); }
+  .cmacca { margin-left: auto; color: var(--dim); font-size: calc(10px * var(--wf)); }
+  .cmaccb { display: flex; flex-wrap: wrap; gap: 4px; padding: 7px 8px 8px; border-top: 1px solid var(--line); }
+  .cmaccb .wkb { border-radius: 999px; }
+  .cmaccb .wkb.cmme:not(.now) { border-color: var(--accent); }
+  .cmacc sup { font-size: .7em; opacity: .75; margin-left: 1px; }
+  .cmhome { flex-basis: 100%; text-align: left; border: 0; background: none; color: var(--dim); cursor: pointer;
+            font: inherit; font-size: calc(10px * var(--wf)); padding: 3px 2px 0; }
+  .cmhome:hover { color: var(--fg); }
   /* «함께» 보기 — 두 주 사이 작은 머리글 */
   .cmwk { font-size: calc(10.5px * var(--wf)); font-weight: 800; color: var(--text); margin: 7px 0 3px; }
   .cmwk small { font-weight: 600; color: var(--dim); margin-left: 6px; }
