@@ -1653,6 +1653,8 @@
      (JS 가 fit 을 붙인다) overflow 를 풀어 머리줄을 고정한다(2026-10-31 지시). */
   .attw.fit { overflow: visible; }
   .attw.fit .attt thead th { position: sticky; top: calc(var(--toph, 0px) + var(--top2h, 0px)); z-index: 3; }
+  /* ★ 출결은 .grzz(zoom) 안이라 top 이 배율만큼 커져 머리줄이 둘째 줄을 덮었다(2026-11-03) → 배율로 나눈다 */
+  .grzz .attw.fit .attt thead th { top: calc((var(--toph, 0px) + var(--top2h, 0px)) / var(--grzz, 1)); }
   .atrz { position: absolute; top: 0; right: 0; width: 6px; height: 100%; z-index: 2;
           cursor: col-resize; -webkit-app-region: no-drag; }
   .atrz:hover, body.atrzing .atrz { background: color-mix(in srgb, var(--accent) 45%, transparent); }
