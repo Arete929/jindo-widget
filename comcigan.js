@@ -1,4 +1,4 @@
-// 파일명: comcigan.js | @version 1.2.0 — v1.2.0 다음 주 시간표도 받는다(키 맨 끝 숫자 r=2 가 일자자료의 둘째 주) · 시작일·기간 보관 / v1.1.0 학급 시간표를 자료147(이번 주 변경 반영본)로, 없으면 옛 옮겨 붙이기
+// 파일명: comcigan.js | @version 1.3.0 — v1.3.0 컴시간이 /st 스크립트를 감싸고(hour-obfuscated-v2) 자료 번호를 바꿔서(2026-11-03) 받기가 끊겼던 것 — 감싼 글을 풀어 규약·자료 번호를 읽는다 / v1.2.0 다음 주 시간표도 받는다(키 맨 끝 숫자 r=2 가 일자자료의 둘째 주) · 시작일·기간 보관 / v1.1.0 학급 시간표를 자료147(이번 주 변경 반영본)로, 없으면 옛 옮겨 붙이기
 // 컴시간알리미(http://comci.net:4082) 에서 학교 시간표를 받아온다.
 //
 // ★ 왜 위젯(메인 프로세스)에서 하나:
@@ -80,18 +80,82 @@ function euckrEscape(s) {
   return out;
 }
 
+/* ★ 2026-11-03 부터 /st 의 스크립트가 «hour-obfuscated-v2» 로 감싸여 온다.
+     ([[문자열여부, 글자|16진수4자리…], …], k) 꼴 — 16진수 4자리를 읽어 (k + 순번*13) & 255 로 XOR 하면 원래 글자.
+     실행(eval)하지 않고 글자만 풀어서, 규약을 찾는 정규식이 풀린 글에서도 돌게 한다. */
+function deobfuscate(html) {
+  let out = '';
+  const re = /\}\)\((\[\[[\s\S]*?\]\]),\s*(\d+)\)\s*;?\s*<\/script>/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    let arr = null;
+    try { arr = JSON.parse(m[1]); } catch (e) { continue; }
+    const k = Number(m[2]);
+    arr.forEach((a) => {
+      if (!Array.isArray(a)) return;
+      if (a[0]) { out += String(a[1] || ''); return; }
+      const b = String(a[1] || '');
+      for (let j = 0; j + 4 <= b.length; j += 4) {
+        out += String.fromCharCode(parseInt(b.substr(j, 4), 16) ^ ((k + (j / 4) * 13) & 255));
+      }
+    });
+    out += '\n';
+  }
+  return out;
+}
+
 /* /st 페이지에서 그때그때의 규약을 읽어낸다 */
 async function readProtocol() {
   const r = await get('/st');
   if (r.status !== 200) throw new Error(`컴시간 접속 실패 (HTTP ${r.status})`);
-  const html = r.buf.toString('latin1');
-  const route = (html.match(/url\s*:\s*'\.\/(\d+)\?/) || [])[1];
-  const searchPrefix = (html.match(/'\.\/\d+\?(\w+)'\s*\+\s*sc/) || [])[1];
-  const dataPrefix = (html.match(/sc_data\('(\d+_)'/) || [])[1];
+  const raw = r.buf.toString('latin1');
+  const find = (html) => ({
+    route: (html.match(/url\s*:\s*'\.\/(\d+)\?/) || [])[1],
+    searchPrefix: (html.match(/'\.\/\d+\?(\w+)'\s*\+\s*sc/) || [])[1],
+    dataPrefix: (html.match(/sc_data\('(\d+_)'/) || [])[1]
+  });
+  let f = find(raw), text = raw;
+  if (!f.route || !f.searchPrefix || !f.dataPrefix) { text = deobfuscate(raw); f = find(text); }   // [v1.3.0] 감싼 스크립트
+  const { route, searchPrefix, dataPrefix } = f;
   if (!route || !searchPrefix || !dataPrefix) {
     throw new Error('컴시간 규약을 읽지 못했습니다 (서비스가 바뀐 것 같습니다)');
   }
-  return { route, searchPrefix, dataPrefix };
+  return { route, searchPrefix, dataPrefix, keys: readKeys(text) };
+}
+
+/* ★ [v1.3.0] 자료 «번호» 도 바뀐다 (2026-11-03: 481→176 · 147→190 · 542→196 · 446→129 · 492→198 · 244→144).
+     /st 스크립트가 그 번호를 어디에 쓰는지 보고 «무슨 자료인지» 를 알아낸다.
+     예) 원자료=Q자료(자료.자료176[…]) → 원래 학급 시간표 = 자료176.
+     못 찾은 것은 받은 자료의 생김새로 가늠한다(normalizeKeys). 아래 코드는 옛 이름(자료481 등)으로 쓴다 */
+function readKeys(text) {
+  const pick = (re) => ((String(text || '').match(re) || [])[1] || '');
+  return {
+    '자료481': pick(/원자료\s*=\s*Q자료\(\s*자료\.(자료\d+)\[/),
+    '자료147': pick(/일일자료\s*=\s*Q자료\(\s*자료\.(자료\d+)\[/),
+    '자료446': pick(/Q성명\(\s*자료\.(자료\d+)\[/),
+    '자료492': pick(/Q과목명\(\s*자료\.(자료\d+)\[/),
+    '자료244': pick(/수정일:\s*'\s*\+\s*H시간표\.(자료\d+)/)
+  };
+}
+function depth(v) {
+  let d = 0;
+  while (Array.isArray(v)) { d++; v = v.find((x) => Array.isArray(x)); }
+  return d;
+}
+function normalizeKeys(j, keys) {
+  const k = keys || {};
+  Object.keys(k).forEach((old) => {
+    if (j[old] === undefined && k[old] && j[k[old]] !== undefined) j[old] = j[k[old]];
+  });
+  /* 교사 이름 — 첫 칸이 비고 나머지가 «김*환» 꼴인 목록 */
+  const names = Array.isArray(j['자료446']) ? j['자료446'] : null;
+  /* 교사 시간표(자료542) 는 /st 에 안 나온다 — [교사][요일][교시] 3겹 배열로 길이가 교사 수+1 인 것 */
+  if (j['자료542'] === undefined && names) {
+    const hit = Object.keys(j).filter((x) => /^자료\d+$/.test(x) && Array.isArray(j[x])
+      && j[x].length === names.length && depth(j[x]) === 3 && j[x] !== names);
+    if (hit.length === 1) j['자료542'] = j[hit[0]];
+  }
+  return j;
 }
 
 /* 학교 이름으로 찾기 → [{code, region, name}] */
@@ -112,6 +176,7 @@ async function fetchRaw(schoolCode, r) {
   const res = await get('/' + p.route + '?' + key, 20000);
   const j = parseJson(res.buf);
   if (!j) throw new Error('시간표를 해석하지 못했습니다');
+  normalizeKeys(j, p.keys);   // [v1.3.0] 바뀐 자료 번호를 옛 이름으로 맞춘다
   if (!j['자료481'] && !j['자료542']) throw new Error('시간표 자료가 비어 있습니다');
   return j;
 }
