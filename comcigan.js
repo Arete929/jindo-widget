@@ -1,4 +1,4 @@
-// 파일명: comcigan.js | @version 1.3.0 — v1.3.0 컴시간이 /st 스크립트를 감싸고(hour-obfuscated-v2) 자료 번호를 바꿔서(2026-11-03) 받기가 끊겼던 것 — 감싼 글을 풀어 규약·자료 번호를 읽는다 / v1.2.0 다음 주 시간표도 받는다(키 맨 끝 숫자 r=2 가 일자자료의 둘째 주) · 시작일·기간 보관 / v1.1.0 학급 시간표를 자료147(이번 주 변경 반영본)로, 없으면 옛 옮겨 붙이기
+// 파일명: comcigan.js | @version 1.4.0 — v1.4.0 컴시간이 2026-11-06 부터 시간표·학교 검색을 암호화해서(요청 끝 «_enc2», 응답 AES-256-CBC) 빈 «{}» 만 받던 것 — /st 에서 꼬리·열쇠를 읽어 풀어 읽는다 · 검색 결과의 학교 코드 칸이 줄마다 달라진 것(floor(첫칸/D)+A)도 읽는다 · 빈 자료면 «방식이 바뀐 것 같다» 오류 / v1.3.0 컴시간이 /st 스크립트를 감싸고(hour-obfuscated-v2) 자료 번호를 바꿔서(2026-11-03) 받기가 끊겼던 것 — 감싼 글을 풀어 규약·자료 번호를 읽는다 / v1.2.0 다음 주 시간표도 받는다(키 맨 끝 숫자 r=2 가 일자자료의 둘째 주) · 시작일·기간 보관 / v1.1.0 학급 시간표를 자료147(이번 주 변경 반영본)로, 없으면 옛 옮겨 붙이기
 // 컴시간알리미(http://comci.net:4082) 에서 학교 시간표를 받아온다.
 //
 // ★ 왜 위젯(메인 프로세스)에서 하나:
@@ -18,6 +18,7 @@
 //   자료492 = 과목 이름 / 일과시간 = 교시별 시각
 
 const http = require('http');
+const crypto = require('crypto');
 
 const HOST = 'comci.net';
 const PORT = 4082;
@@ -120,7 +121,38 @@ async function readProtocol() {
   if (!route || !searchPrefix || !dataPrefix) {
     throw new Error('컴시간 규약을 읽지 못했습니다 (서비스가 바뀐 것 같습니다)');
   }
-  return { route, searchPrefix, dataPrefix, keys: readKeys(text) };
+  return { route, searchPrefix, dataPrefix, keys: readKeys(text),
+    ...readEnc(text.indexOf('CryptoJS') >= 0 ? text : text + '\n' + deobfuscate(raw)) };
+}
+
+/* ★ [v1.4.0] 2026-11-06 부터 컴시간이 자료를 암호화해서 준다.
+     요청 끝에 «_enc2» 를 붙이고, 응답 «enc2:IV:암호문:서명»(base64, enc1 이면 16진수)을 AES-256-CBC 로 푼다.
+     꼬리·열쇠는 /st 의 시간표자료_복호화() 에 박혀 있다 — 바뀔 수 있으니 그때그때 읽는다.
+     검색 결과의 «학교 코드» 칸도 줄마다 달라졌다: 칸 = floor(첫 칸 / D) + A */
+function readEnc(text) {
+  const s = String(text || '');
+  const col = s.match(/Math\.floor\(\s*학교명단\[i\]\[0\]\s*\/\s*(\d+)\s*\)\s*\+\s*(\d+)/) || [];
+  return {
+    dataTail: (s.match(/'_'\s*\+\s*r\s*\+\s*'(_\w+)'/) || [])[1] || '',
+    searchTail: (s.match(/\+\s*sc\s*\+\s*'(_\w+)'/) || [])[1] || '',
+    aesKey: ((s.match(/CryptoJS\.enc\.Hex\.parse\(\s*'([0-9a-fA-F]{64})'\s*\)/) || [])[1] || '').toLowerCase(),
+    codeDiv: Number(col[1]) || 0, codeAdd: Number(col[2]) || 0
+  };
+}
+function decryptBody(buf, aesKey) {
+  const t = buf.toString('utf8').replace(/\x00+$/, '').trim();
+  if (!/^enc[12]:/.test(t)) return null;   // 암호가 아니다 → 옛 방식으로 읽는다
+  if (!aesKey) throw new Error('컴시간 자료가 암호화돼 왔는데 푸는 열쇠를 찾지 못했습니다 (컴시간 방식이 또 바뀐 것 같습니다)');
+  const parts = t.split(':');
+  if (parts.length !== 4) throw new Error('컴시간 암호 자료 모양이 낯섭니다 (컴시간 방식이 또 바뀐 것 같습니다)');
+  const enc = parts[0] === 'enc2' ? 'base64' : 'hex';
+  const d = crypto.createDecipheriv('aes-256-cbc', Buffer.from(aesKey, 'hex'), Buffer.from(parts[1], enc));
+  return Buffer.concat([d.update(Buffer.from(parts[2], enc)), d.final()]);
+}
+/* 받은 것을 (암호면 풀어서) JSON 으로 */
+function readBody(buf, p) {
+  const plain = decryptBody(buf, p.aesKey);
+  return parseJson(plain || buf);
 }
 
 /* ★ [v1.3.0] 자료 «번호» 도 바뀐다 (2026-11-03: 481→176 · 147→190 · 542→196 · 446→129 · 492→198 · 244→144).
@@ -161,21 +193,24 @@ function normalizeKeys(j, keys) {
 /* 학교 이름으로 찾기 → [{code, region, name}] */
 async function searchSchool(name) {
   const p = await readProtocol();
-  const r = await get('/' + p.route + '?' + p.searchPrefix + euckrEscape(name));
-  const j = parseJson(r.buf);
+  const r = await get('/' + p.route + '?' + p.searchPrefix + euckrEscape(name) + (p.searchTail || ''));
+  const j = readBody(r.buf, p);
   const list = (j && (j['학교검색'] || j.school_list)) || [];
-  return list.map((row) => ({
-    code: row[3], region: row[1], name: row[2], id: row[0]
-  })).filter((x) => x.code && x.name);
+  return list.map((row) => {
+    let c = p.codeDiv ? Math.floor(Number(row[0]) / p.codeDiv) + p.codeAdd : 3;   // [v1.4.0] 코드 칸이 줄마다 다르다
+    if (!(c >= 3 && c < row.length)) c = 3;
+    return { code: row[c], region: row[1], name: row[2], id: row[0] };
+  }).filter((x) => x.code && x.name && x.region !== '알림');
 }
 
 /* 학교 코드로 시간표 한 벌 받기 (r=1 학급 기준, r=2 교사 기준 — 알맹이는 같다) */
 async function fetchRaw(schoolCode, r) {
   const p = await readProtocol();
-  const key = Buffer.from(p.dataPrefix + schoolCode + '_0_' + (r || 1), 'utf8').toString('base64');
+  const key = Buffer.from(p.dataPrefix + schoolCode + '_0_' + (r || 1) + (p.dataTail || ''), 'utf8').toString('base64');
   const res = await get('/' + p.route + '?' + key, 20000);
-  const j = parseJson(res.buf);
+  const j = readBody(res.buf, p);   // [v1.4.0] 암호면 풀어서
   if (!j) throw new Error('시간표를 해석하지 못했습니다');
+  if (!Object.keys(j).length) throw new Error('컴시간이 빈 자료를 줬습니다 (컴시간 방식이 또 바뀐 것 같습니다)');
   normalizeKeys(j, p.keys);   // [v1.3.0] 바뀐 자료 번호를 옛 이름으로 맞춘다
   if (!j['자료481'] && !j['자료542']) throw new Error('시간표 자료가 비어 있습니다');
   return j;
