@@ -2511,6 +2511,7 @@ var ATTDRVHOOK = false;
 function attDriveTxt(f) {
   if (!f) return '';
   var d = f.drive;
+  if (f.remote) return '다른 PC(' + f.remote + ')에서 붙임 · 드라이브에서 열기';
   if (d && d.err) return '드라이브: 아직 못 올림 — ' + d.err;
   if (d && d.id) return '드라이브 저장됨' + (d.shrunk ? '(줄여서)' : '');
   return ATTDRIVE ? '드라이브에 올리는 중…' : '';
