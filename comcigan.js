@@ -1,4 +1,4 @@
-// 파일명: comcigan.js | @version 1.4.0 — v1.4.0 컴시간이 2026-11-06 부터 시간표·학교 검색을 암호화해서(요청 끝 «_enc2», 응답 AES-256-CBC) 빈 «{}» 만 받던 것 — /st 에서 꼬리·열쇠를 읽어 풀어 읽는다 · 검색 결과의 학교 코드 칸이 줄마다 달라진 것(floor(첫칸/D)+A)도 읽는다 · 빈 자료면 «방식이 바뀐 것 같다» 오류 / v1.3.0 컴시간이 /st 스크립트를 감싸고(hour-obfuscated-v2) 자료 번호를 바꿔서(2026-11-03) 받기가 끊겼던 것 — 감싼 글을 풀어 규약·자료 번호를 읽는다 / v1.2.0 다음 주 시간표도 받는다(키 맨 끝 숫자 r=2 가 일자자료의 둘째 주) · 시작일·기간 보관 / v1.1.0 학급 시간표를 자료147(이번 주 변경 반영본)로, 없으면 옛 옮겨 붙이기
+// 파일명: comcigan.js | @version 1.5.0 — v1.5.0 buildTimetable(원본 j, 다음 주 j2) 분리 — 다리에서 받은 원본도 같은 길로 만든다 / v1.4.0 컴시간이 2026-11-06 부터 시간표·학교 검색을 암호화해서(요청 끝 «_enc2», 응답 AES-256-CBC) 빈 «{}» 만 받던 것 — /st 에서 꼬리·열쇠를 읽어 풀어 읽는다 · 검색 결과의 학교 코드 칸이 줄마다 달라진 것(floor(첫칸/D)+A)도 읽는다 · 빈 자료면 «방식이 바뀐 것 같다» 오류 / v1.3.0 컴시간이 /st 스크립트를 감싸고(hour-obfuscated-v2) 자료 번호를 바꿔서(2026-11-03) 받기가 끊겼던 것 — 감싼 글을 풀어 규약·자료 번호를 읽는다 / v1.2.0 다음 주 시간표도 받는다(키 맨 끝 숫자 r=2 가 일자자료의 둘째 주) · 시작일·기간 보관 / v1.1.0 학급 시간표를 자료147(이번 주 변경 반영본)로, 없으면 옛 옮겨 붙이기
 // 컴시간알리미(http://comci.net:4082) 에서 학교 시간표를 받아온다.
 //
 // ★ 왜 위젯(메인 프로세스)에서 하나:
@@ -382,16 +382,17 @@ function applyTeacherChanges(j, out, sep, teachers, subName) {
 /* 학교 코드로 시간표를 받아 정리한다.
    ★ 한 번 요청하면 교사·학급 자료가 같이 오므로 언제나 둘 다 만들어 둔다.
      («무엇을 볼지» 는 위젯에서 고르면 되고, 그때 다시 받을 필요가 없다) */
-async function fetchTimetable(schoolCode) {
-  const j = await fetchRaw(schoolCode, 1);
+/* 컴시간 «원본» 자료(이번 주 j · 다음 주 j2)로 시간표 한 벌을 만든다.
+   ★ [v1.5.0] 컴시간이 웹 보호를 넣어 PC 가 직접 못 받게 되면서, 다리(GAS)가 대신 받은 원본을 이 길로도 만든다.
+     직접 받든 다리에서 받든 모양은 똑같다(원본의 자료 번호는 둘 다 옛 이름으로 맞춰 둔 상태). */
+function buildTimetable(j, j2) {
   const out = shape(j, { teacher: true, classes: true });
-  /* ★ 다음 주도 받아 둔다 — 컴시간은 «일자자료» 에 두 주(이번·다음)를 올려 두고,
+  /* ★ 다음 주도 담아 둔다 — 컴시간은 «일자자료» 에 두 주(이번·다음)를 올려 두고,
        요청 키 맨 끝 숫자(r)가 그 번호다 (r=2 → 다음 주, 2026-10-07 실측: 시작일·자료147·자료542 가 달라짐).
        다음 주가 아직 안 올라왔거나 받기에 실패해도 이번 주는 그대로 쓴다 */
   try {
     const wk = Array.isArray(j['일자자료']) ? j['일자자료'] : [];
-    if (wk.length > 1) {
-      const j2 = await fetchRaw(schoolCode, 2);
+    if (wk.length > 1 && j2) {
       const n = shape(j2, { teacher: true, classes: true });
       if (n.start && n.start !== out.start) {
         out.range = String((wk[0] || [])[1] || '');
@@ -403,4 +404,14 @@ async function fetchTimetable(schoolCode) {
   return out;
 }
 
-module.exports = { searchSchool, fetchTimetable, readProtocol, fetchRaw , shape };
+async function fetchTimetable(schoolCode) {
+  const j = await fetchRaw(schoolCode, 1);
+  let j2 = null;
+  try {
+    const wk = Array.isArray(j['일자자료']) ? j['일자자료'] : [];
+    if (wk.length > 1) j2 = await fetchRaw(schoolCode, 2);
+  } catch (e) { /* 다음 주 없이 이번 주만 */ }
+  return buildTimetable(j, j2);
+}
+
+module.exports = { searchSchool, fetchTimetable, buildTimetable, readProtocol, fetchRaw , shape };

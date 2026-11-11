@@ -2116,13 +2116,47 @@ ipcMain.handle('comci-search', async (_e, name) => {
   }
 });
 
+/* ── 컴시간을 «다리» 에서 받기 (v2.10.72) ──────────────────────────────
+   컴시간이 2026-11-08 부터 웹 보호(접속 확인 표·횟수 제한)를 넣어 PC 가 직접 받으면 막힌다.
+   혜원폰 다리(GAS, 1.14.0 의 what=raw)가 30분에 한 번만 컴시간에서 받아 두므로, 선생님 PC 들은 다리에서 받는다.
+   주소·열쇠는 코드에 두지 않는다 — OneDrive 함께 쓰는 설정(shared.json 의 phoneBridge {url,key})에서만 읽는다.
+   설정이 없거나(혜원이지 선생님 PC) 다리가 안 되면 예전처럼 컴시간에서 직접 받아 본다. */
+function comciBridgeCfg() {
+  try {
+    const s = readShared().phoneBridge || {};
+    const url = String(s.url || ''), key = String(s.key || '');
+    return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url) && key ? { url, key } : null;
+  } catch (e) { return null; }
+}
+async function comciBridgeRaw(via, week) {
+  const r = await request({ method: 'GET', url: via.url + '?what=raw&week=' + week + '&key=' + encodeURIComponent(via.key), timeout: 90000 });
+  let d = null; try { d = JSON.parse(r.text); } catch (e) { /* 아래에서 처리 */ }
+  if (!d) throw new Error('다리가 시간표를 주지 않았습니다 (' + r.status + ')');
+  if (!d.ok) throw new Error(d.need === 'key' ? '다리가 열쇠를 거절했습니다' : (d.error || '다리가 거절했습니다'));
+  if (!d.raw || !d.raw.raw) throw new Error(d.rawError || '다리의 시간표 자료가 비어 있습니다');
+  return d.raw;
+}
+async function comciFromBridge(via) {
+  const a = await comciBridgeRaw(via, 1);
+  let b = null;
+  const wk = Array.isArray(a.raw['일자자료']) ? a.raw['일자자료'] : [];
+  if (wk.length > 1) { try { b = (await comciBridgeRaw(via, 2)).raw; } catch (e) { /* 다음 주 없이 이번 주만 */ } }
+  const data = comcigan.buildTimetable(a.raw, b);
+  if (a.stale) debugLog('컴시간 다리 — 컴시간이 막혀 다리가 마지막 자료를 줌: ' + (a.error || ''));
+  data.via = 'bridge'; data.bridgeAt = a.fetchedAt || ''; if (a.stale) data.stale = true;
+  return data;
+}
+
 async function comciFetchNow(why) {
   const cfg = getComciConfig();
   if (!cfg.school) return { error: '학교를 먼저 골라주세요' };
   try {
     debugLog(`컴시간 시간표 받기: ${cfg.school.name}` + (why ? ` (${why})` : ''));
     // 한 번 부르면 교사·학급이 같이 온다 — 둘 다 저장해 두고, 무엇을 볼지는 위젯에서 고른다
-    const data = await comcigan.fetchTimetable(cfg.school.code);
+    let data = null;
+    const via = comciBridgeCfg();
+    if (via) { try { data = await comciFromBridge(via); } catch (e) { debugLog(`컴시간 다리 받기 실패: ${(e && e.message) || e} — 직접 받아 봅니다`); } }
+    if (!data) data = await comcigan.fetchTimetable(cfg.school.code);
     data.schoolName = cfg.school.name;     // 컴시간이 학교명을 가려서 주므로 고른 이름을 쓴다
     saveComci(data);
     debugLog(`컴시간 받기 완료 — 교사 ${(data.teachers || []).length}명`);
