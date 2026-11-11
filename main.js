@@ -2149,11 +2149,39 @@ async function comciBridgeRaw(via, week) {
   if (!meta || !raw) throw new Error(d.rawError || '시간표 자료가 비어 있습니다');
   return { raw, fetchedAt: meta.fetchedAt, stale: meta.stale, error: meta.error };
 }
+/* ★ 컴시간이 2026-11-11 낮에 자료의 칸 이름·글자 값을 또 가려서(시작일·일자자료·수정일이 «자료143» 같은 이름에 암호 글자로 옴)
+   원본에 «시작일»·«일자자료» 가 없다. 가려진 값을 풀지 않고 «달력» 으로 채운다 — 이번 주(1)·다음 주(2) 월요일.
+   토·일에는 다음 주를 «이번 주» 로 본다(지난 주 시간표는 쓸모가 없다). 이미 있으면 건드리지 않는다. */
+function comciFixRaw(raw, week) {
+  if (!raw || raw['시작일']) return raw;
+  const k = new Date(Date.now() + 9 * 3600 * 1000);                       // 한국 시각
+  const dow = k.getUTCDay();                                               // 0=일
+  const back = dow === 0 ? -1 : (dow === 6 ? -2 : dow - 1);                // 월요일까지 며칠 지났나(토·일은 다음 월요일)
+  const mon = (w) => new Date(Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate() - back + 7 * (w - 1)));
+  const ymd = (d) => d.toISOString().slice(0, 10);
+  const rng = (w) => { const m = mon(w), f = new Date(m.getTime() + 5 * 86400000); return ymd(m).slice(2) + ' ~ ' + ymd(f).slice(2); };
+  raw['시작일'] = ymd(mon(week));
+  if (!Array.isArray(raw['일자자료'])) raw['일자자료'] = [[1, rng(1)], [2, rng(2)]];
+  return raw;
+}
 async function comciFromBridge(via) {
   const a = await comciBridgeRaw(via, 1);
+  /* ★ 이름이 가려져 오면(2026-11-11 낮부터 «4eb8kA==» 같은 글자) 깨진 시간표를 저장하지 않는다 — 한글이 하나도 없는 과목명이 절반 넘으면 거절 */
+  const subj = (Array.isArray(a.raw['자료492']) ? a.raw['자료492'] : []).filter((s) => typeof s === 'string' && s);
+  if (subj.length >= 5 && subj.filter((s) => !/[가-힣]/.test(s)).length > subj.length * 0.5) {
+    throw new Error('컴시간이 과목·교사 이름을 암호 글자로 가려 보내 읽을 수 없습니다 (컴시간 방식이 또 바뀜) — 기존 시간표를 그대로 둡니다');
+  }
+  comciFixRaw(a.raw, 1);
   let b = null;
   const wk = Array.isArray(a.raw['일자자료']) ? a.raw['일자자료'] : [];
-  if (wk.length > 1) { try { b = (await comciBridgeRaw(via, 2)).raw; } catch (e) { /* 다음 주 없이 이번 주만 */ } }  const data = comcigan.buildTimetable(a.raw, b);
+  if (wk.length > 1) {
+    try {
+      b = comciFixRaw((await comciBridgeRaw(via, 2)).raw, 2);
+      /* 다음 주가 아직 안 올라왔으면 컴시간이 이번 주를 또 주는 것 같다 — 같은 표면 다음 주로 치지 않는다 */
+      if (JSON.stringify(b['자료147']) === JSON.stringify(a.raw['자료147']) && JSON.stringify(b['자료481']) === JSON.stringify(a.raw['자료481'])) b = null;
+    } catch (e) { /* 다음 주 없이 이번 주만 */ }
+  }
+  const data = comcigan.buildTimetable(a.raw, b);
   if (a.stale) debugLog('컴시간 다리 — 컴시간이 막혀 다리가 마지막 자료를 줌: ' + (a.error || ''));
   data.via = via.relay ? 'relay' : 'bridge'; data.bridgeAt = a.fetchedAt || ''; if (a.stale) data.stale = true;
   return data;
