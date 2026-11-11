@@ -2128,12 +2128,14 @@ function comciBridgeCfg() {
     return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url) && key ? { url, key } : null;
   } catch (e) { return null; }
 }
-/* 전환기 서버(GAS)에서 받는 길 — 열쇠 없이 ?api=comciraw (혜원이지 선생님 PC 용). 주소는 코드에 두지 않고
-   OneDrive 설정(shared.json 의 comciRelay {url}) 또는 이 PC 설정(state.comciRelayUrl)에서만 읽는다. */
+/* 전환기 서버(GAS)에서 받는 길 — 열쇠 없이 ?api=comciraw. 전환기 서버가 컴시간의 가린 글자(이름·시작일 등)까지
+   풀어서 주므로(4.59-hw.70~74) 이 길을 «맨 먼저» 쓴다. 주소는 누구나 여는 전환기보드 주소라 코드에 둔다(2026-11-11 사용자 결정).
+   OneDrive 설정(shared.json 의 comciRelay {url}) · 이 PC 설정(state.comciRelayUrl)이 있으면 그것이 먼저다. */
+const COMCI_RELAY_DEFAULT = 'https://script.google.com/macros/s/AKfycbxll0iA0M58l30ixnQB6bzUAmPbE6R0QAjO9KHa8m6ujkvIaA7wGmnVPWRYczbiEV3gWQ/exec';
 function comciRelayCfg() {
   try {
-    const s = readShared().comciRelay || {};
-    const url = String(s.url || loadState().comciRelayUrl || '');
+    let s = {}; try { s = readShared().comciRelay || {}; } catch (e0) { s = {}; }
+    const url = String(s.url || loadState().comciRelayUrl || COMCI_RELAY_DEFAULT);
     return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url) ? { url, relay: true } : null;
   } catch (e) { return null; }
 }
@@ -2194,8 +2196,8 @@ async function comciFetchNow(why) {
     debugLog(`컴시간 시간표 받기: ${cfg.school.name}` + (why ? ` (${why})` : ''));
     // 한 번 부르면 교사·학급이 같이 온다 — 둘 다 저장해 두고, 무엇을 볼지는 위젯에서 고른다
     let data = null;
-    /* 다리(열쇠) → 전환기 서버(열쇠 없음) → 마지막으로 컴시간 직접 */
-    for (const via of [comciBridgeCfg(), comciRelayCfg()]) {
+    /* 전환기 서버(가린 글자까지 풀어 줌) → 다리(열쇠) → 마지막으로 컴시간 직접 */
+    for (const via of [comciRelayCfg(), comciBridgeCfg()]) {
       if (!via || data) continue;
       try { data = await comciFromBridge(via); } catch (e) { debugLog(`컴시간 ${via.relay ? '전환기 서버' : '다리'} 받기 실패: ${(e && e.message) || e}`); }
     }
