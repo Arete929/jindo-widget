@@ -43,7 +43,7 @@ files:
   - fetchtext.js
   - worknotice.js
   - neis.js
-  - neisatt.js    # 출결 → 나이스 일괄입력 — 혜원이지에선 안 쓰지만 main.js 가 require 하니 꼭 담는다
+  - neisatt.js    # 출결 → 나이스 일괄입력 (v2.10.75 부터 혜원이지에서도 씀)
   - academic.js
   - mealduty.js  # 급식지도 순서표 시트 읽기
   - gradeplan.js  # 학년부 일지 시트
