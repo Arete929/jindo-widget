@@ -4663,14 +4663,14 @@ const neisAtt = require('./neisatt.js');
 let neisAttBusy = false;
 const neisAttProfile = () => path.join(app.getPath('userData'), 'neis-chrome');
 ipcMain.handle('neis-att-run', async (e, p) => {
-  if (!HAS_TT) return { ok: false, msg: '나이스 일괄입력은 지비스에서만 씁니다' };
+  /* v2.10.75 — 혜원이지(다른 담임 선생님 PC)에서도 쓴다. 로그인은 각자 자기 업무포털로, 넣는 곳은 나이스 «학급담임» 일일출결 */
   if (neisAttBusy) return { ok: false, msg: '이미 나이스 작업 중입니다' };
   neisAttBusy = true;
   const say = (m) => { try { if (!e.sender.isDestroyed()) e.sender.send('neis-att-status', String(m || '')); } catch (_) {} };
   const o = p || {};
   try {
     debugLog(`나이스 일괄입력 시작: ${o.action} ${Array.isArray(o.entries) ? o.entries.length : 0}건`);
-    const r = await neisAtt.run({ action: o.action, conflict: o.conflict, entries: o.entries, profileDir: neisAttProfile() }, say);
+    const r = await neisAtt.run({ action: o.action, conflict: o.conflict, entries: o.entries, cls: String(o.cls || ''), app: HAS_TT ? '지비스' : '혜원이지', profileDir: neisAttProfile() }, say);
     const n = {}; (r.results || []).forEach((x) => { n[x.status] = (n[x.status] || 0) + 1; });
     debugLog(`나이스 일괄입력 끝: ${JSON.stringify(n)}${r.stopMsg ? ' · ' + r.stopMsg : ''}`);
     return r;
@@ -4681,8 +4681,7 @@ ipcMain.handle('neis-att-run', async (e, p) => {
 });
 ipcMain.handle('neis-att-stop', () => { neisAtt.stop(); return true; });
 ipcMain.handle('neis-att-open', async () => {
-  if (!HAS_TT) return { ok: false, msg: '지비스에서만 씁니다' };
-  try { return await neisAtt.openWindow(neisAttProfile()); }
+  try { return await neisAtt.openWindow(neisAttProfile(), HAS_TT ? '지비스' : '혜원이지'); }
   catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
 });
 ipcMain.handle('att-fold', async (_e, p) => {

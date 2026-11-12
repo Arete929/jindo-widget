@@ -1,4 +1,4 @@
-// 파일명: neisatt.js | @version 1.2.0 — 1.2.0: 줄마다 force(지비스에서 고친 줄은 그 줄만 덮어쓰기) / 1.1.1: 1.1.1: 크롬이 떠 있는데 답이 없으면(지비스 첫 실행 실제 사례) 한 번 닫고 다시 띄움 · 기다림 20→40초 · Electron 크래시 통로 환경변수를 크롬에 안 물려줌 / 1.1.0: 1.1.0: 업무포털 로그인만 하면 «[나이스]» 를 지비스가 눌러 들어간다(실제 확인) / 1.0.1: 실제 나이스로 확인(9~11월 칸 55건이 규칙과 일치) · 마감 판단을 저장 단추+화면 글로 · 공휴일은 «시간표 없음» · 다른 곳(구분/교시 칸/사유) 표시 — 지비스 출결 → 나이스 «일일출결관리(담임용)» 일괄입력·지우기·맞대 보기 (지비스 전용, 메인 프로세스)
+// 파일명: neisatt.js | @version 1.3.0 — 1.3.0: 혜원이지에서도 씀(안내 글 앱 이름 APP), 앱에서 고른 반과 나이스 화면의 학년·반이 다르면 손대지 않음 / 1.2.0: 줄마다 force(지비스에서 고친 줄은 그 줄만 덮어쓰기) / 1.1.1: 1.1.1: 크롬이 떠 있는데 답이 없으면(지비스 첫 실행 실제 사례) 한 번 닫고 다시 띄움 · 기다림 20→40초 · Electron 크래시 통로 환경변수를 크롬에 안 물려줌 / 1.1.0: 1.1.0: 업무포털 로그인만 하면 «[나이스]» 를 지비스가 눌러 들어간다(실제 확인) / 1.0.1: 실제 나이스로 확인(9~11월 칸 55건이 규칙과 일치) · 마감 판단을 저장 단추+화면 글로 · 공휴일은 «시간표 없음» · 다른 곳(구분/교시 칸/사유) 표시 — 지비스 출결 → 나이스 «일일출결관리(담임용)» 일괄입력·지우기·맞대 보기 (지비스 전용, 메인 프로세스)
 /* ★ 어떻게 하나 (2026-11-12, 스쿨보드 1.2.7 «나이스 일괄입력» 방식을 참고해 새로 짬)
    1. PC 에 깔린 크롬(없으면 엣지)을 «지비스 전용 프로필»로 띄운다 — 선생님이 평소 쓰는 크롬과 섞이지 않는다.
    2. 업무포털 로그인(인증서·2차 인증)은 선생님이 그 창에서 «직접» 한다. 비밀번호는 받지도 저장하지도 않는다.
@@ -79,7 +79,8 @@ class Cdp {
   }
 }
 
-let CR = null;                 // { proc, cdp, sessions: Map(targetId → sessionId) }
+let CR = null;
+let APP = '지비스';            // 안내 글에 쓰는 앱 이름 — 혜원이지에서 부르면 «혜원이지»(run·openWindow 의 opt.app)
 let STOP = false;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 class Stopped extends Error {}
@@ -132,8 +133,8 @@ async function launchBrowser(profileDir) {
     if (spawnErr) throw new Error('크롬을 띄우지 못했습니다 — ' + spawnErr);
     /* 같은 프로필 크롬이 이미 떠 있으면(지비스를 다시 켠 경우 등) 새 크롬은 그쪽에 넘기고 곧바로 끝난다 */
     const hint = String(errTail).split(/\r?\n/).filter((l) => l && !/external_registry_loader/.test(l)).slice(-2).join(' / ');
-    const err = new Error('지비스용 나이스 창(크롬)에 연결하지 못했습니다(' + e.message + (proc.exitCode !== null ? ', 크롬 종료 ' + proc.exitCode : '') + ')'
-      + (hint ? ' — ' + hint.slice(0, 200) : '') + '. 지비스용 나이스 창이 떠 있으면 모두 닫은 뒤 다시 눌러 주세요');
+    const err = new Error(APP + '용 나이스 창(크롬)에 연결하지 못했습니다(' + e.message + (proc.exitCode !== null ? ', 크롬 종료 ' + proc.exitCode : '') + ')'
+      + (hint ? ' — ' + hint.slice(0, 200) : '') + '. ' + APP + '용 나이스 창이 떠 있으면 모두 닫은 뒤 다시 눌러 주세요');
     err.handedOff = proc.exitCode !== null && Date.now() - t0 < 15000;   // 곧바로 끝났다 = 남은 창에 넘겼다
     err.silent = !spawnErr && /답하지 않습니다/.test(e.message);          // 떠 있었는데 답이 없었다
     throw err;
@@ -459,11 +460,16 @@ function normEntries(list) {
 }
 
 /* 하루치 — 맞대 보기(compare) · 넣기(input) · 지우기(delete) */
-async function doDay(cr, sid, date, list, action, conflict) {
+async function doDay(cr, sid, date, list, action, conflict, cls) {
   const ymd = date.replace(/-/g, '');
   const day = await searchDay(cr, sid, ymd);
   if (day.fatal) throw new Error(day.error);
   if (day.error) return fail(list, day.error);
+  /* 앱에서 보고 있는 반(예: «3-2»)과 나이스 화면의 학년·반이 다르면 손대지 않는다 — 혜원이지는 다른 반 출결도 볼 수 있어서 */
+  const cm = String(cls || '').match(/^(\d)\s*-\s*(\d{1,2})$/);
+  if (cm && day.grd && day.cls && (Number(day.grd) !== Number(cm[1]) || Number(day.cls) !== Number(cm[2]))) {
+    throw new Error('나이스 화면은 ' + Number(day.grd) + '-' + Number(day.cls) + '반인데 앱에서 고른 반은 ' + cls + '입니다. 내 담임 반의 출결만 넣을 수 있어요');
+  }
   if (day.ayr && Number(day.ayr) !== schoolYearOf(date)) {
     throw new Error('나이스 화면이 ' + day.ayr + '학년도라 ' + schoolYearOf(date) + '학년도 출결을 다룰 수 없습니다. 나이스에서 학년도를 바꾼 뒤 다시 해 주세요');
   }
@@ -586,7 +592,7 @@ async function waitNeis(cr, say) {
     const clock = ' (' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') + ' 남음)';
     if (clickedAt || hasNeis) say('업무포털에서 나이스를 여는 중… 인증을 더 묻는 창이 뜨면 그것만 해 주세요' + clock);
     else if (portal === 'nolink') say('업무포털 화면에서 «나이스» 메뉴를 찾지 못했습니다 — 직접 «나이스» 를 눌러 들어가 주세요' + clock);
-    else say('나이스 창에서 업무포털에 로그인해 주세요 — 로그인하면 나이스는 지비스가 열고 바로 이어서 합니다' + clock);
+    else say('나이스 창에서 업무포털에 로그인해 주세요 — 로그인하면 나이스는 ' + APP + '가 열고 바로 이어서 합니다' + clock);
     await sleep(1500);
   }
 }
@@ -632,6 +638,7 @@ async function openDaily(cr, sid, say) {
 const WORDS = { compare: '맞대 보는', input: '넣는', delete: '지우는' };
 async function run(opt, say) {
   say = say || (() => {});
+  if (opt.app) APP = String(opt.app);
   STOP = false;
   const action = WORDS[opt.action] ? opt.action : 'compare';
   const conflict = opt.conflict === 'overwrite' ? 'overwrite' : 'skip';
@@ -651,7 +658,7 @@ async function run(opt, say) {
       if (STOP) { stopMsg = '멈추기를 눌러 ' + (action === 'compare' ? '보지' : action === 'delete' ? '지우지' : '넣지') + ' 않았습니다'; results.push(...fail(list, stopMsg, 'stopped')); continue; }
       say('나이스 출결 ' + WORDS[action] + ' 중 (' + (i + 1) + '/' + dates.length + '일, ' + dates[i] + ')');
       try {
-        results.push(...await doDay(cr, neis, dates[i], list, action, conflict));
+        results.push(...await doDay(cr, neis, dates[i], list, action, conflict, opt.cls));
       } catch (e) {
         stopMsg = e instanceof Stopped ? e.message : '나이스 작업을 멈췄습니다: ' + e.message;
         results.push(...fail(list, stopMsg, e instanceof Stopped ? 'stopped' : 'failed'));
@@ -664,7 +671,8 @@ async function run(opt, say) {
   }
 }
 /* 미리 로그인해 두기 — 나이스 창만 띄운다 */
-async function openWindow(profileDir) {
+async function openWindow(profileDir, app) {
+  if (app) APP = String(app);
   const cr = await ensureBrowser(profileDir);
   const pages = await pageTargets(cr);
   const t = pages.find((x) => /neis\.go\.kr/.test(x.url || '')) || pages.find((x) => /eduptl\.kr/.test(x.url || ''));
