@@ -1,4 +1,4 @@
-// 파일명: neisatt.js | @version 1.1.0 — 1.1.0: 업무포털 로그인만 하면 «[나이스]» 를 지비스가 눌러 들어간다(실제 확인) / 1.0.1: 실제 나이스로 확인(9~11월 칸 55건이 규칙과 일치) · 마감 판단을 저장 단추+화면 글로 · 공휴일은 «시간표 없음» · 다른 곳(구분/교시 칸/사유) 표시 — 지비스 출결 → 나이스 «일일출결관리(담임용)» 일괄입력·지우기·맞대 보기 (지비스 전용, 메인 프로세스)
+// 파일명: neisatt.js | @version 1.1.1 — 1.1.1: 크롬이 떠 있는데 답이 없으면(지비스 첫 실행 실제 사례) 한 번 닫고 다시 띄움 · 기다림 20→40초 · Electron 크래시 통로 환경변수를 크롬에 안 물려줌 / 1.1.0: 1.1.0: 업무포털 로그인만 하면 «[나이스]» 를 지비스가 눌러 들어간다(실제 확인) / 1.0.1: 실제 나이스로 확인(9~11월 칸 55건이 규칙과 일치) · 마감 판단을 저장 단추+화면 글로 · 공휴일은 «시간표 없음» · 다른 곳(구분/교시 칸/사유) 표시 — 지비스 출결 → 나이스 «일일출결관리(담임용)» 일괄입력·지우기·맞대 보기 (지비스 전용, 메인 프로세스)
 /* ★ 어떻게 하나 (2026-11-12, 스쿨보드 1.2.7 «나이스 일괄입력» 방식을 참고해 새로 짬)
    1. PC 에 깔린 크롬(없으면 엣지)을 «지비스 전용 프로필»로 띄운다 — 선생님이 평소 쓰는 크롬과 섞이지 않는다.
    2. 업무포털 로그인(인증서·2차 인증)은 선생님이 그 창에서 «직접» 한다. 비밀번호는 받지도 저장하지도 않는다.
@@ -104,7 +104,9 @@ async function ensureBrowser(profileDir) {
   if (CR && !CR.cdp.closed) return CR;
   try { return await launchBrowser(profileDir); }
   catch (e) {
-    if (!e.handedOff) throw e;
+    /* 남은 창에 넘기고 끝났거나(handedOff), 떠 있는데 답이 없으면(silent — 2026-11-12 지비스 첫 실행에서 실제로 겪음,
+       새 프로필을 처음 만드는 중이었던 것으로 보임) 이 프로필 크롬을 모두 닫고 한 번만 다시 띄운다 */
+    if (!e.handedOff && !e.silent) throw e;
     await closeStale(profileDir);
     return launchBrowser(profileDir);
   }
@@ -114,14 +116,17 @@ async function launchBrowser(profileDir) {
   if (!exe) throw new Error('이 PC 에서 크롬(또는 엣지)을 찾지 못했습니다');
   fs.mkdirSync(profileDir, { recursive: true });
   const t0 = Date.now();
+  /* 지비스(Electron)의 크래시 보고 통로(CHROME_CRASHPAD_PIPE_NAME 등)를 크롬이 물려받지 않게 뺀다 */
+  const env = Object.assign({}, process.env);
+  Object.keys(env).forEach((k) => { if (/^(CHROME_|ELECTRON_)/i.test(k)) delete env[k]; });
   const proc = spawn(exe, ['--remote-debugging-pipe', '--user-data-dir=' + profileDir,
     '--no-first-run', '--no-default-browser-check', PORTAL_URL],
-  { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'], windowsHide: false });
+  { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'], windowsHide: false, env });
   let errTail = '', spawnErr = '';
   proc.stderr.on('data', (d) => { errTail = (errTail + d).slice(-400); });   // 안 읽으면 버퍼가 차서 크롬이 멈출 수 있다
   proc.on('error', (e) => { spawnErr = e.message; });
   const cdp = new Cdp(proc);
-  try { await cdp.send('Browser.getVersion', {}, null, 20000); }
+  try { await cdp.send('Browser.getVersion', {}, null, 40000); }
   catch (e) {
     try { proc.kill(); } catch (_) {}
     if (spawnErr) throw new Error('크롬을 띄우지 못했습니다 — ' + spawnErr);
@@ -130,6 +135,7 @@ async function launchBrowser(profileDir) {
     const err = new Error('지비스용 나이스 창(크롬)에 연결하지 못했습니다(' + e.message + (proc.exitCode !== null ? ', 크롬 종료 ' + proc.exitCode : '') + ')'
       + (hint ? ' — ' + hint.slice(0, 200) : '') + '. 지비스용 나이스 창이 떠 있으면 모두 닫은 뒤 다시 눌러 주세요');
     err.handedOff = proc.exitCode !== null && Date.now() - t0 < 15000;   // 곧바로 끝났다 = 남은 창에 넘겼다
+    err.silent = !spawnErr && /답하지 않습니다/.test(e.message);          // 떠 있었는데 답이 없었다
     throw err;
   }
   CR = { proc, cdp, sessions: new Map() };
