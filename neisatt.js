@@ -1,4 +1,4 @@
-// 파일명: neisatt.js | @version 1.0.1 — 1.0.1: 실제 나이스로 확인(9~11월 칸 55건이 규칙과 일치) · 마감 판단을 저장 단추+화면 글로 · 공휴일은 «시간표 없음» · 다른 곳(구분/교시 칸/사유) 표시 — 지비스 출결 → 나이스 «일일출결관리(담임용)» 일괄입력·지우기·맞대 보기 (지비스 전용, 메인 프로세스)
+// 파일명: neisatt.js | @version 1.1.0 — 1.1.0: 업무포털 로그인만 하면 «[나이스]» 를 지비스가 눌러 들어간다(실제 확인) / 1.0.1: 실제 나이스로 확인(9~11월 칸 55건이 규칙과 일치) · 마감 판단을 저장 단추+화면 글로 · 공휴일은 «시간표 없음» · 다른 곳(구분/교시 칸/사유) 표시 — 지비스 출결 → 나이스 «일일출결관리(담임용)» 일괄입력·지우기·맞대 보기 (지비스 전용, 메인 프로세스)
 /* ★ 어떻게 하나 (2026-11-12, 스쿨보드 1.2.7 «나이스 일괄입력» 방식을 참고해 새로 짬)
    1. PC 에 깔린 크롬(없으면 엣지)을 «지비스 전용 프로필»로 띄운다 — 선생님이 평소 쓰는 크롬과 섞이지 않는다.
    2. 업무포털 로그인(인증서·2차 인증)은 선생님이 그 창에서 «직접» 한다. 비밀번호는 받지도 저장하지도 않는다.
@@ -524,9 +524,26 @@ async function searchDay(cr, sid, ymd) {
 }
 
 /* 나이스가 열린 탭을 찾는다 — 없으면 로그인하고 들어오기를 기다린다 */
+/* 업무포털(로그인 뒤) 맨 위 메뉴의 «[나이스]» 링크를 찾아 누른다 — 2026-11-12 실제 화면:
+   <a class="menuBtn" href="javascript:void(0)" id="https://sen.neis.go.kr/cmc_fcm_lg01_000.do?data=…">[나이스]</a>
+   (주소는 id 에 들어 있고 누르면 포털 스크립트가 나이스를 연다). 나이스광장·원격지원·설문조사 링크는 고르지 않는다.
+   로그인(인증서·2차 인증)은 선생님이 직접 한다 — 여기는 로그인이 «끝난» 뒤의 메뉴 누르기만 한다. */
+function pPortalNeis(doClick) {
+  const body = (document.body && document.body.innerText) || '';
+  if (!/로그아웃/.test(body)) return { state: 'login' };
+  const ok = (el) => {
+    const t = (el.innerText || el.textContent || '').trim().replace(/\s+/g, '');
+    const u = String(el.id || el.getAttribute('href') || '');
+    return /^\[?나이스\]?$/.test(t) && /^https:\/\/[a-z0-9-]+\.neis\.go\.kr\//.test(u) && !/^https:\/\/(help|as\d*|esv-[a-z]+|www)\.neis\.go\.kr/.test(u);
+  };
+  const el = Array.from(document.querySelectorAll('a,button')).find(ok);
+  if (!el) return { state: 'nolink' };
+  if (doClick) el.click();
+  return { state: 'found', clicked: !!doClick };
+}
 async function waitNeis(cr, say) {
   const until = Date.now() + LOGIN_WAIT;
-  let opened = false;
+  let opened = false, clickedAt = 0, clicks = 0;
   for (;;) {
     checkStop();
     const pages = await pageTargets(cr);
@@ -537,14 +554,32 @@ async function waitNeis(cr, say) {
         if (p && p.root && p.menus > 0) return { sid, targetId: t.targetId };
       } catch (e) { cr.sessions.delete(t.targetId); }
     }
+    const hasNeis = pages.some((x) => /^https:\/\/[a-z0-9-]+\.neis\.go\.kr\//.test(x.url || '') && !/^https:\/\/(help|as\d*|esv-[a-z]+|www)\.neis\.go\.kr/.test(x.url || ''));
     /* 업무포털·나이스 탭이 하나도 없으면 업무포털을 새로 연다 */
     if (!opened && !pages.some((x) => /eduptl\.kr|neis\.go\.kr/.test(x.url || ''))) {
       opened = true;
       try { await cr.cdp.send('Target.createTarget', { url: PORTAL_URL }); } catch (e) {}
     }
+    /* 로그인이 끝났으면 «[나이스]» 를 대신 누른다 — 나이스 탭이 뜨는 중이면 기다리고, 안 뜨면 30초 뒤 한 번 더(모두 두 번까지) */
+    let portal = '';
+    if (!hasNeis || Date.now() - clickedAt > 30000) {
+      for (const t of pages.filter((x) => /^https:\/\/[a-z0-9-]+\.eduptl\.kr\//.test(x.url || ''))) {
+        try {
+          const sid = await sessionOf(cr, t.targetId);
+          const click = !hasNeis && clicks < 2 && Date.now() - clickedAt > 30000;
+          const r = await evRaw(cr, sid, pPortalNeis, click);
+          if (r && r.state === 'found' && r.clicked) { clicks++; clickedAt = Date.now(); }
+          if (r && (r.state === 'found' || !portal)) portal = r.state;
+          if (portal === 'found') break;
+        } catch (e) { cr.sessions.delete(t.targetId); }
+      }
+    }
     const left = Math.ceil((until - Date.now()) / 1000);
     if (left <= 0) throw new Error('5분 안에 나이스에 들어오지 않아 멈췄습니다. 나이스 창에서 로그인한 뒤 다시 눌러 주세요');
-    say('나이스 창에서 업무포털에 로그인하고 «나이스» 로 들어가 주세요 — 들어가면 바로 이어서 합니다 (' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') + ' 남음)');
+    const clock = ' (' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') + ' 남음)';
+    if (clickedAt || hasNeis) say('업무포털에서 나이스를 여는 중… 인증을 더 묻는 창이 뜨면 그것만 해 주세요' + clock);
+    else if (portal === 'nolink') say('업무포털 화면에서 «나이스» 메뉴를 찾지 못했습니다 — 직접 «나이스» 를 눌러 들어가 주세요' + clock);
+    else say('나이스 창에서 업무포털에 로그인해 주세요 — 로그인하면 나이스는 지비스가 열고 바로 이어서 합니다' + clock);
     await sleep(1500);
   }
 }
