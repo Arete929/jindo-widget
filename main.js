@@ -5314,17 +5314,30 @@ if (process.argv.indexOf('--updated') >= 0) {
     const { execSync } = require('child_process');
     const CR = String.fromCharCode(13);
     const cmdFile = path.join(userDataPath, 'relaunch.cmd');
+    /* ★ 한글 사용자 폴더(C:\Users\혜원여중) 에서 다시 켜기가 안 되던 것(2026-11-12 LG 실측):
+       .cmd 는 UTF-8 로 적히는데 cmd 는 한국어 코드(CP949)로 읽어 경로가 깨졌다 → 앱이 안 켜지고 꺼진 채로 남았다.
+       ① 경로 앞부분을 %LOCALAPPDATA% 같은 환경 변수로 바꿔 각본에 한글이 안 들어가게 하고
+       ② 그래도 남는 한글을 위해 chcp 65001(UTF-8) 을 먼저 건다. */
+    const envPath = (p) => {
+      for (const v of ['LOCALAPPDATA', 'APPDATA', 'USERPROFILE', 'ProgramFiles']) {
+        const base = process.env[v];
+        if (base && p.toLowerCase().startsWith(base.toLowerCase() + path.sep)) return '%' + v + '%' + p.slice(base.length);
+      }
+      return p;
+    };
     fs.writeFileSync(cmdFile, ['@echo off',
+      'chcp 65001 >nul',
       'ping -n 3 127.0.0.1 >nul',
-      'start "" "' + process.execPath + '"',
+      'start "" "' + envPath(process.execPath) + '"',
       'schtasks /delete /tn JindoWidgetRelaunch /f >nul 2>&1'
     ].join(CR + String.fromCharCode(10)) + CR + String.fromCharCode(10));
     /* ★ 스케줄러가 .cmd 를 곧장 돌리면 검은 콘솔 창이 뜨고, 앱의 오류 글줄이
        그 창에 붙는다 — 사람이 그 창을 닫으면 앱이 같이 죽는다(2026-09-01 실제로).
        wscript 로 감싸 창 없이(0) 돌린다. */
     const vbsFile = path.join(userDataPath, 'relaunch.vbs');
-    fs.writeFileSync(vbsFile,
-      'CreateObject("WScript.Shell").Run "cmd /c ""' + cmdFile + '""", 0, False' + CR + String.fromCharCode(10));
+    /* ★ .vbs 도 wscript 가 한국어 코드로 읽는다 — 앞에 BOM 을 붙인 UTF-16 으로 적으면 한글 경로도 그대로 읽는다 */
+    fs.writeFileSync(vbsFile, Buffer.concat([Buffer.from([0xFF, 0xFE]), Buffer.from(
+      'CreateObject("WScript.Shell").Run "cmd /c ""' + cmdFile + '""", 0, False' + CR + String.fromCharCode(10), 'utf16le')]));
     execSync('schtasks /create /f /tn JindoWidgetRelaunch /tr "wscript.exe \\"' + vbsFile
       + '\\"" /sc once /st 23:59', { stdio: 'ignore', windowsHide: true });
     execSync('schtasks /run /tn JindoWidgetRelaunch', { stdio: 'ignore', windowsHide: true });
