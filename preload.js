@@ -1,4 +1,4 @@
-// 파일명: preload.js | @version 2.3.0 — onSys(내 PC 숫자만) / v2.2.0 — alarmDone·alarmTest(수업 알림) / v2.1.0 — tbIm*(사진 줄이기) / v2.0.0 — attList(cls)·attMeGet·attMeSet (혜원이지 출결)
+// 파일명: preload.js | @version 2.4.0 — neisAtt*(출결 → 나이스 일괄입력) / v2.3.0 — onSys(내 PC 숫자만) / v2.2.0 — alarmDone·alarmTest(수업 알림) / v2.1.0 — tbIm*(사진 줄이기) / v2.0.0 — attList(cls)·attMeGet·attMeSet (혜원이지 출결)
 const { contextBridge, ipcRenderer, webFrame, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('widgetAPI', {
@@ -116,6 +116,11 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   attSet: (o) => ipcRenderer.invoke('att-set', o),
   attSeq: (items, cls) => ipcRenderer.invoke('att-seq', items, cls),
   attChk: (items, cls) => ipcRenderer.invoke('att-chk', items, cls),
+  /* 출결 → 나이스 일괄입력(지비스) */
+  neisAttRun: (o) => ipcRenderer.invoke('neis-att-run', o),
+  neisAttStop: () => ipcRenderer.invoke('neis-att-stop'),
+  neisAttOpen: () => ipcRenderer.invoke('neis-att-open'),
+  onNeisAttStatus: (cb) => ipcRenderer.on('neis-att-status', (_e, m) => cb(m)),
   attFold: (o) => ipcRenderer.invoke('att-fold', o),
   attUnblock: (cls) => ipcRenderer.invoke('att-unblock', cls),
   attLocalAdd: (o) => ipcRenderer.invoke('att-local-add', o),

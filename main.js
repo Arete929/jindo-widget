@@ -4651,6 +4651,34 @@ ipcMain.handle('att-chk', async (_e, items, cls) => {
     r: Number(x.r) || 0, sig: String(x.sig || ''), doc: !!x.doc, att: !!x.att, neis: !!x.neis }));
   return attCall({ op: 'att-chk', cls: String(cls || ''), items: list });
 });
+/* 출결 → 나이스 일괄입력(지비스 전용, 2026-11-12) — 크롬을 «지비스 전용 프로필»로 띄워 나이스 일일출결관리(담임용)에
+   넣기·지우기·맞대 보기. 로그인은 선생님이 그 창에서 직접 한다. 자세한 것은 neisatt.js 머리말 */
+const neisAtt = require('./neisatt.js');
+let neisAttBusy = false;
+const neisAttProfile = () => path.join(app.getPath('userData'), 'neis-chrome');
+ipcMain.handle('neis-att-run', async (e, p) => {
+  if (!HAS_TT) return { ok: false, msg: '나이스 일괄입력은 지비스에서만 씁니다' };
+  if (neisAttBusy) return { ok: false, msg: '이미 나이스 작업 중입니다' };
+  neisAttBusy = true;
+  const say = (m) => { try { if (!e.sender.isDestroyed()) e.sender.send('neis-att-status', String(m || '')); } catch (_) {} };
+  const o = p || {};
+  try {
+    debugLog(`나이스 일괄입력 시작: ${o.action} ${Array.isArray(o.entries) ? o.entries.length : 0}건`);
+    const r = await neisAtt.run({ action: o.action, conflict: o.conflict, entries: o.entries, profileDir: neisAttProfile() }, say);
+    const n = {}; (r.results || []).forEach((x) => { n[x.status] = (n[x.status] || 0) + 1; });
+    debugLog(`나이스 일괄입력 끝: ${JSON.stringify(n)}${r.stopMsg ? ' · ' + r.stopMsg : ''}`);
+    return r;
+  } catch (err) {
+    debugLog(`나이스 일괄입력 실패: ${err && err.message ? err.message : err}`);
+    return { ok: false, msg: (err && err.message) || String(err) };
+  } finally { neisAttBusy = false; }
+});
+ipcMain.handle('neis-att-stop', () => { neisAtt.stop(); return true; });
+ipcMain.handle('neis-att-open', async () => {
+  if (!HAS_TT) return { ok: false, msg: '지비스에서만 씁니다' };
+  try { return await neisAtt.openWindow(neisAttProfile()); }
+  catch (err) { return { ok: false, msg: (err && err.message) || String(err) }; }
+});
 ipcMain.handle('att-fold', async (_e, p) => {
   const o = p || {};
   return attCall({ op: 'att-fold', cls: attCls(o), month: String(o.month || ''), hide: !!o.hide });

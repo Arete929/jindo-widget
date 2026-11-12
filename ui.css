@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 2.1.1 — 도구상자 품의 도우미(.pmgt·.tbpre) / 도구상자 스쿨보드 모양 보강(.tbhero·.tbpdf·.tbstage·.tbcalw·.tbgt) · 바로가기 탭의 도구 카드(.tbinline) · 이름외우기 사진(.tbph·.tbpgrid) · 도구상자(.tb*) · 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
+/* 파일명: ui.css | @version 2.2.0 — 지비스 출결 «나이스 일괄입력» 창(.na·.nabg·.natabs·.nar 등, 스쿨보드 모양) / v2.1.1 도구상자 품의 도우미(.pmgt·.tbpre) / 도구상자 스쿨보드 모양 보강(.tbhero·.tbpdf·.tbstage·.tbcalw·.tbgt) · 바로가기 탭의 도구 카드(.tbinline) · 이름외우기 사진(.tbph·.tbpgrid) · 도구상자(.tb*) · 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -3020,3 +3020,59 @@
   .hyqrurl { text-align: center; font-size: calc(11px * var(--wf, 1)); font-weight: 700; color: var(--accent); word-break: break-all; user-select: text; margin: 4px 0 6px; }
   .hyqrhow { margin: 4px 0 8px 18px; font-size: calc(11px * var(--wf, 1)); line-height: 1.6; color: var(--fg2); }
 
+
+  /* ── 출결 → 나이스 일괄입력 창(지비스, v2.2.0) — 스쿨보드 «나이스 일괄입력» 모양: 둥근 큰 카드 · 탭 띠 · 조건 줄 · 목록 · 아래 단추 ── */
+  .nabg { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.45); -webkit-app-region: no-drag; }
+  .na { position: fixed; z-index: 91; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(860px, calc(100vw - 24px)); max-height: calc(100vh - 24px); display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; border-radius: 24px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); box-shadow: 0 16px 48px rgba(0,0,0,.35); -webkit-app-region: no-drag; font-size: calc(13px * var(--wf, 1)); }
+  .nah { display: flex; align-items: flex-start; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .nah .nat { flex: 1; min-width: 0; }
+  .nah .nat b { display: block; font-size: calc(17px * var(--wf, 1)); font-weight: 800; }
+  .nah .nat small { display: block; color: var(--dim); margin-top: 2px; }
+  .nax { border: 0; background: transparent; color: var(--dim); font-size: 18px; line-height: 1; cursor: pointer; padding: 4px 7px; border-radius: 8px; }
+  .nax:hover { background: var(--card); color: var(--fg); }
+  .nasec { padding: 10px 18px; border-bottom: 1px solid var(--line); }
+  .natabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
+  .natabs button { border: 0; background: transparent; color: var(--dim); padding: 7px 0; border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700; }
+  .natabs button.on { background: var(--bg); color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+  .naopt { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+  .nafl { display: flex; flex-direction: column; gap: 3px; }
+  .nafl small { color: var(--dim); font-size: calc(11px * var(--wf, 1)); }
+  .nafl input[type=date] { height: 32px; box-sizing: border-box; padding: 0 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; }
+  .naopt .naall { height: 32px; }
+  .naopt .naall.on { border-color: var(--accent); color: var(--accent); }
+  .nack { display: inline-flex; align-items: center; gap: 6px; height: 32px; cursor: pointer; }
+  .nack.b { font-weight: 800; height: auto; }
+  .nacf { margin-left: auto; }
+  .naseg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; height: 32px; }
+  .naseg button { border: 0; background: var(--card); color: var(--dim); padding: 0 12px; cursor: pointer; font: inherit; }
+  .naseg button + button { border-left: 1px solid var(--line); }
+  .naseg button.on { background: var(--accent); color: var(--on); font-weight: 800; }
+  .nadesc { flex-basis: 100%; margin: 0; color: var(--dim); font-size: calc(11px * var(--wf, 1)); line-height: 1.5; }
+  .nasel { display: flex; align-items: center; gap: 12px; padding: 8px 18px; flex-wrap: wrap; }
+  .nasel .dim { color: var(--dim); }
+  .naam { color: var(--warnfg); }
+  .nabad { color: #d4565d; font-weight: 700; }
+  .nalist { flex: 1 1 auto; min-height: 180px; overflow-y: auto; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .naempty { display: flex; align-items: center; justify-content: center; text-align: center; height: 180px; padding: 0 20px; color: var(--dim); }
+  .nar { display: grid; grid-template-columns: 18px 72px 38px 64px minmax(0, 1fr) minmax(110px, 32%); gap: 8px; align-items: start; padding: 8px 18px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .nar:hover { background: var(--card); }
+  .nar.no { cursor: default; }
+  .nar input { margin: 2px 0 0; }
+  .nad, .nan { font-variant-numeric: tabular-nums; }
+  .nan { color: var(--dim); }
+  .nanm { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .naty { min-width: 0; }
+  .naty b { font-weight: 800; }
+  .naty i { font-style: normal; color: var(--dim); margin-left: 6px; }
+  .naty small { display: block; color: var(--dim); font-size: calc(11px * var(--wf, 1)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .naty small.naam { color: var(--warnfg); white-space: normal; }
+  .nast { text-align: right; font-size: calc(11px * var(--wf, 1)); line-height: 1.4; min-width: 0; }
+  .nast b { font-weight: 800; }
+  .nast small { display: block; color: var(--dim); }
+  .nast .naneis { word-break: break-all; }
+  .na-ok { color: #2e9f5b; } .na-am { color: var(--warnfg); } .na-bad { color: #d4565d; } .na-dim { color: var(--dim); }
+  .nafoot { padding: 10px 18px 14px; }
+  .namsg { margin: 0 0 8px; }
+  .nafb { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+  .nastat { flex: 1; min-width: 0; color: var(--dim); font-size: calc(11.5px * var(--wf, 1)); }
+  .wkb.go.naden { background: #d4565d; border-color: #d4565d; color: #fff; }

@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.7.9
-   수정요약: v2.7.9 혜원이지 런처보드(함께 쓰는 앱) 맨 앞에 «혜원이지 폰» QR 타일 — 누르면 QR·주소·설치 방법 창(복사·그림 저장·크게 보기). / v2.7.8 런처보드 — 카드를 «함께 쓰는 중 ↔ 나만 보기» 구역으로 끌어 옮길 수 있게(구역·묶음 상자·다른 카드 위 어디에 떨궈도). / v2.7.7 점검하기 시트 쓰기는 지비스(HAS_TT)에서만. / v2.7.6 전광판 흐름이 다시 그릴 때마다 처음부터 시작하던 것(지비스 3초 갱신) — 흐름 위치를 시계로 이어 감. / v2.7.5 점검하기 체크(서류·출석부·NEIS)를 반 탭 칸에도 적고, 목록을 받을 때 어긋난 줄을 맞춤(attChkSync · 다리 att-chk). / v2.7.4 오늘 기준 — 급식 지난 날 접기(mlPastOpen), 주간업무 표 오늘 세로 줄(wTodayCols), 출결 오늘 줄(attIsToday). / v2.7.3 학년 일지 넣기 — 진행 게이지, 넣으면 칸 닫고 알림 줄(되돌리기 포함). / v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+/* 파일명: views.js | @version 2.8.0
+   수정요약: v2.8.0 지비스 출결 «나이스 일괄입력» 창(스쿨보드 모양) — 탭 셋(나이스에 입력·나이스에서 지우기·맞대 보기만), 기간·건너뛰기/덮어쓰기, 줄마다 결과(저장됨·이미 같음·건너뜀·실패 + 나이스 값). 다 맞으면 점검하기 NEIS 칸 자동(naModalHtml·naRun·naMark, 메인 neisatt.js). / v2.7.9혜원이지 런처보드(함께 쓰는 앱) 맨 앞에 «혜원이지 폰» QR 타일 — 누르면 QR·주소·설치 방법 창(복사·그림 저장·크게 보기). / v2.7.8 런처보드 — 카드를 «함께 쓰는 중 ↔ 나만 보기» 구역으로 끌어 옮길 수 있게(구역·묶음 상자·다른 카드 위 어디에 떨궈도). / v2.7.7 점검하기 시트 쓰기는 지비스(HAS_TT)에서만. / v2.7.6 전광판 흐름이 다시 그릴 때마다 처음부터 시작하던 것(지비스 3초 갱신) — 흐름 위치를 시계로 이어 감. / v2.7.5 점검하기 체크(서류·출석부·NEIS)를 반 탭 칸에도 적고, 목록을 받을 때 어긋난 줄을 맞춤(attChkSync · 다리 att-chk). / v2.7.4 오늘 기준 — 급식 지난 날 접기(mlPastOpen), 주간업무 표 오늘 세로 줄(wTodayCols), 출결 오늘 줄(attIsToday). / v2.7.3 학년 일지 넣기 — 진행 게이지, 넣으면 칸 닫고 알림 줄(되돌리기 포함). / v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
      목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
      그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
    v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
@@ -2872,6 +2872,8 @@ function attBar() {
     + (has && attCanWrite() ? '<button class="wkb" id="atFold"' + (attFoldBusy ? ' disabled' : '') + ' title="'
       + (f ? '이 달 줄을 시트에서 다시 보이게' : '검토 끝난 달 — 시트에서 이 달 줄을 숨깁니다') + '">'
       + (attFoldBusy ? (f ? '펴는 중…' : '접는 중…') : (f ? '펴기' : '접기')) + '</button>' : '')
+    /* 나이스 일괄입력(지비스) — 쓸 수 있는 반만 */
+    + (HAS_TT && ATT && attCanWrite() ? '<button class="wkb' + (NA ? ' go' : '') + '" id="atNeis" title="지비스 출결을 나이스 일일출결관리(담임용)에 넣기·지우기·맞대 보기">나이스 일괄입력</button>' : '')
     + (HAS_TT && ATT && attCls() === '3-2' ? '<button class="wkb' + (ATTNOT ? ' go' : '') + '" id="atNot" title="현재까지의 출결을 노션 [DB]’26 3-2 출결 로 보냅니다'
       + (ATTNOTAT ? ' · 마지막 전송 ' + esc(ATTNOTAT) : '') + '">'
       + notionMark(14) + ' 노션으로</button>' : '')
@@ -3058,6 +3060,242 @@ function attChkMove(oldSig, newSig) {
   if (!oldSig || oldSig === newSig || !ATTCHK[oldSig]) return;
   ATTCHK[newSig] = ATTCHK[oldSig]; delete ATTCHK[oldSig];
   attChkSave(); attChkJust = false;
+}
+
+/* ── 출결 → 나이스 일괄입력(지비스 전용, v2.8.0 · 2026-11-12) ─────────────────────
+   스쿨보드 1.2.7 «나이스 일괄입력» 창 모양을 따른다. 탭 셋: 나이스에 입력 · 나이스에서 지우기 · 맞대 보기만.
+   (스쿨보드의 «출결 초기화»(무조건 다 지우기)는 위험해서 넣지 않았다)
+   한 줄 = 출결 한 건의 «하루». 여러 날 결석은 평일마다 한 줄씩. 교시는 사유 앞 «(5교시~)» «(~2교시)» «(3교시)» 에서 읽고,
+   나이스에는 그 꼬리표를 뗀 사유만 넣는다. 유형 «인정○○» 은 나이스의 «출석인정○○».
+   넣거나 지운 뒤 그 출결의 날이 «모두» 나이스와 같아지면 점검하기 «NEIS» 칸을 저절로 켠다(지우면 끈다).
+   크롬 띄우기·나이스 조작은 메인(neisatt.js). 여기는 줄 만들기·창·결과 표시만. */
+var NA = null;
+var NA_TYPE = /^(질병|인정|출석인정|미인정|기타)(결석|지각|조퇴|결과)$/;
+var NA_MAX = 100;
+var NA_ST = { saved: ['저장됨', 'ok'], same: ['이미 같음', 'ok'], deleted: ['지움', 'ok'], empty: ['이미 없음', 'ok'],
+  diff: ['나이스 값 다름', 'am'], skipped: ['건너뜀', 'am'], failed: ['실패', 'bad'], stopped: ['중단', 'dim'], noday: ['수업 없는 날', 'dim'] };
+function naYmd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function naOpen() {
+  var mon = attMon || attThisMon(), today = naYmd(new Date());
+  var last = naYmd(new Date(Number(mon.slice(0, 4)), Number(mon.slice(5, 7)), 0));
+  NA = { tab: 'input', from: mon + '-01', to: last < today ? last : today, incl: false, conflict: 'skip',
+    off: {}, phase: 'idle', status: '', res: {}, ranTab: '', msg: '', msgBad: false, delAsk: false, scroll: 0 };
+  naHook(); render();
+}
+function naHook() {
+  if (naHook.done || !widgetAPI.onNeisAttStatus) return;
+  naHook.done = true;
+  widgetAPI.onNeisAttStatus(function (m) {
+    if (!NA) return;
+    NA.status = m;
+    var el = document.getElementById('naStat');
+    if (el) el.textContent = m; else render();
+  });
+}
+function naWeekdays(a, b) {
+  var out = [], d = new Date(a + 'T00:00:00'), end = new Date(b + 'T00:00:00');
+  for (var i = 0; d <= end && i < 120; i++) {
+    var w = d.getDay();
+    if (w !== 0 && w !== 6) out.push(naYmd(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+/* 이 반 출결 → 나이스로 보낼 «하루» 줄들. 보건실·상담실·외출처럼 나이스 출결이 아닌 것은 뺀다 */
+function naCands() {
+  var out = [];
+  attRows().forEach(function (x) {
+    if (x.saving) return;
+    var m = String(x.type || '').match(NA_TYPE);
+    if (!m || !/^\d{4}-\d{2}-\d{2}$/.test(String(x.start || ''))) return;
+    var kind = m[2], closing = (m[1] === '인정' ? '출석인정' : m[1]) + kind;
+    var rs = String(x.reason || '');
+    var pm = kind === '조퇴' ? rs.match(/^\s*\((\d{1,2})교시~\)/) : kind === '지각' ? rs.match(/^\s*\(~(\d{1,2})교시\)/)
+      : kind === '결과' ? rs.match(/^\s*\((\d{1,2})교시\)/) : null;
+    var p = pm ? Number(pm[1]) : 0;
+    var reason = rs.replace(/^\s*\((?:\d{1,2}교시~|~\d{1,2}교시|\d{1,2}교시)\)\s*/, '').trim();
+    var id = String(x.id || ''), no = /^\d{4,5}$/.test(id) ? Number(id.slice(-2)) : 0;
+    var warns = [];
+    if (!(no > 0)) warns.push('학생 번호가 없어 나이스 학생과 맞출 수 없어요');
+    if (kind !== '결석' && !(p >= 1 && p <= 12)) warns.push('몇 교시인지 사유 앞에 없어요 — 예: ' + (kind === '조퇴' ? '(5교시~)' : kind === '지각' ? '(~1교시)' : '(3교시)'));
+    if (closing === '기타결석' && !reason) warns.push('기타결석은 나이스에서 사유를 꼭 넣어야 해요');
+    if (new TextEncoder().encode(reason).length > 500) warns.push('사유가 나이스 칸 한도(한글 약 160자)를 넘어요');
+    var days = [x.start];
+    if (kind === '결석' && /^\d{4}-\d{2}-\d{2}$/.test(String(x.end || '')) && x.end > x.start) days = naWeekdays(x.start, x.end);
+    var neis = !!attChkOf(x).neis;
+    days.forEach(function (d) {
+      out.push({ key: x.sig + '§' + d, sig: x.sig, row: x, date: d, number: no, name: String(x.name || ''),
+        closing: closing, kind: kind, p: p, reason: reason, warns: warns, neis: neis, ndays: days.length });
+    });
+  });
+  return out.sort(function (a, b) { return a.date.localeCompare(b.date) || (a.number - b.number); });
+}
+function naList() {
+  return naCands().filter(function (e) {
+    if (NA.res[e.key]) return true;                       // 방금 다룬 줄은 결과가 보이게 남긴다
+    if (NA.from && e.date < NA.from) return false;
+    if (NA.to && e.date > NA.to) return false;
+    if (NA.tab === 'delete') return e.neis;
+    if (NA.tab === 'input') return NA.incl || !e.neis;
+    return true;
+  });
+}
+function naPickable(e) { return !e.warns.length; }
+function naOn(e) { return naPickable(e) && !NA.off[e.key]; }
+function naMd(d) { return d.slice(5) + '(' + '일월화수목금토'.charAt(new Date(d + 'T00:00:00').getDay()) + ')'; }
+function naPer(e) { return e.kind === '결석' ? '종일' : e.kind === '조퇴' ? e.p + '교시~' : e.kind === '지각' ? '~' + e.p + '교시' : e.p + '교시'; }
+function naRowHtml(e) {
+  var r = NA.res[e.key], ok = naPickable(e), run = NA.phase === 'run', st;
+  if (r) {
+    var lab = NA_ST[r.status] || [r.status, 'dim'];
+    if (NA.ranTab === 'compare' && r.status === 'empty') lab = ['나이스에 없음', 'am'];
+    if (NA.ranTab === 'compare' && r.status === 'same') lab = ['나이스와 같음', 'ok'];
+    var showNeis = r.neis && (NA.ranTab === 'compare' || r.status === 'skipped' || r.status === 'failed');
+    st = '<b class="na-' + lab[1] + '">' + esc(lab[0]) + '</b>'
+      + (r.message && !/^(saved|same|deleted|empty)$/.test(r.status) ? '<small>' + esc(r.message) + '</small>' : '')
+      + (showNeis ? '<small class="naneis">나이스: ' + esc(r.neis) + '</small>' : '')
+      + (r.want && r.status !== 'same' ? '<small class="naneis">앱: ' + esc(r.want) + '</small>' : '');
+  } else st = '<small>' + (e.neis ? '나이스 반영' : '나이스 미반영') + '</small>';
+  return '<label class="nar' + (ok ? '' : ' no') + '"><input type="checkbox" data-nak="' + esc(e.key) + '"'
+    + (naOn(e) ? ' checked' : '') + (ok && !run ? '' : ' disabled') + '>'
+    + '<span class="nad">' + naMd(e.date) + '</span><span class="nan">' + (e.number ? e.number + '번' : '-') + '</span>'
+    + '<span class="nanm">' + esc(e.name) + '</span>'
+    + '<span class="naty"><b>' + esc(e.closing) + '</b><i>' + esc(naPer(e)) + '</i>'
+    + (e.ndays > 1 ? '<i>' + e.ndays + '일 결석 중</i>' : '')
+    + (e.reason ? '<small>사유: ' + esc(e.reason) + '</small>' : '')
+    + e.warns.map(function (w) { return '<small class="naam">' + esc(w) + '</small>'; }).join('') + '</span>'
+    + '<span class="nast">' + st + '</span></label>';
+}
+function naModalHtml() {
+  if (!NA || VIEW !== 'att' || !HAS_TT) return '';
+  var list = naList(), pick = list.filter(naPickable), sel = list.filter(naOn), bad = list.length - pick.length;
+  var run = NA.phase === 'run', dis = run ? ' disabled' : '';
+  var desc = {
+    input: '고른 출결을 나이스 일일출결관리(담임용)에 저장해요. 교시는 나이스 시간표에 맞추고, 출결마감은 하지 않아요. 저장한 뒤 다시 조회해 넣은 값과 같은지 확인해요.',
+    'delete': '나이스 반영한 출결을 골라 나이스에서 지워요. 나이스 값이 앱 출결과 같을 때만 지우고, 출결마감은 건드리지 않아요.',
+    compare: '나이스에는 아무것도 쓰지 않아요. 고른 출결이 나이스와 같은지, 비어 있는지, 다른지 맞대 보기만 해요.'
+  }[NA.tab];
+  var verb = { input: '일괄 입력', 'delete': '지우기', compare: '맞대 보기' }[NA.tab];
+  var empty = { input: '이 기간에 나이스에 반영하지 않은 출결이 없어요.', 'delete': '이 기간에 나이스 반영한 출결이 없어요. (점검하기 «NEIS» 칸이 켜진 출결만 나와요)', compare: '이 기간에 출결이 없어요.' }[NA.tab];
+  var h = '<div class="nabg"' + (run ? '' : ' data-na="close"') + '></div>'
+    + '<div class="na" role="dialog" aria-modal="true" aria-label="나이스 일괄입력">'
+    + '<div class="nah"><div class="nat"><b>나이스 일괄입력</b><small>' + esc(attCls()) + ' · 지비스 출결을 나이스 일일출결관리(담임용)와 맞춰요</small></div>'
+    + '<button class="wkb" data-na="win" title="지비스용 크롬 창을 띄워 업무포털에 미리 로그인해 둡니다"' + dis + '>나이스 창 열기</button>'
+    + '<button class="nax" data-na="close" aria-label="닫기"' + dis + '>✕</button></div>'
+    + '<div class="nasec"><div class="natabs">' + [['input', '나이스에 입력'], ['delete', '나이스에서 지우기'], ['compare', '맞대 보기만']].map(function (t) {
+      return '<button class="' + (NA.tab === t[0] ? 'on' : '') + '" data-natab="' + t[0] + '"' + dis + '>' + t[1] + '</button>';
+    }).join('') + '</div></div>'
+    + '<div class="nasec naopt">'
+    + '<label class="nafl"><small>시작일</small><input type="date" id="naFrom" value="' + esc(NA.from) + '"' + dis + '></label>'
+    + '<label class="nafl"><small>종료일</small><input type="date" id="naTo" value="' + esc(NA.to) + '"' + dis + '></label>'
+    + '<button class="wkb naall' + (!NA.from && !NA.to ? ' on' : '') + '" data-na="allp"' + dis + '>전체 기간</button>'
+    + (NA.tab === 'input' ? '<label class="nack"><input type="checkbox" id="naIncl"' + (NA.incl ? ' checked' : '') + dis + '> 나이스 반영한 출결도 보기</label>'
+      + '<div class="nafl nacf"><small>나이스에 다른 출결이 있으면</small><span class="naseg">'
+      + '<button class="' + (NA.conflict === 'skip' ? 'on' : '') + '" data-nacf="skip"' + dis + '>건너뛰기</button>'
+      + '<button class="' + (NA.conflict === 'overwrite' ? 'on' : '') + '" data-nacf="overwrite"' + dis + '>덮어쓰기</button></span></div>' : '')
+    + '<p class="nadesc">' + desc + '</p></div>'
+    + '<div class="nasel"><label class="nack b"><input type="checkbox" id="naAll"' + (pick.length && sel.length === pick.length ? ' checked' : '') + (pick.length ? dis : ' disabled') + '> 전체 선택</label>'
+    + '<span class="dim">' + pick.length + '건 중 ' + sel.length + '건 선택</span>'
+    + (bad ? '<span class="naam">보낼 수 없는 줄 ' + bad + '건</span>' : '')
+    + (sel.length > NA_MAX ? '<span class="nabad">한 번에 ' + NA_MAX + '건까지 — 기간을 나눠 주세요</span>' : '')
+    + '<span class="spacer"></span><span class="dim">한 번에 ' + NA_MAX + '건까지</span></div>'
+    + '<div class="nalist">' + (list.length ? list.map(naRowHtml).join('') : '<div class="naempty">' + empty + '</div>') + '</div>'
+    + '<div class="nafoot">' + (NA.msg ? '<div class="' + (NA.msgBad ? 'atwarn' : 'rhint') + ' namsg">' + esc(NA.msg) + '</div>' : '')
+    + '<div class="nafb"><span class="nastat" id="naStat">' + esc(run ? NA.status : '') + '</span>'
+    + (run ? '<button class="wkb" data-na="stop">멈추기</button><button class="wkb go" disabled>⏳ ' + verb + ' 중…</button>'
+      : '<button class="wkb" data-na="close">닫기</button>'
+        + '<button class="wkb go' + (NA.tab === 'delete' && NA.delAsk ? ' naden' : '') + '" data-na="run"' + (sel.length && sel.length <= NA_MAX ? '' : ' disabled') + '>'
+        + (NA.tab === 'delete' && NA.delAsk ? '한 번 더 누르면 ' + sel.length + '건을 나이스에서 지웁니다' : sel.length + '건 ' + verb) + '</button>')
+    + '</div></div></div>';
+  return h;
+}
+function naRun() {
+  if (!NA || NA.phase === 'run') return;
+  var list = naList().filter(naOn);
+  if (!list.length || list.length > NA_MAX) return;
+  if (NA.tab === 'delete' && !NA.delAsk) { NA.delAsk = true; render(); return; }   // 지우기는 두 번 눌러야
+  NA.delAsk = false;
+  var tab = NA.tab;
+  NA.phase = 'run'; NA.status = '나이스 창(크롬)을 여는 중…'; NA.msg = ''; NA.msgBad = false; NA.ranTab = tab;
+  list.forEach(function (e) { delete NA.res[e.key]; });
+  naHook(); render();
+  widgetAPI.neisAttRun({ action: tab, conflict: NA.conflict, entries: list.map(function (e) {
+    return { key: e.key, date: e.date, number: e.number, name: e.name, closing: e.closing, p: e.p, reason: e.reason };
+  }) }).then(function (r) {
+    if (!NA) return;
+    NA.phase = 'idle';
+    if (!r || !r.ok) { NA.msg = (r && r.msg) || '나이스와 연결하지 못했습니다'; NA.msgBad = true; render(); return; }
+    (r.results || []).forEach(function (x) { NA.res[x.key] = x; });
+    var marked = tab === 'compare' ? 0 : naMark(tab);
+    NA.msg = naSummary(tab, r.results || [], marked) + (r.stopMsg ? ' · ' + r.stopMsg : '');
+    NA.msgBad = (r.results || []).some(function (x) { return /^(failed|skipped|diff|stopped)$/.test(x.status) || (tab === 'compare' && x.status === 'empty'); });
+    render();
+  }).catch(function (e) { if (!NA) return; NA.phase = 'idle'; NA.msg = attErrText(e); NA.msgBad = true; render(); });
+}
+/* 그 출결의 날이 모두 나이스와 같아졌으면 점검하기 «NEIS» 칸을 켠다(지우기면 끈다) */
+function naMark(tab) {
+  var okS = tab === 'delete' ? ['deleted', 'empty'] : ['saved', 'same'];
+  var by = {};
+  naCands().forEach(function (e) { (by[e.sig] = by[e.sig] || { row: e.row, keys: [] }).keys.push(e.key); });
+  var n = 0, push = [];
+  Object.keys(by).forEach(function (sig) {
+    var rs = by[sig].keys.map(function (k) { return NA.res[k]; });
+    if (rs.some(function (r) { return !r; })) return;                       // 아직 안 다룬 날이 있다
+    if (!rs.every(function (r) { return okS.indexOf(r.status) >= 0 || r.status === 'noday'; })) return;
+    if (!rs.some(function (r) { return okS.indexOf(r.status) >= 0; })) return;
+    var want = tab !== 'delete', c = Object.assign({}, ATTCHK[sig] || {});
+    if (!!c.neis === want) return;
+    c.neis = want; ATTCHK[sig] = c; n++;
+    if (!by[sig].row.local) push.push(attChkItem(by[sig].row));
+  });
+  if (n) { attChkSave(); if (push.length) attChkPush(push, 'neis'); }
+  return n;
+}
+function naSummary(tab, rs, marked) {
+  var c = {};
+  rs.forEach(function (x) { c[x.status] = (c[x.status] || 0) + 1; });
+  var s = tab === 'compare'
+    ? [['same', '같음'], ['empty', '나이스에 없음'], ['diff', '다름'], ['failed', '실패'], ['noday', '수업 없는 날'], ['stopped', '중단']]
+    : [['saved', '저장됨'], ['same', '이미 같음'], ['deleted', '지움'], ['empty', '이미 없음'], ['skipped', '건너뜀'], ['failed', '실패'], ['noday', '수업 없는 날'], ['stopped', '중단']];
+  return ({ compare: '맞대 보기 끝 — ', 'delete': '나이스에서 지우기 끝 — ', input: '나이스 일괄입력 끝 — ' })[tab]
+    + s.filter(function (k) { return c[k[0]]; }).map(function (k) { return k[1] + ' ' + c[k[0]]; }).join(' · ')
+    + (marked ? ' · 점검하기 NEIS 칸 ' + marked + '건 ' + (tab === 'delete' ? '끔' : '켬') : '');
+}
+function naWire(app) {
+  if (!NA) return;
+  var lst = app.querySelector('.nalist');
+  if (lst) { lst.scrollTop = NA.scroll || 0; lst.addEventListener('scroll', function () { if (NA) NA.scroll = lst.scrollTop; }, { passive: true }); }
+  var on = function (sel, fn) { app.querySelectorAll(sel).forEach(function (b) { b.addEventListener('click', function (ev) { fn(b, ev); }); }); };
+  var ch = function (sel, fn) { app.querySelectorAll(sel).forEach(function (b) { b.addEventListener('change', function () { fn(b); }); }); };
+  on('[data-na]', function (b) {
+    var a = b.dataset.na;
+    if (a === 'close') { if (NA.phase !== 'run') { NA = null; render(); } }
+    else if (a === 'win') {
+      NA.msg = '나이스 창을 여는 중…'; NA.msgBad = false; render();
+      widgetAPI.neisAttOpen().then(function (r) {
+        if (!NA) return;
+        NA.msg = r && r.ok ? '나이스 창을 띄웠어요 — 업무포털에 로그인하고 «나이스» 로 들어가 두세요' : ((r && r.msg) || '나이스 창을 열지 못했습니다');
+        NA.msgBad = !(r && r.ok); render();
+      }).catch(function (e) { if (NA) { NA.msg = attErrText(e); NA.msgBad = true; render(); } });
+    }
+    else if (a === 'allp') { NA.from = ''; NA.to = ''; NA.delAsk = false; NA.scroll = 0; render(); }
+    else if (a === 'run') naRun();
+    else if (a === 'stop') {
+      widgetAPI.neisAttStop();
+      NA.status = '멈추는 중… (지금 하는 날까지 마치고 멈춥니다)';
+      var el = document.getElementById('naStat'); if (el) el.textContent = NA.status;
+    }
+  });
+  on('[data-natab]', function (b) { if (NA.phase === 'run') return; NA.tab = b.dataset.natab; NA.delAsk = false; NA.scroll = 0; render(); });
+  on('[data-nacf]', function (b) { if (NA.phase === 'run') return; NA.conflict = b.dataset.nacf; render(); });
+  ch('#naFrom', function (el) { el.blur(); NA.from = el.value; NA.delAsk = false; render(); });
+  ch('#naTo', function (el) { el.blur(); NA.to = el.value; NA.delAsk = false; render(); });
+  ch('#naIncl', function (el) { NA.incl = el.checked; render(); });
+  ch('#naAll', function (el) {
+    naList().filter(naPickable).forEach(function (e) { if (el.checked) delete NA.off[e.key]; else NA.off[e.key] = 1; });
+    NA.delAsk = false; render();
+  });
+  ch('[data-nak]', function (b) { if (b.checked) delete NA.off[b.dataset.nak]; else NA.off[b.dataset.nak] = 1; NA.delAsk = false; render(); });
 }
 /* ── 칸 너비 — 시트처럼 머리글 오른쪽 끝을 끌어서 바꾼다. 두 번 누르면 처음대로 ──
    ★ 글자 크기(A−A+)를 바꿔도 비율이 맞게 «배율 1 기준 px» 로 적어 둔다(ATTCOLW). 이 PC 에 남는다. */
@@ -3672,6 +3910,8 @@ function wireAtt(app) {
   on('[data-atm]', function (b) { attMon = b.dataset.atm; attPop = null; render(); });
   on('#atGet', function () { attSeqTried = ''; attMsg = ''; attLoad(); render(); });
   attFileWire(app);                               // 증빙 칸 — 첨부·열기·지우기·끌어다 놓기
+  on('#atNeis', function () { if (NA) { if (NA.phase !== 'run') { NA = null; render(); } } else naOpen(); });
+  naWire(app);                                    // 나이스 일괄입력 창(열려 있을 때만)
   on('#atNot', function () { if (ATTNOT) { ATTNOT = null; render(); } else attNotionRead(); });
   on('#atNotRe', function () { attNotionRead(); });
   on('#atNotX', function () { if (!ATTNOT || ATTNOT.phase !== 'sending') { ATTNOT = null; render(); } });
@@ -7622,6 +7862,7 @@ function updBar() {
 function render() {
   if (composing) return;   // 한글 조합 중에는 화면을 건드리지 않는다
   if (gm.open && document.activeElement && document.activeElement.id === 'gmName') return;   // 시트 이름을 적는 중에는 다시 그리지 않는다
+  if (NA && document.activeElement && /^na(From|To)$/.test(document.activeElement.id)) return;   // 나이스 창 날짜를 고르는 중에도
   var app = document.getElementById('app');
   if (!STATE) { app.innerHTML = titleBar() + updBar() + taskBar() + '<div class="empty">불러오는 중…</div>'; return report(); }
 
@@ -7741,7 +7982,7 @@ function render() {
   html += '<div class="foot"><span class="fby">@JINHOKIM</span></div>';
   app.style.setProperty('--wf', String(FS[fsKey()] || 1));
   app.style.setProperty('--uf', String(FS.usage || 1));   // 사용량 상자 크기(탭과 따로)
-  app.innerHTML = html + gModalHtml();
+  app.innerHTML = html + gModalHtml() + naModalHtml();
   // 두 번째 고정 줄이 머리 «바로 아래»에 붙도록, 머리 높이를 재서 알려 준다.
   // 머리는 업데이트 띠·사용량 띠가 있고 없고에 따라 높이가 달라져서 고정값을 쓸 수 없다.
   // 검색줄·주차 단추·날짜 줄을 머리 안으로 옮겨 «날짜까지» 통째로 고정한다.

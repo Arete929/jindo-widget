@@ -37,6 +37,7 @@ files:
   - fetchtext.js
   - worknotice.js
   - neis.js
+  - neisatt.js    # 출결 → 나이스 일괄입력(크롬을 파이프로 조종, 지비스 전용 — main.js 가 require 하니 꼭 담는다)
   - academic.js
   - mealduty.js  # 급식지도 순서표 시트 읽기
   - gradeplan.js  # 학년부 일지 시트
