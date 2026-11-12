@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 2.3.0 — 나이스 일괄입력 단추 도움말 툴팁(.natipw·.natip) / v2.2.0 지비스 출결 «나이스 일괄입력» 창(.na·.nabg·.natabs·.nar 등, 스쿨보드 모양) / v2.1.1 도구상자 품의 도우미(.pmgt·.tbpre) / 도구상자 스쿨보드 모양 보강(.tbhero·.tbpdf·.tbstage·.tbcalw·.tbgt) · 바로가기 탭의 도구 카드(.tbinline) · 이름외우기 사진(.tbph·.tbpgrid) · 도구상자(.tb*) · 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
+/* 파일명: ui.css | @version 2.4.0 — 출결 표 NEIS·NEIS 다시 라벨(.atneis), 나이스 일괄입력 다시 넣기·옛 날짜 지우기 표시(.natag) / v2.3.0 나이스 일괄입력 단추 도움말 툴팁(.natipw·.natip) / v2.2.0 지비스 출결 «나이스 일괄입력» 창(.na·.nabg·.natabs·.nar 등, 스쿨보드 모양) / v2.1.1 도구상자 품의 도우미(.pmgt·.tbpre) / 도구상자 스쿨보드 모양 보강(.tbhero·.tbpdf·.tbstage·.tbcalw·.tbgt) · 바로가기 탭의 도구 카드(.tbinline) · 이름외우기 사진(.tbph·.tbpgrid) · 도구상자(.tb*) · 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -3090,3 +3090,11 @@
   .natip li > i { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--card2); color: var(--accent); font-style: normal; font-weight: 800; font-size: calc(11px * var(--wf, 1)); display: flex; align-items: center; justify-content: center; margin-top: 1px; }
   .natip li small { display: block; color: var(--dim); font-size: calc(11px * var(--wf, 1)); }
   .natip .natipwarn { margin-top: 8px; padding: 6px 9px; border-radius: 9px; background: var(--warnbg); color: var(--warnfg); font-size: calc(11px * var(--wf, 1)); }
+  /* 출결 표 «NEIS» 라벨(v2.4.0) — 나이스에 반영됨(보라, 점검하기 NEIS 색) / 반영 뒤 지비스에서 고침 «NEIS 다시»(주황) */
+  .atneis { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 5px; vertical-align: 1px; white-space: nowrap;
+    font-size: calc(9.5px * var(--wf, 1)); font-weight: 800; line-height: 1.5; letter-spacing: .02em;
+    color: #7e22ce; background: color-mix(in srgb, #9333ea 12%, transparent); border: 1px solid color-mix(in srgb, #9333ea 45%, transparent); cursor: default; }
+  .atneis.re { color: #b45309; background: color-mix(in srgb, #f59e0b 16%, transparent); border-color: color-mix(in srgb, #f59e0b 60%, transparent); cursor: help; }
+  .nast small.natag { display: inline-block; padding: 1px 7px; border-radius: 6px; font-weight: 700; white-space: normal; }
+  .nast small.natag.am { color: #b45309; background: color-mix(in srgb, #f59e0b 16%, transparent); }
+  .nast small.natag.bad { color: #b42318; background: color-mix(in srgb, #d4565d 14%, transparent); }

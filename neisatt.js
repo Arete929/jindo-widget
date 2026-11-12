@@ -1,4 +1,4 @@
-// 파일명: neisatt.js | @version 1.1.1 — 1.1.1: 크롬이 떠 있는데 답이 없으면(지비스 첫 실행 실제 사례) 한 번 닫고 다시 띄움 · 기다림 20→40초 · Electron 크래시 통로 환경변수를 크롬에 안 물려줌 / 1.1.0: 1.1.0: 업무포털 로그인만 하면 «[나이스]» 를 지비스가 눌러 들어간다(실제 확인) / 1.0.1: 실제 나이스로 확인(9~11월 칸 55건이 규칙과 일치) · 마감 판단을 저장 단추+화면 글로 · 공휴일은 «시간표 없음» · 다른 곳(구분/교시 칸/사유) 표시 — 지비스 출결 → 나이스 «일일출결관리(담임용)» 일괄입력·지우기·맞대 보기 (지비스 전용, 메인 프로세스)
+// 파일명: neisatt.js | @version 1.2.0 — 1.2.0: 줄마다 force(지비스에서 고친 줄은 그 줄만 덮어쓰기) / 1.1.1: 1.1.1: 크롬이 떠 있는데 답이 없으면(지비스 첫 실행 실제 사례) 한 번 닫고 다시 띄움 · 기다림 20→40초 · Electron 크래시 통로 환경변수를 크롬에 안 물려줌 / 1.1.0: 1.1.0: 업무포털 로그인만 하면 «[나이스]» 를 지비스가 눌러 들어간다(실제 확인) / 1.0.1: 실제 나이스로 확인(9~11월 칸 55건이 규칙과 일치) · 마감 판단을 저장 단추+화면 글로 · 공휴일은 «시간표 없음» · 다른 곳(구분/교시 칸/사유) 표시 — 지비스 출결 → 나이스 «일일출결관리(담임용)» 일괄입력·지우기·맞대 보기 (지비스 전용, 메인 프로세스)
 /* ★ 어떻게 하나 (2026-11-12, 스쿨보드 1.2.7 «나이스 일괄입력» 방식을 참고해 새로 짬)
    1. PC 에 깔린 크롬(없으면 엣지)을 «지비스 전용 프로필»로 띄운다 — 선생님이 평소 쓰는 크롬과 섞이지 않는다.
    2. 업무포털 로그인(인증서·2차 인증)은 선생님이 그 창에서 «직접» 한다. 비밀번호는 받지도 저장하지도 않는다.
@@ -446,7 +446,8 @@ function normEntries(list) {
   return list.map((x) => {
     const e = {
       key: String(x.key || ''), date: String(x.date || ''), number: Number(x.number), name: String(x.name || '').trim(),
-      closing: String(x.closing || ''), kind: '', p: Math.round(Number(x.p) || 0), reason: String(x.reason || '').trim()
+      closing: String(x.closing || ''), kind: '', p: Math.round(Number(x.p) || 0), reason: String(x.reason || '').trim(),
+      force: !!x.force                     // 지비스에서 고친 줄 — 나이스 값이 다르면 이 줄만 덮어쓴다
     };
     const m = e.closing.match(CLOSINGS);
     if (!e.key || !/^\d{4}-\d{2}-\d{2}$/.test(e.date) || !(e.number > 0) || !m) throw new Error('보낼 출결 값이 올바르지 않습니다');
@@ -491,7 +492,7 @@ async function doDay(cr, sid, date, list, action, conflict) {
       continue;
     }
     if (st === 'same') out.push(res(e, 'same', '나이스에 같은 출결이 이미 있습니다', { neis: now }));
-    else if (st === 'diff' && conflict !== 'overwrite') out.push(res(e, 'skipped', '나이스에 다른 출결이 있어 건너뛰었습니다', { neis: now, want }));
+    else if (st === 'diff' && conflict !== 'overwrite' && !e.force) out.push(res(e, 'skipped', '나이스에 다른 출결이 있어 건너뛰었습니다', { neis: now, want }));
     else writes.push({ e, index: row.index, number: e.number, closing: t.closing, cells: t.cells, reason: t.reason });
   }
   if (!writes.length) return out;
