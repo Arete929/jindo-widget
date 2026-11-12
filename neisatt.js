@@ -1,4 +1,4 @@
-// 파일명: neisatt.js | @version 1.0.0 — 지비스 출결 → 나이스 «일일출결관리(담임용)» 일괄입력·지우기·맞대 보기 (지비스 전용, 메인 프로세스)
+// 파일명: neisatt.js | @version 1.0.1 — 1.0.1: 실제 나이스로 확인(9~11월 칸 55건이 규칙과 일치) · 마감 판단을 저장 단추+화면 글로 · 공휴일은 «시간표 없음» · 다른 곳(구분/교시 칸/사유) 표시 — 지비스 출결 → 나이스 «일일출결관리(담임용)» 일괄입력·지우기·맞대 보기 (지비스 전용, 메인 프로세스)
 /* ★ 어떻게 하나 (2026-11-12, 스쿨보드 1.2.7 «나이스 일괄입력» 방식을 참고해 새로 짬)
    1. PC 에 깔린 크롬(없으면 엣지)을 «지비스 전용 프로필»로 띄운다 — 선생님이 평소 쓰는 크롬과 섞이지 않는다.
    2. 업무포털 로그인(인증서·2차 인증)은 선생님이 그 창에서 «직접» 한다. 비밀번호는 받지도 저장하지도 않는다.
@@ -294,11 +294,14 @@ async function pSearch(ymd) {
       e: Array.from({ length: 12 }, (_, p) => r['e' + (p + 1)] || '')
     };
   });
-  const dayClosed = daily.lookup('dmSelectDayAtteFinYn').getValue('atteDdlnYn') === 'Y';
-  const monClosed = daily.lookup('dmSelectMonthAtteFinYn').getValue('atteDdlnYn') === 'Y';
-  const closed = !n ? '' : monClosed ? '나이스에서 이달 출결이 마감되어 있습니다'
-    : dayClosed ? '나이스에서 이날 출결이 마감되어 있습니다'
-      : daily.lookup('btnSave').enabled ? '' : '나이스 저장 단추가 꺼져 있어 넣을 수 없습니다';
+  /* 넣을 수 있는지는 나이스 «저장» 단추로 본다. 마감 표시 값(atteDdlnYn)은 화면 글(«일출결마감미확인»)과 어긋나는 일이 있어
+     (2026-11 실제 나이스: 일 마감 값 Y 인데 화면은 «미확인»), 단추가 꺼졌을 때 까닭을 알리는 데만 화면 글로 쓴다 */
+  const label = (id) => { const o = daily.lookup(id); return String((o && o.value) || '').replace(/^[☞\s]+/, ''); };
+  const mmTxt = label('optMmAtteFin'), ddTxt = label('optDayAtteFin');
+  const closed = !n || daily.lookup('btnSave').enabled ? ''
+    : /마감완료/.test(mmTxt) ? '나이스에서 이달 출결이 마감되어 있습니다(«' + mmTxt + '»)'
+      : /마감완료/.test(ddTxt) ? '나이스에서 이날 출결이 마감되어 있습니다(«' + ddTxt + '»)'
+        : '나이스 저장 단추가 꺼져 있어 넣을 수 없습니다';
   return { rows, cols, chasu, closed, ayr: search.getValue('ayr') || '', grd: search.getValue('grd') || '', cls: search.getValue('clsCd') || '', unit };
 }
 async function pAlert(timeout) {
@@ -417,6 +420,14 @@ function compare(row, t) {
     && CELL_KEYS.every((k) => (row.cells[k] || '') === (t.cells[k] || ''));
   return same ? 'same' : 'diff';
 }
+/* 무엇이 다른지 — 구분 / 교시 칸 / 사유 (교시 칸만 같고 사유만 다른 경우가 실제로 흔하다) */
+function diffWhat(row, t) {
+  const w = [];
+  if (row.closing !== t.closing) w.push('구분');
+  if (!CELL_KEYS.every((k) => (row.cells[k] || '') === (t.cells[k] || ''))) w.push('교시 칸');
+  if (String(row.reason || '').trim() !== t.reason) w.push('사유');
+  return (w.join('·') || '값') + ' 다름';
+}
 const neisText = (r) => isEmpty(r) ? '비어 있음' : (r.closing || '(구분 없음)') + ' ' + cellLine(r.cells) + (String(r.reason || '').trim() ? ' · 사유 ' + String(r.reason).trim() : '');
 const res = (e, status, message, extra) => Object.assign({ key: e.key, status, message: message || '' }, extra || {});
 const fail = (list, msg, status) => list.map((e) => res(e, status || 'failed', msg));
@@ -449,7 +460,7 @@ async function doDay(cr, sid, date, list, action, conflict) {
   if (day.ayr && Number(day.ayr) !== schoolYearOf(date)) {
     throw new Error('나이스 화면이 ' + day.ayr + '학년도라 ' + schoolYearOf(date) + '학년도 출결을 다룰 수 없습니다. 나이스에서 학년도를 바꾼 뒤 다시 해 주세요');
   }
-  if (!day.rows.length) return list.map((e) => res(e, 'noday', '나이스에 이날 학생 줄이 없습니다(수업 없는 날)'));
+  if (!day.rows.length) return list.map((e) => res(e, 'noday', day.noTimetable ? '나이스에 이날 시간표가 없습니다(공휴일·휴업일)' : '나이스에 이날 학생 줄이 없습니다(수업 없는 날)'));
   const out = [], writes = [], used = new Set();
   for (const e of list) {
     const f = findRow(e, day.rows);
@@ -464,7 +475,7 @@ async function doDay(cr, sid, date, list, action, conflict) {
     if (t.error) { out.push(res(e, 'failed', t.error, { neis: now })); continue; }
     const st = compare(row, t), want = t.closing + ' ' + cellLine(t.cells);
     if (action === 'compare') {
-      out.push(res(e, st, st === 'same' ? '나이스와 같습니다' : st === 'empty' ? '나이스에 아직 없습니다' : '나이스 값이 다릅니다', { neis: now, want }));
+      out.push(res(e, st, st === 'same' ? '나이스와 같습니다' : st === 'empty' ? '나이스에 아직 없습니다' : '나이스 값이 다릅니다(' + diffWhat(row, t) + ')', { neis: now, want }));
       continue;
     }
     if (action === 'delete') {
@@ -505,6 +516,8 @@ async function searchDay(cr, sid, ymd) {
   const alert = await ev(cr, sid, pAlert, day.rows && day.rows.length ? 0 : 15000);
   if (alert) {
     const t = String(alert).replace(/^\[[^\]]*\]\s*:\s*/, '').replace(/\s+/g, ' ').replace(/\.$/, '');
+    /* 공휴일·휴업일은 나이스가 «…에 해당하는 시간표를 확인 하세요» 라고만 한다(2026-09-24 추석 등 실제 확인) */
+    if (!(day.rows && day.rows.length) && /해당하는 시간표를 확인/.test(t)) return Object.assign({}, day, { rows: [], noTimetable: true });
     return Object.assign({}, day, { error: '나이스 안내: «' + t + '»' + (/자료권한/.test(t) ? ' — 교과 선생님이 이날 출결을 먼저 넣었다면 나올 수 있으니 나이스에서 직접 확인해 주세요' : '') });
   }
   return day;
