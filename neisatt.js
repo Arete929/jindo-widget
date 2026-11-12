@@ -147,7 +147,35 @@ async function sessionOf(cr, targetId) {
   return r.sessionId;
 }
 /* 화면 안에서 함수 하나를 돌린다 — 함수는 바깥 변수를 쓰지 않아야 한다(글로 바뀌어 넘어간다) */
-async function ev(cr, sid, fn, arg) {
+/* ★ 나이스는 메뉴를 열 때 화면(페이지)을 갈아 끼우기도 한다 — 그러면 붙어 있던 연결(session)이 사라진다(2026-11-12 실측
+   «Session with given id not found»). 핸들({sid, targetId})로 부르면 나이스 탭을 다시 찾아 붙고 한 번 더 한다. */
+const LOST = /Session with given id not found|No session with given id|Target closed|Cannot find context|Execution context was destroyed|Inspected target navigated|context with specified id/i;
+async function reattach(cr, h) {
+  cr.sessions.clear();
+  for (let w = 0; w < 60000; w += 1000) {
+    const pages = await pageTargets(cr);
+    for (const t of pages.filter((x) => /^https:\/\/[a-z0-9-]+\.neis\.go\.kr\//.test(x.url || ''))) {
+      try {
+        const sid = await sessionOf(cr, t.targetId);
+        const p = await evRaw(cr, sid, pProbe);
+        if (p && p.root && p.menus > 0) { h.sid = sid; h.targetId = t.targetId; return; }
+      } catch (e) { cr.sessions.delete(t.targetId); }
+    }
+    await sleep(1000);
+  }
+  throw new Error('나이스 화면과 연결이 끊겼습니다. 나이스 창이 열려 있는지 확인하고 다시 해 주세요');
+}
+async function ev(cr, h, fn, arg) {
+  if (typeof h === 'string') return evRaw(cr, h, fn, arg);
+  for (let i = 0; ; i++) {
+    try { return await evRaw(cr, h.sid, fn, arg); }
+    catch (e) {
+      if (i >= 2 || !LOST.test(String(e && e.message))) throw e;
+      await reattach(cr, h);
+    }
+  }
+}
+async function evRaw(cr, sid, fn, arg) {
   const expression = '(' + fn.toString() + ')(' + JSON.stringify(arg === undefined ? null : arg) + ')';
   const r = await cr.cdp.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true, userGesture: true }, sid, 180000);
   if (r.exceptionDetails) {
@@ -492,7 +520,7 @@ async function waitNeis(cr, say) {
     for (const t of pages.filter((x) => /^https:\/\/[a-z0-9-]+\.neis\.go\.kr\//.test(x.url || ''))) {
       try {
         const sid = await sessionOf(cr, t.targetId);
-        const p = await ev(cr, sid, pProbe);
+        const p = await evRaw(cr, sid, pProbe);
         if (p && p.root && p.menus > 0) return { sid, targetId: t.targetId };
       } catch (e) { cr.sessions.delete(t.targetId); }
     }
@@ -559,7 +587,7 @@ async function run(opt, say) {
   try {
     const neis = await waitNeis(cr, say);
     try { await cr.cdp.send('Target.activateTarget', { targetId: neis.targetId }); } catch (e) {}
-    await openDaily(cr, neis.sid, say);
+    await openDaily(cr, neis, say);
     const dates = Array.from(new Set(entries.map((e) => e.date))).sort();
     let stopMsg = '';
     for (let i = 0; i < dates.length; i++) {
@@ -568,7 +596,7 @@ async function run(opt, say) {
       if (STOP) { stopMsg = '멈추기를 눌러 ' + (action === 'compare' ? '보지' : action === 'delete' ? '지우지' : '넣지') + ' 않았습니다'; results.push(...fail(list, stopMsg, 'stopped')); continue; }
       say('나이스 출결 ' + WORDS[action] + ' 중 (' + (i + 1) + '/' + dates.length + '일, ' + dates[i] + ')');
       try {
-        results.push(...await doDay(cr, neis.sid, dates[i], list, action, conflict));
+        results.push(...await doDay(cr, neis, dates[i], list, action, conflict));
       } catch (e) {
         stopMsg = e instanceof Stopped ? e.message : '나이스 작업을 멈췄습니다: ' + e.message;
         results.push(...fail(list, stopMsg, e instanceof Stopped ? 'stopped' : 'failed'));
@@ -598,11 +626,11 @@ async function peek(opt, say) {
   STOP = false;
   const cr = await ensureBrowser(opt.profileDir);
   const neis = await waitNeis(cr, say);
-  await openDaily(cr, neis.sid, say);
+  await openDaily(cr, neis, say);
   const out = [];
   for (const date of opt.dates || []) {
     say('읽는 중 ' + date);
-    const day = await searchDay(cr, neis.sid, String(date).replace(/-/g, ''));
+    const day = await searchDay(cr, neis, String(date).replace(/-/g, ''));
     if (day.fatal || day.error) { out.push({ date, error: day.error }); continue; }
     const first = day.rows[0];
     out.push({
@@ -617,4 +645,4 @@ async function peek(opt, say) {
   return out;
 }
 
-module.exports = { run, openWindow, stop, peek, _test: { buildTarget, compare, findRow, cellLine, normEntries, schoolYearOf } };
+module.exports = { run, openWindow, stop, peek, _cr: () => CR, _adopt: (c) => { CR = c; }, _test: { buildTarget, compare, findRow, cellLine, normEntries, schoolYearOf } };
