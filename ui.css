@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 2.2.0 — 지비스 출결 «나이스 일괄입력» 창(.na·.nabg·.natabs·.nar 등, 스쿨보드 모양) / v2.1.1 도구상자 품의 도우미(.pmgt·.tbpre) / 도구상자 스쿨보드 모양 보강(.tbhero·.tbpdf·.tbstage·.tbcalw·.tbgt) · 바로가기 탭의 도구 카드(.tbinline) · 이름외우기 사진(.tbph·.tbpgrid) · 도구상자(.tb*) · 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
+/* 파일명: ui.css | @version 2.3.0 — 나이스 일괄입력 단추 도움말 툴팁(.natipw·.natip) / v2.2.0 지비스 출결 «나이스 일괄입력» 창(.na·.nabg·.natabs·.nar 등, 스쿨보드 모양) / v2.1.1 도구상자 품의 도우미(.pmgt·.tbpre) / 도구상자 스쿨보드 모양 보강(.tbhero·.tbpdf·.tbstage·.tbcalw·.tbgt) · 바로가기 탭의 도구 카드(.tbinline) · 이름외우기 사진(.tbph·.tbpgrid) · 도구상자(.tb*) · 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -3076,3 +3076,17 @@
   .nafb { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
   .nastat { flex: 1; min-width: 0; color: var(--dim); font-size: calc(11.5px * var(--wf, 1)); }
   .wkb.go.naden { background: #d4565d; border-color: #d4565d; color: #fff; }
+  /* 나이스 일괄입력 단추 도움말 툴팁(v2.3.0) — 마우스를 올리거나 단추에 초점이 가면 순서 카드가 뜬다 */
+  .natipw { position: relative; display: inline-flex; }
+  .natipw .wkb .naq { font-size: calc(10px * var(--wf, 1)); opacity: .75; margin-left: 3px; }
+  .natip { position: absolute; top: calc(100% + 8px); right: 0; z-index: 60; width: min(380px, calc(100vw - 24px)); box-sizing: border-box;
+    padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+    box-shadow: 0 10px 30px rgba(0,0,0,.25); font-size: calc(12px * var(--wf, 1)); line-height: 1.5; text-align: left; white-space: normal;
+    pointer-events: none; opacity: 0; visibility: hidden; transform: translateY(-4px); transition: opacity .15s, transform .15s, visibility 0s linear .15s; }
+  .natipw:hover .natip, .natipw:focus-within .natip { opacity: 1; visibility: visible; transform: none; transition-delay: .25s, .25s, 0s; }
+  .natip b { display: block; font-size: calc(13px * var(--wf, 1)); margin-bottom: 4px; }
+  .natip ol { list-style: none; margin: 0; padding: 0; }
+  .natip li { display: flex; gap: 8px; align-items: flex-start; padding: 3px 0; }
+  .natip li > i { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--card2); color: var(--accent); font-style: normal; font-weight: 800; font-size: calc(11px * var(--wf, 1)); display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .natip li small { display: block; color: var(--dim); font-size: calc(11px * var(--wf, 1)); }
+  .natip .natipwarn { margin-top: 8px; padding: 6px 9px; border-radius: 9px; background: var(--warnbg); color: var(--warnfg); font-size: calc(11px * var(--wf, 1)); }
