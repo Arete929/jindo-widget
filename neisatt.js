@@ -85,20 +85,52 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 class Stopped extends Error {}
 function checkStop() { if (STOP) throw new Stopped('멈추기를 눌러 멈췄습니다'); }
 
+/* 지비스 전용 프로필로 떠 있는 «끈 떨어진» 크롬을 닫는다.
+   ★ 지비스가 꺼졌다 켜지면 파이프는 끊겨도 그 크롬 창은 남는다. 같은 프로필로 새로 띄우면
+     새 크롬이 남은 창에 일을 넘기고 곧바로 끝나 버려 연결할 수 없다 — 그래서 남은 창을 닫고 다시 띄운다.
+     이 프로필은 지비스만 쓰므로 선생님의 평소 크롬은 건드리지 않는다. 경로(한글)는 환경 변수로 넘긴다. */
+function closeStale(profileDir) {
+  return new Promise((resolve) => {
+    const ps = 'Get-CimInstance Win32_Process -Filter "Name=\'chrome.exe\' or Name=\'msedge.exe\'" | '
+      + 'Where-Object { $_.CommandLine -and $_.CommandLine.IndexOf($env:JIVIS_NEIS_DIR, [StringComparison]::OrdinalIgnoreCase) -ge 0 } | '
+      + 'ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }';
+    const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps],
+      { stdio: 'ignore', windowsHide: true, env: Object.assign({}, process.env, { JIVIS_NEIS_DIR: '--user-data-dir=' + profileDir }) });
+    p.on('exit', () => setTimeout(resolve, 1500));
+    p.on('error', () => resolve());
+  });
+}
 async function ensureBrowser(profileDir) {
   if (CR && !CR.cdp.closed) return CR;
+  try { return await launchBrowser(profileDir); }
+  catch (e) {
+    if (!e.handedOff) throw e;
+    await closeStale(profileDir);
+    return launchBrowser(profileDir);
+  }
+}
+async function launchBrowser(profileDir) {
   const exe = findBrowser();
   if (!exe) throw new Error('이 PC 에서 크롬(또는 엣지)을 찾지 못했습니다');
   fs.mkdirSync(profileDir, { recursive: true });
+  const t0 = Date.now();
   const proc = spawn(exe, ['--remote-debugging-pipe', '--user-data-dir=' + profileDir,
     '--no-first-run', '--no-default-browser-check', PORTAL_URL],
-  { stdio: ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'], windowsHide: false });
+  { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'], windowsHide: false });
+  let errTail = '', spawnErr = '';
+  proc.stderr.on('data', (d) => { errTail = (errTail + d).slice(-400); });   // 안 읽으면 버퍼가 차서 크롬이 멈출 수 있다
+  proc.on('error', (e) => { spawnErr = e.message; });
   const cdp = new Cdp(proc);
   try { await cdp.send('Browser.getVersion', {}, null, 20000); }
   catch (e) {
     try { proc.kill(); } catch (_) {}
+    if (spawnErr) throw new Error('크롬을 띄우지 못했습니다 — ' + spawnErr);
     /* 같은 프로필 크롬이 이미 떠 있으면(지비스를 다시 켠 경우 등) 새 크롬은 그쪽에 넘기고 곧바로 끝난다 */
-    throw new Error('지비스용 나이스 창(크롬)이 이미 떠 있는데 연결이 끊겼습니다. 그 창을 모두 닫은 뒤 다시 눌러 주세요');
+    const hint = String(errTail).split(/\r?\n/).filter((l) => l && !/external_registry_loader/.test(l)).slice(-2).join(' / ');
+    const err = new Error('지비스용 나이스 창(크롬)에 연결하지 못했습니다(' + e.message + (proc.exitCode !== null ? ', 크롬 종료 ' + proc.exitCode : '') + ')'
+      + (hint ? ' — ' + hint.slice(0, 200) : '') + '. 지비스용 나이스 창이 떠 있으면 모두 닫은 뒤 다시 눌러 주세요');
+    err.handedOff = proc.exitCode !== null && Date.now() - t0 < 15000;   // 곧바로 끝났다 = 남은 창에 넘겼다
+    throw err;
   }
   CR = { proc, cdp, sessions: new Map() };
   return CR;
@@ -559,4 +591,30 @@ async function openWindow(profileDir) {
 }
 function stop() { STOP = true; }
 
-module.exports = { run, openWindow, stop, _test: { buildTarget, compare, findRow, cellLine, normEntries, schoolYearOf } };
+/* 점검용 — 나이스 일일출결을 날짜별로 «읽기만» 해서 칸 모양을 돌려준다(이름·사유 글은 빼고 번호·구분·칸·사유 길이만).
+   지비스가 만드는 칸 규칙(지각=조회~N교시 등)이 선생님이 손으로 넣은 실제 값과 맞는지 보려고 쓴다. 나이스에는 아무것도 쓰지 않는다. */
+async function peek(opt, say) {
+  say = say || (() => {});
+  STOP = false;
+  const cr = await ensureBrowser(opt.profileDir);
+  const neis = await waitNeis(cr, say);
+  await openDaily(cr, neis.sid, say);
+  const out = [];
+  for (const date of opt.dates || []) {
+    say('읽는 중 ' + date);
+    const day = await searchDay(cr, neis.sid, String(date).replace(/-/g, ''));
+    if (day.fatal || day.error) { out.push({ date, error: day.error }); continue; }
+    const first = day.rows[0];
+    out.push({
+      date, ayr: day.ayr, grd: day.grd, cls: day.cls, chasu: day.chasu, closed: day.closed, unit: day.unit, students: day.rows.length,
+      cols: (day.cols || []).filter((c) => /^(jo|jong|gyo\d+|chulgyulGb|atteRmkCn|totMax|g\d+|e\d+)$/.test(c)).join(','),
+      sample: first ? { tot: first.totMax, g: first.g.join('|'), e: first.e.join('|') } : null,
+      rows: day.rows.filter((r) => !isEmpty(r)).map((r) => ({ no: r.number, closing: r.closing, cells: cellLine(r.cells),
+        raw: CELL_KEYS.map((k) => r.cells[k] || '').join('|'), reasonLen: String(r.reason || '').trim().length, tot: r.totMax,
+        g: r.g.slice(0, r.totMax).join(''), e: r.e.slice(0, r.totMax).join('') }))
+    });
+  }
+  return out;
+}
+
+module.exports = { run, openWindow, stop, peek, _test: { buildTarget, compare, findRow, cellLine, normEntries, schoolYearOf } };
