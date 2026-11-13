@@ -8040,7 +8040,7 @@ function titleBar() {
   // ★ 두 번 누르면 넓게 보기로 — 창 제목 줄에서 흔히 하는 몸짓이다
   return '<div class="tbar" ondblclick="widgetAPI.openEasy()" '
     + 'title="두 번 누르면 넓게 보기">'
-    + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
+    + '<img class="tlogo"' + (HAS_TT ? '' : ' ondblclick="event.stopPropagation()"') + ' src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
     + '<span class="ttl">' + brandHtml() + '</span>'
     /* ★ 사용량 타일은 이름 옆 빈 자리에 — 아래 띠를 없애 두 줄을 돌려받는다 */
     + usgInline()
