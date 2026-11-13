@@ -1,5 +1,5 @@
-/* 파일명: views.js | @version 2.11.2
-   수정요약: v2.11.2 출결 목록을 조용히 자동으로 다시 읽는다 — 전에는 탭을 처음 열 때 한 번만 읽어, 다른 사람(학년부장)이 시트에 적은 «수정요청사항» 이 열어 둔 화면에 안 들어왔다(⟳ 를 눌러야 나타남). 출결 탭을 보는 동안 1분마다 · 창이 다시 보이거나 돌아왔을 때(focus·visibilitychange) 읽고, 값이 안 바뀌었으면 화면을 다시 그리지 않는다. 입력·고치기·팝업·나이스 일괄입력·저장 중에는 건드리지 않고, 실패해도 오류 줄을 띄우지 않는다(attQuietLoad). / v2.11.1 앱에만 둔 미인정 줄(로컬)도 나이스에 넣으면 «NEIS» 라벨이 붙게. / v2.11.0 나이스 일괄입력을 혜원이지에서도 — 단추·창·툴팁의 앱 이름을 갈래에 맞게(naApp), 앱에서 고른 반을 함께 보내 나이스 화면의 학년·반과 다르면 손대지 않음. / v2.10.0 출결 표 유형 칸에 «NEIS» 라벨(나이스에 반영됨) — 나이스에 넣은 값(구분·교시·사유·날짜)을 점검하기 기록에 함께 두고(ATTCHK[sig].nv), 뒤에 지비스에서 고치면 주황 «NEIS 다시»(마우스를 올리면 나이스에 든 값). 나이스 일괄입력 «나이스에 입력» 에 고친 줄이 저절로 다시 나와 그 줄만 덮어쓰고, 날짜를 옮겼으면 옛 날짜를 먼저 지움(예전에 넣은 값과 같을 때만). 사유 칸의 옛 «NEIS✓» 는 이 라벨로 바꿈(naParse·naDrift·attNeisTag). / v2.9.0 «나이스 일괄입력» 단추에 마우스를 올리면 넣는 순서(6단계)와 마감 주의를 보여 주는 도움말 카드(naTipHtml, .natip). / v2.8.0 지비스 출결 «나이스 일괄입력» 창(스쿨보드 모양) — 탭 셋(나이스에 입력·나이스에서 지우기·맞대 보기만), 기간·건너뛰기/덮어쓰기, 줄마다 결과(저장됨·이미 같음·건너뜀·실패 + 나이스 값). 다 맞으면 점검하기 NEIS 칸 자동(naModalHtml·naRun·naMark, 메인 neisatt.js). / v2.7.9혜원이지 런처보드(함께 쓰는 앱) 맨 앞에 «혜원이지 폰» QR 타일 — 누르면 QR·주소·설치 방법 창(복사·그림 저장·크게 보기). / v2.7.8 런처보드 — 카드를 «함께 쓰는 중 ↔ 나만 보기» 구역으로 끌어 옮길 수 있게(구역·묶음 상자·다른 카드 위 어디에 떨궈도). / v2.7.7 점검하기 시트 쓰기는 지비스(HAS_TT)에서만. / v2.7.6 전광판 흐름이 다시 그릴 때마다 처음부터 시작하던 것(지비스 3초 갱신) — 흐름 위치를 시계로 이어 감. / v2.7.5 점검하기 체크(서류·출석부·NEIS)를 반 탭 칸에도 적고, 목록을 받을 때 어긋난 줄을 맞춤(attChkSync · 다리 att-chk). / v2.7.4 오늘 기준 — 급식 지난 날 접기(mlPastOpen), 주간업무 표 오늘 세로 줄(wTodayCols), 출결 오늘 줄(attIsToday). / v2.7.3 학년 일지 넣기 — 진행 게이지, 넣으면 칸 닫고 알림 줄(되돌리기 포함). / v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
+/* 파일명: views.js | @version 2.12.0
+   수정요약: v2.12.0 ★나이스에 넣은 값 장부를 지비스·혜원이지가 함께 쓴다(다리 att-nv 1.6.x) — 전에는 두 앱이 «넣은 값(nv)» 을 각자 기억해 같은 반의 «NEIS»/«NEIS 다시» 표시가 달랐다. 나이스에 넣거나 지울 때(수동 체크 포함) 다리에도 적고, 목록을 받을 때 다리 장부를 기준으로 맞춘다(attNvSync · attNvPush). 엇갈리면 적은 때(at)가 나중인 쪽, 시각 없는 옛 기억은 «0000.»+저장시각을 빌려 진짜 시각보다 항상 이르게, «지움 표»는 옛 기억이 되살리지 못하게. 시트 체크 칸을 쓰는 것은 여전히 지비스만(둘이 쓰면 서로 되돌린다). 못 보낸 것은 ATTCHK[줄표].nvq 에 남겨 다음에 다시. / v2.11.2 출결 목록을 조용히 자동으로 다시 읽는다 — 전에는 탭을 처음 열 때 한 번만 읽어, 다른 사람(학년부장)이 시트에 적은 «수정요청사항» 이 열어 둔 화면에 안 들어왔다(⟳ 를 눌러야 나타남). 출결 탭을 보는 동안 1분마다 · 창이 다시 보이거나 돌아왔을 때(focus·visibilitychange) 읽고, 값이 안 바뀌었으면 화면을 다시 그리지 않는다. 입력·고치기·팝업·나이스 일괄입력·저장 중에는 건드리지 않고, 실패해도 오류 줄을 띄우지 않는다(attQuietLoad). / v2.11.1 앱에만 둔 미인정 줄(로컬)도 나이스에 넣으면 «NEIS» 라벨이 붙게. / v2.11.0 나이스 일괄입력을 혜원이지에서도 — 단추·창·툴팁의 앱 이름을 갈래에 맞게(naApp), 앱에서 고른 반을 함께 보내 나이스 화면의 학년·반과 다르면 손대지 않음. / v2.10.0 출결 표 유형 칸에 «NEIS» 라벨(나이스에 반영됨) — 나이스에 넣은 값(구분·교시·사유·날짜)을 점검하기 기록에 함께 두고(ATTCHK[sig].nv), 뒤에 지비스에서 고치면 주황 «NEIS 다시»(마우스를 올리면 나이스에 든 값). 나이스 일괄입력 «나이스에 입력» 에 고친 줄이 저절로 다시 나와 그 줄만 덮어쓰고, 날짜를 옮겼으면 옛 날짜를 먼저 지움(예전에 넣은 값과 같을 때만). 사유 칸의 옛 «NEIS✓» 는 이 라벨로 바꿈(naParse·naDrift·attNeisTag). / v2.9.0 «나이스 일괄입력» 단추에 마우스를 올리면 넣는 순서(6단계)와 마감 주의를 보여 주는 도움말 카드(naTipHtml, .natip). / v2.8.0 지비스 출결 «나이스 일괄입력» 창(스쿨보드 모양) — 탭 셋(나이스에 입력·나이스에서 지우기·맞대 보기만), 기간·건너뛰기/덮어쓰기, 줄마다 결과(저장됨·이미 같음·건너뜀·실패 + 나이스 값). 다 맞으면 점검하기 NEIS 칸 자동(naModalHtml·naRun·naMark, 메인 neisatt.js). / v2.7.9혜원이지 런처보드(함께 쓰는 앱) 맨 앞에 «혜원이지 폰» QR 타일 — 누르면 QR·주소·설치 방법 창(복사·그림 저장·크게 보기). / v2.7.8 런처보드 — 카드를 «함께 쓰는 중 ↔ 나만 보기» 구역으로 끌어 옮길 수 있게(구역·묶음 상자·다른 카드 위 어디에 떨궈도). / v2.7.7 점검하기 시트 쓰기는 지비스(HAS_TT)에서만. / v2.7.6 전광판 흐름이 다시 그릴 때마다 처음부터 시작하던 것(지비스 3초 갱신) — 흐름 위치를 시계로 이어 감. / v2.7.5 점검하기 체크(서류·출석부·NEIS)를 반 탭 칸에도 적고, 목록을 받을 때 어긋난 줄을 맞춤(attChkSync · 다리 att-chk). / v2.7.4 오늘 기준 — 급식 지난 날 접기(mlPastOpen), 주간업무 표 오늘 세로 줄(wTodayCols), 출결 오늘 줄(attIsToday). / v2.7.3 학년 일지 넣기 — 진행 게이지, 넣으면 칸 닫고 알림 줄(되돌리기 포함). / v2.7.2 학사일정 — 어제까지의 날을 달마다 «지난 일정» 한 줄로 접음(기본 접힘, 눌러서 펼침, 검색 중엔 모두 펼침). / v2.7.1 지비스 출결 «증빙» 칩을 누르면 앱 안 미리보기 창(이미지·영상·PDF) — 창 안에서 이름 바꾸기(확장자 그대로)·줄 정보로 이름 짓기·이전/다음·기본 앱으로 열기. / v2.7.0 지비스 출결 «증빙» 열 — 줄마다 이미지·영상·PDF 무엇이든 붙여넣기(Ctrl+V)·끌어다 놓기·첨부, 노션으로 보낼 때 같이 올림. / v2.6.0 지비스 «진호 시간표» 의 첫 화면을 «오늘» → «이번주»(수업진도 웹앱의 시간표계획 주간표)로 + 1주·지난+이번·이번+다음·3주 나란히 보기(세로 창이면 위아래). / v2.5.0 컴시간 «이번 주 / 다음 주 / 함께» 단추 + 시간표 요일 머리에 날짜(월 10/5). / v2.4.14 도구상자 단추 연결을 «열려 있을 때만» 하던 것 수정(바로가기 탭에서 타일이 안 눌리던 버그). / v2.4.13 학년부 일지 일정 삭제(지비스) — 항목을 눌러 펼치면 «🗑 이 일정 삭제»(두 번 눌러야 지움). 같은 내용 중 몇 번째인지로 시트 줄을 정함. / v2.4.12 급식 검색칸을 굵은 테두리 «타일»(.mlsbox, 제목 «🔍 급식 찾기»)로 감싸 눈에 띄게. / v2.4.11 급식 검색 — 날짜(10/2·2026-10-02)나 교사 이름으로 찾기(Enter·검색 단추, 칠 때마다 안 찾음). 날짜는 그 주 급식으로 가 그날 칸 강조+그날 급식지도 담당, 이름은 급식지도 날짜들을 줄줄이(누르면 그 주 급식). / v2.4.10 상단 탭 칩 그림(NAVIMG)이 출결·주간업무를 옛 그림(nav-rec·nav-work)으로 가리키던 것 고침 → nav-att·nav-week + 점검하기 체크 칸에 항목별 클래스(k-doc·k-att·k-neis, 색은 ui.css). / v2.4.9 혜원이지 출결 설정 — «나는 누구»에서 교장·교감만 보이고 컴시간 선생님
      목록이 안 뜨는 문제 — 컴시간을 나중에 받아 와도 이미 불러온 ATT_ME(선생님 목록)가
      그대로라 안 새로 고쳐졌다. «🔄 다시 불러오기» 단추 추가(attMeLoad 재호출).
    v2.4.8 출결 — 달 경계를 넘어온 줄(«3211안효주» 9/29~10/2)이 그 달 화면·인쇄에
@@ -2300,6 +2300,7 @@ function attLoad(quiet) {
       if (!attMon) attMon = attThisMon();
       attApplyPendGubun();          // 새 줄에 골라 둔 구분을 반 탭에
       attSeqSync();
+      attNvSync();                  // 나이스에 넣은 값 장부(다리)와 맞춘다 — 시트 체크 맞추기보다 먼저
       attChkSync();                 // 점검하기 체크를 반 탭 칸과 맞춘다(칸이 있는 반만)
       attFilesLoad();               // 증빙 목록(지비스)
     } else if (!(quiet && ATT && !ATT.failed)) {        // 조용히 읽다 실패했으면 보던 목록을 그대로 둔다
@@ -3082,8 +3083,86 @@ function attChkCells(x) {
 /* 줄 sig 가 바뀌면(✎ 로 날짜·유형·학생을 고치면) 체크도 따라 옮긴다 */
 function attChkMove(oldSig, newSig) {
   if (!oldSig || oldSig === newSig || !ATTCHK[oldSig]) return;
-  ATTCHK[newSig] = ATTCHK[oldSig]; delete ATTCHK[oldSig];
+  var moved = ATTCHK[oldSig];
+  ATTCHK[newSig] = moved; delete ATTCHK[oldSig];
+  /* 나이스에 넣은 값 장부도 새 줄표로 옮긴다 — 옛 줄표엔 «지움 표» (시각이 없던 옛 기억은 이 앱 기억 시각으로) */
+  if (moved.nv) {
+    moved.nv.at = nvAtOf(moved.nv);
+    moved.nvq = moved.nv;
+    attNvPush([{ sig: newSig, nv: moved.nv }, { sig: oldSig, nv: { del: 1, at: 지금시각() } }]);
+  }
   attChkSave(); attChkJust = false;
+}
+
+/* ── 나이스에 넣은 값 장부(다리 att-nv, 1.6.0) — 지비스·혜원이지가 같은 «NEIS / NEIS 다시» 를 보게 (2026-11-13) ──
+   전에는 두 앱이 «나이스에 넣은 값(nv)» 을 각자 기억해(지비스=OneDrive·혜원이지=앱 폴더) 같은 줄이 다르게 보였다.
+   이제 나이스에 넣거나 지울 때 다리에도 적고(att-nv), 목록을 받을 때 다리 것을 기준으로 맞춘다.
+   엇갈리면 적은 때(at)가 나중인 쪽이 이긴다. «지움 표»({del,at})가 옛 기억을 되살리지 못하게 한다.
+   ★ 시트의 체크 칸(서류·출석부·NEIS)을 쓰는 것은 여전히 지비스만 — 둘이 쓰면 서로 되돌린다. 여기는 «넣은 값» 기억만 나눈다.
+   못 보낸 것은 ATTCHK[줄표].nvq 에 남겨 두었다가 다음 목록 읽기 때 다시 보낸다. 다리가 옛 판이면(has.nvShare 없음) 아무것도 안 한다. */
+/* 적은 때(at)가 없는 옛 기억은 «이 앱이 마지막으로 저장한 때» 를 빌리되 '0000.' 을 앞에 붙인다 —
+   진짜 시각(naSnap 의 at)이 있는 기록은 어떤 옛 기억보다도 나중으로 친다(옛 기억끼리는 빌린 시각으로 견준다) */
+function nvAtOf(rec) { return rec ? (rec.at || ('0000.' + (ATTCHKAT || ''))) : null; }
+function attNvShare() { return !!(ATT && ATT.has && ATT.has.nvShare); }
+function attNvCanWrite() { return attNvShare() && attCanWrite() && !!widgetAPI.attNv; }
+function attNvPush(items) {
+  if (!items || !items.length || !attNvCanWrite()) return;
+  var now = items.slice(0, 100), rest = items.slice(100);      // 다리는 한 번에 100건까지 — 나눠서 차례로
+  widgetAPI.attNv(now, attCls()).then(function (r) {
+    if (!(r && r.ok)) return;                          // 못 보냈다 — nvq 가 남아 있어 다음에 다시 보낸다
+    var done = false;
+    now.forEach(function (it) {
+      var c = ATTCHK[it.sig];
+      if (c && c.nvq && JSON.stringify(c.nvq) === JSON.stringify(it.nv)) { delete c.nvq; done = true; }
+    });
+    if (done) { attChkSave(); attChkJust = false; }
+    if (rest.length) attNvPush(rest);
+  }).catch(function () { /* 인터넷이 끊겼다 — nvq 로 다음에 */ });
+}
+/* 목록을 받은 뒤 — 다리 장부(x.nv)와 이 앱 기억을 «적은 때» 로 맞춘다 */
+function attNvSync() {
+  if (!attNvShare()) return;
+  var me = attNvCanWrite(), changed = false, push = [];
+  attSheetRows().forEach(function (x) {
+    if (x.local) return;
+    var sig = x.sig, c = ATTCHK[sig], rem = x.nv || null;
+    var loc = c ? (c.nvq || c.nv || null) : null;      // 이 앱이 아는 가장 새 기록(못 보낸 것 포함)
+    if (!rem) {
+      /* 다리엔 없는데 이 앱은 «넣었다» 고 기억 — 옛 기억을 올려 준다(처음 한 번, 또는 못 보낸 것 다시) */
+      if (!loc || !me) return;
+      if (loc.del) { if (c.nvq) push.push({ sig: sig, nv: loc }); return; }
+      if (!(c.neis || c.nvq)) return;
+      var up = Object.assign({}, loc, { at: nvAtOf(loc) });   // 시각 없는 옛 기억 — 빌린 시각(0000.…)으로
+      c.nv = up; c.nvq = up; changed = true;
+      push.push({ sig: sig, nv: up });
+      return;
+    }
+    var remAt = String(rem.at || ''), locAt = loc ? String(nvAtOf(loc)) : null;
+    if (loc && locAt > remAt) {                        // 이 앱 것이 더 새것 — 다리에 올린다
+      if (me) {
+        var up2 = loc.at ? loc : Object.assign({}, loc, { at: locAt });
+        if (!loc.at) { if (c.nvq) c.nvq = up2; if (c.nv && c.nv === loc) c.nv = up2; }
+        if (!c.nvq) c.nvq = up2;
+        changed = true;
+        push.push({ sig: sig, nv: up2 });
+      }
+      return;
+    }
+    if (loc && locAt === remAt && naNvSame(loc.del ? null : loc, rem.del ? null : rem)) {   // 같다
+      if (c.nvq) { delete c.nvq; changed = true; }
+      return;
+    }
+    /* 다리 것이 기준 */
+    if (rem.del) {
+      if (!c || (!c.nv && !c.nvq)) return;             // 아는 게 없으면 만들지 않는다
+      delete c.nv; delete c.nvq; c.neis = false; changed = true;
+      return;
+    }
+    c = ATTCHK[sig] = c || {};
+    delete c.nvq; c.neis = true; c.nv = Object.assign({}, rem); changed = true;      // 복사 — 목록 행과 객체를 같이 쓰지 않는다
+  });
+  if (changed) { attChkSave(); attChkJust = false; }
+  if (push.length) attNvPush(push);
 }
 
 /* ── 출결 → 나이스 일괄입력(v2.8.0 지비스 · v2.11.0 혜원이지도 · 2026-11-12) ─────────────────────
@@ -3158,7 +3237,12 @@ function naParse(x) {
 /* ★ v2.9.1 «NEIS 다시» — 나이스에 넣을 때 그 값(구분·교시·사유·날짜)을 점검하기 기록(ATTCHK[sig].nv)에 함께 적어 둔다.
    뒤에 지비스에서 사유·유형·날짜를 고치면(✎ 로 고치면 attChkMove 가 기록을 새 sig 로 옮긴다) 지금 값과 달라진 것을 알아챈다.
    손으로 점검하기 NEIS 를 켠 줄은 넣은 값을 모르니(nv 없음) 늘 «NEIS» 로 본다. */
-function naSnap(p) { return { t: p.closing, p: p.p, r: p.reason, d: p.days.slice(0, 60) }; }
+function naSnap(p) { return { t: p.closing, p: p.p, r: p.reason, d: p.days.slice(0, 60), at: 지금시각() }; }
+/* 나이스에 넣은 값이 같은가 — 적은 때(at)는 빼고 견준다(같은 값을 다시 확인할 때마다 시각만 새로 적히지 않게) */
+function naNvSame(a, b) {
+  if (!a || !b) return !a && !b;
+  return a.t === b.t && (a.p || 0) === (b.p || 0) && (a.r || '') === (b.r || '') && (a.d || []).join() === (b.d || []).join();
+}
 function naDrift(x) {
   var c = attChkOf(x), nv = c.nv, p;
   if (!c.neis || !nv || !(p = naParse(x))) return null;
@@ -3345,7 +3429,7 @@ function naMark(tab) {
     if (tab === 'delete' && e.old) return;
     var b = (by[e.sig] = by[e.sig] || { row: e.row, ents: [] }); b.ents.push(e);
   });
-  var n = 0, push = [];
+  var n = 0, push = [], nvPush = [];
   Object.keys(by).forEach(function (sig) {
     var ents = by[sig].ents, rs = ents.map(function (e) { return NA.res[e.key]; });
     if (rs.some(function (r) { return !r; })) return;                       // 아직 안 다룬 날이 있다
@@ -3355,13 +3439,15 @@ function naMark(tab) {
     var want = tab !== 'delete', c = Object.assign({}, ATTCHK[sig] || {});
     if (tab === 'compare' && !c.neis) return;
     var P = want ? naParse(by[sig].row) : null, nv = P ? naSnap(P) : null;
-    if (!!c.neis === want && (!want || JSON.stringify(c.nv || null) === JSON.stringify(nv))) return;
+    if (!!c.neis === want && (!want || naNvSame(c.nv || null, nv))) return;
     c.neis = want;
     if (nv) c.nv = nv; else delete c.nv;                                     // 넣은 값을 기억(«NEIS 다시» 알아채기)
+    var rec = nv || { del: 1, at: 지금시각() };                              // 다리 장부에도 — 지우면 «지움 표»
+    c.nvq = rec; nvPush.push({ sig: sig, nv: rec });
     ATTCHK[sig] = c; n++;
     if (!by[sig].row.local) push.push(attChkItem(by[sig].row));
   });
-  if (n) { attChkSave(); if (push.length) attChkPush(push, 'neis'); }
+  if (n) { attChkSave(); if (push.length) attChkPush(push, 'neis'); attNvPush(nvPush); }
   return n;
 }
 function naSummary(tab, rs, marked) {
@@ -4036,13 +4122,19 @@ function wireAtt(app) {
   on('[data-atck]', function (b) {
     var p = b.dataset.atck.split('§');            // sig 에는 | 가 들어 있어 § 로 가른다
     var c = Object.assign({}, ATTCHK[p[0]] || {});
+    var x = attSheetRows().filter(function (y) { return y.sig === p[0] && !y.local; })[0], tomb = null;
     c[p[1]] = !c[p[1]];
-    if (p[1] === 'neis') delete c.nv;               // 손으로 켜고 끄면 «넣은 값» 기억은 버린다(모르는 값이 되므로)
+    if (p[1] === 'neis') {
+      /* 손으로 켜고 끄면 «넣은 값» 기억은 버린다(모르는 값이 되므로). 다리 장부에도 «지움 표» — 안 그러면 다른 앱의 기억이 되살린다 */
+      if (c.nv || (x && x.nv && !x.nv.del)) tomb = { del: 1, at: 지금시각() };
+      delete c.nv; delete c.nvq;
+      if (tomb) c.nvq = tomb;
+    }
     /* ★ 다 꺼도 지우지 않는다 — «지비스가 아는 줄» 로 남아야 시트의 옛 체크를 도로 받아 오지 않는다 */
     ATTCHK[p[0]] = c;
     attChkSave(); render();
-    var x = attSheetRows().filter(function (y) { return y.sig === p[0] && !y.local; })[0];
     if (x) attChkPush([attChkItem(x)], 'click');
+    if (tomb) attNvPush([{ sig: p[0], nv: tomb }]);
   });
   /* 셀을 누르면 칩 팝업 — 같은 셀을 다시 누르면 닫힘. 팝업 안을 누른 것은 셀 누름으로 안 친다 */
   on('[data-atpop]', function (b, ev) {

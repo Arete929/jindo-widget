@@ -116,6 +116,7 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   attSet: (o) => ipcRenderer.invoke('att-set', o),
   attSeq: (items, cls) => ipcRenderer.invoke('att-seq', items, cls),
   attChk: (items, cls) => ipcRenderer.invoke('att-chk', items, cls),
+  attNv: (items, cls) => ipcRenderer.invoke('att-nv', items, cls),     // 나이스에 넣은 값 장부(다리 1.6.0)
   /* 출결 → 나이스 일괄입력(지비스) */
   neisAttRun: (o) => ipcRenderer.invoke('neis-att-run', o),
   neisAttStop: () => ipcRenderer.invoke('neis-att-stop'),
