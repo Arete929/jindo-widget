@@ -2499,7 +2499,7 @@ function viewAtt() {
   var folded = attFolded(attMon);
   var nPend = list.filter(attPending).length;
   var nLocal = list.filter(function (x) { return x.local; }).length;
-  var h = attBar() + attNotes() + attNotionPanel();
+  var h = attBar() + neisBigRow() + attNotes() + attNotionPanel();
   h += '<div class="atsum"><b>' + esc(attCls()) + '</b> · ' + Number(attMon.slice(5)) + '월 · '
     + list.length + '건'
     + (nLocal ? ' <span class="atlocal">앱에만 ' + nLocal + '</span>' : '')
@@ -2865,6 +2865,20 @@ function attNotionPanel() {
   }
   return h + '</div>';
 }
+/* 숨김 단추(혜원이지) — 로고를 7번 누르면 표 위 가운데에 큰 단추가 나온다. 다른 탭에 갔다 오면 사라진다 */
+var NEISSHOW = false, neisTaps = 0, neisTapAt = 0;
+function neisTap() {
+  if (HAS_TT || VIEW !== 'att' || NEISSHOW) return;
+  var now = Date.now();
+  neisTaps = (now - neisTapAt > 2500 ? 0 : neisTaps) + 1;
+  neisTapAt = now;
+  if (neisTaps >= 7) { NEISSHOW = true; neisTaps = 0; render(); }
+}
+function neisBigRow() {
+  if (HAS_TT || !NEISSHOW || !(ATT && attCanWrite())) return '';
+  return '<div class="neisbig"><span class="natipw"><button class="neisbigb' + (NA ? ' go' : '') + '" id="atNeis" aria-describedby="naTip">나이스 일괄입력<span class="naq">?</span></button>'
+    + naTipHtml() + '</span></div>';
+}
 function attBar() {
   var mons = ATT ? attMonths() : [attThisMon()];
   var chips = mons.map(function (m) {
@@ -2897,7 +2911,7 @@ function attBar() {
       + (f ? '이 달 줄을 시트에서 다시 보이게' : '검토 끝난 달 — 시트에서 이 달 줄을 숨깁니다') + '">'
       + (attFoldBusy ? (f ? '펴는 중…' : '접는 중…') : (f ? '펴기' : '접기')) + '</button>' : '')
     /* 나이스 일괄입력(지비스) — 쓸 수 있는 반만 */
-    + (ATT && attCanWrite() ? '<span class="natipw"><button class="wkb' + (NA ? ' go' : '') + '" id="atNeis" aria-describedby="naTip">나이스 일괄입력<span class="naq">?</span></button>'
+    + (HAS_TT && ATT && attCanWrite() ? '<span class="natipw"><button class="wkb' + (NA ? ' go' : '') + '" id="atNeis" aria-describedby="naTip">나이스 일괄입력<span class="naq">?</span></button>'
       + naTipHtml() + '</span>' : '')
     + (HAS_TT && ATT && attCls() === '3-2' ? '<button class="wkb' + (ATTNOT ? ' go' : '') + '" id="atNot" title="현재까지의 출결을 노션 [DB]’26 3-2 출결 로 보냅니다'
       + (ATTNOTAT ? ' · 마지막 전송 ' + esc(ATTNOTAT) : '') + '">'
@@ -4109,6 +4123,7 @@ function wireAtt(app) {
   on('[data-atm]', function (b) { attMon = b.dataset.atm; attPop = null; render(); });
   on('#atGet', function () { attSeqTried = ''; attMsg = ''; attLoad(); render(); });
   attFileWire(app);                               // 증빙 칸 — 첨부·열기·지우기·끌어다 놓기
+  on('.tlogo', function () { neisTap(); });
   on('#atNeis', function () { if (NA) { if (NA.phase !== 'run') { NA = null; render(); } } else naOpen(); });
   naWire(app);                                    // 나이스 일괄입력 창(열려 있을 때만)
   on('#atNot', function () { if (ATTNOT) { ATTNOT = null; render(); } else attNotionRead(); });
@@ -8070,6 +8085,7 @@ function render() {
   if (gm.open && document.activeElement && document.activeElement.id === 'gmName') return;   // 시트 이름을 적는 중에는 다시 그리지 않는다
   if (NA && document.activeElement && /^na(From|To)$/.test(document.activeElement.id)) return;   // 나이스 창 날짜를 고르는 중에도
   var app = document.getElementById('app');
+  if (VIEW !== 'att' && (NEISSHOW || neisTaps)) { NEISSHOW = false; neisTaps = 0; }   // 다른 탭에 가면 숨김으로 돌아간다
   if (!STATE) { app.innerHTML = titleBar() + updBar() + taskBar() + '<div class="empty">불러오는 중…</div>'; return report(); }
 
   if (STATE.needLogin && HAS_TT) {

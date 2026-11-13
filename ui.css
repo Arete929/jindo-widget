@@ -3077,6 +3077,13 @@
   .nastat { flex: 1; min-width: 0; color: var(--dim); font-size: calc(11.5px * var(--wf, 1)); }
   .wkb.go.naden { background: #d4565d; border-color: #d4565d; color: #fff; }
   /* 나이스 일괄입력 단추 도움말 툴팁(v2.3.0) — 마우스를 올리거나 단추에 초점이 가면 순서 카드가 뜬다 */
+  .neisbig { display: flex; justify-content: center; margin: 12px 0 6px; }
+  .neisbig .natipw .natip { left: 50%; right: auto; transform: translateX(-50%); }
+  .neisbigb { font: inherit; font-size: calc(17px * var(--wf, 1)); font-weight: 700; padding: 13px 34px; border-radius: 14px; border: 0; cursor: pointer;
+    background: #8b5cf6; color: #fff; box-shadow: 0 0 0 4px rgba(139, 92, 246, .18); }
+  .neisbigb:hover { background: #7c4ae8; }
+  .neisbigb.go { background: #5b34c4; }
+  .neisbigb .naq { font-size: .65em; opacity: .8; margin-left: 6px; }
   .natipw { position: relative; display: inline-flex; }
   .natipw .wkb .naq { font-size: calc(10px * var(--wf, 1)); opacity: .75; margin-left: 3px; }
   .natip { position: absolute; top: calc(100% + 8px); right: 0; z-index: 60; width: min(380px, calc(100vw - 24px)); box-sizing: border-box;
