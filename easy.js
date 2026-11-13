@@ -207,8 +207,6 @@ function drawSide() {
     widgetAPI.usageRefresh();
     render();
   });
-  var bl = SIDE.querySelector('.brand img');
-  if (bl) bl.addEventListener('click', function () { if (typeof neisTap === 'function') neisTap(); });
   var gw = SIDE.querySelector('#goWid');
   if (gw) gw.addEventListener('click', function () { widgetAPI.showWidget(); });
   var gs = SIDE.querySelector('#goSet');
@@ -219,6 +217,7 @@ function go(v) {
   // ★ 위젯과 «보던 탭» 을 나눠 갖지 않는다. 나눠 가지면 넓은 창에서 옮길 때
   //   뒤에 떠 있는 위젯 탭까지 같이 바뀌어 헷갈린다. 이 창은 늘 대시보드에서 시작한다.
   VIEW = v;
+  if (v === 'att' && typeof neisTap === 'function') neisTap();
   if (v !== 'att' && typeof NEISSHOW !== 'undefined') { NEISSHOW = false; neisTaps = 0; }
   render();
 }

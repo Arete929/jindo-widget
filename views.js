@@ -4123,7 +4123,6 @@ function wireAtt(app) {
   on('[data-atm]', function (b) { attMon = b.dataset.atm; attPop = null; render(); });
   on('#atGet', function () { attSeqTried = ''; attMsg = ''; attLoad(); render(); });
   attFileWire(app);                               // 증빙 칸 — 첨부·열기·지우기·끌어다 놓기
-  on('.tlogo', function () { neisTap(); });
   on('#atNeis', function () { if (NA) { if (NA.phase !== 'run') { NA = null; render(); } } else naOpen(); });
   naWire(app);                                    // 나이스 일괄입력 창(열려 있을 때만)
   on('#atNot', function () { if (ATTNOT) { ATTNOT = null; render(); } else attNotionRead(); });
@@ -8040,7 +8039,7 @@ function titleBar() {
   // ★ 두 번 누르면 넓게 보기로 — 창 제목 줄에서 흔히 하는 몸짓이다
   return '<div class="tbar" ondblclick="widgetAPI.openEasy()" '
     + 'title="두 번 누르면 넓게 보기">'
-    + '<img class="tlogo"' + (HAS_TT ? '' : ' ondblclick="event.stopPropagation()"') + ' src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
+    + '<img class="tlogo" src="assets/' + (HAS_TT ? 'logo-jinho.png' : 'logo-hyewon.png') + '" alt="">'
     + '<span class="ttl">' + brandHtml() + '</span>'
     /* ★ 사용량 타일은 이름 옆 빈 자리에 — 아래 띠를 없애 두 줄을 돌려받는다 */
     + usgInline()
@@ -9304,6 +9303,7 @@ function wireViews(app) {
       if (!dashScreenOf(v)) widgetAPI.dashHide();
       VIEW = v;
       widgetAPI.setView(VIEW);
+      if (v === 'att') neisTap();                  // 출결 탭을 연달아 7번 누르면(혜원이지)
       render();
     });
   });
