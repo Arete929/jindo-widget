@@ -1,4 +1,7 @@
-// 파일명: aiusage.js | @version 1.106.0
+// 파일명: aiusage.js | @version 1.107.0
+// v1.107.0 클로드 요금제·다음 결제일 — 결제 화면 날짜 문구를 더 넓게 읽고(«2026. 12. 5.»·연도 없는 «12월 5일»·«자동 갱신»·영문 약어 월),
+//   그래도 못 읽으면 클로드 자기 주소(/api/organizations…)에서 등급(맥스 5배/20배)·다음 결제일·상태만 받아 채운다(결제수단·카드는 안 담음).
+//   결제일을 못 읽었으면 20시간이 아니라 2시간 뒤 다시 읽고, 근처 글자 조각을 debug 로그에만 남긴다.
 // v1.106.0 계정 보이기·바꾸기 — 서비스마다 «어느 계정으로 로그인했는지» 를 보여 주고(못 읽으면 보조 길로 다시 읽고, 한 번 읽은 것은 기억),
 //   switchAccount(key): 그 서비스의 로그인 칸(partition)만 비우고 로그인 창을 다시 띄운다 — 클로드와 제미나이는 서로 다른 계정으로 로그인할 수 있다.
 // v1.105.1 clockAt — «목요일 오후 11:00» 처럼 요일·날짜가 붙은 초기화 문구를 «오늘 23:00» 으로 읽어 주간 초기화가 «46분 남음» 으로 보이던 것 고침(2026-10-06). relMs 는 «10월 8일» 을 «8일 뒤» 로 읽지 않게.
@@ -228,14 +231,51 @@ function claudeBillingExtract() {
     m = text.match(new RegExp('(?:갱신|다음\\s*결제|renew\\w*|next\\s*billing)[^\\n]{0,40}?' + K, 'i'));
     if (m) { out.kind = '갱신'; out.date = ymd(m); }
   }
+  /* [1.107.0] 한국어 날짜 문구 더 — «2026. 12. 5.» 점 형식, «12월 5일»(연도 없음), «다음 결제일»·«자동 갱신»·«갱신됩니다» */
+  var KW = '(?:다음\\s*결제일?|자동\\s*갱신|갱신(?:됩니다|일|\\s*예정)?|결제\\s*예정|청구\\s*예정|renew\\w*|next\\s*(?:billing|payment|charge))';
+  var CW = '(?:해지|취소)';
+  var D = '(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\.?';
+  var near = function (dateRe, kwRe) {
+    return text.match(new RegExp(kwRe + '[^\\n]{0,40}?' + dateRe, 'i'))
+      || text.match(new RegExp(dateRe + '[^\\n]{0,20}?' + kwRe, 'i'));
+  };
   if (!out.date) {
-    var MO = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
-      'september', 'october', 'november', 'december'];
-    var E = text.match(/(renews?|cancel\w*|billing)[^\n]{0,60}?(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s*(\d{4})/i);
+    m = near(K, CW) || near(D, CW);
+    if (m) { out.kind = '취소'; out.date = ymd(m); }
+  }
+  if (!out.date) {
+    m = near(K, KW) || near(D, KW);
+    if (m) { out.kind = '갱신'; out.date = ymd(m); }
+  }
+  if (!out.date) {   // 연도 없는 «12월 5일» — 오늘보다 앞이면 내년
+    var MD = '(\\d{1,2})월\\s*(\\d{1,2})일';
+    var mc = near(MD, CW), mg = mc ? null : near(MD, KW);
+    var md = mc || mg;
+    if (md) {
+      var now = new Date(), y = now.getFullYear();
+      var t = new Date(y, Number(md[1]) - 1, Number(md[2]));
+      if (t < new Date(now.getFullYear(), now.getMonth(), now.getDate())) y++;
+      out.kind = mc ? '취소' : '갱신';
+      out.date = y + '.' + pad(md[1]) + '.' + pad(md[2]);
+    }
+  }
+  if (!out.date) {   // 영어 — «renews on December 5, 2026» / «Dec 5, 2026»
+    var MO = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    var E = text.match(/(renews?|cancel\w*|billing|next\s*(?:payment|charge))[^\n]{0,60}?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2}),?\s*(\d{4})/i);
     if (E) {
       out.kind = /cancel/i.test(E[1]) ? '취소' : '갱신';
-      out.date = E[4] + '.' + pad(MO.indexOf(E[2].toLowerCase()) + 1) + '.' + pad(E[3]);
+      out.date = E[4] + '.' + pad(MO.indexOf(E[2].toLowerCase().slice(0, 3)) + 1) + '.' + pad(E[3]);
     }
+  }
+  /* 날짜를 못 읽었을 때만 — 다음에 고칠 수 있게 근처 글자 조각을 돌려준다(로그에만 남기고 저장하지 않는다).
+     ★ 카드·결제수단 줄은 빼고, 4자리 넘는 숫자 덩어리는 가린다 */
+  if (!out.date) {
+    out.hint = text.split('\n').filter(function (l) {
+      return /갱신|결제|구독|해지|renew|subscri|billing/i.test(l)
+        && !/카드|card|visa|master|amex|•|\*{2,}|결제\s*수단|payment\s*method|주소|address/i.test(l);
+    }).slice(0, 4).map(function (l) {
+      return l.trim().slice(0, 60).replace(/\d{5,}/g, '#####');
+    }).join(' | ');
   }
   var c = text.match(/US\$\s*([\d,]+(?:\.\d+)?)\s*\n\s*(?:현재\s*잔액|Current\s*balance)/i);
   if (c) out.credit = 'US$' + c[1];
@@ -248,6 +288,66 @@ function claudeBillingExtract() {
   return out;
 }
 const CLAUDE_BILLING_SCRIPT = '(' + claudeBillingExtract.toString() + ')()';
+
+/* [1.107.0] 결제 화면 글자로 날짜·등급을 못 읽을 때의 두 번째 길 — 클로드 자기 주소(/api/…)에 묻는다.
+   요금제(맥스/프로)·등급(5배/20배)·다음 결제일·상태만 꺼낸다.
+   ★ 결제수단·카드·주소·금액 같은 것은 꺼내지도 담지도 않는다 — 아래에서 고른 칸만 돌려준다. */
+async function claudeBillingApi() {
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  var toYmd = function (v) {
+    if (v == null || v === '') return '';
+    var d = typeof v === 'number' ? new Date(v < 1e12 ? v * 1000 : v) : new Date(String(v));
+    if (isNaN(d)) return '';
+    return d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate());
+  };
+  var get = async function (u) {
+    try { var r = await fetch(u, { credentials: 'include' }); return r.ok ? await r.json() : null; }
+    catch (e) { return null; }
+  };
+  /* 키 이름으로만 찾는다 — 응답 모양이 바뀌어도 버티게. 결제수단 쪽 가지(payment/card/…)는 들어가지 않는다 */
+  var find = function (o, re, depth) {
+    if (!o || typeof o !== 'object' || depth > 4) return undefined;
+    for (var k in o) {
+      if (/payment_method|card|billing_address|address|tax|invoice/i.test(k)) continue;
+      if (re.test(k) && o[k] != null && typeof o[k] !== 'object') return o[k];
+    }
+    for (var k2 in o) {
+      if (/payment_method|card|billing_address|address|tax|invoice/i.test(k2)) continue;
+      if (o[k2] && typeof o[k2] === 'object') { var v = find(o[k2], re, depth + 1); if (v !== undefined) return v; }
+    }
+    return undefined;
+  };
+  var out = { ok: false, plan: '', tier: '', date: '', kind: '', status: '', src: 'api' };
+  var orgs = await get('/api/organizations');
+  if (!Array.isArray(orgs) || !orgs.length) return out;
+  var caps = function (o) { return (o && Array.isArray(o.capabilities)) ? o.capabilities.join(',') : ''; };
+  var org = orgs.find(function (o) { return /claude_max/.test(caps(o)); })
+    || orgs.find(function (o) { return /claude_pro/.test(caps(o)); })
+    || orgs[0];
+  var c = caps(org), tierRaw = String((org && org.rate_limit_tier) || '');
+  if (/claude_max/.test(c) || /max/i.test(tierRaw)) out.plan = '맥스';
+  else if (/claude_pro/.test(c) || /pro/i.test(tierRaw)) out.plan = '프로';
+  var tm = tierRaw.match(/max_?(\d+)x/i);
+  if (tm) out.tier = '맥스 ' + tm[1] + '배';
+  var uuid = org && org.uuid;
+  if (uuid) {
+    var sub = await get('/api/organizations/' + uuid + '/subscription_details');
+    if (sub && typeof sub === 'object') {
+      var nd = find(sub, /^(next_charge_date|next_billing_date|next_payment_date|renews_at|renewal_date|current_period_end|period_end)$/i, 0);
+      var st = find(sub, /^status$/i, 0);
+      var cancel = find(sub, /^(cancel_at_period_end|cancel_at|canceled_at|cancels_at)$/i, 0);
+      out.date = toYmd(nd);
+      out.status = typeof st === 'string' ? st.slice(0, 20) : '';
+      if (cancel === true || (typeof cancel === 'string' && cancel) || (typeof cancel === 'number' && cancel > 0)) {
+        out.kind = '취소';
+        if (!out.date && cancel !== true) out.date = toYmd(cancel);
+      } else if (out.date) out.kind = '갱신';
+    }
+  }
+  out.ok = !!(out.plan || out.tier || out.date);
+  return out;
+}
+const CLAUDE_BILLING_API = '(' + claudeBillingApi.toString() + ')()';
 
 /* 계정(이메일)을 «따로» 읽는 길 — 사용량 화면에는 계정 버튼이 안 보일 때가 있어서, 그때 쓴다.
    ★ 로그인한 사람의 정보를 그 서비스 자기 주소로만 묻는다(밖으로 나가지 않는다). 못 읽으면 null 이다. */
@@ -270,6 +370,7 @@ const PROVIDERS = {
     // 결제일·크레딧 — 하루 한 번 «설정 → 결제» 를 따로 읽는다
     billingUrl: () => `https://claude.ai/settings/billing?_w=${Date.now()}`,
     billing: CLAUDE_BILLING_SCRIPT,
+    billingApi: CLAUDE_BILLING_API,   // [1.107.0] 글자로 못 읽은 날짜·등급을 채우는 두 번째 길
     billingSettle: 3500
   },
   gemini: {
@@ -413,11 +514,13 @@ function withTimeout(promise, ms, what) {
    창을 하나 더 여는 셈이라 매번 읽으면 갱신이 2~3초 늦는다. 20시간 지나면 다시 읽는다.
    못 읽으면 지난 값을 그대로 두고 «못 읽었다» 만 적어 둔다. */
 const BILL_TTL_MS = 20 * 3600 * 1000;
+const BILL_RETRY_MS = 2 * 3600 * 1000;   // [1.107.0] 결제일을 못 읽었으면 2시간 뒤 다시
 async function readBilling(key, w) {
   const p = PROVIDERS[key];
   if (!p.billingUrl || !last[key] || !last[key].ok) return;
   const prev = last[key].billing;
-  if (prev && prev.at && !prev.error && Date.now() - prev.at < BILL_TTL_MS) return;
+  const ttl = (prev && !prev.date) ? BILL_RETRY_MS : BILL_TTL_MS;
+  if (prev && prev.at && !prev.error && Date.now() - prev.at < ttl) return;
   try {
     await withTimeout((async () => {
       await w.loadURL(p.billingUrl());
@@ -429,10 +532,28 @@ async function readBilling(key, w) {
         if (got && got.ok) { best = got; if (got.credit) break; }
       }
       got = best;
+      const hint = got && got.hint;
+      if (got) delete got.hint;          // 진단 조각은 로그에만 — 저장하지 않는다
+      /* [1.107.0] 날짜나 등급이 비면 클로드 자기 주소에 한 번 더 묻는다 */
+      let src = '화면';
+      if (p.billingApi && (!got || !got.date || !got.tier)) {
+        let api = null;
+        try { api = await w.webContents.executeJavaScript(p.billingApi); } catch (e) { api = null; }
+        if (api && api.ok) {
+          got = got && got.ok ? got : { ok: true, plan: '', kind: '', date: '', credit: '' };
+          if (!got.plan && api.plan) got.plan = api.plan;
+          if (api.tier) got.tier = api.tier;
+          if (!got.date && api.date) { got.date = api.date; got.kind = api.kind || '갱신'; src = got.plan ? '화면+API' : 'API'; }
+          else if (api.tier) src = '화면+API(등급)';
+          if (api.status) got.status = api.status;
+          got.ok = true;
+        } else debug(`[사용량:${key}] 결제 API 로 못 읽음`);
+      }
+      if (got && !got.date && hint) debug(`[사용량:${key}] 결제일 못 읽음 — 근처 글자: ${hint}`);
       if (got && got.ok) {
         got.at = Date.now();
         last[key].billing = got;
-        debug(`[사용량:${key}] 결제 정보 읽음 — ${got.plan || ''} ${got.kind || ''} ${got.date || ''} ${got.credit || ''}`);
+        debug(`[사용량:${key}] 결제 정보 읽음(${src}) — ${got.tier || got.plan || ''} ${got.kind || ''} ${got.date || '(날짜 없음)'} ${got.credit || ''}`);
       } else {
         last[key].billing = Object.assign({}, prev || {}, { error: '결제 화면을 못 읽음' });
         debug(`[사용량:${key}] 결제 화면을 못 읽음 — 지난 값 유지`);

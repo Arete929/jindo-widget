@@ -1,4 +1,4 @@
-/* 파일명: ui.css | @version 2.4.0 — 출결 표 NEIS·NEIS 다시 라벨(.atneis), 나이스 일괄입력 다시 넣기·옛 날짜 지우기 표시(.natag) / v2.3.0 나이스 일괄입력 단추 도움말 툴팁(.natipw·.natip) / v2.2.0 지비스 출결 «나이스 일괄입력» 창(.na·.nabg·.natabs·.nar 등, 스쿨보드 모양) / v2.1.1 도구상자 품의 도우미(.pmgt·.tbpre) / 도구상자 스쿨보드 모양 보강(.tbhero·.tbpdf·.tbstage·.tbcalw·.tbgt) · 바로가기 탭의 도구 카드(.tbinline) · 이름외우기 사진(.tbph·.tbpgrid) · 도구상자(.tb*) · 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
+/* 파일명: ui.css | @version 2.4.1 — 사용량 결제 줄 요금제 칩(.ubplan) / v2.4.0 출결 표 NEIS·NEIS 다시 라벨(.atneis), 나이스 일괄입력 다시 넣기·옛 날짜 지우기 표시(.natag) / v2.3.0 나이스 일괄입력 단추 도움말 툴팁(.natipw·.natip) / v2.2.0 지비스 출결 «나이스 일괄입력» 창(.na·.nabg·.natabs·.nar 등, 스쿨보드 모양) / v2.1.1 도구상자 품의 도우미(.pmgt·.tbpre) / 도구상자 스쿨보드 모양 보강(.tbhero·.tbpdf·.tbstage·.tbcalw·.tbgt) · 바로가기 탭의 도구 카드(.tbinline) · 이름외우기 사진(.tbph·.tbpgrid) · 도구상자(.tb*) · 학년부 일정 삭제 단추(.gpact·.gpdel) · 급식 검색 타일(.mlsbox) · 급식 검색 입력·결과(.mlsrch·.mlfind·.mlgos)·찾은 날 칸 강조(.ml.find) · 점검하기 체크 칸 항목별 색(서류 파랑·출석부 초록·NEIS 보라, .atck.k-*) · 주간업무 표 날짜 머리 줄(.wth) · 점검하기 서류없음 줄의 빈 서류 칸(.atck.na, 커서만 기본으로)
    위젯과 혜원이지가 «함께 쓰는» 색·모양.
    테마를 여기 한 곳에서만 고치면 두 프로그램에 같이 반영된다. */
 
@@ -374,6 +374,7 @@
   .usg .brow .bk { height: calc(5px * var(--uf, 1)); }
   .usg .brow .rs { font-size: calc(8px * var(--uf, 1)); }
   .usg .ubill { margin-top: 3px; font-size: calc(8.5px * var(--uf, 1)); color: var(--dim); font-weight: 600; }
+  .usg .ubplan { display: inline-block; margin-right: 5px; padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; color: var(--fg); font-weight: 600; }
   .usg .nm i { font-style: normal; color: var(--dim); font-weight: 700; font-size: calc(9px * var(--uf, 1));
                margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .usg .lg {
