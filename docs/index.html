@@ -158,7 +158,7 @@
     <h1>혜원이지</h1>
     <span class="vbadge" id="vtop"><!--VER-->2.10.88<!--/VER--></span>
   </div>
-  <div class="sub">주간업무 · 시간표 · 학사일정 · 출결 · 급식 · 학생기록 — PC 는 바탕화면 한 창에서, 폰은 홈 화면 앱으로</div>
+  <div class="sub">주간업무 · 시간표 · 학사일정 · 급식 · 학생기록 · 도구상자 — PC 는 바탕화면 한 창에서, 폰은 홈 화면 앱으로</div>
 
   <div class="vtabs" role="tablist" aria-label="버전 고르기">
     <button type="button" role="tab" id="tab-pc" class="vtab" aria-selected="true" aria-controls="pane-pc" data-v="pc">🖥 PC 버전 <small>Windows</small></button>
@@ -213,8 +213,7 @@
       <li>바탕화면에 작은 창이 뜹니다. 제목 줄을 잡아 옮기세요</li>
       <li>톱니바퀴 <b>⚙️</b> 를 눌러 <b>학교</b>와 <b>선생님 이름</b>을 고릅니다</li>
       <li>그러면 시간표·급식·주간업무가 저절로 채워집니다</li>
-      <li><b>출결</b>을 쓰시려면 «출결» 탭에서 <b>연결 코드</b>(김진호에게 메신저로 받으세요)를 붙여 넣고,
-          <b>나는 누구</b>를 고릅니다. 학년부장·교무부장·교장·교감 선생님은 확인번호도 넣습니다</li>
+      <li>필요하면 설정에서 <b>수업 알림</b>(수업 시작 전에 알려 주기)과 <b>급식지도 순서표</b>(내 차례 미리 보기)도 켭니다</li>
     </ol>
     <p>창을 닫아도 꺼지지 않고 <b>작업표시줄 오른쪽 아래</b>에 남아 있습니다.
        제목 줄의 <b>⤢</b> 를 누르면 <b>넓은 창</b>으로 크게 볼 수 있습니다.</p>
@@ -297,7 +296,7 @@
     <div class="tabs">
       <div class="tab">
         <h3><span class="kbd">1</span> 대시보드</h3>
-        <p>오늘 볼 것을 한눈에. 자주 쓰는 화면은 ☆ 를 눌러 맨 위로 모아 둡니다.</p>
+        <p>오늘 볼 것을 한눈에. «✎ 편집하기» 로 카드 차례와 크기를 바꾸고, 자주 쓰는 화면은 ☆ 를 눌러 맨 위로 모아 둡니다.</p>
         <a href="img/tab-home.png" target="_blank" rel="noopener"><img class="shot" src="img/tab-home.png" loading="lazy" alt="대시보드 화면"></a>
       </div>
       <div class="tab">
@@ -311,33 +310,27 @@
         <a href="img/tab-cal.png" target="_blank" rel="noopener"><img class="shot" src="img/tab-cal.png" loading="lazy" alt="학사일정 화면"></a>
       </div>
       <div class="tab">
-        <h3><span class="kbd">4</span> 출결</h3>
-        <p>학년 출결목록 시트를 앱에서. 담임은 적기·고치기·월별 인쇄, 학년부장은 수정요청, 관리자는 보기.
-           «점검하기» 로 서류·출석부·NEIS 를 체크합니다.</p>
-        <a href="img/tab-att.png" target="_blank" rel="noopener"><img class="shot" src="img/tab-att.png" loading="lazy" alt="출결 화면"></a>
-      </div>
-      <div class="tab">
-        <h3><span class="kbd">5</span> 급식</h3>
-        <p>나이스에서 가져온 식단을 주 단위로 넘겨 봅니다.</p>
+        <h3><span class="kbd">4</span> 급식</h3>
+        <p>나이스에서 가져온 식단을 주 단위로 넘겨 봅니다. 오늘이 강조되고, 날짜나 선생님 이름으로 찾을 수 있습니다.</p>
         <a href="img/tab-meal.png" target="_blank" rel="noopener"><img class="shot" src="img/tab-meal.png" loading="lazy" alt="급식 화면"></a>
       </div>
       <div class="tab">
-        <h3><span class="kbd">6</span> 컴시간</h3>
+        <h3><span class="kbd">5</span> 컴시간</h3>
         <p>내 시간표와 학급 시간표. 이번 주 바뀐 수업(보강·교체)까지 반영됩니다.</p>
         <a href="img/tab-comci.png" target="_blank" rel="noopener"><img class="shot" src="img/tab-comci.png" loading="lazy" alt="컴시간 화면"></a>
       </div>
       <div class="tab">
-        <h3><span class="kbd">7</span> 학생기록</h3>
+        <h3><span class="kbd">6</span> 학생기록</h3>
         <p>학급 → 학생 → 분류로 적어 두고, 나중에 통계로 모아 봅니다.</p>
         <a href="img/tab-rec.png" target="_blank" rel="noopener"><img class="shot" src="img/tab-rec.png" loading="lazy" alt="학생기록 화면"></a>
       </div>
       <div class="tab">
-        <h3><span class="kbd">8</span> 바로가기</h3>
-        <p>자주 가는 곳을 담아 두고 한 번에. 나눠 드린 웹앱도 저절로 목록에 뜹니다.</p>
-        <a href="img/tab-link.png" target="_blank" rel="noopener"><img class="shot" src="img/tab-link.png" loading="lazy" alt="바로가기 화면"></a>
+        <h3><span class="kbd">7</span> 도구상자</h3>
+        <p>PDF 편집기·사진 줄이기·한글 용량 줄이기 같은 도구와, 내 바로가기·학교에서 함께 쓰는 앱을 한곳에. 나눠 드린 웹앱은 저절로 목록에 뜹니다.</p>
+        <a href="img/tab-link.png" target="_blank" rel="noopener"><img class="shot" src="img/tab-link.png" loading="lazy" alt="도구상자 화면"></a>
       </div>
       <div class="tab">
-        <h3>진도표</h3>
+        <h3><span class="kbd">8</span> 진도표</h3>
         <p>학기 전체를 교시 × 요일 격자로. 칸을 눌러 그 자리에서 적습니다.</p>
         <a href="img/tab-grid.png" target="_blank" rel="noopener"><img class="shot" src="img/tab-grid.png" loading="lazy" alt="진도표 화면"></a>
       </div>
@@ -348,19 +341,19 @@
   <div class="card">
     <h2>최근 새로워진 것</h2>
     <ul class="newlist">
-      <li><span class="tag">NEW</span><b>«혜원이지 폰» 타일</b> — 바로가기 화면 맨 앞. 누르면 폰 설치용 QR 이 크게 뜹니다</li>
-      <li><span class="tag">NEW</span><b>런처보드 정리</b> — 카드를 끌어서 «함께 쓰는 중» 과 «나만 보기» 사이로 옮길 수 있습니다</li>
+      <li><span class="tag">NEW</span><b>한글 용량 줄이기</b> — 한글(HWP·HWPX) 파일 안의 그림만 줄여 5MB 미만으로. 공문서에 첨부할 때 쓰세요. 원본은 그대로 둡니다</li>
+      <li><span class="tag">NEW</span><b>«바로가기» 가 «도구상자» 로</b> — 도구, 내 바로가기, 학교에서 함께 쓰는 앱이 한 화면에. 학교 바로가기는 청록 타일로 구분되고, 끌어서 차례를 바꿀 수 있습니다</li>
+      <li><span class="tag">NEW</span><b>PDF 편집기에 끌어다 놓기</b> — PDF 파일을 창 어디든 끌어다 놓으면 지금 하던 작업에 바로 들어갑니다</li>
+      <li><b>바깥 주소는 크롬으로</b> — 앱에서 누른 웹 주소는 늘 크롬으로 열립니다(크롬이 없으면 엣지)</li>
       <li><b>학사일정·급식은 «오늘» 기준</b> — 어제까지는 «지난 일정·지난 급식» 한 줄로 접혀 있고, 오늘이 눈에 띄게 강조됩니다. 필요하면 펼쳐 봅니다</li>
-      <li><b>창 옮기기</b> — 맨 위 머리 줄의 단추가 아닌 곳을 잡고 끌면 창이 부드럽게 옮겨집니다</li>
-      <li><b>도구상자</b> — PDF 편집기 · 사진 줄이기 · 랜덤 뽑기·모둠 편성 · QR 생성기 · 수업 타이머 · 계산기 · 등급별 인원 예측</li>
+      <li><b>도구상자에 든 것</b> — PDF 편집기 · 사진 줄이기 · 한글 용량 줄이기 · 랜덤 뽑기·모둠 편성 · QR 생성기 · 수업 타이머 · 계산기 · 등급별 인원 예측</li>
+      <li><b>출결 탭은 뺐습니다</b> — 혜원이지에는 이제 출결 화면이 없습니다(PC·폰 모두)</li>
     </ul>
   </div>
 
   <div class="card">
     <h2>2.0 에서 새로워진 것</h2>
     <ul>
-      <li><b>출결</b> — 담임 선생님은 우리 반 출결을 앱에서 적고 고치고 월별로 인쇄합니다.
-          학년부장님은 학년 모든 반을, 교장·교감·교무부장님은 전 학년을 볼 수 있습니다</li>
       <li><b>이름이 다시 «혜원이지»</b> 로 — 설정·자료는 그대로 이어집니다</li>
       <li><b>인쇄가 안 되던 문제</b> — 학교 PC 에서 인쇄 창이 안 뜨면 브라우저로 넘어가 거기서 인쇄합니다</li>
       <li><b>크게·작게</b> — A− A+ 를 누르면 메뉴 단추까지 함께 커지고, 화면 아래 손잡이를 끌면 그 탭이 통째로 커집니다</li>
@@ -447,30 +440,40 @@
   <div class="card">
     <h2>처음 열면</h2>
     <ol>
-      <li><b>암호 입력</b> — 처음 한 번 암호를 넣으라는 화면이 나옵니다. 암호는 <b>김진호 선생님께 메신저로 받으세요</b>. 앱을 열 때마다 넣고 들어옵니다.</li>
+      <li><b>학교 암호</b> — 처음 한 번만 넣습니다. 암호는 <b>김진호 선생님께 메신저로 받으세요</b>.</li>
+      <li><b>숫자 6자리 정하기</b> — 그 뒤로는 앱을 열 때 이 숫자(또는 지문)로 엽니다. 설정 › 잠금에서 지문을 켜거나 숫자를 바꿉니다.</li>
       <li><b>내 이름 고르기</b> — «시간표» 화면에서 내 이름을 한 번 고르면 오늘 수업과 내 시간표가 보입니다.</li>
+      <li><b>구글 로그인</b>(쓰고 싶을 때만) — 설정 › 구글 계정으로 로그인하면 PC 혜원이지 진도표에 적은 <b>수업 메모</b>가 폰 «오늘 수업» 에도 보이고, 폰에서도 적을 수 있습니다.</li>
     </ol>
+    <div class="pshots" style="grid-template-columns:minmax(0,260px);justify-content:center">
+      <figure><a href="img/phone-lock.png" target="_blank" rel="noopener"><img src="img/phone-lock.png" alt="숫자 6자리 정하기 화면" loading="lazy"></a><figcaption>처음 열면 나오는 <b>숫자 6자리 정하기</b> 화면</figcaption></figure>
+    </div>
   </div>
 
   <div class="card" id="phonetour">
     <h2>화면 둘러보기</h2>
     <p>폰 화면입니다. 그림 속 이름·자료는 <b>보여 드리려고 지어낸 것</b>입니다. 그림을 누르면 크게 보입니다.</p>
     <div class="pshots">
-      <figure><a href="img/phone-home.png" target="_blank" rel="noopener"><img src="img/phone-home.png" alt="홈 화면" loading="lazy"></a><figcaption><b>홈</b> — 오늘 수업·급식·학사일정을 한눈에. 처음에는 «시간표» 에서 <b>내 이름</b>을 한 번 골라 주세요</figcaption></figure>
-      <figure><a href="img/phone-tt.png" target="_blank" rel="noopener"><img src="img/phone-tt.png" alt="시간표 화면" loading="lazy"></a><figcaption><b>시간표</b> — 내 시간표와 학급 시간표. 오늘 요일 칸이 분홍으로 보입니다</figcaption></figure>
+      <figure><a href="img/phone-home.png" target="_blank" rel="noopener"><img src="img/phone-home.png" alt="홈 화면" loading="lazy"></a><figcaption><b>홈</b> — 오늘 수업(지금·다음 표시)·오늘 급식·앞으로 7일·주간업무를 펼쳐서 한눈에. 처음에는 «시간표» 에서 <b>내 이름</b>을 한 번 골라 주세요</figcaption></figure>
+      <figure><a href="img/phone-tt.png" target="_blank" rel="noopener"><img src="img/phone-tt.png" alt="시간표 화면" loading="lazy"></a><figcaption><b>시간표</b> — 내 시간표와 학급 시간표. 오늘 요일 칸이 분홍으로, 이번 주 바뀐 수업(교체·보강)은 주황으로 보입니다</figcaption></figure>
       <figure><a href="img/phone-meal.png" target="_blank" rel="noopener"><img src="img/phone-meal.png" alt="급식 화면" loading="lazy"></a><figcaption><b>급식</b> — 오늘이 강조됩니다. 날짜나 교사 이름으로 찾고, 주를 넘겨 봅니다</figcaption></figure>
       <figure><a href="img/phone-link.png" target="_blank" rel="noopener"><img src="img/phone-link.png" alt="바로가기 화면" loading="lazy"></a><figcaption><b>바로가기</b> — 학교에서 함께 쓰는 앱 모음</figcaption></figure>
-      <figure><a href="img/phone-more.png" target="_blank" rel="noopener"><img src="img/phone-more.png" alt="더보기 창" loading="lazy"></a><figcaption><b>더보기</b> — 아래 메뉴 오른쪽 끝을 누르면 학사일정·주간업무·문자 문구·바로가기·설정이 나옵니다</figcaption></figure>
+      <figure><a href="img/phone-more.png" target="_blank" rel="noopener"><img src="img/phone-more.png" alt="더보기 창" loading="lazy"></a><figcaption><b>더보기</b> — 아래 메뉴 오른쪽 끝을 누르면 주간업무·문자 문구·바로가기·설정이 나옵니다</figcaption></figure>
       <figure><a href="img/phone-menuedit.png" target="_blank" rel="noopener"><img src="img/phone-menuedit.png" alt="하단 메뉴 편집" loading="lazy"></a><figcaption><b>하단 메뉴 편집</b> — 더보기 → «하단 메뉴 편집» (또는 메뉴를 꾹 누르기). 끌어 놓거나 하나를 누르고 바꿀 칸을 눌러 자주 쓰는 화면을 아래에 둡니다</figcaption></figure>
     </div>
-    <p>이 밖에 <b>출결</b>(담임 선생님이 우리 반 출결 보기·적기), <b>문자 문구</b>, <b>학사일정</b>, <b>주간업무</b>, <b>설정</b> 화면이 있습니다.</p>
+    <p>이 밖에 <b>학사일정</b>(학년 일정도 함께), <b>주간업무</b>(붙은 그림까지 원본 그대로), <b>문자 문구</b>, <b>수업 메모</b>, <b>설정</b> 화면이 있습니다.</p>
   </div>
 
   <div class="card">
     <h2>최근 새로워진 것 (폰)</h2>
     <ul class="newlist">
-      <li><span class="tag">NEW</span><b>아래 메뉴가 «4칸 + 더보기»</b> — 홈·시간표·출결·급식 네 칸과 더보기. 내가 자주 쓰는 화면으로 바꿀 수 있습니다</li>
-      <li><b>출결 입력</b> — 지각·조퇴·결과는 해당 교시를 고르고, 신청 사유는 예시 문구를 눌러 바로 넣습니다</li>
+      <li><span class="tag">NEW</span><b>수업 메모</b> — 구글로 로그인하면 PC 진도표의 수업 메모가 홈 «오늘 수업» 에 보이고, › 를 눌러 어제·오늘·내일 교시마다 적습니다</li>
+      <li><span class="tag">NEW</span><b>앱 잠금</b> — 학교 암호는 처음 한 번만, 그 뒤로는 숫자 6자리나 지문으로 엽니다</li>
+      <li><span class="tag">NEW</span><b>바뀐 수업 강조</b> — 이번 주 교체·보강 수업을 주황으로, 바뀐 과목·선생님을 한 줄로 보여 줍니다</li>
+      <li><b>홈을 펼쳐서</b> — 오늘 수업·급식·앞으로 7일·주간업무가 카드로 바로 보입니다</li>
+      <li><b>아래 메뉴 «4칸 + 더보기»</b> — 기본은 홈·시간표·급식·학사일정. 꾹 누르거나 «하단 메뉴 편집» 으로 바꿉니다</li>
+      <li><b>설정 정리</b> — 모양·내 이름·자료·잠금·암호를 눌러 펼치는 타일로</li>
+      <li><b>출결은 뺐습니다</b> — 폰에서도 출결 화면이 없어졌습니다</li>
     </ul>
   </div>
   </div>
